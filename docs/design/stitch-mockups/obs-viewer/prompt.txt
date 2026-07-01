@@ -1,0 +1,37 @@
+Design system for "ChatterBox", a VTuber performing/collaboration platform.
+Mood: dark, focused, community game-hub energy (Discord-inspired neutral base) — warm amber
+used sparingly as the sole brand accent, never as a background wash.
+
+Color tokens:
+- background base: #0B0B0D (near-black, neutral gray)
+- background panel/card: #18181C (dark gray)
+- background elevated (modal/hover): #222227
+- border: #2E2E35
+- text: #F5F5F2 (off-white)
+- text muted: #9C9CA3
+- accent (brand/host/CTA — sparing use only): #FF8C2A (fire-amber)
+- accent hot (recording/live/danger): #FF4500 (fire-hot)
+- success/tracking: #56F09F (spring-green)
+
+Typography:
+- display: Schibsted Grotesk, weight 400-500
+- body: Noto Sans JP
+
+UI rules:
+- Neutral dark gray/black base throughout — no colored ambient glow or tinted backgrounds
+- Amber accent appears only on small elements (buttons, active/host indicators, icons)
+- Large rounded panels (24-40px border radius)
+- Pill-shaped primary buttons
+- Avoid purple-blue gradients and generic AI-default aesthetics
+- Avoid Heroicons defaults; use custom icons
+- Japanese-first copy, support Korean/English
+- Generous whitespace, high-contrast text
+
+Desktop OBS browser-source viewer — minimal, transparent-background compositing layer
+for streaming software. Show it against a checkerboard transparency pattern (standard alpha-
+channel indicator, gray/dark-gray checker squares) to represent the transparent canvas.
+No chrome, no top bar, no panels — just one large VTuber avatar centered, fullscreen within
+frame, clean edges (no background box around it), subtle drop shadow only.
+Small fixed corner label (bottom-right, low-opacity dark chip): "OBS · Slot 3 · Connected" as
+a tiny status indicator, shown here in a visible dim state for the mockup.
+No other UI elements — designed to be composited directly into a stream scene.

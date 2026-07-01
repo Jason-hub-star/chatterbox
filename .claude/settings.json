@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/self-review-gate.sh",
+            "timeout": 5000,
+            "statusMessage": "Self-review gate..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/doc-drift-reminder.sh",
+            "timeout": 5000,
+            "statusMessage": "Doc drift reminder..."
+          },
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(GAP-MATRIX|contracts/_INDEX|FEATURE-SPEC|DATA-SCHEMA|state-machines)' && node scripts/gen-overview.js 2>/dev/null || true",
+            "timeout": 10000,
+            "statusMessage": "Overview sync..."
+          }
+        ]
+      }
+    ]
+  }
+}

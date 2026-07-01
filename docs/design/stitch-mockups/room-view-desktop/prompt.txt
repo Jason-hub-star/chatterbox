@@ -1,0 +1,93 @@
+Design system for "ChatterBox", a VTuber performing/collaboration platform.
+Mood: dark, focused, community game-hub energy (Discord-inspired neutral base) — warm amber
+used sparingly as the sole brand accent, never as a background wash.
+
+Color tokens:
+- background base: #0B0B0D (near-black, neutral gray)
+- background panel/card: #18181C (dark gray)
+- background elevated (modal/hover): #222227
+- border: #2E2E35
+- text: #F5F5F2 (off-white)
+- text muted: #9C9CA3
+- accent (brand/host/CTA — sparing use only): #FF8C2A (fire-amber)
+- accent hot (recording/live/danger): #FF4500 (fire-hot)
+- success/tracking: #56F09F (spring-green)
+
+Typography:
+- display: Schibsted Grotesk, weight 400-500
+- body: Noto Sans JP
+
+UI rules:
+- Neutral dark gray/black base throughout — no colored ambient glow or tinted backgrounds
+- Amber accent appears only on small elements (buttons, active/host indicators, icons)
+- Large rounded panels (24-40px border radius)
+- Pill-shaped primary buttons
+- Avoid purple-blue gradients and generic AI-default aesthetics
+- Avoid Heroicons defaults; use custom icons
+- Japanese-first copy, support Korean/English
+- Generous whitespace, high-contrast text
+
+Desktop RoomView, circular layout — 6-person VTuber performance room, main stage view. 16:9.
+
+Top bar (full width, ~7% height): app logo mark, room title "꿈을 향한 한 걸음" with small
+edit-pencil icon, two tag pills "#연기연습" "#판타지", live-status pill "● 라이브 진행 중 00:42:17"
+(fire-hot dot), "초대하기" button, "링크 공유" button, participant count "6/6", kebab menu.
+
+Left panel (~14% width, top 7% to bottom 7%): rounded card "대본/장면" header with "Scene 12"
+dropdown, numbered script lines (01-06) each showing character name + one line of dialogue,
+current active line highlighted in a fire-amber bordered box at the bottom labeled "현재 대사"
+with a timestamp range, "대본 전체보기" link at the very bottom.
+
+Center stage (~58% width, full height): EXACTLY SIX (6) VTuber avatar portraits, no more and
+no fewer, arranged as three left-right pairs around a central video frame:
+  PAIR 1 (top): one avatar upper-left corner, one avatar upper-right corner.
+  PAIR 2 (middle — do not omit this pair): one avatar vertically centered on the left edge,
+    one avatar vertically centered on the right edge, at the widest point of the screen.
+  PAIR 3 (bottom): one avatar lower-left corner, one avatar lower-right corner.
+Each of the 6 avatars: circular anime-style portrait ~110px diameter, colored status ring
+(host = fire-amber ring + small crown badge, speaking = pulsing fire-amber glow, tracking-active
+= small spring-green dot, muted = dim/desaturated ring), name label + mic icon below, thin
+glowing connector line to the center video frame. Count the avatars before finishing: there
+must be 6 circles total, 2 per pair, 3 pairs.
+Center video frame (rounded-panel, floating, ~45% width x 50% height): plays a fantasy scene
+(two characters under moonlight near a castle, digital painting style, studio ghibli + nier
+automata middle ground), with floating colorful reaction-text bubbles drifting upward around
+the frame edges (e.g. short Korean phrases like "와 몰입감 미쳤다 ㅋㅋ", "여기 감정선 최고야",
+each in a different soft accent color, semi-transparent, pointer-events feel). Player controls
+at the bottom of the video frame: play/pause, skip, scrubber, time "01:24 / 03:28", speed "1.25x",
+fullscreen icon.
+
+Right panel (~14% width, top 7% to bottom 7%): rounded card "세션 노트" with a short checklist
+(checkmarks in spring-green, pending in muted gray), below it "리액션 / 효과음" — a 2-column grid
+of pill buttons with emoji + label (박수, 감탄, 좋아요, 최고!, 웃겨요, 뭉클, 드럼롤, 휘두르기,
+마법효과, 폭발), at the bottom "룸 분위기" card with a small audio waveform bar visualization in
+fire-amber and text "집중도 높음".
+
+Bottom bar (full width, ~7% height): mic toggle dropdown, headphone icon, large pill "녹음"
+button in fire-hot (active/recording state), "아바타 ON" toggle, "대본" toggle, "리액션" toggle,
+red "나가기" button on the far right.
+
+Neutral #0B0B0D base throughout, fire-amber #FF8C2A used only on active/host/speaking accents
+(never as a background wash), fire-hot #FF4500 on recording/live indicators, spring-green
+#56F09F on tracking/success states, off-white #F5F5F2 text, rounded panels and pill buttons,
+no purple gradients.
+
+---
+[구버전 v2 — 참조용, 앰버 다크나이트 배경. 화면 미반영]
+
+Desktop RoomView, circular layout — 6-person VTuber performance room, main stage view. 16:9.
+Same circular 6-avatar layout as above but with the old palette: background primary #0D0D14
+(stage-night), card/panel #1A1A3E (night-blue), accent #FF8C2A (fire-amber) used as ambient
+glow throughout (not sparing accent-only use), text #FFF8F0 (warm-white). 2026-07-01 first
+circular attempt only rendered 4/6 avatars (middle pair missing) even after 2 edit rounds.
+
+---
+[구버전 v1 — 참조용, E형(3+3 column) 레이아웃. 화면 미반영]
+
+Desktop RoomView for a 6-person VTuber performance room. E-shaped layout.
+Top bar (9% height): room name with edit icon, lock icon, tags, session timer, invite link button, participant count "7/12", ping "12ms", menu.
+Left panel (13%): script/scene dropdown, character-to-actor role assignment list, "Rehearsal / Performance" mode toggle, language selector (ko/ja/en), next cue list, session info.
+Center main view (56%): stage background image (campfire forest at night). Six participant slots arranged as left column 3 slots + right column 3 slots. Each slot shows VTuber avatar, display name, mic muted icon, host crown. Floating chat reaction emojis drifting upward.
+Right panel (14%): four tabs [Chat][Script][VGen][DUB] with chat messages, script mirror, VGen job status, DUB role timing. Bottom of panel: soundboard grid.
+Bottom bar (9%): mic toggle, mixer, record button, avatar/camera toggle, script toggle, reaction button, red "Leave" button.
+Dark #0D0D14, fire-amber #FF8C2A accents, warm white text, rounded UI, no purple gradients.

@@ -1,0 +1,322 @@
+---
+tags: [contract]
+---
+
+<!-- contracts/_INDEX.md 참조: 공유 절차·DataChannel 레지스트리·타입 정의 -->
+<!-- opencode: 2026-06-29 - DUB-05 DubCompositor 계약서 신규 작성 (최종 합성 + 다운로드). Coded with OpenCode; high-cost model review recommended. -->
+
+# DubCompositor
+
+더빙 완성본 합성 UI. 모든 dub_tracks가 녹음 완료(`synced`)되면 호스트가 합성을 시작하고, 진행바 표시 후 완성본을 다운로드할 수 있다. `DubRecorder` 완료 후 마운트.
+
+> **상태머신**: `state-machines/DubSession.md` COMPOSITING → COMPLETED 전이 담당.
+> **스키마**: `DATA-SCHEMA.md §1.14 dub_outputs` (output_object_key, output_video_url, status, file_size_bytes, duration_ms).
+> **보존**: `specs/SecurityPolicies.md §11.4` — 보존기간 90일, pg_cron 자동 삭제.
+
+---
+
+## Props Interface
+
+```typescript
+interface DubCompositorProps {
+  /**
+   * dub_sessions.id
+   */
+  dubSessionId: string;
+
+  /**
+   * 현재 room_id
+   */
+  roomId: string;
+
+  /**
+   * DUB 세션 종료 콜백
+   * 다운로드 완료 또는 [DUB 종료] 클릭 시
+   */
+  onSessionClose: () => void;
+
+  /**
+   * 재녹음 콜백 (합성 실패 시)
+   */
+  onRerecord?: () => void;
+
+  /**
+   * 에러 콜백
+   */
+  onError?: (error: Error) => void;
+}
+```
+
+---
+
+## Store 의존성
+
+| Store | 필드 | 읽기 | 쓰기 | 설명 |
+|-------|-----|-----|------|------|
+| `dubStore` | `activeSession` | ✓ | | 현재 세션 (source_video_url 포함) |
+| `dubStore` | `tracks` | ✓ | | dub_tracks 배열 (모든 synced 확인) |
+| `dubStore` | `compositingState` | ✓ | ✓ | 'idle' \| 'compositing' \| 'completed' \| 'failed' |
+| `dubStore` | `compositingProgress` | ✓ | ✓ | 0~100 (합성 진행률) |
+| `dubStore` | `output` | ✓ | ✓ | dub_outputs 행 미러 (output_video_url) |
+| `dubStore` | `startCompositing()` | | ✓ | 합성 시작 (Edge Function 호출) |
+| `dubStore` | `closeSession()` | | ✓ | 세션 종료 (IDLE로 전이) |
+| `stageStore` | `mode` | ✓ | ✓ | 'dub' → 'normal' 전환 (종료 시) |
+| `userStore` | `isHost` | ✓ | | 호스트만 합성 시작·종료 권한 |
+
+**읽기 전용:** dubStore.tracks, userStore.isHost
+**쓰기:** dubStore.compositingState, dubStore.compositingProgress, dubStore.output, stageStore.mode
+
+---
+
+## 기능 명세
+
+### 1. 합성 시작 게이트
+
+모든 dub_tracks가 `synced` 상태여야 합성 시작 가능:
+
+```typescript
+const allSynced = dubStore.tracks.length > 0 &&
+  dubStore.tracks.every(t => t.status === 'synced');
+
+// [합성 시작] 버튼 활성화 조건
+const canStartCompositing = allSynced && userStore.isHost && dubStore.compositingState === 'idle';
+```
+
+### 2. 합성 진행 UI
+
+```
+┌─────────────────────────────────────┐
+│ DubCompositor                       │
+│                                     │
+│ [✕ 닫기]              (상단 우츠)    │
+├─────────────────────────────────────┤
+│ 🎬 최종 합성                         │
+│                                     │
+│ (대기 중)                            │
+│ 모든 배우 녹음 완료 ✓                │
+│ [합성 시작 ▶] (HOST만)              │
+│                                     │
+│ 또는 (합성 중)                       │
+│ ⏳ 합성 진행 중...                   │
+│ ▓▓▓▓▓▓▓▓░░░░░░ 55%                 │
+│ 3~5분 소요 예상                     │
+│                                     │
+│ 또는 (완성)                          │
+│ ✓ 합성 완료                          │
+│ ┌────────────────────┐              │
+│ │ [완성본 미리보기]    │              │
+│ │ <video controls />  │              │
+│ └────────────────────┘              │
+│ [⬇ 다운로드] [🔗 공유 링크]          │
+│                                     │
+│ 보존기간: 90일 (2026-09-29 만료)    │
+├─────────────────────────────────────┤
+│ [재녹음] (HOST)  [DUB 종료] (HOST)  │
+└─────────────────────────────────────┘
+```
+
+### 3. 합성 로직 (Edge Function)
+
+```typescript
+async function startCompositing() {
+  dubStore.setCompositingState('compositing');
+  dubStore.setCompositingProgress(0);
+
+  // Edge Function 호출: 원본 영상 + 더빙 오디오 트랙 → 최종 영상
+  const { data, error } = await supabase.functions.invoke('start-dub-compositing', {
+    body: { dub_session_id: dubSessionId },
+  });
+
+  if (error) {
+    dubStore.setCompositingState('failed');
+    showToast('합성에 실패했습니다. 다시 시도해주세요.');
+    return;
+  }
+
+  // 합성은 비동기: ffmpeg.wasm (클라이언트) 또는 LiveKit Egress (서버)
+  // 진행률은 polling 또는 Realtime으로 추적
+}
+```
+
+**합성 방식 (PLATFORM-ARCHITECTURE.md §5.5):**
+
+| 방식 | 지연 | 품질 | 비용 | 용도 |
+|---|---|---|---|---|
+| ffmpeg.wasm (클라이언트) | <1s | 중 (WebM VP9) | 무료 | 실시간 미리보기 |
+| LiveKit Egress (서버) | 5~10s | 높음 (H.264) | 초당 비용 | 보관·재배포 |
+
+> ponytail: P1은 ffmpeg.wasm 우선, 비용 절감. Egress는 P2.
+
+### 4. 진행률 추적
+
+```typescript
+// Realtime: dub_outputs UPDATE 구독
+useEffect(() => {
+  const sub = supabase
+    .channel(`dub-output:${dubSessionId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'dub_outputs', filter: `dub_session_id=eq.${dubSessionId}` },
+      (payload) => {
+        dubStore.setOutput(payload.new);
+        if (payload.new.status === 'ready') {
+          dubStore.setCompositingState('completed');
+          dubStore.setCompositingProgress(100);
+        } else if (payload.new.status === 'failed') {
+          dubStore.setCompositingState('failed');
+        }
+      }
+    )
+    .subscribe();
+
+  return () => sub.unsubscribe();
+}, [dubSessionId]);
+```
+
+### 5. 완성본 다운로드
+
+```typescript
+async function downloadOutput() {
+  if (!dubStore.output?.output_object_key) return;
+
+  // R2 서명 URL 발급 (Edge Function)
+  const { data, error } = await supabase.functions.invoke('create-signed-media-url', {
+    body: { bucket: 'dub-assets', object_key: dubStore.output.output_object_key, expires_in: 3600 },
+  });
+
+  if (error) throw error;
+
+  // 다운로드
+  const a = document.createElement('a');
+  a.href = data.signed_url;
+  a.download = `dub-${dubSessionId}.mp4`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+```
+
+### 6. 공유 링크 발급
+
+```typescript
+async function generateShareLink() {
+  // VgenExport.md §3 패턴 재사용
+  const { data, error } = await supabase.functions.invoke('generate-share-link', {
+    body: { dub_session_id: dubSessionId, expires_in: 604800 },  // 7일
+  });
+
+  if (error) throw error;
+
+  await navigator.clipboard.writeText(data.share_url);
+  showToast('공유 링크가 복사되었어요!');
+}
+```
+
+### 7. 세션 종료
+
+```typescript
+async function closeSession() {
+  // stageStore.mode = 'normal' 전환
+  stageStore.setMode('normal');
+
+  // LiveKit room-authority: dub_mode_close 발행
+  // (RightPanel 또는 RoomView dispatcher 경유)
+
+  // DubSession.md COMPLETED → IDLE 전이
+  await dubStore.closeSession();
+
+  // 보존기간 안내
+  showToast(`더빙 완성본은 ${formatDate(retentionExpiresAt)}까지 보관됩니다`);
+
+  onSessionClose();  // → RightPanel DUB 탭으로 복귀
+}
+```
+
+---
+
+## DataChannel 의존성
+
+**구독 (수신):** 없음 (합성은 서버 작업, 결과는 Realtime으로 수신)
+
+**발행 (송신):**
+
+| Channel | 메시지 형식 | 용도 |
+|---------|----------|------|
+| `room-authority` (reliable) | `{ type: 'dub_mode_close' }` | 호스트가 세션 종료 시 모든 참가자에게 마이크 unmute 동기화 |
+
+---
+
+## Supabase 연동
+
+| 엔드포인트/테이블 | 작업 | 시점 | RLS |
+|---|---|---|---|
+| `start-dub-compositing` (Edge Function) | 합성 시작 | [합성 시작] 클릭 시 | 호스트 검증 |
+| `create-signed-media-url` (Edge Function) | R2 서명 URL 발급 | 미리보기/다운로드 시 | 참가자/호스트 visibility 검증 |
+| `dub_outputs` | INSERT | 합성 시작 시 | host only |
+| `dub_outputs` | UPDATE (status, output_video_url) | 합성 완료 시 | host only |
+| `generate-share-link` (Edge Function, P2) | 공유 링크 발급 | 공유 시 | 호스트 + visibility/consent gate |
+| Realtime: `dub_outputs` | UPDATE 구독 | 합성 진행·완료 감지 | dub_session_id 필터 |
+
+---
+
+## 금지 사항 (MUST NOT)
+
+- ❌ **비호스트의 합성 시작** — `userStore.isHost = true` 확인 필수
+- ❌ **모든 synced 아닌 상태에서 합성 시작** — `allSynced` 게이트 필수
+- ❌ **Edge Function 밖에서 합성/공유 링크 생성** — quota/consent/visibility/audit gate 필수
+- ❌ **dub_outputs.output_video_url에 공개 URL 저장** — R2 object_key만, signed URL은 재생 시 발급
+- ❌ **보존기간 무제한** — `retention_expires_at = completed_at + 90일` 필수 (SecurityPolicies §11.4)
+- ❌ **합성 실패 시 dub_tracks 삭제** — 재시도를 위해 유지, `onRerecord()`로 재녹음 가능
+- ❌ **공유 링크를 localStorage에 저장** — 세션 내만, 7일 만료
+- ❌ **클라이언트에서 R2 서명 URL 직접 생성** — Edge Function만 서명 발급 (VgenExport.md 패턴)
+
+---
+
+## 컴포넌트 관계
+
+```
+[DubRecorder] (모든 dub_tracks synced)
+  └─ onCompositingStart()
+     → [DubCompositor] 마운트
+         │
+         ├─ [CompositingGate]
+         │  └─ allSynced && isHost → [합성 시작 ▶]
+         │
+         ├─ [CompositingProgressBar]
+         │  └─ dubStore.compositingProgress (0~100)
+         │     Realtime: dub_outputs.status 변경 감지
+         │
+         ├─ [OutputPreview] (완성 시)
+         │  └─ <video src={signedUrl} controls />
+         │
+         ├─ [DownloadButton]
+         │  └─ Edge Function create-signed-media-url → a.download
+         │
+         ├─ [ShareLinkButton]
+         │  └─ Edge Function generate-share-link → clipboard
+         │
+         ├─ [RerecordButton] (HOST, 합성 실패 시)
+         │  └─ onRerecord() → [DubRecorder]로 복귀
+         │
+         └─ [CloseSessionButton] (HOST)
+            └─ dubStore.closeSession() + stageStore.mode='normal'
+               + dub_mode_close 발행 → onSessionClose()
+               → RightPanel DUB 탭으로 복귀
+```
+
+---
+
+## 관련 문서
+
+- `state-machines/DubSession.md` — COMPOSITING → COMPLETED 전이
+- `DATA-SCHEMA.md §1.14` — dub_outputs 테이블 (output_object_key, output_video_url, status)
+- `specs/SecurityPolicies.md §11.4` — 보존기간 90일, pg_cron 자동 삭제
+- `contracts/DubRecorder.md` — 이전 단계 (녹음)
+- `contracts/VgenExport.md` — 다운로드·공유 링크 패턴 (재사용)
+- `FEATURE-SPEC.md` — DUB-05 (완성본 합성, 버튜버 아바타 오버레이 + 다운로드)
+
+---
+
+## 한줄정리
+
+DubCompositor는 모든 dub_tracks가 녹음 완료(synced)된 후 호스트가 합성을 시작하고, ffmpeg.wasm 또는 LiveKit Egress로 원본 영상 + 더빙 오디오를 합성하여 진행바를 표시하며, 완성본을 R2 서명 URL로 다운로드·공유하고 90일 보존 후 자동 삭제되는 최종 합성 UI다.

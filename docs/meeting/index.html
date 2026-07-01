@@ -1,0 +1,484 @@
+<!-- opencode: 2026-06-26 - Simplified user-facing Korean text for general audiences. Coded with OpenCode; high-cost model review recommended. -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>회의 보드 — 버튜버 연극 플랫폼 기능 배치</title>
+<!--
+  별도 설치 없이 바로 열 수 있는 회의용 보드입니다. 파일을 더블클릭하면 열립니다.
+  기능 목록은 docs/FEATURE-SPEC.md를 바탕으로 만들었습니다.
+  회의 결과는 오른쪽 위 '저장하기' 버튼으로 JSON 파일로 저장하고 공유할 수 있습니다.
+  입력한 내용은 브라우저에 자동 저장됩니다.
+  각 화면(탭)마다 시작 배치 예시(템플릿)가 준비되어 있고, 오른쪽 위 '템플릿' 선택 상자로 바꿀 수 있습니다.
+-->
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --line:#e3e5ea; --ink:#1f2430; --muted:#8b8d98;
+    --p0:#e5484d; --p1:#f5a623; --p2:#9aa0ad;
+    --todo:#8b8d98; --confirmed:#30a46c; --hold:#f5a623;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;color:var(--ink);background:var(--bg)}
+  body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  #topbar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  #tabs{display:flex;gap:4px;flex-wrap:wrap}
+  .tab{padding:5px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-weight:600;color:var(--muted)}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .tab .cnt{font-weight:400;opacity:.7;font-size:11px;margin-left:4px}
+  .spacer{flex:1}
+  select#tplSel{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-weight:600}
+  .btn{padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-weight:600}
+  .btn:hover{background:#f0f1f4}
+  .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .filters{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+  .filters label{display:flex;gap:3px;align-items:center;cursor:pointer}
+  #main{flex:1;display:flex;min-height:0}
+  #palette{width:240px;border-right:1px solid var(--line);background:var(--panel);overflow:auto;padding:10px;flex-shrink:0}
+  #palette h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  #palette .hint{font-size:11px;color:var(--muted);margin-bottom:8px}
+  #canvasWrap{flex:1;overflow:auto;position:relative}
+  #canvas{position:relative;width:2400px;height:1600px;background:
+     linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px) 0 0/40px 40px,
+     linear-gradient(rgba(0,0,0,.035) 1px,transparent 1px) 0 0/40px 40px}
+  .card{position:relative;border:1px solid var(--line);border-left:4px solid var(--p1);border-radius:8px;background:#fff;padding:7px 8px;margin-bottom:7px;cursor:grab;box-shadow:0 1px 2px rgba(0,0,0,.05);touch-action:none}
+  #canvas .card{position:absolute;width:190px;margin:0;z-index:5}
+  .card.p0{border-left-color:var(--p0)} .card.p1{border-left-color:var(--p1)} .card.p2{border-left-color:var(--p2)}
+  .card.dragging{opacity:.85;cursor:grabbing;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999}
+  .card .id{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.02em}
+  .card .nm{font-weight:600;margin:1px 0 3px;font-size:12.5px}
+  .card .row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px}
+  .pill{font-size:10px;padding:1px 6px;border-radius:99px;font-weight:700;color:#fff}
+  .pill.P0{background:var(--p0)} .pill.P1{background:var(--p1)} .pill.P2{background:var(--p2)}
+  .dep{font-size:10px;color:var(--muted);background:#eef0f3;padding:1px 5px;border-radius:4px}
+  .star{color:var(--p0);font-weight:700}
+  .status{font-size:10px;padding:1px 6px;border-radius:99px;border:1px solid var(--line);cursor:pointer;font-weight:700}
+  .status.todo{color:var(--todo)} .status.confirmed{color:#fff;background:var(--confirmed);border-color:var(--confirmed)} .status.hold{color:#fff;background:var(--hold);border-color:var(--hold)}
+  .card .memo{font-size:11px;color:#555;margin-top:4px;border-top:1px dashed var(--line);padding-top:4px;white-space:pre-wrap}
+  .zone{position:absolute;border:2px dashed #c4c8d0;border-radius:10px;background:rgba(120,130,150,.06);z-index:1}
+  .zone .zhead{position:absolute;top:-11px;left:8px;background:var(--panel);padding:0 6px;font-size:11px;font-weight:700;color:#6b7280;cursor:grab;border:1px solid var(--line);border-radius:6px}
+  .zone .zdel{position:absolute;top:-11px;right:6px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:10px;padding:0 5px;cursor:pointer;color:var(--muted)}
+  .zone .zhandle{position:absolute;right:-6px;bottom:-6px;width:14px;height:14px;border:2px solid #c4c8d0;border-radius:4px;background:#fff;cursor:nwse-resize}
+  #noteBar{border-top:1px solid var(--line);background:var(--panel);padding:8px 12px;display:flex;gap:8px;align-items:center}
+  #noteBar label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase}
+  #note{flex:1;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;resize:none;height:42px}
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:10000}
+  #modal[hidden]{display:none}
+  .sheet{background:#fff;border-radius:12px;padding:16px;width:380px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .sheet h3{margin:0 0 10px}
+  .sheet label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin:8px 0 3px}
+  .sheet input,.sheet textarea,.sheet select{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px;font:inherit}
+  .sheet .actions{display:flex;gap:8px;margin-top:14px}
+  .sheet .actions .spacer{flex:1}
+</style>
+</head>
+<body>
+  <header id="topbar">
+    <div id="tabs"></div>
+    <span class="spacer"></span>
+    <label style="font-size:11px;color:var(--muted);font-weight:700">템플릿</label>
+    <select id="tplSel" title="이 화면의 시작 배치 예시"></select>
+    <div class="filters">
+      <label><input type="checkbox" data-f="P0" checked>P0</label>
+      <label><input type="checkbox" data-f="P1" checked>P1</label>
+      <label><input type="checkbox" data-f="P2" checked>P2</label>
+    </div>
+    <button class="btn" id="addZone">+ 영역</button>
+    <button class="btn" id="addFeat">+ 기능</button>
+    <button class="btn" id="exportBtn">저장하기</button>
+    <button class="btn" id="importBtn">불러오기</button>
+    <button class="btn" id="resetBtn">처음으로</button>
+  </header>
+  <div id="main">
+    <aside id="palette">
+      <h3>아직 배치하지 않은 기능 <span id="palCnt"></span></h3>
+      <div class="hint">카드를 오른쪽 보드로 끌어다 놓으세요. 더블클릭하면 내용을 수정하고, 상태 뱃지를 클릭하면 진행 상태를 바꿀 수 있습니다. 영역은 이름 부분을 잡아 이동하고, 오른쪽 아래 모서리를 잡아 크기를 조절하세요. 시작 배치는 위쪽 '템플릿'에서 바꿀 수 있습니다.</div>
+      <div id="palList"></div>
+    </aside>
+    <section id="canvasWrap"><div id="canvas"></div></section>
+  </div>
+  <footer id="noteBar">
+    <label>이 화면에서 정한 내용/메모</label>
+    <textarea id="note" placeholder="합의 내용, 보류 이유, 다음 할 일 등을 적어주세요. 각 화면에 따로 저장됩니다."></textarea>
+  </footer>
+
+  <div id="modal" hidden><div class="sheet">
+    <h3>기능 수정</h3>
+    <label>기능 이름</label><input id="m_name">
+    <label>설명</label><textarea id="m_desc" rows="2"></textarea>
+    <label>회의 메모</label><textarea id="m_memo" rows="2"></textarea>
+    <div style="display:flex;gap:8px">
+      <div style="flex:1"><label>중요도</label><select id="m_prio"><option>P0</option><option>P1</option><option>P2</option></select></div>
+      <div style="flex:1"><label>진행 상태</label><select id="m_status"><option value="todo">논의 중</option><option value="confirmed">확정</option><option value="hold">보류</option></select></div>
+    </div>
+    <label>어느 화면에 속하는 기능인가요?</label><select id="m_page"></select>
+    <label>필요한 기술/서비스</label><input id="m_deps" placeholder="예: LiveKit(음성) / MediaPipe(얼굴 인식) / Pixi(그래픽) / Supabase(데이터)">
+    <div class="actions">
+      <button class="btn" id="m_delete" style="color:var(--p0)">삭제</button>
+      <span class="spacer"></span>
+      <button class="btn" id="m_cancel">취소</button>
+      <button class="btn primary" id="m_save">저장</button>
+    </div>
+  </div></div>
+  <input id="importFile" type="file" accept="application/json" hidden>
+
+<script>
+const PAGES=[
+ {key:'landing',label:'홈/소개'},{key:'auth',label:'로그인'},{key:'models',label:'캐릭터·준비'},
+ {key:'lobby',label:'방 목록'},{key:'room',label:'공연 장소'},{key:'host',label:'방장 도구'},
+ {key:'settings',label:'설정'},{key:'common',label:'공통/기반'}
+];
+// 기능 목록 출처: docs/FEATURE-SPEC.md  [id, 이름, 화면, 중요도, 필요 기술, 추가기능(★)]
+const SEED_FEATURES=[
+ ['AUTH-01','이메일 회원가입·로그인','auth','P0','Supabase',0],
+ ['AUTH-02','Google로 로그인','auth','P0','Supabase',0],
+ ['AUTH-03','로그인 상태 확인 및 보호','auth','P0','Supabase',0],
+ ['MOD-01','내 아바타/캐릭터 목록 보기','models','P0','Supabase',0],
+ ['MOD-02','캐릭터 선택하고 웹캠 맞춤','models','P0','MediaPipe',0],
+ ['MOD-03','얼굴 인식 테스트(8가지 동작)','models','P0','MediaPipe',0],
+ ['MOD-04','단축키로 특수 표정(필살기) 쓰기','models','P1','Pixi',0],
+ ['MOD-05','공연 시작 전 대기실에서 미리 보기','models','P0','MediaPipe/LiveKit',1],
+ ['MOD-06','웹캠·마이크 권한 문제 해결과 빠른 장치 전환','models','P0','',1],
+ ['LOB-01','연극 방 목록(주제, 인원, 잠금 상태)','lobby','P0','Supabase',0],
+ ['LOB-02','방 검색','lobby','P1','Supabase',0],
+ ['LOB-03','방 만들기(공개/비밀번호)','lobby','P0','Supabase',0],
+ ['LOB-04','들어가기 전 얼굴 인식 통과','lobby','P0','MediaPipe',0],
+ ['LOB-05','친구 초대 링크/코드 공유','lobby','P0','Supabase',1],
+ ['LOB-06','공연 예약과 알림','lobby','P1','Supabase',1],
+ ['LOB-07','체험용/게스트 방','lobby','P1','',1],
+ ['ROOM-01','영상 배경과 모두 함께 재생 맞추기','room','P0','CDN',0],
+ ['ROOM-02','2인/4인/6인 공연 화면 배치','room','P0','Pixi',0],
+ ['ROOM-03','내 얼굴을 실시간 아바타로 표현','room','P0','MediaPipe/Pixi',0],
+ ['ROOM-04','음성 대화(마이크로 서로 말하기)','room','P0','LiveKit',0],
+ ['ROOM-05','채팅','room','P0','LiveKit',0],
+ ['ROOM-06','대본 자막(역할별·여러 언어)','room','P1','',0],
+ ['ROOM-07','참가자 상태 표시(누가 말 중, 음소거, 방장 등)','room','P0','LiveKit',0],
+ ['ROOM-08','각 참가자 음량 조절','room','P1','LiveKit',0],
+ ['ROOM-09','배경 선택','room','P1','Supabase',0],
+ ['ROOM-10','끊겼을 때 자동 재접속 + 연결 상태 표시','room','P0','LiveKit',1],
+ ['ROOM-11','얼굴 인식 안 될 때 기본 표정 유지','room','P0','MediaPipe',1],
+ ['ROOM-12','이모티콘/반응 날리기','room','P1','LiveKit',1],
+ ['ROOM-13','공연 녹화, 다시보기, 짧은 영상 클립','room','P1','',1],
+ ['ROOM-14','역할 나누기 + 리허설/본공연 모드','room','P1','',1],
+ ['ROOM-15','출연자와 관객 자리 분리','room','P1','LiveKit',1],
+ ['ROOM-16','자막·대사 실시간 번역','room','P2','',1],
+ ['HOST-01','강퇴','host','P0','LiveKit',0],
+ ['HOST-02','참가자 일시 정지','host','P1','LiveKit',0],
+ ['HOST-03','방 비밀번호/잠금','host','P0','Supabase',0],
+ ['HOST-04','출연자/콘텐츠 자리 바꾸기','host','P1','',0],
+ ['HOST-05','방장이 배경 고르기','host','P1','',0],
+ ['HOST-06','방장 권한 상태 실시간 맞추기','host','P0','LiveKit/Supabase',0],
+ ['SET-01','스피커/마이크 선택','settings','P0','',0],
+ ['SET-02','웹캠 선택','settings','P0','',0],
+ ['SET-03','특수 표정 단축키','settings','P1','',0],
+ ['SET-04','언어 설정(한국어/일본어/영어)','settings','P1','i18next',0],
+ ['SET-05','화질/성능 자동 또는 수동 조절','settings','P1','Pixi',1],
+ ['SET-06','주변 소음 줄이기','settings','P1','LiveKit',1],
+ ['SET-07','내 마이크/차단/PTT(버튼을 누르는 동안 말하기) 설정','settings','P1','LiveKit',1],
+ ['RT-01','음성 데이터 전송','common','P0','LiveKit',0],
+ ['RT-02','표정 데이터 실시간 전송(30fps)','common','P0','LiveKit',0],
+ ['RT-03','방 상태/권한 메시지 확실하게 전송','common','P0','LiveKit',0],
+ ['RT-04','얼굴 움직임을 부드럽게 처리','common','P0','',0],
+ ['RT-05','영상 재생 시간 다시 맞추기','common','P1','',0],
+ ['CNT-01','공연 구성 요소(테마 카드)','common','P1','',0],
+ ['CNT-02','대본 올리고 관리','common','P1','Supabase',0],
+ ['CNT-03','배경 이미지 관리','common','P1','Supabase',0],
+ ['CNT-04','아바타 파일 웹사이트에 올려두기','common','P0','CDN',0],
+ ['CNT-05','캐릭터 파일 저장소','common','P0','Supabase/R2',0],
+ ['CNT-06','대본 라이브러리/장면 마켓','common','P2','Supabase',1],
+ ['OBS-01','방송 송출 옵션: 토큰 기반 투명 배경','common','P2','',0],
+ ['OBS-02','방송 송출 옵션: 토큰 기반 크로마키','common','P2','',0],
+ ['OBS-03','방송 송출 옵션: 토큰 기반 단일 아바타 전체 화면','common','P2','',0],
+ ['SEC-01','데이터베이스 접근 권한 제어','common','P0','Supabase',0],
+ ['SEC-02','음성/영상 접근 토큰 안전하게 발급','common','P0','LiveKit/Supabase',0],
+ ['SEC-03','웹캠·마이크 사용 동의 받기','common','P0','',0],
+ ['SEC-04','신고하기와 처리 절차','common','P1','Supabase',0],
+ ['SEC-05','연령 확인·청소년 보호','common','P1','',0],
+ ['SEC-06','자체 콘텐츠/IP 보호 정책','common','P1','',0],
+ ['SEC-07','누구나 쓸 수 있도록(자막·키보드·색맞춤)','common','P2','',1],
+ ['MOB-01','PC 우선(얼굴 인식은 PC에서)','common','P0','',0],
+ ['MOB-02','모바일에서 보기/관전/채팅','common','P1','',0],
+ ['INF-01','웹사이트 정적 배포','common','P0','',0],
+ ['INF-02','음성 서버 확장 전략','common','P2','LiveKit',0],
+ ['INF-03','Cloudflare Pages로 사이트 호스팅','common','P0','Cloudflare',0],
+ ['INF-04','회원·데이터·파일 저장','common','P0','Supabase',0],
+];
+
+// 시작 배치 예시(템플릿). 각 영역의 위치/크기와 어떤 기능을 어디에 배치할지 정의합니다.
+const TEMPLATES={
+ landing:[{name:'홈페이지 기본 구성', zones:[
+   {label:'위쪽 큰 제목과 시작 버튼',x:60,y:40,w:820,h:150},
+   {label:'주요 기능 3가지 소개',x:60,y:206,w:820,h:150},
+   {label:'사용자 후기/시연 영상',x:60,y:372,w:820,h:110},
+   {label:'가입/시작 안내 배너',x:60,y:498,w:820,h:80},
+   {label:'하단 정보',x:60,y:594,w:820,h:90},
+ ],assign:{}}],
+
+ auth:[{name:'로그인 화면', zones:[
+   {label:'왼쪽: 브랜드 소개',x:60,y:60,w:360,h:400},
+   {label:'오른쪽: 로그인·회원가입',x:440,y:60,w:360,h:400},
+ ],assign:{1:['AUTH-01','AUTH-02','AUTH-03']}}],
+
+ models:[{name:'캐릭터 선택과 준비', zones:[
+   {label:'상단 (로고 / 내 정보)',x:60,y:40,w:820,h:56},
+   {label:'왼쪽: 내 캐릭터 목록',x:60,y:116,w:400,h:420},
+   {label:'오른쪽: 얼굴 인식 준비 / 대기실',x:480,y:116,w:400,h:420},
+ ],assign:{1:['MOD-01'],2:['MOD-02','MOD-03','MOD-05','MOD-06']}}],
+
+ lobby:[
+  {name:'A. 카드 목록', zones:[
+   {label:'위쪽: 검색·방 만들기·초대',x:60,y:40,w:820,h:96},
+   {label:'방 카드 목록',x:60,y:152,w:820,h:400},
+  ],assign:{0:['LOB-02','LOB-03'],1:['LOB-01','LOB-04','LOB-06','LOB-07']}},
+  {name:'B. 필터 사이드바 + 목록', zones:[
+   {label:'왼쪽: 필터 / 주제 태그',x:60,y:40,w:220,h:500},
+   {label:'오른쪽: 방 목록',x:300,y:40,w:580,h:500},
+  ],assign:{0:['LOB-02'],1:['LOB-01','LOB-03','LOB-05','LOB-04','LOB-06','LOB-07']}},
+ ],
+
+ room:[
+  {name:'A. 디스코드 스타일 (좌:대본/중앙:공연/우:채팅)', zones:[
+   {label:'위쪽 정보 표시 (공연 정보·초대·인원)',x:60,y:40,w:820,h:60},
+   {label:'왼쪽: 대본 / 역할 순서',x:60,y:116,w:200,h:380},
+   {label:'중앙: 공연 영상 + 아바타',x:276,y:116,w:380,h:380},
+   {label:'오른쪽: 채팅 / 반응',x:672,y:116,w:208,h:380},
+   {label:'아래쪽 조작 버튼',x:60,y:512,w:820,h:64},
+  ],assign:{0:['ROOM-07'],1:['ROOM-06','ROOM-14'],2:['ROOM-01','ROOM-02','ROOM-03','ROOM-11'],3:['ROOM-05','ROOM-12','ROOM-10'],4:['ROOM-04']}},
+  {name:'B. 줌 스타일 (격자 + 하단 컨트롤)', zones:[
+   {label:'위쪽 정보',x:60,y:40,w:820,h:52},
+   {label:'중앙: 참가자 격자',x:60,y:108,w:820,h:380},
+   {label:'아래쪽 조작 버튼',x:60,y:504,w:820,h:72},
+  ],assign:{0:['ROOM-07','ROOM-10'],1:['ROOM-02','ROOM-03','ROOM-01','ROOM-11'],2:['ROOM-04','ROOM-05','ROOM-08']}},
+  {name:'C. 공연 중심 (중앙 공연 + 주변 도구)', zones:[
+   {label:'공연: 영상 + 아바타',x:160,y:40,w:560,h:300},
+   {label:'왼쪽 아래: 대본',x:60,y:356,w:380,h:200},
+   {label:'오른쪽 아래: 채팅 / 조작',x:460,y:356,w:420,h:200},
+  ],assign:{0:['ROOM-01','ROOM-02','ROOM-03'],1:['ROOM-06','ROOM-14'],2:['ROOM-04','ROOM-05','ROOM-07']}},
+ ],
+
+ host:[{name:'방장 운영 화면', zones:[
+   {label:'왼쪽: 참가자 목록',x:60,y:40,w:360,h:460},
+   {label:'오른쪽: 방장 동작',x:440,y:40,w:360,h:460},
+ ],assign:{0:['HOST-06'],1:['HOST-01','HOST-02','HOST-03','HOST-04','HOST-05']}}],
+
+ settings:[{name:'왼쪽 메뉴 + 오른쪽 내용', zones:[
+   {label:'왼쪽: 설정 메뉴',x:60,y:40,w:200,h:460},
+   {label:'오른쪽: 설정 상세',x:280,y:40,w:600,h:460},
+ ],assign:{1:['SET-01','SET-02','SET-03','SET-04','SET-05','SET-06','SET-07']}}],
+
+ common:[{name:'기능 그룹별 분류', zones:[
+   {label:'실시간 데이터',x:60,y:40,w:240,h:360},
+   {label:'콘텐츠 / 자료',x:320,y:40,w:240,h:420},
+   {label:'OBS / 방송',x:580,y:40,w:240,h:240},
+   {label:'보안 / 안전',x:840,y:40,w:240,h:490},
+   {label:'모바일 / 기반 시설',x:1100,y:40,w:240,h:420},
+ ],assign:{
+   0:['RT-01','RT-02','RT-03','RT-04','RT-05'],
+   1:['CNT-01','CNT-02','CNT-03','CNT-04','CNT-05','CNT-06'],
+   2:['OBS-01','OBS-02','OBS-03'],
+   3:['SEC-01','SEC-02','SEC-03','SEC-04','SEC-05','SEC-06','SEC-07'],
+   4:['MOB-01','MOB-02','INF-01','INF-02','INF-03','INF-04'],
+ }}],
+};
+
+const KEY='snackweb-meeting-v2';
+let filters={P0:true,P1:true,P2:true};
+let editId=null;
+
+function freshState(){
+  return {
+    features:SEED_FEATURES.map(([id,name,page,prio,deps,add])=>({id,name,page,prio,deps,add:!!add,status:'todo',memo:'',x:null,y:null})),
+    zones:[], notes:{}, page:'room', tpl:{}
+  };
+}
+function placeTemplate(s,page,idx){
+  const tpl=(TEMPLATES[page]||[])[idx]; if(!tpl)return;
+  tpl.zones.forEach((z,i)=>s.zones.push({id:'z_'+page+'_'+idx+'_'+i,page,label:z.label,x:z.x,y:z.y,w:z.w,h:z.h}));
+  Object.entries(tpl.assign||{}).forEach(([zi,fids])=>{
+    const z=tpl.zones[zi];
+    fids.forEach((fid,k)=>{const f=s.features.find(x=>x.id===fid); if(f){f.x=z.x+12; f.y=z.y+30+k*60;}});
+  });
+  (s.tpl||(s.tpl={}))[page]=idx;
+}
+function seedAll(s){ Object.keys(TEMPLATES).forEach(pg=>placeTemplate(s,pg,0)); }
+function load(){
+  try{const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.features) return s;}catch(e){}
+  const s=freshState(); seedAll(s); return s;
+}
+function save(){ localStorage.setItem(KEY,JSON.stringify(state)); }
+let state=load();
+
+const $=s=>document.querySelector(s);
+const canvas=$('#canvas');
+function visible(f){ return f.page===state.page && filters[f.prio]; }
+
+function renderTabs(){
+  const t=$('#tabs'); t.innerHTML='';
+  PAGES.forEach(p=>{
+    const n=state.features.filter(f=>f.page===p.key).length;
+    const el=document.createElement('div');
+    el.className='tab'+(p.key===state.page?' active':'');
+    el.innerHTML=p.label+(n?` <span class="cnt">${n}</span>`:'');
+    el.onclick=()=>{state.page=p.key;save();render();};
+    t.appendChild(el);
+  });
+}
+function renderTplSel(){
+  const sel=$('#tplSel'); const list=TEMPLATES[state.page]||[];
+  if(list.length<1){sel.innerHTML='<option>—</option>';sel.disabled=true;return;}
+  sel.disabled=false;
+  sel.innerHTML=list.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('');
+  const cur=(state.tpl&&state.tpl[state.page]!=null)?state.tpl[state.page]:0;
+  sel.value=cur;
+}
+function cardHTML(f){
+  const star=f.add?'<span class="star">★</span> ':'';
+  const dep=f.deps?`<span class="dep">${f.deps}</span>`:'';
+  const memo=f.memo?`<div class="memo">📝 ${escapeHtml(f.memo)}</div>`:'';
+  const stLabel={todo:'논의 중',confirmed:'확정',hold:'보류'}[f.status];
+  return `<div class="id">${f.id}</div><div class="nm">${star}${escapeHtml(f.name)}</div>
+   <div class="row"><span class="pill ${f.prio}">${f.prio}</span>
+   <span class="status ${f.status}" data-act="status">${stLabel}</span>${dep}</div>${memo}`;
+}
+function makeCard(f){
+  const el=document.createElement('div');
+  el.className='card '+f.prio.toLowerCase();
+  el.dataset.id=f.id;
+  el.innerHTML=cardHTML(f);
+  el.addEventListener('pointerdown',e=>startDragCard(e,f,el));
+  el.addEventListener('dblclick',e=>{e.stopPropagation();openEdit(f.id);});
+  el.querySelector('[data-act=status]').addEventListener('click',e=>{
+    e.stopPropagation();
+    f.status=({todo:'confirmed',confirmed:'hold',hold:'todo'})[f.status];
+    save();render();
+  });
+  return el;
+}
+function renderPalette(){
+  const list=$('#palList'); list.innerHTML='';
+  const items=state.features.filter(f=>visible(f)&&f.x==null);
+  items.forEach(f=>list.appendChild(makeCard(f)));
+  $('#palCnt').textContent='('+items.length+')';
+}
+function renderCanvas(){
+  canvas.innerHTML='';
+  state.zones.filter(z=>z.page===state.page).forEach(z=>canvas.appendChild(makeZone(z)));
+  state.features.filter(f=>visible(f)&&f.x!=null).forEach(f=>{
+    const el=makeCard(f); el.style.left=f.x+'px'; el.style.top=f.y+'px'; canvas.appendChild(el);
+  });
+}
+function renderNote(){ $('#note').value=state.notes[state.page]||''; }
+function render(){ renderTabs(); renderTplSel(); renderPalette(); renderCanvas(); renderNote(); }
+
+/* ---- 카드 드래그: 팔레트↔캔버스, 캔버스 내 이동 ---- */
+function startDragCard(e,f,el){
+  if(e.target.closest('[data-act]')) return;
+  const sx=e.clientX, sy=e.clientY;
+  let moved=false,dx=0,dy=0;
+  const move=ev=>{
+    if(!moved){
+      if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)<5) return; // 임계 미만 = 클릭으로 둠
+      moved=true;
+      const r=el.getBoundingClientRect(); dx=sx-r.left; dy=sy-r.top;
+      el.classList.add('dragging'); el.style.position='fixed'; el.style.width=r.width+'px';
+      document.body.appendChild(el);
+    }
+    ev.preventDefault();
+    el.style.left=(ev.clientX-dx)+'px'; el.style.top=(ev.clientY-dy)+'px';
+  };
+  const up=ev=>{
+    document.removeEventListener('pointermove',move);
+    document.removeEventListener('pointerup',up);
+    if(!moved) return; // 클릭/더블클릭은 그대로 통과(편집·상태토글)
+    const c=canvas.getBoundingClientRect();
+    const inCanvas=ev.clientX>=c.left&&ev.clientX<=c.right&&ev.clientY>=c.top&&ev.clientY<=c.bottom;
+    if(inCanvas){
+      f.x=Math.max(0,(ev.clientX-dx)-c.left+canvas.scrollLeft);
+      f.y=Math.max(0,(ev.clientY-dy)-c.top+canvas.scrollTop);
+    }else{ f.x=null; f.y=null; }
+    el.remove(); // 유령 엘리먼트 제거 후 재렌더
+    save(); render();
+  };
+  document.addEventListener('pointermove',move);
+  document.addEventListener('pointerup',up);
+}
+
+/* ---- 영역(zone) ---- */
+function makeZone(z){
+  const el=document.createElement('div');
+  el.className='zone';
+  el.style.left=z.x+'px'; el.style.top=z.y+'px'; el.style.width=z.w+'px'; el.style.height=z.h+'px';
+  el.innerHTML=`<div class="zhead">${escapeHtml(z.label)}</div><div class="zdel">✕</div><div class="zhandle"></div>`;
+  el.querySelector('.zhead').addEventListener('pointerdown',e=>startDragZone(e,z,'move'));
+  el.querySelector('.zhead').addEventListener('dblclick',e=>{e.stopPropagation();const v=prompt('영역 이름',z.label);if(v!=null){z.label=v;save();render();}});
+  el.querySelector('.zhandle').addEventListener('pointerdown',e=>startDragZone(e,z,'resize'));
+  el.querySelector('.zdel').addEventListener('click',e=>{e.stopPropagation();if(confirm('영역을 삭제할까요?')){state.zones=state.zones.filter(x=>x!==z);save();render();}});
+  return el;
+}
+function startDragZone(e,z,mode){
+  e.preventDefault(); e.stopPropagation();
+  const sx=e.clientX, sy=e.clientY, ox=z.x, oy=z.y, ow=z.w, oh=z.h;
+  const move=ev=>{
+    if(mode==='move'){ z.x=Math.max(0,ox+(ev.clientX-sx)); z.y=Math.max(0,oy+(ev.clientY-sy)); }
+    else{ z.w=Math.max(120,ow+(ev.clientX-sx)); z.h=Math.max(70,oh+(ev.clientY-sy)); }
+    renderCanvas();
+  };
+  const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);save();};
+  document.addEventListener('pointermove',move);
+  document.addEventListener('pointerup',up);
+}
+
+/* ---- 편집 모달 ---- */
+function openEdit(id){
+  editId=id; const f=state.features.find(x=>x.id===id); if(!f)return;
+  $('#m_name').value=f.name; $('#m_desc').value=f.desc||''; $('#m_memo').value=f.memo||'';
+  $('#m_prio').value=f.prio; $('#m_status').value=f.status; $('#m_deps').value=f.deps||'';
+  const ps=$('#m_page'); ps.innerHTML=PAGES.map(p=>`<option value="${p.key}">${p.label}</option>`).join(''); ps.value=f.page;
+  $('#modal').hidden=false;
+}
+$('#m_cancel').onclick=()=>{$('#modal').hidden=true;editId=null;};
+$('#m_save').onclick=()=>{
+  const f=state.features.find(x=>x.id===editId); if(!f)return;
+  f.name=$('#m_name').value.trim(); f.desc=$('#m_desc').value; f.memo=$('#m_memo').value;
+  f.prio=$('#m_prio').value; f.status=$('#m_status').value; f.deps=$('#m_deps').value.trim();
+  const np=$('#m_page').value; if(np!==f.page){f.page=np;f.x=null;f.y=null;}
+  $('#modal').hidden=true; editId=null; save(); render();
+};
+$('#m_delete').onclick=()=>{ if(confirm('이 기능 카드를 삭제할까요?')){state.features=state.features.filter(x=>x.id!==editId);$('#modal').hidden=true;editId=null;save();render();} };
+
+/* ---- 툴바 ---- */
+$('#tplSel').onchange=e=>{
+  const idx=+e.target.value;
+  if(!confirm('이 화면을 「'+TEMPLATES[state.page][idx].name+'」 템플릿으로 다시 적용할까요? (현재 배치를 덮어씁니다)')){renderTplSel();return;}
+  state.zones=state.zones.filter(z=>z.page!==state.page);
+  state.features.forEach(f=>{if(f.page===state.page){f.x=null;f.y=null;}});
+  placeTemplate(state,state.page,idx);
+  save(); render();
+};
+$('#addZone').onclick=()=>{ state.zones.push({id:'z'+Date.now(),page:state.page,label:'새 영역',x:120,y:120,w:240,h:160}); save(); render(); };
+$('#addFeat').onclick=()=>{
+  const id='NEW-'+(state.features.filter(f=>f.id.startsWith('NEW-')).length+1);
+  state.features.push({id,name:'새 기능',page:state.page,prio:'P1',deps:'',add:true,status:'todo',memo:'',x:null,y:null});
+  save(); render(); openEdit(id);
+};
+document.querySelectorAll('.filters input').forEach(c=>c.onchange=()=>{filters[c.dataset.f]=c.checked;render();});
+$('#note').addEventListener('input',()=>{state.notes[state.page]=$('#note').value;save();});
+$('#exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='meeting-snapshot.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const rd=new FileReader(); rd.onload=()=>{ try{const s=JSON.parse(rd.result); if(s.features){state=s; save(); render();}}catch(err){alert('파일을 읽지 못했습니다: '+err);} }; rd.readAsText(file);
+  e.target.value='';
+};
+$('#resetBtn').onclick=()=>{ if(confirm('처음 상태(템플릿 시작 배치)로 되돌릴까요? 현재 배치와 메모가 삭제됩니다.')){state=freshState();seedAll(state);save();render();} };
+
+function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+render();
+</script>
+</body>
+</html>

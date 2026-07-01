@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatterBox — Stitch Mockup Gallery</title>
+  <style>
+    :root {
+      --stage-base: #0B0B0D;
+      --stage-panel: #18181C;
+      --stage-elevated: #222227;
+      --stage-border: #2E2E35;
+      --fire-amber: #FF8C2A;
+      --fire-hot: #FF4500;
+      --stage-text: #F5F5F2;
+      --spring-green: #56F09F;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--stage-base);
+      color: var(--stage-text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 3rem 2rem 2rem;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(255,140,42,0.08) 0%, transparent 100%);
+    }
+
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 2.5rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: rgba(245, 245, 242, 0.6);
+      font-size: 1rem;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--stage-panel);
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(245, 245, 242, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 140, 42, 0.2);
+    }
+
+    .card.mobile {
+      max-width: 420px;
+      justify-self: center;
+    }
+
+    .card-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid rgba(245, 245, 242, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .device-badge {
+      font-size: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(255, 140, 42, 0.15);
+      color: var(--fire-amber);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .card-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: var(--stage-elevated);
+    }
+
+    .card-footer {
+      padding: 1rem 1.5rem;
+      font-size: 0.85rem;
+      color: rgba(245, 245, 242, 0.5);
+      border-top: 1px solid rgba(245, 245, 242, 0.08);
+    }
+
+    .card-footer a {
+      color: var(--spring-green);
+      text-decoration: none;
+    }
+
+    .card-footer a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: rgba(245, 245, 242, 0.4);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 640px) {
+      .gallery {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        gap: 1.5rem;
+      }
+
+      h1 {
+        font-size: 1.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ChatterBox Stitch Mockups</h1>
+    <p class="subtitle">페이지별 AI 생성 시안 갤러리 · GEMINI_3_1_PRO · 19 screens</p>
+  </header>
+
+  <main class="gallery">
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Auth — Login</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="auth-login/auth-login.png" alt="Login page mockup" />
+      <div class="card-footer">
+        <a href="auth-login/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Auth — Register</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="auth-register/auth-register.png" alt="Register page mockup" />
+      <div class="card-footer">
+        <a href="auth-register/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Lobby</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="lobby/lobby.png" alt="Lobby page mockup" />
+      <div class="card-footer">
+        <a href="lobby/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Green Room</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="green-room/green-room.png" alt="Green Room mockup" />
+      <div class="card-footer">
+        <a href="green-room/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Room View</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="room-view-desktop/room-view-desktop.png" alt="Room view desktop mockup" />
+      <div class="card-footer">
+        <a href="room-view-desktop/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card mobile">
+      <div class="card-header">
+        <h2 class="card-title">Mobile Viewer</h2>
+        <span class="device-badge">Mobile</span>
+      </div>
+      <img class="card-image" src="mobile-viewer/mobile-viewer.png" alt="Mobile viewer mockup" />
+      <div class="card-footer">
+        <a href="mobile-viewer/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Profile</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="profile/profile.png" alt="Profile page mockup" />
+      <div class="card-footer">
+        <a href="profile/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Settings Modal</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="settings-modal/settings-modal.png" alt="Settings modal mockup" />
+      <div class="card-footer">
+        <a href="settings-modal/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Model Selector</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="model-selector/model-selector.png" alt="Model selector mockup" />
+      <div class="card-footer">
+        <a href="model-selector/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">VGen Panel</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="vgen-panel/vgen-panel.png" alt="VGen panel mockup" />
+      <div class="card-footer">
+        <a href="vgen-panel/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">DUB Panel</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="dub-panel/dub-panel.png" alt="DUB panel mockup" />
+      <div class="card-footer">
+        <a href="dub-panel/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Host Console (Stage Manager)</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="host-console/host-console.png" alt="Host console stage manager mockup" />
+      <div class="card-footer">
+        <a href="host-console/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Calibration Wizard</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="calibration-wizard/calibration-wizard.png" alt="Calibration wizard mockup" />
+      <div class="card-footer">
+        <a href="calibration-wizard/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">DUB — Session Selector</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="dub-session-selector/dub-session-selector.png" alt="Dub session selector mockup" />
+      <div class="card-footer">
+        <a href="dub-session-selector/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">DUB — Role Assigner</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="dub-role-assigner/dub-role-assigner.png" alt="Dub role assigner mockup" />
+      <div class="card-footer">
+        <a href="dub-role-assigner/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">DUB — Compositor</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="dub-compositor/dub-compositor.png" alt="Dub compositor mockup" />
+      <div class="card-footer">
+        <a href="dub-compositor/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Avatar Autorig</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="avatar-autorig/avatar-autorig.png" alt="Avatar autorig mockup" />
+      <div class="card-footer">
+        <a href="avatar-autorig/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">OBS Viewer</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="obs-viewer/obs-viewer.png" alt="OBS viewer mockup" />
+      <div class="card-footer">
+        <a href="obs-viewer/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <h2 class="card-title">Help Panel</h2>
+        <span class="device-badge">Desktop</span>
+      </div>
+      <img class="card-image" src="help-panel/help-panel.png" alt="Help panel mockup" />
+      <div class="card-footer">
+        <a href="help-panel/prompt.txt">prompt.txt</a>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    Generated with Google Stitch SDK · ChatterBox Platform · 19 screens
+  </footer>
+</body>
+</html>

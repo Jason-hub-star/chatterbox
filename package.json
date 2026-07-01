@@ -1,0 +1,11 @@
+{
+  "name": "chatterbox",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:check": "node scripts/check-contract-docs.mjs .",
+    "docs:check:strict": "node scripts/check-contract-docs.mjs . --strict",
+    "docs:health": "node scripts/check-contract-docs.mjs . --health",
+    "docs:overview": "node scripts/gen-overview.js"
+  }
+}

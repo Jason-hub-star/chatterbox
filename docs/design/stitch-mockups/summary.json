@@ -1,0 +1,135 @@
+[
+  {
+    "name": "auth-login",
+    "deviceType": "DESKTOP",
+    "screenId": "127607da85f249dd8a9f9c275ad55930",
+    "imagePath": "design/stitch-mockups/auth-login/auth-login.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvEHj-OhpZXY9l8kosLmeeeUhKQPhi-1cfNqY2SeANRIVdaApGqrercOcsLd8QFkPhuyDHlS7LRiWzybmKNCzCBFg58XWAnwO1usD_kR_ddOcTysyqnN6cjwCENxRJ_fiBT4zWS6xL55Ye5qnvUvhsWKo2OHTbIFfNBxgFB9Z2mkhjbMnB_IxLMRjyvH9NB1P7Ai448KDB8xsz_H3gKMgUUrTzwxRdNfKRm8ponMflrm9Q81ZrL9eIttU4"
+  },
+  {
+    "name": "auth-register",
+    "deviceType": "DESKTOP",
+    "screenId": "2fec22db73324727a5e3ec82ee0bfc87",
+    "imagePath": "design/stitch-mockups/auth-register/auth-register.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLv1prFWXzkiBarCrj1cEAUO6nwI-rFgty9mjEagutTa-oqzpd4I4dzlFVBlmHysmvtk6P5weF3j6ODfugWn-lVOEqmF9YoNGMde6DjzAEF-NMe7z_Hmaey9QJQiWJ778_EXFjDaTPJqNN3Z96cJlu4pIJZMC2H-fZEI4WnZiwNYMkNH0rFhyoVksr_CWFAFWISszAm9xE2aZJ-8Zf0yIjixAEB7t-fjosxMDPwEZ-9gWTrxsKxrn305SV0"
+  },
+  {
+    "name": "dub-panel",
+    "deviceType": "DESKTOP",
+    "screenId": "c013ebbd3f6b4b5fa74e6ff271bf8d31",
+    "imagePath": "design/stitch-mockups/dub-panel/dub-panel.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvE6mroFpZdiVwORL95fvVBcPeUYsjK2YGsY8fbdVuaA9-k8S9uk08DiENL1LXKAx7h84D00Eg3zQ9IA4Kd1bWIXNRslw6UPd2D1FaEJdvnMCv98q6lDXOCyEyDEXHbTWpWa4r1kc_kjyExuDBFKUzU3JiP-mnT0Yc-gl_TxPP_GUr-VLsFGztm0Yb-SevHOZGpVtfzNf49vpM2ZGMNjbA3zh_-QRk3hzRV-gop7YqwcQizDD8lBnA6cg"
+  },
+  {
+    "name": "green-room",
+    "deviceType": "DESKTOP",
+    "screenId": "f00f8d203351443db8fc5602ccafb90f",
+    "imagePath": "design/stitch-mockups/green-room/green-room.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLtpCIdA-h_0FfT6sqKK8_Y1Ojtu1zH5plZL0fwim_VxaKAAnhwU4kJAEYJG-2fsDZV8TcQRMMsx_be40LEHFKsT6QSBIFiw4zQF2_RgWQX-KK0n0PAd_MPW5H2M9VnGeRTwFzcZP1e0enJPXMrgv3OWSYqL_qJ8Lz9buzHrlroJpg23N5KF6ujqnbz7S3aXfH2aFHKYM5Z-E-Jhq_Dt2PZ24NHt8gSllfy2Aa7er6rk7iEnPXSYEOeLn_0"
+  },
+  {
+    "name": "lobby",
+    "deviceType": "DESKTOP",
+    "screenId": "28d53120f3e3414b98913e2c5c26e8c8",
+    "imagePath": "design/stitch-mockups/lobby/lobby.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLs6yJxqfVMfNwAe6j0xmTPLZJRkp89pemsVUNLI9pOm9lxIbLaT7ljTAS7bkNsqiLIKx-c1pywzl8bb2L3Q816KauVcKecNVMwbaEdTbgBAhivNEUFbS8D9r4fUgNb98wz0ZbwtDRkrG-QSHkZ05xLdoLfUQYnJJF4CmasoAXLRJ5u7NuvxgK4Jk3Q2YdKerXTrPMOUa4ot7QK4_Q2cHVSg15Yjr9BTXOMGjsBuF2AAw_xGwa56_H4VOg"
+  },
+  {
+    "name": "mobile-viewer",
+    "deviceType": "MOBILE",
+    "screenId": "57fd761947ff4c7fbb58d8687f49fb02",
+    "imagePath": "design/stitch-mockups/mobile-viewer/mobile-viewer.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvqj06YeU2Vmq1ZEVSGPkon1vPU6U1IYsd_P1pCdRXYBfnxmLRyxRIpDGM96TVTJbQvl4Gexx0jcHpco9AWLBIlSwT_K-QkWS63LDwccEM4ZeSTsVJXQzatnuUQ35cg7m2zeeXxtK62mHzbtnfidxo54Icr_IxSucyshtOFIWTsqsQZvLxB8yRBp-cJef2xwjfRhNRgBksAaz5_w2xSfm6NPNM80ueV1rHwki_ejOMuiNMmRCZTCer6Wg"
+  },
+  {
+    "name": "model-selector",
+    "deviceType": "DESKTOP",
+    "screenId": "577ced2a229549f0a78861a8f94cc3db",
+    "imagePath": "design/stitch-mockups/model-selector/model-selector.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLuNHsrUT7biFE0SWH8pzv-7GiFaDBfoz7qeFQRvRfdfGjumX1bjptPVjK11nVxNurJvHe2sGlI2G3HqaEVNyQ8oEuAqi-Up5afYb21GEyMMfmfvP0L3wu9nerRVAmAD5u5Z_-PLVyxEyyvcPLIDqbfPVLxOerqteU4bBjtw5my0PENXTArWZ6Dyq6RX7tLbhr_DDvLGPztMUg6HDQ5gEIDX63lGg1YAtdKPsj6oXUWcfwQqd7FFkkDTcxw"
+  },
+  {
+    "name": "profile",
+    "deviceType": "DESKTOP",
+    "screenId": "aa8c3d9e26544b7c9ee1f530b7d9299a",
+    "imagePath": "design/stitch-mockups/profile/profile.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvdiFKPpnLVqH_n_CSP5yIPmPi61YHD_A6g4oBfTbFnSU6fCtDpZi7NX2uxwcua2RrDGSapS9jYQOfpOROhqpjBaYfKDvla_Yx5loQby3jauqrYuNYW5tVG51xPGO5YdbhiMRzSfGVBTamm4m-R_nLWcMBVYiCN9_YB--ppyqATIZaFnOMXvh6_7UgJldwP0DlNfcP25E4M5SvH8QajZP6W9RcAG_ohmnS7rLRSZtkf7tKA1NBFEQJaFW8"
+  },
+  {
+    "name": "room-view-desktop",
+    "deviceType": "DESKTOP",
+    "screenId": "d63be0c66d124f6b8cb3796d4b0851ea",
+    "imagePath": "design/stitch-mockups/room-view-desktop/room-view-desktop.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvRKu3Jqx9gphjgPa3s7aeedF62yjRJJOPumm1UZlsWqRUCDnAwXFQ4GfNS6VX5K_scZjJjfvpivvNrc6kuUe5449g52yRiLGStV8V_gxOIF8WBooyOI2ydofEAaeJl5QKX95ocQ7NKfWzhKTuMkxetO1sSAAEyJ2C0epRB6o84w0oO93zFaWnhFiJjFuF8pNkChG7ngiiPDBGW63d-YfAEmbDnVGCQza65ViGI7lqaYthEQVtzV-TgeOU"
+  },
+  {
+    "name": "settings-modal",
+    "deviceType": "DESKTOP",
+    "screenId": "7f9372d30dd740d1827ba25426c4d7cc",
+    "imagePath": "design/stitch-mockups/settings-modal/settings-modal.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvHBjpA_872FQGeL7QdV8q3NHE2GeCUESQu4Zq7BDoftycm5BO_V2xd9E8vvDsXkauVb4uNDKYiuX7UMTLpZALnByHtTqWJX99nSbDbwfnyGBgz-i4f62MB2n7D5Pq2b3Y9KIhpRWaKdcI3AmxiS5JoYuVZHJXzHPcnL6KoagYoUqAXuxdXsS7KVeXYFbDNbzzamZIujOtOOdjkbm1BRV4ILnkQu-6-seVi0tmqI5PEjk57IUJ-ZYpF1Ro"
+  },
+  {
+    "name": "vgen-panel",
+    "deviceType": "DESKTOP",
+    "screenId": "d89b8949bbed4bcdb65aacd1bcae9cdd",
+    "imagePath": "design/stitch-mockups/vgen-panel/vgen-panel.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvDQW32cR2baFyIByDpM0lVLvF3NSm0iwZ7SExcRXtwAZgCMZ_XnCDo3g0k-71JZyTgRMw0Y1uZE3bRw1mN264NhPOJofKVT9iqGMZGpPehRFLX9Bg2GMGUcF0YOikPHKnD3Okst5JfMRDeSP-hXyzbr6ERuDPFrMMJPXP7edGlMqoc6VWgb5m-CsLluYuOEqq8NuKc2qrTkxDrW4MvvUJFBqK-jBT4PmLaJ99uQ8cILIVVQRXIsD6UZ7k"
+  },
+  {
+    "name": "host-console",
+    "deviceType": "DESKTOP",
+    "screenId": "ce107d27e8454828b93ce9876ab5684e",
+    "imagePath": "design/stitch-mockups/host-console/host-console.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLu2fT65751Ene7lK2BQYIY2xqcvwHH0xXCf8sfxkjQyfW7XU-wLdJXELYPUh9OSi2Dz7at9B6BQWdlf0u2AeJTFkkdHvcoCe2ncyeBK1dEFfHUFzMJ73_1suwyWl7u-_iHJAXtG1Jcj9RPWT7Ix-T_nPhNUSRz4axQBlcj5ZfTGMKe5Vwp7Ix58E7ZG1sNZbFj9kYwzUWojEyINZoVOjTiRL5sFsgMB7QW2WgKJ0RcrIUNF2WHMq7LhY8s"
+  },
+  {
+    "name": "calibration-wizard",
+    "deviceType": "DESKTOP",
+    "screenId": "1e20ffd4401c4566a6454cac9291415a",
+    "imagePath": "design/stitch-mockups/calibration-wizard/calibration-wizard.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLsmbbWVdr3d25EaR4l0bcYQbaW4uM5iY__eZaY3bMa4jUNVypKP_OdrOP7zJjqjmH_-j4XdtZq6dAEOVP0KEgAFuZjmOnuNthVwoQ_9Cb_Il1uk3hCyly53TswIzpW10rwdSq1BBCwGJMuAgJGgT6OaX-zXXKASU_b82DczgAx-0gCh6KpFR-guSFtlx0QWGrHfrKuTvZIH5DhnnF58Vndi0jiunWwj1E0Y6WcAr_39AJqcNz7KJ4e6OtQ"
+  },
+  {
+    "name": "dub-session-selector",
+    "deviceType": "DESKTOP",
+    "screenId": "24bab957fc1348c5b48bfb796dcda5d0",
+    "imagePath": "design/stitch-mockups/dub-session-selector/dub-session-selector.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLsrs5g2gHvqh_VXo84t6LjOLR_NSp8fmhueCi1XgeLBS2sbR2r9qlI7yIr8dB85DxaqulEJhAv8YokQ3eS6QY1_OLkcY6Khd0E7rRyQQ41nrUKFso1EfqVKqlgnzpCIfq4WZofshuVXgXKpAfVfgzgxv0WKr5jWpyLP6duGwaVH_xSMjdVXedNimcQHciLpgX0xstVrUEIAXdOEQ9zsFvrJRUsdVFozOScU3W79kQJFiWXhrckx8_rILw"
+  },
+  {
+    "name": "dub-role-assigner",
+    "deviceType": "DESKTOP",
+    "screenId": "75df87fa6dcb4236949b2a5370a7e578",
+    "imagePath": "design/stitch-mockups/dub-role-assigner/dub-role-assigner.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvD60lER0p7n4nNOkX8IYHtNT6Pj4XXIi1__L57xEItxMFKNMeHBBfx8ZJ3g55iuDkIl_uWYRS9nvddviVktS3j8gC5ODxxmVMrjtGpDrWUg8zGzH9rVVUcHtmUKX8rzUmUXvfKaKnnoZDb02Qfkuw_A8JRY5zFfdqwScwP-b6L_lpmnZJwxEwnHnuiBWa1inP3rawTYsrYuzroOd9vxOFmfupLgxh2fT11ocf7fxRmEy4cM7GK8HkjH10"
+  },
+  {
+    "name": "dub-compositor",
+    "deviceType": "DESKTOP",
+    "screenId": "751cf9ef48b5403daffde68210d929fd",
+    "imagePath": "design/stitch-mockups/dub-compositor/dub-compositor.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLuc_T6SDr_Weskpyymjrnd_o-_SXxl4NceAt3YUzKID9MCSrcBYK52_jW-KJJ8uKcWd0rqTLC5XIVq7Cm6h2yUW76gyLBJvFh7gC2LaMohC3DTx8jqXZxeMEfdHTXklXwdjZw9qmMAZwkJeRdG0KMAdqJF8GkoUS7RcPyOtmkYt1uedYvzTX_U8ZKRBPMzmUfGW_r8a_gqE2o1QC1IegafhiH2GffkwXDGEPT4WZsMbN7YcxHnySAxYXDM"
+  },
+  {
+    "name": "avatar-autorig",
+    "deviceType": "DESKTOP",
+    "screenId": "7f8d7a3d0e864f3dad1218f748fed89f",
+    "imagePath": "design/stitch-mockups/avatar-autorig/avatar-autorig.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLuPwm1o4GnYJDkuSLJRfDti9_NwwnsbBgJzODje-DonaKwVmDCVSiyMnj_vcpqVYOIwHAybROaNW8I0-l5_038Emj_xsbvEGy6jUNDbN9PtZuO-sPS3zM_noSJ_hVEZx-mGZMnHrwNQcE8m389fbPHhRQg-z2kzRKzusAd7avW64Keu-sp8fa7SwndGu58NItDLNZxf2AT8yTJekXYZktzEMZLNouFJkveH0hI4ED5n9x7txebRYQXjuak"
+  },
+  {
+    "name": "obs-viewer",
+    "deviceType": "DESKTOP",
+    "screenId": "de9fb6e99fa34b998b08f0a4b93ec53f",
+    "imagePath": "design/stitch-mockups/obs-viewer/obs-viewer.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvmDd5YUBwqa1koSbMqMks2500AV1ufrv-9oSFoPJL1RzYgXXBWvs1TLcfUogYHkQ8VLvMNoneODoZTn55CQV5_gXRg6eiP0WN6ZNyfZ0VqUqw5QI0pCm73VzowdeJMDP2D6i9fnrDpuYMc1N9djndqAFiufowDGaPnMhDngE9eVrI74dm21b46gotlVdmf3hFpfThMBtu3PtNxYZfTXvPEgwaQWYkwuLPe34wglVRBZWI4eeBkHqgslw"
+  },
+  {
+    "name": "help-panel",
+    "deviceType": "DESKTOP",
+    "screenId": "9c3815c5c31246b8abe4967abbf1e77e",
+    "imagePath": "design/stitch-mockups/help-panel/help-panel.png",
+    "imageUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvEfVbW8CzHMRS1jlPS43gjQI6VmVxlL-dj-zEq3MrHBTPTfXNyXYbcJPdIWw-UawFMj1TQPSIGR0uJHGML3wySF0NttVC_HYEF-8aC8U6Kpkds5coB1UFsug3Gpxg-D6Lpgj1E3eUs-v_wT7iKK37PHAGhfiqFn-pMcZXzAfAkXhCsp-N7z477hpTANf41d6ZPm2eUvjcWGQDUuXvESg-bpylWN3XQ-OTa0NIGiSkGripVqwPZANTduQ"
+  }
+]

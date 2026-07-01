@@ -1,0 +1,126 @@
+{
+  "tone": "friendly",
+  "pronoun": "we→you",
+  "headingStyle": "Sentence case",
+  "headingLengthClass": "balanced",
+  "ctaVerbs": [
+    {
+      "value": "pay",
+      "count": 7
+    },
+    {
+      "value": "scan",
+      "count": 4
+    },
+    {
+      "value": "contact",
+      "count": 2
+    },
+    {
+      "value": "en",
+      "count": 2
+    },
+    {
+      "value": "login",
+      "count": 2
+    },
+    {
+      "value": "book",
+      "count": 2
+    },
+    {
+      "value": "get",
+      "count": 2
+    },
+    {
+      "value": "day",
+      "count": 1
+    },
+    {
+      "value": "restart",
+      "count": 1
+    },
+    {
+      "value": "bookings",
+      "count": 1
+    }
+  ],
+  "buttonPatterns": [
+    {
+      "value": "scan my face\nproceed to pay\npay later\ndone",
+      "count": 4
+    },
+    {
+      "value": "pay €690.00",
+      "count": 3
+    },
+    {
+      "value": "contact sales",
+      "count": 2
+    },
+    {
+      "value": "en\npt\nes",
+      "count": 2
+    },
+    {
+      "value": "login",
+      "count": 2
+    },
+    {
+      "value": "pay later\npay €690.00\nproceed to pay",
+      "count": 2
+    },
+    {
+      "value": "book a demo",
+      "count": 2
+    },
+    {
+      "value": "get started",
+      "count": 2
+    },
+    {
+      "value": "100€/day\n  rent",
+      "count": 1
+    },
+    {
+      "value": "restart",
+      "count": 1
+    },
+    {
+      "value": "bookings",
+      "count": 1
+    },
+    {
+      "value": "inventory",
+      "count": 1
+    },
+    {
+      "value": "pay €690.00\nor",
+      "count": 1
+    },
+    {
+      "value": "pay later",
+      "count": 1
+    },
+    {
+      "value": "early access",
+      "count": 1
+    }
+  ],
+  "sampleHeadings": [
+    "The Flecto Link\nEverything you need to start renting today",
+    "And it’s just as simple for your customers",
+    "We\nexist to",
+    "Reimagine ownership for a sustainable future.",
+    "Built for humans.\nDesigned for you.",
+    "Manage your bookings",
+    "Control your inventory",
+    "Rethink just how safe renting can be with Flecto.",
+    "Multiple channels to multiply your online sales",
+    "Set up your own online store"
+  ],
+  "stats": {
+    "buttons": 29,
+    "headings": 16
+  }
+}
