@@ -14,6 +14,12 @@
 | `big-task` | 파일변경 10개↑ 또는 3단계↑ 작업을 단계화할 때 |
 | `api-contract-guard` | fal.ai/Supabase/LiveKit 계약값을 코드에 하드코딩하기 전 |
 
+## 검증·테스트
+
+| Skill | Use When |
+|---|---|
+| `supabase-slice-verify` | DB-backed 슬라이스(마이그레이션·Edge Function·프론트)를 통합테스트/헤드리스 브라우저 E2E로 실측할 때 (evidence-review는 근거 기록, 이 스킬은 실행 하네스) |
+
 ## 감사·건강성
 
 | Skill | Use When |
