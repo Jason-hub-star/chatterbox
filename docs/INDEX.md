@@ -244,6 +244,17 @@ tags: [hub]
 
 > **탐색 팁**: Feature ID를 모르면 `FEATURE-SPEC.md`에서 키워드로 검색 → ID 확인 후 이 표로 진입.
 
+### 구현 레퍼런스 패턴 (버전 고정 golden-path)
+
+> 빠르게 변하는 SDK의 "어떻게 짜는가" 예제. **버전 고정 + 설치버전 대조 필수**(각 문서 상단 "검수 노트" 참조). 21차 리뷰([[FORWARD-REVIEW-2026-07]]) 커버리지 감사 산출 — 11개 영역 중 4개만 golden-path 부족으로 신설.
+
+| 파일 | 영역 | 함께 읽을 설계 |
+|---|---|---|
+| `reference/patterns/livekit-client.md` | LiveKit 연결·트랙·DataChannel·토큰갱신 | `state-machines/WebRTC.md`·`specs/livekit-edge-fn.md` |
+| `reference/patterns/pixijs-v8-avatar-render.md` | PixiJS v8 단일캔버스·RenderTexture·blendshape | `contracts/AvatarCanvas.md`·`specs/rig-format.md` |
+| `reference/patterns/falai-vgen-pipeline.md` | fal.ai 제출·폴링·webhook·3-way 게이트 | `state-machines/Vgen.md`·`contracts/VgenPanel.md` |
+| `reference/patterns/react-router-routing.md` | route tree·lazy·ViewerGate 래퍼 | `PLATFORM-ARCHITECTURE.md §2.1`·`contracts/ViewerGate.md` |
+
 ---
 
 ## ⓘ 자율 에이전트 운영 (AI Agent Ops)

@@ -143,6 +143,8 @@ export const useVgenStore = create<VgenStore>((set, get) => ({
 
 ## 4. LiveKit DataChannel 디스패처 패턴
 
+> **구현 레퍼런스(버전 고정 golden-path):** LiveKit 연결·토큰갱신·바이너리 blendshape는 [[livekit-client]], PixiJS 렌더는 [[pixijs-v8-avatar-render]], fal.ai 파이프라인은 [[falai-vgen-pipeline]], 라우팅은 [[react-router-routing]]. 각 문서 상단 **"검수 노트" 필독**(설치버전 대조 필수). 전체 목록: `INDEX.md §ⓕ 구현 레퍼런스 패턴`.
+
 DataChannel 메시지는 `type` 필드로 분기하는 switch-case 디스패처를 사용한다.
 
 ```typescript

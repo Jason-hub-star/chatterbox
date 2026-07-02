@@ -208,7 +208,8 @@ Two independent streams run in parallel during CONNECTED state:
 
 **수신단 검증 플로우**:
 1. `crc16` 불일치 → 프레임 드롭 (이전 유효 프레임 유지)
-2. `byte_length !== 208` → 프레임 드롭
+2. `byte_length !== 220` (총 프레임 = 208 데이터 + 12 메타) → 프레임 드롭  <!-- fix: 총 프레임은 220바이트(§207). crc16은 데이터부 208바이트 대상. -->
+
 3. `seq` 갭 감지 (`seq > prev+1`) → 재정렬 버퍼에 홀드
 4. 버퍼 홀드 > 150ms → 갭 포기, 최신 프레임으로 점프
 
