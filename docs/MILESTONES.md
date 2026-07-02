@@ -14,13 +14,13 @@ tags: [guide]
 
 ### Acceptance Criteria
 
-- [ ] `ChatterBox` 레포 생성, Vite 5 + React 19 + TypeScript + Tailwind 4 초기화
-- [ ] `@/` alias 설정 완료, `tsc --noEmit` 에러 0개
+- [x] `ChatterBox` 레포 생성, Vite 8 + React 19.2 + TypeScript 6 + Tailwind 4 초기화 (설계 예상 Vite 5 → 실제 8)
+- [x] `@/` alias 설정 완료, `tsc --noEmit` 에러 0개
 - [ ] Supabase 클라이언트 연결 — 이메일/비밀번호 로그인 성공
 - [ ] Zustand `userStore`에 로그인 세션 저장, 새로고침 후 세션 유지 확인
-- [ ] `app_config` 테이블 시드 + `useConfigStore` 로드 확인
-- [ ] react-router (v8) 라우트 트리 구성 (`/`, `/lobby`, `/rooms/:roomId`, `/settings`)
-- [ ] Tailwind 4 디자인 토큰 (`stage-base`, `fire-amber`, `stage-text`) 적용 확인 (2026-07-01 무채색 개정 기준)
+- [x] `app_config` 테이블 시드 + `useConfigStore` 로드 확인 (supabase CLI 마이그레이션, anon REST 12행/enabled 10 검증)
+- [x] react-router (v8) 라우트 트리 구성 (`/`, `/lobby`, `/rooms/:roomId`, `/settings`)
+- [x] Tailwind 4 디자인 토큰 (`stage-base`, `fire-amber`, `stage-text`) 적용 확인 (2026-07-01 무채색 개정 기준)
 - [ ] Vitest 단위 테스트 환경 설정 (`npm run test` 통과)
 - [ ] `DEFINITION-OF-DONE.md` 기본 DoD 5항목 CI 통과
 
