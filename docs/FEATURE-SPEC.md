@@ -142,7 +142,7 @@ tags: [hub]
 | DUB-02 | AI 대본 자동 추출(STT + 화자 분리 diarization) | P1 | OpenAI transcription/diarization server adapter (브라우저 STT 금지) |
 | DUB-03 | 역할별 대사 자동 분배 + 수동 조정 | P1 | — |
 | DUB-04 | 더빙 녹음 세션(영상 재생 ↔ 내 파트 녹음 동기화) | P1 | LiveKit |
-| DUB-05 | 완성본 합성(버튜버 아바타 오버레이 + 다운로드) | P2 | LiveKit Egress |
+| DUB-05 | 완성본 합성 — 원본 영상 재더빙(코어) + 다운로드; 버튜버 아바타 오버레이는 옵션(확장) | P2 | ffmpeg.wasm(재더빙)·LiveKit Egress(아바타 옵션) |
 
 ## HOST — 방장·운영 (ROOM 내 콘솔)
 

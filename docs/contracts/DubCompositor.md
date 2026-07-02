@@ -13,6 +13,10 @@ tags: [contract]
 > **스키마**: `DATA-SCHEMA.md §1.14 dub_outputs` (output_object_key, output_video_url, status, file_size_bytes, duration_ms).
 > **보존**: `specs/SecurityPolicies.md §11.4` — 보존기간 90일, pg_cron 자동 삭제.
 
+> **스코프 확정 (2026-07-02, 주인님 결정):** DUB-05 코어 산출물은 **원본 영상 재더빙**(원본 비디오 유지 + 원본 대사 제거 stem + 더빙 오디오 mux)이다. **버튜버 아바타 오버레이 출력은 옵션/확장(P2)** — `dub_outputs`에 출력 종류를 열어두되(재더빙 vs 아바타 렌더) MVP는 재더빙만 구현한다. FEATURE-SPEC DUB-05의 "아바타 오버레이" 문구는 이 옵션을 가리킨다.
+
+> **구현 상태 (2026-07-02, 슬라이스 3a — 실 ffmpeg 브라우저 E2E 검증):** 무분리 재더빙 MVP 구현 완료. Edge 4: `create-dub-output-upload`(호스트·allSynced→dub_outputs compositing + 업로드 URL·세션 compositing 전이)·`submit-dub-output`(성공→ready+세션 completed / 실패(error_message)→failed+세션 recording 복귀)·`get-dub-output-url`(멤버 다운로드)·`get-dub-recordings`(합성용 녹음 일괄). `lib/ffmpeg.ts`(st 코어 CDN·`adelay`+`amix`·`-map 0:v` 원음 드롭·`-c:v copy`) + `DubCompositor.tsx`(게이트→합성→업로드→미리보기·다운로드). **dubStore 없이 로컬상태**(아래 Store 의존성 표는 향후 store 도입 시 참조 스펙). 서명 URL은 `get-dub-source-url` 패턴 재사용(범용 `create-signed-media-url` 대신 dub 전용 `get-dub-output-url` idiom). **COOP/COEP는 단일스레드 코어로 회피**(vite 변경 0). **헤드리스 Chrome E2E 10/10**(실 ffmpeg.wasm 믹스→완성본 mp4 ffprobe: h264 320x240 + aac·3.0s 원본길이 유지) + 통합테스트 20/20(403/409/실패복귀/completed/RLS/비멤버403). **defer(ponytail, G-284):** 3b 음원분리 stem 합류(G-280·FAL_KEY)·3c 아바타 오버레이·Realtime 진행구독(§4)·공유링크(§6)·오디오전용 소스·loudness 정규화·완료 후 새 더빙 리셋.
+
 ---
 
 ## Props Interface
@@ -315,7 +319,7 @@ async function closeSession() {
 - `specs/SecurityPolicies.md §11.4` — 보존기간 90일, pg_cron 자동 삭제
 - `contracts/DubRecorder.md` — 이전 단계 (녹음)
 - `contracts/VgenExport.md` — 다운로드·공유 링크 패턴 (재사용)
-- `FEATURE-SPEC.md` — DUB-05 (완성본 합성, 버튜버 아바타 오버레이 + 다운로드)
+- `FEATURE-SPEC.md` — DUB-05 (완성본 합성 — 원본 재더빙 코어 + 다운로드; 아바타 오버레이는 옵션)
 
 ---
 
