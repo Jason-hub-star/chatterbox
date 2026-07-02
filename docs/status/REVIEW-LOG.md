@@ -13,6 +13,33 @@ tags: [status]
 
 > 최신순. 서브리뷰는 "검증 후 반영"이 원칙 — 오탐 기각·제안코드 버그도 기록한다.
 
+## 2026-07-02 · 경로 B B2·B3 — self drive 패리티 + 멀티플레이어 2탭 E2E (Opus)
+
+- **B2 패리티(주인님 실측 반영)**: self drive 첫 배선이 눈·입·입꼴·roll만 구동 → 주인님 "고개 갸우뚱·눈알 안 따라옴, 배포본과 뭐가 다르냐". ground truth(drive.html `rawChannels`) 재확인 → 누락은 **head pose(랜드마크 기반 yaw/pitch/roll)와 gaze(blendshape eyeLook*)**. 내가 "head pose=캘리브레이션 필요"로 오판해 defer한 게 원인(실제 배포본은 캘리브레이션 optional, raw 사용). `faceLandmarker.extractHeadPose`(랜드마크 실측 이식)+gaze(bs) 추가 → AngleX/Y/Z·EyeBallX/Y 구동, 미러(M=−1) 포함. 아리아 rig에 해당 파라미터/바인딩 실재 검증(AngleX/Y 20/10·EyeBall 4/4). 주인님 재확인 **"배포본과 똑같음"**. 교훈: "defer 사유"도 ground truth로 검증할 것 — 있는 입력을 없다고 오판했다.
+- **B3 멀티플레이어 — 내가 직접 헤드리스 2탭 E2E**: playwright-core + 시스템 Chrome(SwiftShader WebGL). 2계정 admin 생성→UI 로그인→같은 방 접속→A가 `__room.sendBlendshapes` 표정 주입→**B의 원격 AriaAvatar 파라미터 도달 확인**(주 신호 = `debugParams()`: MouthOpenY 0→1·EyeLOpen 1→0.27·MouthForm 0→1·EyeBallX 0→1). **A↔B 양방향 PASS**. gaze가 blendshape 기반이라 **원격에도 눈알 반영 확인**(head pose는 원격 미전송=정면, 설계대로). 4 WebGL 컨텍스트(2탭×self+remote) 헤드리스 정상. 픽셀 지문은 얼굴영역으로 좁혀도 변화율 낮음(중립↔감김/개구가 캔버스 소부분) → **파라미터 도달을 주 신호로**(렌더 반영은 B2에서 시각확인). playwright-core는 검증 후 제거(앱 의존 아님).
+- **게이트**: tsc0·lint·test 30/30·build·docs:check PASS. 커밋 미실행(푸시 미승인).
+
+## 2026-07-02 · 경로 B B1 — 아리아 실 rig 네이티브 이식 + 실데이터 검증 (Opus)
+
+- **대상**: `public/aria-player` 렌더러(rig.js·physics.js·draw_pixi.js·pendulum.js) → `src/lib/pixi/aria/`(types·util·rigMath·loader·renderer·AriaAvatar·index) **인스턴스화 이식**. 모듈 싱글턴 `state`+모듈 캐시(latticeBaseCache/latticeFrame)를 `createRigMath(ctx)`/`createRenderer(app,ctx,rig)` 팩토리 클로저로 캡슐화 → participant N명 독립. **변형 수학은 무수정**(`state.`→`ctx.`), 에디터 전용 사문(assembly showreel·explode)은 제거(항상 항등이라 출력 불변).
+- **이식 정확성 검증(ground truth = 실 `avatars/aria/project.json`, 200/260KB)**: 이식한 `primaryDeformerForPart`+`deformerChain`을 실 49파츠에 시뮬레이션 → **primary 해소 49/49 성공**(None 0·root 0·전부 메시), **선택 결과 = `part.deformer_node` 49/49 일치**(모호성 0), 체인 계층 정상(face_base→head_angle_warp: root→upper→head_z→head_angle). 수학·선택 모두 런타임과 동일 → 골든 대조 성립 근거.
+- **발견 → 문서 정정**: 실 디포머 id는 `*_warp`(`root_warp`·`head_angle_warp`·`eye_L_warp`·`mouth_warp`…)인데 `primaryDeformerForPart`의 대문자 선호목록(`Eye_L`·`Mouth`·`Head_X`·`Root`)은 **한 번도 안 맞는 사문(死文)** — 선택은 항상 `child_ids` fallback으로 이뤄짐. 코드 버그 아님(런타임도 동일)이나 `rig-format.md §7.5`의 "디포머 ID 컨벤션"이 부정확 → 실측대로 정정(파트↔디포머 링크 불변식 = `child_ids`∋part ≡ `deformer_node`).
+- **로더 계약 확인**: 실 project.json은 `_project_base_url` 베이크됨·`_mini_rig` 인라인(`render_mode:"mesh"`)·`source_path` 상대(parts/*.webp) — 로더 방어값(파생 base·mesh 기본)은 fallback으로만 작동.
+- **게이트**: tsc0·lint클린·`vite build` PASS·`docs:check` PASS. **남음 = 시각/픽셀 대조**(`/avatar-aria-native` = 네이티브 vs `index.html?renderer=pixi` iframe 나란히) — 브라우저 실렌더 확인은 주인님 몫(WebGL·Storage 필요).
+- **교훈**: "무수정 이식이라 런타임과 동일"만으로 끝내지 않고 **선택 로직을 실 데이터에 돌려** 사문 선호목록/디포머 명명을 잡았다 — 검증은 성역.
+
+## 2026-07-02 · rig 포맷 SSOT 정정(경로 B) — 페이블 문서리뷰 + Opus 대조
+
+- **대상**: 실 렌더러(`public/aria-player`)·실 에셋(`avatars/aria/project.json`, 200/260KB)·실 와이어(`blendshapeCodec.ts`)와 대조해 정정한 4문서 — `rig-format.md`(전면 재작성)·`AvatarCanvas.md`·`Avatar.md`·`GAP-MATRIX.md`. 정정 골자: SSOT 포맷을 **실재하지 않던 variant-swap `rig.json` → 실제 AUTORIG mesh-deform `project.json`**(FFD 격자·연속 ParamXxx, rig.js "공식 Cubism 워프 이식")으로 교체, v1은 §9 이력 강등.
+- **페이블(diversity, 주인님 요청) 5건 — 판정**:
+  - **P0-1 "blendshapesToRigParams 미구현" → 오탐(문서결함 아님)**: 함수 부재는 사실이나 문서가 "경로 B에서 이식"이라 **미래작업으로 정확히 명시**. 스코프 오독(페이블이 "문서 정합"이 아니라 "코드 완성 여부"를 감사) — 이건 B2 할 일이지 문서 모순 아님.
+  - **P0-2 "멀티 participant 아키텍처 미구현(draw_pixi 싱글턴)" → 오탐(블로커 아님)+부분반영**: 싱글턴 사실이나 이 역시 경로 B B1의 핵심 리팩터(문서가 "인스턴스화" 예정으로 기술). 블로커 기각. **단 유효 지적** — 이식 필수조건(모듈 싱글턴→인스턴스화)을 `AvatarCanvas.md`에 명시 경고로 추가(반영).
+  - **P1 "state.js `ParamAngleY` 라벨 누락" → 진짜지만 스코프 밖**: 사실(에디터 `PARAM_LABELS`에 없음). 그러나 렌더러(rig.js/draw_pixi)는 라벨 미사용 → 구동/경로 B/문서 무영향. aria-player **에디터 UI cosmetic** 선결함 — §3에 한 줄 주석만, 수정 defer(벤더 에디터, 미요청).
+  - **P2-1 "매핑 표 검증 불가(에셋 없음)" → 근거 오탐·직감 적중(핵심 반영)**: "에셋 없음"은 거짓(이미 로드·범위 실측 일치). **그러나 ground truth(`drive.html convert()`) 대조하니 내가 쓴 §3 표가 실제로 여러 곳 틀림** — 눈은 "좌우 미러"가 아니라 **양눈 링크(max→snap, THA4)**, brow/cheek/EyeSmile은 **미구동인데 지어냄**, MouthForm은 **smile−frown 누락**, Body*는 "미구동"이 아니라 **Pose 어깨 구동**, 미러(M=−1)는 눈이 아니라 **수평·롤 채널**. → §3를 `convert()` 실측대로 **재작성**(로컬/원격 입력 구분 포함).
+  - **P2-2 "헤드포즈 Phase 경계 모호" → 진짜(반영)**: RT-02 프레임에 헤드포즈 없음이 사실(codec 확인) → §3에 **로컬(전채널) vs 원격(52 blendshape만, AngleX/Y/Z·Body·gaze=0/중립)** 경로를 명시 분리.
+- **게이트**: `docs:check` PASS.
+- **교훈**: 문서 리뷰에 코드-완성 감사가 섞이면 "미래작업"이 "블로커"로 오분류된다 — 스코프로 걸러야. 그러나 서브리뷰의 **직감**(매핑 미검증)은 ground truth 대조를 촉발했고, 그 결과 **내가 표준 가정으로 쓴 §3의 실제 오류**를 잡았다. "검증은 성역"의 실증 — 서브 근거가 틀려도 대조는 한다.
+
 ## 2026-07-02 · blendshape 전송 — 페이블 리뷰 1패스 + Opus 대조
 
 - **대상**: 코덱/송수신/훅/배선(위 자기리뷰와 동일 파일). 페이블(diversity, 주인님 요청) 3건 + 안전목록(seq·isNewerSeq·byteOffset·프루닝·스로틀·콜백ref·StrictMode·고빈도ref = 모두 안전 확인, Opus와 일치).

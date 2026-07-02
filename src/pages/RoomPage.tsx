@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
-import { toFaceParams } from '@/hooks/useFaceTracking'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
-import type { ProceduralAvatar } from '@/lib/pixi/proceduralAvatar'
 import AvatarLayer from '@/features/avatar/AvatarLayer'
+import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 
 // Phase 1B PoC: 2인 오디오 연결 최소 UI.
-// ponytail: 무대(StageLayout)·아바타·씬·채팅 패널은 Phase 2~3 (contracts/RoomView.md).
+// ponytail: 무대(StageLayout)·씬·채팅 패널은 Phase 2~3 (contracts/RoomView.md).
+// 경로 B: 아바타는 네이티브 아리아 실 rig. PoC는 전원 아리아(같은 URL) — 프로덕션은 참가자별 avatar URL.
+const ARIA_PROJECT = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/avatars/aria/project.json`
 
 const STATE_LABEL: Record<ConnectionState, string> = {
   DISCONNECTED: '연결 안 됨',
@@ -30,14 +31,15 @@ export default function RoomPage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
 
-  // 원격 아바타(participant identity → Pixi 인스턴스)와 마지막 seq. 고빈도 구동은 ref로만(리렌더 없음).
-  const remoteAvatars = useRef<Map<string, ProceduralAvatar>>(new Map())
+  // 원격 아바타 프레임 싱크(participant identity → 구동 함수)와 마지막 seq. 고빈도 구동은 ref로만(리렌더 없음).
+  // 싱크는 RemoteAvatar가 자기 AriaAvatar+드라이버로 등록 — RoomPage는 아바타 타입을 모른다(디커플).
+  const remoteAvatars = useRef<Map<string, RemoteFrameSink>>(new Map())
   const lastSeq = useRef<Map<string, number>>(new Map())
   const handleBlendshapes = useCallback((identity: string, frame: BlendshapeFrame) => {
     if (!isNewerSeq(lastSeq.current.get(identity) ?? 0, frame.seq)) return // 역전·중복 드롭
     lastSeq.current.set(identity, frame.seq)
-    // RT-02 프레임에 헤드포즈 없음 → roll=0. blendshape만으로 표정 구동.
-    remoteAvatars.current.get(identity)?.update(toFaceParams(frame.blendshapes, 0))
+    // RT-02 프레임엔 head pose 없음 → 싱크가 headPose=null로 구동(gaze는 blendshape이라 반영).
+    remoteAvatars.current.get(identity)?.(frame)
   }, [])
 
   const { toggleMic, sendChat, sendBlendshapes, leave } = useLiveKitRoom(roomId, {
@@ -123,6 +125,7 @@ export default function RoomPage() {
           <div className="mt-2 rounded-lg border border-stage-border p-4">
             <AvatarLayer
               participants={participants}
+              projectUrl={ARIA_PROJECT}
               sendBlendshapes={sendBlendshapes}
               remoteAvatars={remoteAvatars}
             />

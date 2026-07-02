@@ -20,7 +20,7 @@ interface AvatarCanvasProps {
 
   /**
    * 렌더링할 모델 ID (models 테이블 primary key)
-   * 변경 시 rig.json 재로드 트리거
+   * 변경 시 project.json(AUTORIG mesh-deform rig, rig-format.md §2) 재로드 트리거
    */
   modelId: string;
 
@@ -58,7 +58,7 @@ interface AvatarCanvasProps {
 | `userStore` | `avatarData` | ✓ | | 사용자 아바타 메타 (skin tone 등, 예정) |
 | `trackingStore` | `avatarState[participantId]` | ✓ | | 현재 participant의 blendshape 상태 |
 | `trackingStore` | `loadError` | ✓ | ✓ | 로드 에러 기록 |
-| `trackingStore` | `modelRig` | ✓ | | 파싱된 rig.json 객체 (ParameterDriver가 쓰는 lookup table) |
+| `trackingStore` | `modelRig` | ✓ | | 파싱된 project.json 객체 (deformer/keyform lookup — mesh-deform 구동에 사용, rig-format.md §2) |
 | `stageStore` | `createAvatarContainer()` | | ✓ | WebGL Container 할당 |
 | `stageStore` | `removeAvatarContainer()` | | ✓ | WebGL Container 정리 |
 
@@ -69,17 +69,13 @@ interface AvatarCanvasProps {
 
 **구독:**
 - **Channel:** `blendshape` (unreliable, unordered)
-- **발신자:** 다른 participant (자신이 발신한 blendshape는 구독하지 않음)
-- **메시지 형식:**
-  ```json
-  {
-    "blendshapes": [0.5, 0.2, 0.0, ...],  // Float32Array[52] ARKit
-    "timestamp_ms": 1624561200000,
-    "calibration_version": 1
-  }
-  ```
-- **빈도:** 30 Hz (unreliable 이므로 패킷 손실 허용)
-- **용도:** 표정 애니메이션 드라이빙 (ParameterDriver 거쳐서 rig 파라미터 적용)
+- **발신자:** 다른 participant (자신이 발신한 blendshape는 구독하지 않음 — publishData는 sender에게 echo 안 함)
+- **메시지 형식(SSOT):** **RT-02 220B 바이너리 프레임** — `state-machines/WebRTC.md` §RT-02 + `src/lib/blendshapeCodec.ts`.
+  `[0..208) Float32×52 blendshapes(canonical 순서) · [208..216) Float64 timestamp_ms · [216..218) Uint16 seq · [218..220) Uint16 crc16`.
+  수신검증: 길이≠220 드롭 · crc16 불일치 드롭 · NaN/Inf 드롭 · seq 역전(`isNewerSeq`) 드롭.
+  (구 JSON `{blendshapes[],timestamp_ms,calibration_version}` 예시는 바이너리 프레임으로 대체됨.)
+- **빈도:** 30 Hz(발신 스로틀 ~20Hz, unreliable 이므로 패킷 손실 허용)
+- **용도:** 표정 애니메이션 드라이빙 — 52 blendshapes → `blendshapesToRigParams()`로 연속 `ParamXxx` 변환 → keyform mesh-deform 적용 (rig-format.md §3)
 
 **발행:** 없음 (수신 전용)
 
@@ -97,20 +93,23 @@ interface AvatarCanvasProps {
 
 | 테이블/Storage | 작업 | 방법 |
 |---|---|---|
-| `models` | rig.json 메타 조회 | Supabase client (trackingStore 초기화 시) |
-| `Storage: /models/{user_id}/rig.json` | 아바타 구조 로드 | fetch() via signed URL |
-| `Storage: /models/{user_id}/parts/*.png` | 텍스처 이미지 로드 | Pixi.Loader |
+| `models` | project.json 메타(project_url) 조회 | Supabase client (trackingStore 초기화 시) |
+| `Storage: /models/{user_id}/{model_id}/project.json` | 아바타 rig 구조 로드 | fetch() (PoC: `avatars/{c}/project.json`) |
+| `Storage: …/parts/*.webp` | 텍스처 이미지 로드 | `<img crossOrigin="anonymous">` + Storage CORS |
 
 **Realtime:** 불필요 (static asset, 세션 중 모델 변경 없음)
+**렌더러:** `src/lib/pixi/aria/`(경로 B로 `public/aria-player`에서 이식 완료 2026-07-02) — **participant별 `AriaAvatar` 인스턴스 = 각자 PixiJS Application(= 각자 WebGL 컨텍스트)**. 파일: `AriaAvatar.ts`(수명주기+티커)·`renderer.ts`(draw_pixi 인스턴스화)·`rigMath.ts`(rig+physics 팩토리)·`loader.ts`·`expressionDriver.ts`(blendshape→ParamXxx). 구동: 로컬 `AvatarLayer`(head pose+gaze), 원격 `RemoteAvatar`(RT-02 52ch→인스턴스별 드라이버, head pose 없음·gaze 있음).
+> ⚠️ **스케일 ceiling (ponytail)**: 아바타별 Application이라 N명 = N WebGL 컨텍스트(브라우저 한계 ~8–16 → 실질 ~6인) + 같은 49텍스처 ×N 메모리. 6인 초과·메모리 압박 시 **단일 Application + participant별 Container(텍스처 공유)**로 리팩터가 업그레이드 경로. PoC(2탭 E2E)에선 인스턴스별로 충분 검증.
+> ⚠️ **이식 필수조건**: `draw_pixi.js`(`let app`·`const nodes`)·`state.js`(`const state`)는 **모듈 싱글턴**이라 그대로면 아바타 1개만 가능(`buildScene`의 `nodes.clear()`가 이전 것 파괴). 인스턴스화(`class`/팩토리로 `{app,nodes,parameters,project,rig,images}` 캡슐화)가 멀티 participant의 전제. `rig.js` 변형 수학은 무수정(`state.` 24참조를 주입 ctx로 치환).
 
 ## 금지 사항 (MUST NOT)
 
 - ❌ WebGL context 직접 접근 (`gl.*`, `PIXI.Renderer.context`)
-- ❌ trackingStore.model_rig 파라미터를 **직접 변경** (ParameterDriver 경유만 허용)
+- ❌ trackingStore.model_rig(파싱된 project.json)을 **직접 변경** (blendshapesToRigParams → 파라미터 맵 경유만)
 - ❌ 다른 participant의 blendshape를 로컬 상태에 **캐싱** (매번 DataChannel 수신해서 즉시 적용)
 - ❌ 모델 로드 중 participant_id/model_id prop 변경 (로드 완료 대기)
 - ❌ 동일 participant_id로 여러 AvatarCanvas 생성 (1:1 매칭)
-- ❌ 아바타 언로드 시 rig.json 캐시를 전역으로 유지 (메모리 누수)
+- ❌ 아바타 언로드 시 project.json/텍스처 캐시를 전역으로 유지 (메모리 누수)
 - ❌ PixiJS `Application.destroy()` 호출 전 LiveKit DataChannel listener 미제거 (room.off('dataReceived', blendshapeHandler) 명시 필수)
 - ❌ blendshape 핸들러에서 React state를 직접 참조 (**stale closure**, useRef 활용)
 - ❌ rAF 루프 안에서 언마운트된 DisplayObject에 접근 (destroyChildren 후 render frame 발생 금지)
