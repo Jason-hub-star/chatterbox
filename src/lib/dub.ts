@@ -103,6 +103,62 @@ export const confirmDubTrack = (accessToken: string, dubTrackId: string) =>
     'confirm-dub-track', accessToken, { dub_track_id: dubTrackId },
   )
 
+// ── 합성(DUB-05, 원본 재더빙) ───────────────────────────────────────
+export interface DubRecordingUrl { trackId: string; startTimeMs: number; url: string }
+export interface DubOutput { url: string; fileSizeBytes: number | null; durationMs: number | null }
+
+// 합성 시작: dub_outputs(compositing) 생성 + 산출물 업로드 URL. 세션 compositing 전이.
+export const startDubCompositing = (accessToken: string, dubSessionId: string) =>
+  callFn<{ output_id: string; path: string; token: string }>(
+    'create-dub-output-upload', accessToken, { dub_session_id: dubSessionId },
+  )
+
+// 합성 결과 blob 업로드 → Storage path 반환.
+export async function uploadDubOutput(path: string, uploadToken: string, blob: Blob): Promise<string> {
+  const { error } = await supabase.storage
+    .from(DUB_BUCKET)
+    .uploadToSignedUrl(path, uploadToken, blob, { contentType: 'video/mp4' })
+  if (error) throw new Error(`합성본 업로드 실패: ${error.message}`)
+  return path
+}
+
+// 확정: 성공(outputPath 등) → ready+completed / 실패(errorMessage) → failed+recording 복귀.
+export const finalizeDubOutput = (
+  accessToken: string,
+  args: { outputId: string; outputPath?: string; fileSizeBytes?: number; durationMs?: number; errorMessage?: string },
+) =>
+  callFn<{ output_id: string; status: string }>('submit-dub-output', accessToken, {
+    output_id: args.outputId,
+    output_path: args.outputPath,
+    file_size_bytes: args.fileSizeBytes,
+    duration_ms: args.durationMs,
+    error_message: args.errorMessage,
+  })
+
+export const getDubOutputUrl = (accessToken: string, dubSessionId: string) =>
+  callFn<{ url: string; file_size_bytes: number | null; duration_ms: number | null }>(
+    'get-dub-output-url', accessToken, { dub_session_id: dubSessionId },
+  ).then((r) => ({ url: r.url, fileSizeBytes: r.file_size_bytes, durationMs: r.duration_ms } as DubOutput))
+
+export async function fetchDubRecordings(accessToken: string, dubSessionId: string): Promise<DubRecordingUrl[]> {
+  const { recordings } = await callFn<{
+    recordings: Array<{ track_id: string; start_time_ms: number; url: string }>
+  }>('get-dub-recordings', accessToken, { dub_session_id: dubSessionId })
+  return recordings.map((r) => ({ trackId: r.track_id, startTimeMs: r.start_time_ms, url: r.url }))
+}
+
+// 완료 세션 재로드 시 완성본 존재 확인(RLS: member SELECT).
+export async function fetchDubOutput(dubSessionId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('dub_outputs')
+    .select('id')
+    .eq('dub_session_id', dubSessionId)
+    .eq('status', 'ready')
+    .limit(1)
+    .maybeSingle()
+  return !!data
+}
+
 export async function fetchRoomMembers(accessToken: string, roomId: string): Promise<RoomMember[]> {
   const { members } = await callFn<{
     members: Array<{ user_id: string; display_name: string | null; slot_index: number; role: string }>
@@ -137,13 +193,13 @@ export async function fetchRoomHostId(roomId: string): Promise<string | null> {
   return data?.host_id ?? null
 }
 
-// 방의 최신 더빙 세션(종료 제외). 게스트도 멤버면 발견 가능.
+// 방의 최신 더빙 세션. 완료(completed)본도 다운로드 표시를 위해 포함(최신 1건).
+// ponytail: 완료 후 새 더빙(closeSession/reset)은 후속 — 현재는 방당 최신 세션만 노출.
 export async function fetchActiveDubSession(roomId: string) {
   const { data } = await supabase
     .from('dub_sessions')
     .select('id, status, created_by, diarization_result_json, consent_json, role_version')
     .eq('room_id', roomId)
-    .neq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()

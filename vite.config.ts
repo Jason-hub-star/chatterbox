@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => ({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
 
+  // ffmpeg.wasm(@ffmpeg/*)은 내부 워커+blob-URL 코어 로드라 Vite dep 프리번들과 충돌 → 제외.
+  optimizeDeps: { exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'] },
+
   build: {
     target: 'es2020',
     sourcemap: mode === 'development',
