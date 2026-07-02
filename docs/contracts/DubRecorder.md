@@ -13,6 +13,8 @@ tags: [contract]
 > **스키마**: `DATA-SCHEMA.md §1.13 dub_tracks` (recording_url, recording_duration_ms, calibration_offset_ms, status).
 > **참조**: `contracts/VgenPanel.md §3 DubbingRecorder` — 기존 더빙 녹화 컴포넌트. 본 계약서는 DUB-04 전용 명세를 확정하며 VgenPanel.md §3와 스펙을 일치시킨다.
 
+> **구현 상태 (2026-07-02, 슬라이스 2 — 실 브라우저 E2E 검증):** MVP 구현 완료. Edge: `get-dub-source-url`(원본 음소거 재생)·`create-dub-recording-upload`(소유자·녹음중)·`submit-dub-track`(assigned→submitted)·`confirm-dub-track`(호스트→synced). UI: `features/dub/DubRecorder.tsx`(본인 트랙 MediaRecorder 캡처·미리보기 필수 제출). **헤드리스 Chrome+가짜 마이크 E2E 9/9**(실 MediaRecorder→webm Storage 업로드→제출→synced). **defer(ponytail, G-283):** 청크/resume·IndexedDB 로컬백업(ROOM-23)·calibration ±200ms 슬라이더·Realtime 자동갱신·전체 재촬영(reset-dub-session)·비프/자동 차례감지. dubStore 없이 DubRecorder 로컬상태·수동 새로고침.
+
 ---
 
 ## Props Interface
