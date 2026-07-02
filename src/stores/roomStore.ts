@@ -30,6 +30,16 @@ export interface ChatMessage {
   isLocal: boolean
 }
 
+// 현재 이 사용자가 속한 방의 DB 컨텍스트 (Phase 2). LiveKit 연결 상태와 별개.
+export type RoomStatus = 'waiting' | 'live' | 'ended'
+export interface RoomContext {
+  currentRoomId: string | null
+  roomStatus: RoomStatus | null
+  hostId: string | null           // rooms.host_id (users.id) — room-authority 발신자 판별(후속)
+  myParticipantId: string | null  // 내 room_participants.id
+  mySlotIndex: number | null
+}
+
 interface RoomStore {
   // 상태
   connectionState: ConnectionState
@@ -37,12 +47,19 @@ interface RoomStore {
   messages: ChatMessage[]
   micEnabled: boolean
   error: string | null
+  // 방 컨텍스트 (Phase 2)
+  currentRoomId: string | null
+  roomStatus: RoomStatus | null
+  hostId: string | null
+  myParticipantId: string | null
+  mySlotIndex: number | null
   // 액션
   setConnectionState: (state: ConnectionState) => void
   setParticipants: (participants: RoomParticipant[]) => void
   addMessage: (message: ChatMessage) => void
   setMicEnabled: (enabled: boolean) => void
   setError: (error: string | null) => void
+  setRoomContext: (ctx: Partial<RoomContext>) => void
   reset: () => void
 }
 
@@ -52,6 +69,11 @@ const INITIAL = {
   messages: [] as ChatMessage[],
   micEnabled: false,
   error: null as string | null,
+  currentRoomId: null as string | null,
+  roomStatus: null as RoomStatus | null,
+  hostId: null as string | null,
+  myParticipantId: null as string | null,
+  mySlotIndex: null as number | null,
 }
 
 export const useRoomStore = create<RoomStore>((set) => ({
@@ -62,5 +84,6 @@ export const useRoomStore = create<RoomStore>((set) => ({
   addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
   setMicEnabled: (micEnabled) => set({ micEnabled }),
   setError: (error) => set({ error }),
+  setRoomContext: (ctx) => set({ ...ctx }),
   reset: () => set({ ...INITIAL }),
 }))

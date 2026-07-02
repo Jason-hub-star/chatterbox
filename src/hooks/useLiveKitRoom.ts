@@ -37,10 +37,16 @@ function mapConnState(s: ConnectionState) {
 
 export function useLiveKitRoom(
   roomId: string,
-  opts?: { onBlendshapes?: (identity: string, frame: BlendshapeFrame) => void },
+  opts?: {
+    onBlendshapes?: (identity: string, frame: BlendshapeFrame) => void
+    // false면 연결 보류 — 방 입장(room_participants 행 생성)이 끝난 뒤에만 연결한다.
+    // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 전에 연결하면 403으로 실패한다.
+    enabled?: boolean
+  },
 ) {
   const roomRef = useRef<Room | null>(null)
   const session = useUserStore((s) => s.session)
+  const enabled = opts?.enabled ?? true
 
   // 수신 콜백은 ref로 (effect deps 오염 방지). 송신 스로틀·seq도 ref로 유지.
   const onBlendshapesRef = useRef(opts?.onBlendshapes)
@@ -59,7 +65,7 @@ export function useLiveKitRoom(
   } = useRoomStore.getState()
 
   useEffect(() => {
-    if (!session) return
+    if (!session || !enabled) return
     let cancelled = false
 
     const room = new Room({
@@ -154,6 +160,7 @@ export function useLiveKitRoom(
   }, [
     roomId,
     session,
+    enabled,
     setConnectionState,
     setParticipants,
     addMessage,
