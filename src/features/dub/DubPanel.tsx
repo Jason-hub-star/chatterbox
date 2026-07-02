@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useUserStore } from '@/stores/userStore'
 import DubRecorder from '@/features/dub/DubRecorder'
+import DubCompositor from '@/features/dub/DubCompositor'
 import {
   uploadDubSource, createDubSession, startTranscription, assignRoles,
   recordConsent, startRecording, fetchRoomMembers, fetchActiveDubSession,
@@ -43,7 +44,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
     const [s, m] = await Promise.all([fetchActiveDubSession(roomId), fetchRoomMembers(token, roomId)])
     setSession(s as Session | null)
     setMembers(m)
-    if (s && (s.status === 'recording' || s.status === 'ready')) {
+    if (s && ['ready', 'recording', 'compositing', 'completed'].includes(s.status)) {
       setTracks(await fetchDubTracks(s.id))
     } else {
       setTracks([])
@@ -83,6 +84,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
     members.find((m) => m.userId === uid)?.displayName ?? uid.slice(0, 8)
 
   const status = session?.status ?? null
+  const allSynced = tracks.length > 0 && tracks.every((t) => t.status === 'synced')
 
   return (
     <section className="mt-8 rounded-lg border border-stage-border p-4">
@@ -214,14 +216,36 @@ export default function DubPanel({ roomId }: { roomId: string }) {
         </div>
       )}
 
-      {/* RECORDING: 실제 녹음 캡처 (DUB-04) */}
+      {/* RECORDING: 실제 녹음 캡처 (DUB-04) + 전 트랙 synced 시 합성 진입 */}
       {status === 'recording' && (
-        <DubRecorder
+        <>
+          <DubRecorder
+            dubSessionId={session!.id}
+            myId={myId}
+            isHost={isHost}
+            tracks={tracks}
+            members={members}
+            onChanged={refresh}
+          />
+          {allSynced && (
+            <DubCompositor
+              dubSessionId={session!.id}
+              status={status}
+              isHost={isHost}
+              tracks={tracks}
+              onChanged={refresh}
+            />
+          )}
+        </>
+      )}
+
+      {/* COMPOSITING / COMPLETED: 합성 진행·완성본 (DUB-05) */}
+      {(status === 'compositing' || status === 'completed') && (
+        <DubCompositor
           dubSessionId={session!.id}
-          myId={myId}
+          status={status}
           isHost={isHost}
           tracks={tracks}
-          members={members}
           onChanged={refresh}
         />
       )}

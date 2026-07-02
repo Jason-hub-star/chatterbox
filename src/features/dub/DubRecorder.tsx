@@ -188,13 +188,10 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
         })}
       </ul>
 
-      {/* 하단: 진행도 + 합성(다음 슬라이스) */}
+      {/* 하단: 진행도 (전 트랙 synced 시 DubPanel 이 DubCompositor 마운트) */}
       <div className="flex items-center justify-between border-t border-stage-border pt-3">
         <span className="text-xs text-stage-text-muted">{syncedCount}/{tracks.length} 완료</span>
-        <button disabled={!allSynced} title="합성(DUB-05)은 다음 슬라이스"
-          className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40">
-          합성 시작 (다음 업데이트)
-        </button>
+        {allSynced && <span className="text-xs text-fire-amber">전원 녹음 완료 — 아래에서 합성</span>}
       </div>
     </div>
   )
