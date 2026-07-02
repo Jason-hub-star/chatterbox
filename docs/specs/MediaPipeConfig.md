@@ -53,7 +53,7 @@ const faceLandmarker = await FaceLandmarker.createFromOptions(
   ),
   {
     baseOptions: {
-      modelAssetPath: 'https://storage.googleapis.com/mediapipe-tasks/vision/face_landmarker/face_landmarker.task',
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
     },
     outputFaceBlendshapes: true, // 52ch ARKit 출력
     runningMode: 'VIDEO',       // 스트림 모드
@@ -125,9 +125,9 @@ const faceLandmarker = await FaceLandmarker.createFromOptions(
 );
 ```
 
-**모델 파일 URL:**
+**모델 파일 URL** (2026-07-02 검증: 200/3.75MB float16. 구 경로 `mediapipe-tasks/vision/...` 는 404):
 ```
-https://storage.googleapis.com/mediapipe-tasks/vision/face_landmarker/face_landmarker.task (20MB)
+https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 ```
 
 ### 3.2 대안: R2 자체 호스팅 (P2 확장성)
@@ -150,7 +150,7 @@ aws s3 cp face_landmarker.task s3://chatterbox-assets/mediapipe/ --endpoint http
   <link rel="preload" as="fetch" href="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm/vision_wasm_internal.wasm" crossorigin>
   
   <!-- 모델 파일 (20MB, 크거나 지연 로드 가능) -->
-  <!-- <link rel="preload" as="fetch" href="https://storage.googleapis.com/mediapipe-tasks/vision/face_landmarker/face_landmarker.task" crossorigin> -->
+  <!-- <link rel="preload" as="fetch" href="https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task" crossorigin> -->
 </head>
 ```
 
@@ -186,7 +186,7 @@ export const useTrackingStore = create<TrackingStore>((set, get) => ({
         ),
         {
           baseOptions: {
-            modelAssetPath: 'https://storage.googleapis.com/mediapipe-tasks/vision/face_landmarker/face_landmarker.task',
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
           },
           outputFaceBlendshapes: true,
           runningMode: 'VIDEO',
@@ -396,7 +396,7 @@ useEffect(() => {
     const link = document.createElement('link');
     link.rel = 'preload';
     link.as = 'fetch';
-    link.href = 'https://storage.googleapis.com/mediapipe-tasks/vision/face_landmarker/face_landmarker.task';
+    link.href = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
     link.crossOrigin = 'anonymous';
     document.head.appendChild(link);
   }

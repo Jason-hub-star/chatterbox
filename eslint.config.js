@@ -8,7 +8,8 @@ import tseslint from 'typescript-eslint'
 export default tseslint.config(
   // docs/ 는 문서·참고용 예제 코드(marketing-automation 등) — 앱 빌드 대상이 아니므로 lint 제외.
   // supabase/functions 는 Deno 런타임(npm:/jsr: import, Deno 전역) — 프론트 lint/tsc 대상 아님.
-  { ignores: ['dist', 'coverage', 'node_modules', 'docs', 'supabase/functions'] },
+  // public/aria-player 는 Vtube AUTORIG 런타임 정적 빌드(벤더링) — 프론트 lint/tsc 대상 아님.
+  { ignores: ['dist', 'coverage', 'node_modules', 'docs', 'supabase/functions', 'public/aria-player'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

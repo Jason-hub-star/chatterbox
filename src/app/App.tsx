@@ -10,11 +10,16 @@ import RegisterPage from '@/pages/RegisterPage'
 import LobbyPage from '@/pages/LobbyPage'
 import RoomPage from '@/pages/RoomPage'
 import SettingsPage from '@/pages/SettingsPage'
+import AvatarPocPage from '@/pages/AvatarPocPage'
+import AriaPocPage from '@/pages/AriaPocPage'
 
 const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  // Phase 1 PoC: 표정 트래킹 (인증 불필요 — 데모/테스트용).
+  { path: '/avatar-poc', element: <AvatarPocPage /> }, // 절차적 얼굴
+  { path: '/avatar-aria', element: <AriaPocPage /> }, // 실 rig(아리아)
   {
     path: '/lobby',
     element: (

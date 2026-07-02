@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig, configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
@@ -25,5 +25,7 @@ export default defineConfig(({ mode }) => ({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup/canvas-mock.ts'],
+    // public/aria-player 는 Vtube 런타임 정적 빌드 — 내부 벤더 테스트(.mjs)를 주워 실행하지 않게 제외.
+    exclude: [...configDefaults.exclude, 'public/**'],
   },
 }))

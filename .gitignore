@@ -8,3 +8,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 .DS_Store
+
+# 아바타 캐릭터 에셋은 Supabase Storage(avatars/)에서 URL 로드 — 레포에 커밋 금지(수십개 누적 시 bloat).
+# public/aria-player 는 런타임 코드만 커밋. character.json/parts 는 빌드 산출물이라 재생성 시에도 제외.
+public/aria-player/project/
+public/aria-player/api/
