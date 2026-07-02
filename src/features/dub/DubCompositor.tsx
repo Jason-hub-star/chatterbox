@@ -60,7 +60,7 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
         recs.map(async (r) => ({ blob: await (await fetch(r.url)).blob(), startMs: r.startTimeMs })),
       )
       setPhase('mixing')
-      const out = await mixAndMux(srcBlob, cues, setProgress)
+      const out = await mixAndMux(srcBlob, cues, [], setProgress)
       setPhase('uploading')
       await uploadDubOutput(started.path, started.token, out)
       await finalizeDubOutput(token, { outputId, outputPath: started.path, fileSizeBytes: out.size })

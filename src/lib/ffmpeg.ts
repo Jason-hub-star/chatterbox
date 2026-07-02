@@ -30,9 +30,12 @@ export interface DubCue { blob: Blob; startMs: number }
 const ms = (n: number) => Math.max(0, Math.round(n))
 
 // 원본(비디오) + 더빙 오디오 큐들 → 재더빙 mp4. 원본 오디오 드롭(-map 0:v 만), 비디오 무손실 복사.
+// background: 음원분리(G-280 fal Demucs)로 얻은 배경음/효과음 스템들. 있으면 원본 대사 대신 이 stem 위에 더빙을 얹는다.
+//   (offset 0·전체 길이로 amix 합류 — 원본 보컬은 여전히 드롭되므로 이중음성 없음.)
 export async function mixAndMux(
   source: Blob,
   cues: DubCue[],
+  background: Blob[] = [],
   onProgress?: (ratio: number) => void,
 ): Promise<Blob> {
   if (cues.length === 0) throw new Error('더빙 트랙이 없어요.')
@@ -42,28 +45,44 @@ export async function mixAndMux(
   const SRC = 'source.mp4'
   const OUT = 'out.mp4'
   const recNames = cues.map((_, i) => `rec${i}.webm`)
+  const bgNames = background.map((_, j) => `bg${j}.mp3`)
   try {
     await ffmpeg.writeFile(SRC, await fetchFile(source))
+    for (let j = 0; j < background.length; j++) {
+      await ffmpeg.writeFile(bgNames[j], await fetchFile(background[j]))
+    }
     for (let i = 0; i < cues.length; i++) {
       await ffmpeg.writeFile(recNames[i], await fetchFile(cues[i].blob))
     }
 
-    // filter_complex: 각 녹음을 시작 offset 만큼 adelay 후 amix(normalize=0 로 레벨 보존).
+    // 입력 인덱스: 0=SRC, 1..B=배경 스템, B+1..=더빙 녹음.
+    const B = background.length
     let filter: string
-    if (cues.length === 1) {
+    if (B === 0 && cues.length === 1) {
+      // 검증된 무분리 단일 경로 유지(회귀 0).
       const d = ms(cues[0].startMs)
       filter = `[1:a]adelay=${d}|${d}[dub]`
-    } else {
+    } else if (B === 0) {
       const delays = cues
         .map((c, i) => { const d = ms(c.startMs); return `[${i + 1}:a]adelay=${d}|${d}[a${i}]` })
         .join(';')
       const mixIn = cues.map((_, i) => `[a${i}]`).join('')
       filter = `${delays};${mixIn}amix=inputs=${cues.length}:normalize=0[dub]`
+    } else {
+      // 배경 스템(무지연) + 더빙 큐(offset adelay)를 한 amix 로. normalize=0 로 레벨 보존.
+      const delays = cues
+        .map((c, i) => { const d = ms(c.startMs); return `[${B + 1 + i}:a]adelay=${d}|${d}[a${i}]` })
+        .join(';')
+      const bgRefs = background.map((_, j) => `[${1 + j}:a]`).join('')
+      const dubRefs = cues.map((_, i) => `[a${i}]`).join('')
+      const n = B + cues.length
+      filter = `${delays};${bgRefs}${dubRefs}amix=inputs=${n}:normalize=0[dub]`
     }
 
-    // -shortest 미사용: 비디오 전체 길이 유지(더빙이 짧으면 뒤는 무음).
+    // -shortest 미사용: 비디오 전체 길이 유지(더빙이 짧으면 뒤는 배경음/무음).
     await ffmpeg.exec([
       '-i', SRC,
+      ...bgNames.flatMap((n) => ['-i', n]),
       ...recNames.flatMap((n) => ['-i', n]),
       '-filter_complex', filter,
       '-map', '0:v', '-map', '[dub]',
@@ -81,6 +100,7 @@ export async function mixAndMux(
     currentProgress = null
     await ffmpeg.deleteFile(SRC).catch(() => {})
     await ffmpeg.deleteFile(OUT).catch(() => {})
+    for (const n of bgNames) await ffmpeg.deleteFile(n).catch(() => {})
     for (const n of recNames) await ffmpeg.deleteFile(n).catch(() => {})
   }
 }
