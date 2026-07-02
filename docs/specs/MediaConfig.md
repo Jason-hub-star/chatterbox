@@ -129,10 +129,10 @@ if (fileSizeBytes > 50 * 1024 * 1024) {
 
 | 파라미터 | 값 | 설명 |
 |---|---|---|
-| **모델** | `whisper-1` | 최신 (권장) |
+| **모델** | `whisper-1` | MVP. 화자분리 필요 시 `gpt-4o-transcribe-diarize`(동일 키·최소전환), 대용량/async 는 AssemblyAI (G-269·[[dub-stt-provider-decision]]) |
 | **입력 파일 크기** | ≤ 25MB | 제한 |
 | **입력 포맷** | mp4, mp3, m4a, wav, webm, ogg | 다양함 |
-| **출력 포맷** | json, text, srt, vtt | **SRT 추천** (더빙 타이밍) |
+| **출력 포맷** | json, text, srt, vtt, verbose_json | **verbose_json 사용** (구조화 segments: start/end/text) |
 
 ### 4.1 DUB 파이프라인에서 Whisper 호출
 
@@ -158,14 +158,14 @@ export async function transcribeDubVideo(
     no_speech_prob: number;
   }>;
 }> {
-  const audioBlob = await downloadAndConvertToAudio(videoUrl);
+  const audioBlob = await downloadFromStorage(videoUrl); // whisper-1 은 mp4 직접 허용(≤25MB) — Edge 런타임엔 ffmpeg 없어 별도 오디오 변환 불필요
   
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.mp3');
   formData.append('model', 'whisper-1');
-  formData.append('response_format', 'srt');
+  formData.append('response_format', 'verbose_json'); // 구조화 segments. srt 는 타임코드 파싱 필요 + timestamp_granularities 무시됨
   formData.append('language', language || 'ko');
-  formData.append('timestamp_granularities', 'segment');
+  // segment 단위면 충분(사람 재녹음 — word-level 불필요)
   
   const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
@@ -175,8 +175,8 @@ export async function transcribeDubVideo(
     body: formData,
   });
   
-  const srtText = await response.text();
-  return parseSRT(srtText);
+  const result = await response.json(); // { text, segments: [{id, start, end, text, ...}], language, duration }
+  return result; // segments[].start/end(초) → start_ms/end_ms 변환은 Edge Function 에서
 }
 
 // SRT 형식 예:
@@ -345,4 +345,4 @@ public/videos/
   └── chatterbox-intro.mp4  # (신규) 온보딩 소개 30초
 ```
 
-각 영상은 Whisper로 자동 자막 추출 후, 언어별 SRT 저장(DUB-02).
+각 영상은 Whisper(verbose_json)로 자동 자막 추출(DUB-02). 애니 등 원 대사 제거가 필요하면 음원분리 단계 별도(G-280).

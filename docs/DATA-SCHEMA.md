@@ -704,7 +704,7 @@ CREATE TABLE dub_sessions (
   source_type TEXT NOT NULL,  -- 'mp4', 'vgen'. 'youtube' is P2-disabled until legal/SSRF gate lands
   youtube_url TEXT,  -- P2 only; never used in MVP
   whisper_job_id TEXT,  -- external Whisper API job ID
-  diarization_result_json JSONB,  -- {segments: [{speaker: 'Speaker 1', start_ms, end_ms, text}]}
+  diarization_result_json JSONB,  -- {segments: [{id, start_ms, end_ms, text}]}. whisper-1 은 화자분리 불가 → speaker 필드 없음(호스트가 DubRoleAssigner 에서 수동 배정). diarization provider 승급 시 speaker 추가 (G-269)
   role_version INT DEFAULT 1,  -- DUB-03/04 role assignment lock version
   roles_locked_at TIMESTAMP WITH TIME ZONE,  -- non-null while recording; role edits require new version
   roles_locked_by UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -735,7 +735,7 @@ CREATE TABLE dub_tracks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dub_session_id UUID NOT NULL REFERENCES dub_sessions(id) ON DELETE CASCADE,
   participant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  speaker_name TEXT NOT NULL,  -- "Speaker 1", "리온", etc. from diarization
+  speaker_name TEXT NOT NULL,  -- "Segment 1", "리온" 등. whisper-1 MVP 는 호스트 수동 배정(자동 diarization 아님, G-269)
   start_time_ms INT NOT NULL,
   end_time_ms INT NOT NULL,
   transcript_text TEXT NOT NULL,  -- original transcript from Whisper

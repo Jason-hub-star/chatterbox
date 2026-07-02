@@ -77,6 +77,8 @@ tags: [fsm]
                   └────────────────┘
 ```
 
+> **주의 (오푸스 2026-07-02, [[dub-stt-provider-decision]]):** `whisper-1` 은 화자분리(diarization)를 **하지 못한다** — 시간순 segments(텍스트+타임코드)만 낸다. `diarization_result_json` 은 이름과 달리 speaker 필드가 없고, **화자→참가자 배정은 DubRoleAssigner 에서 호스트가 수동으로** 한다. 자동 화자분리가 필요하면 diarization 지원 provider(`gpt-4o-transcribe-diarize`·AssemblyAI·Deepgram, G-269)로 승급한다. 또 우리 더빙은 사람이 재녹음하므로 **segment 단위 타임스탬프면 충분**(word-level 불필요).
+
 ## State Transitions
 
 | From | To | Trigger | Source | Notes |
@@ -85,7 +87,8 @@ tags: [fsm]
 | UPLOADING | UPLOADED | 업로드 성공 | `dubStore.onUploadSuccess(source_video_url)` | `dub_sessions.source_video_url` 확정, `status='uploaded'` |
 | UPLOADING | FAILED | 업로드 실패 (네트워크, 파일 크기 초과) | `dubStore.onUploadError(reason)` | R2 고아 오브젝트 방지: 업로드 실패 시 R2 DELETE (Vgen.md C8 패턴 재사용) |
 | UPLOADED | TRANSCRIBING | 호스트가 [STT 시작] 클릭 | `dubStore.startTranscription()` | Whisper API 호출, `status='transcribing'`, `whisper_job_id` 저장 |
-| TRANSCRIBING | READY | Whisper API 완료 (diarization 포함) | `dubStore.onTranscriptionSuccess(diarization_result_json)` | `diarization_result_json` 저장, `status='ready'` |
+| UPLOADED | READY | **무대사 소스** (자동감지 또는 호스트 [대사 없음]) | `dubStore.skipTranscription()` | STT/음원분리 스킵. `diarization_result_json={segments:[]}`, `status='ready'` (Edge case 9·G-282) |
+| TRANSCRIBING | READY | Whisper STT 완료 (segments만, **화자분리 없음**) | `dubStore.onTranscriptionSuccess(diarization_result_json)` | `diarization_result_json` 저장(speaker 필드 없음), `status='ready'` |
 | TRANSCRIBING | FAILED | Whisper API 에러/타임아웃 (>120s) | `dubStore.onTranscriptionError(reason)` | **롤백 정책 (C6)**: `status='failed'`, `error_message` 저장, `source_video_url`은 유지 (재시도 가능) |
 | TRANSCRIBING | UPLOADED | 호스트가 [재시도] 클릭 (retry < 2) | `dubStore.retryTranscription()` | `status='uploaded'`로 복귀 후 다시 TRANSCRIBING 진입. 3회 초과 시 FAILED 고정 |
 | READY | RECORDING | 모든 참가자 동의 + 호스트가 [녹음 시작] | `dubStore.startRecording()` | **consent 게이트 (§11)**: `consent_json.all_consented = true` 여야만 전이 가능. `roles_locked_at = now()`, `role_version += 1` |
@@ -216,6 +219,21 @@ tags: [fsm]
    - Supabase Realtime `room_participants` DELETE 이벤트 수신 후 처리
 ```
 
+### 9. 무대사 소스 (STT/음원분리 스킵, [[dub-audio-separation-anime]])
+
+```
+1. 소스에 제거·추출할 대사가 없으면(무음·BGM만·무대사 클립) STT/음원분리 불필요.
+2. 대사유무 판정 (택1, G-282 결정 대기):
+   - 자동: Whisper no_speech_prob 또는 사전 VAD 로 "대사 없음" 감지
+   - 수동: 호스트가 [대사 없음] 토글
+3. 무대사면 UPLOADED → READY 직행 (TRANSCRIBING 스킵), diarization_result_json = {segments: []}.
+   원본에 제거할 대사가 없으니 합성 시 음원분리(G-280)도 스킵 — 원본 오디오를 배경으로 그대로 사용.
+4. 참가자는 자유 보이스오버(자동 구간배정 없음) 또는 호스트가 수동 구간 추가.
+5. 효과: Whisper·분리 비용 0, 파이프라인 단축.
+
+주의: VGEN 쇼츠(AI 생성·무대사)는 애초에 DUB 이 아니라 VGEN 기능 — 이 FSM 에 진입하지 않는다.
+```
+
 ## Implementation Hints
 
 - **Zustand store**: `dubStore` (sessions[], activeSession, recordingState, compositingState, roleVersion, consentStatus)
@@ -232,7 +250,7 @@ tags: [fsm]
 - **Side effects**:
   - UPLOADING: R2 presigned URL 발급 (Edge Function), 업로드 진행률 표시
   - TRANSCRIBING: Whisper API 비동기 호출, 진행 배너 "대본 추출 중..."
-  - READY: diarization 결과 미리보기, 역할 배정 UI 활성
+  - READY: STT segments 미리보기, 역할 배정 UI 활성 (화자는 호스트 수동 배정)
   - RECORDING: roles_locked_at 설정, 참가자별 녹음 UI 활성, LiveKit 마이크 캡처
   - COMPOSITING: 진행바 표시, ffmpeg.wasm 또는 Egress 호출
   - COMPLETED: 다운로드 버튼 활성, 보존기간 안내

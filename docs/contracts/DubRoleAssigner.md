@@ -7,7 +7,7 @@ tags: [contract]
 
 # DubRoleAssigner
 
-Whisper API diarization 결과를 바탕으로 화자별 역할을 참가자에게 배정하는 UI. 호스트가 수동 조정 가능하며, 녹음 시작 시 역할 잠금(H12)이 적용된다. `DubSessionSelector` 완료 후 마운트.
+Whisper STT 결과(시간순 segments)를 바탕으로 각 구간을 참가자에게 배정하는 UI. **whisper-1 은 화자분리(diarization)를 하지 않으므로** 화자 그룹이 자동 생성되지 않고 호스트가 각 구간을 수동 배정한다(자동 화자분리는 diarization provider 승급 시 — G-269·[[dub-stt-provider-decision]]). 녹음 시작 시 역할 잠금(H12)이 적용된다. `DubSessionSelector` 완료 후 마운트.
 
 > **상태머신**: `state-machines/DubSession.md` READY 상태 담당 (역할 배정 → consent 게이트 → RECORDING 전이).
 > **스키마**: `DATA-SCHEMA.md §1.12 dub_sessions` (role_version, roles_locked_at, roles_locked_by, consent_json) · `§1.13 dub_tracks` (speaker_name, participant_id, status).
@@ -71,9 +71,9 @@ interface DubRoleAssignerProps {
 
 ## 기능 명세
 
-### 1. diarization 결과 미리보기
+### 1. STT segments 미리보기 (화자 수동 배정)
 
-Whisper API 완료 후 `dubStore.activeSession.diarization_result_json`을 화자별 구간으로 표시:
+Whisper STT 완료 후 `dubStore.activeSession.diarization_result_json`의 시간순 segments 를 표시하고, 호스트가 각 구간을 참가자에 배정한다. **whisper-1 은 자동 화자 그룹을 만들지 않는다** — 아래 "Speaker 1/2"는 diarization provider(G-269) 승급 시의 모습이며, MVP 에선 구간별 수동 배정이다:
 
 ```
 ┌─────────────────────────────────────┐

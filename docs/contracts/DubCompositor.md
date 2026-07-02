@@ -122,7 +122,7 @@ async function startCompositing() {
   dubStore.setCompositingState('compositing');
   dubStore.setCompositingProgress(0);
 
-  // Edge Function 호출: 원본 영상 + 더빙 오디오 트랙 → 최종 영상
+  // Edge Function 호출: 원본 영상(비디오) + 배경음/효과음 stem(원본 대사 제거) + 더빙 오디오 트랙 → 최종 영상
   const { data, error } = await supabase.functions.invoke('start-dub-compositing', {
     body: { dub_session_id: dubSessionId },
   });
@@ -137,6 +137,8 @@ async function startCompositing() {
   // 진행률은 polling 또는 Realtime으로 추적
 }
 ```
+
+> **P0 (오푸스 2026-07-02, [[dub-audio-separation-anime]]):** 원본 오디오에는 원 대사(예: 애니 일본어)가 배경음·효과음과 **한 트랙에 섞여** 있다. 그대로 합성하면 원음과 더빙이 **이중음성**으로 들려 깨진다. 따라서 합성 전 **음원분리(원본 보컬 제거 → 배경음/효과음 stem 추출)** 단계가 필요하다(G-280). Supabase Edge 에선 못 돌리므로 fal.ai Demucs(시작·스택內)→AudioShake(대사특화 승급) 같은 외부 API로 처리. **최종 = 원본 비디오 + 분리한 배경음 stem + 더빙 오디오.**
 
 **합성 방식 (PLATFORM-ARCHITECTURE.md §5.5):**
 
@@ -319,4 +321,4 @@ async function closeSession() {
 
 ## 한줄정리
 
-DubCompositor는 모든 dub_tracks가 녹음 완료(synced)된 후 호스트가 합성을 시작하고, ffmpeg.wasm 또는 LiveKit Egress로 원본 영상 + 더빙 오디오를 합성하여 진행바를 표시하며, 완성본을 R2 서명 URL로 다운로드·공유하고 90일 보존 후 자동 삭제되는 최종 합성 UI다.
+DubCompositor는 모든 dub_tracks가 녹음 완료(synced)된 후 호스트가 합성을 시작하고, ffmpeg.wasm 또는 LiveKit Egress로 원본 비디오 + 배경음/효과음 stem(원본 대사 제거) + 더빙 오디오를 합성하여 진행바를 표시하며, 완성본을 R2 서명 URL로 다운로드·공유하고 90일 보존 후 자동 삭제되는 최종 합성 UI다.
