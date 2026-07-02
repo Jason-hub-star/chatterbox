@@ -21,6 +21,9 @@ export default function AriaPocPage() {
           </p>
         </div>
         <nav className="flex gap-4 text-sm text-stage-text-muted">
+          <Link to="/avatar-aria-native" className="hover:text-stage-text">
+            네이티브 rig (B)
+          </Link>
           <Link to="/avatar-poc" className="hover:text-stage-text">
             절차적 PoC
           </Link>

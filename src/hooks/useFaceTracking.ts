@@ -3,10 +3,12 @@ import type { FaceLandmarker } from '@mediapipe/tasks-vision'
 import {
   createFaceLandmarker,
   blendshapeMap,
+  extractHeadPose,
   headRoll,
   hasFace,
 } from '@/lib/mediapipe/faceLandmarker'
 import type { FaceParams, ProceduralAvatar } from '@/lib/pixi/proceduralAvatar'
+import type { HeadPose } from '@/lib/pixi/aria'
 import { useTrackingStore } from '@/stores/trackingStore'
 
 // MediaPipe blendshape(categoryName) → 아바타 FaceParams.
@@ -26,8 +28,9 @@ export function toFaceParams(bs: Record<string, number>, roll: number): FacePara
 // (AvatarCanvas.md: 30fps 값을 React에 넣지 않음). state/fps/error만 store로 → UI 배지.
 export function useFaceTracking(
   videoRef: RefObject<HTMLVideoElement | null>,
-  avatarRef: RefObject<ProceduralAvatar | null>,
-  opts?: { onFrame?: (blendshapes: Record<string, number>) => void },
+  // 절차적 아바타 구동은 선택 — null이면 onFrame으로만 흘려보낸다(네이티브 아리아 self drive).
+  avatarRef: RefObject<ProceduralAvatar | null> | null,
+  opts?: { onFrame?: (blendshapes: Record<string, number>, headPose: HeadPose | null) => void },
 ): void {
   const setState = useTrackingStore((s) => s.setState)
   const setFaceDetected = useTrackingStore((s) => s.setFaceDetected)
@@ -66,8 +69,9 @@ export function useFaceTracking(
       }
       if (detected) {
         const bs = blendshapeMap(result)
-        if (avatarRef.current) avatarRef.current.update(toFaceParams(bs, headRoll(result)))
-        onFrameRef.current?.(bs) // 원본 52 blendshape 맵을 송신측으로 (RT-02는 헤드포즈 미포함)
+        if (avatarRef?.current) avatarRef.current.update(toFaceParams(bs, headRoll(result)))
+        // 52 blendshape + 랜드마크 head pose를 콜백으로 (RT-02 송신엔 bs만 씀 · aria self drive는 둘 다).
+        onFrameRef.current?.(bs, extractHeadPose(result))
       }
 
       frames++

@@ -39,9 +39,37 @@ export function blendshapeMap(result: FaceLandmarkerResult): Record<string, numb
 }
 
 // 머리 기울기(roll, 라디안). 4x4 변환행렬(column-major)의 회전 성분에서 추출.
-// roll = atan2(R10, R00) = atan2(data[1], data[0]). ponytail: yaw/pitch(6-DOF)는 Phase 2.
+// roll = atan2(R10, R00) = atan2(data[1], data[0]). 절차적 아바타(FaceParams.headRoll)용.
 export function headRoll(result: FaceLandmarkerResult): number {
   const m = result.facialTransformationMatrixes?.[0]?.data
   if (!m || m.length < 16) return 0
   return Math.atan2(m[1], m[0])
+}
+
+// 랜드마크 기반 머리 포즈(yaw/pitch/roll, 도). 원천: aria-player drive.html rawChannels() 실측 이식
+// (행렬이 아닌 눈·코·턱·이마 랜드마크로 산출 — 배포본과 동일 방식·동일 상수). 캘리브레이션(neutral)은
+// 생략 = raw(배포본 기본 경로). 아리아 실 rig의 ParamAngleX/Y/Z 구동용(expressionDriver).
+export function extractHeadPose(
+  result: FaceLandmarkerResult,
+): { yaw: number; pitch: number; roll: number } | null {
+  const lm = result.faceLandmarks?.[0]
+  if (!lm) return null
+  const leftEye = lm[33] ?? lm[130]
+  const rightEye = lm[263] ?? lm[359]
+  const nose = lm[1] ?? lm[4]
+  const chin = lm[152] ?? lm[175]
+  const forehead = lm[10] ?? lm[9]
+  if (!leftEye || !rightEye || !nose || !chin || !forehead) return null
+  const eyeDx = rightEye.x - leftEye.x
+  const eyeDy = rightEye.y - leftEye.y
+  const eyeWidth = Math.max(Math.abs(eyeDx), 0.04)
+  const faceHeight = Math.max(Math.abs(chin.y - forehead.y), 0.12)
+  const eyeCenterX = (leftEye.x + rightEye.x) / 2
+  const eyeCenterY = (leftEye.y + rightEye.y) / 2
+  const clampDeg = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+  return {
+    roll: (Math.atan2(eyeDy, eyeDx) * 180) / Math.PI,
+    yaw: clampDeg(((nose.x - eyeCenterX) / eyeWidth) * 42, -25, 25),
+    pitch: clampDeg(((eyeCenterY - nose.y) / faceHeight) * 46, -20, 20),
+  }
 }
