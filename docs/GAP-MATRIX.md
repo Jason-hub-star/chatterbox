@@ -70,7 +70,7 @@ tags: [hub]
 |---|---|---|---|---|
 | G-01 | **LiveKit 토큰 발급 Edge Function** | ROOM-04 (WebRTC) | [[livekit-edge-fn]] | `DONE` |
 | G-02 | **models 테이블 스키마** | MOD-01 (모델목록) | [[supabase-auth]] §6 | `DONE` |
-| G-03 | **rig JSON 포맷 스펙** | ROOM-03 (아바타렌더) | [[rig-format]] | `DONE` |
+| G-03 | **rig JSON 포맷 스펙** | ROOM-03 (아바타렌더) | [[rig-format]] — 2026-07-02 정본 교체: AUTORIG mesh-deform `project.json`(실 렌더러·에셋 대조). 미구현 variant-swap v1은 §9 이력 강등 | `DONE` |
 | G-33 | **Security P0 Review** | LiveKit/RLS/R2/FAL/DataChannel/StageMode | [[SECURITY-P0-REVIEW]] + 관련 SSOT 문서 | `DONE` |
 | G-34 | **Runtime Hardening Review H1-H16** | HOST/ROOM/VGEN/DUB/OBS/Auth 런타임 복구 | [[RUNTIME-HARDENING-REVIEW]] + 관련 SSOT 문서 | `DONE` |
 | G-35 | **방 생성·입장·초대링크 rate limit + brute-force 방어** | AUTH/ROOM 입장 보안 | `specs/SecurityPolicies.md §13` (verify-invite-code/create-room/livekit-token 제한) | `DONE` |
@@ -111,7 +111,7 @@ tags: [hub]
 | ID | 누락 항목 | 영향 | 결정 방법 | 상태 |
 |---|---|---|---|---|
 | G-11 | **온보딩 플로우 선택** | 첫 UX 전체 | [[ONBOARDING-FLOW]] | `DONE` |
-| G-12 | **아바타 에셋 포맷** (Live2D vs PNG rig) | ROOM-03 전체 | rig-format.md §7 Vtube 파이프라인 연동 확정 | `DONE` |
+| G-12 | **아바타 에셋 포맷** (Live2D vs PNG rig) | ROOM-03 전체 | rig-format.md §7 — Vtube AUTORIG `project.json` 직접 렌더 확정(2026-07-02: 다운컨버전 없음, mesh-deform) | `DONE` |
 | G-13 | **Supabase Auth UI** 라이브러리 선택 | AUTH-01~03 | → 직접 구현 확정 (auth-ui-react 아카이브됨) | `DONE` |
 
 ---

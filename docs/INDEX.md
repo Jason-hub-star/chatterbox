@@ -73,7 +73,8 @@ tags: [hub]
 | `GAP-MATRIX.md` | 구현 전 누락 스펙 감시판 — 블로커·계약·SM 갭 추적 | **설계 (진행추적)** |
 | `FORWARD-REVIEW-2026-07.md` | 착수 전 향후취약점·미리설계 seam 리뷰 (Haiku스캔→Fable리뷰→Opus충돌검증+외부조사). GAP-MATRIX G-268~G-279 근거 | 조사/설계 |
 | `specs/livekit-edge-fn.md` | LiveKit 토큰 발급 Edge Function 코드·환경변수·배포 | **설계 (구현 입력)** |
-| `specs/rig-format.md` | ChatterBox rig JSON v1 — PNG파츠 포맷·ARKit 52 매핑·**§7 Vtube 파이프라인 연동(G-12 확정)** | **설계 (구현 입력)** |
+| `specs/rig-format.md` | **rig 포맷 SSOT** — AUTORIG mesh-deform `project.json`(연속 ParamXxx·키폼/FFD)·blendshape→Param 매핑·컨벤션 계약 (2026-07-02 정정, v1 variant-swap 강등) | **설계 (구현 입력)** |
+| `specs/avatar-pipeline.md` | **버튜버 제작 파이프라인 + 출력 계약**(Vtube AUTORIG→ChatterBox 증류) — E2E·립싱크/표정 2계층·매핑 갭·원천 링크 | **설계 (구현 입력)** |
 | `specs/SecurityPolicies.md` | 인증·RLS·LiveKit 토큰·미디어·모더레이션·DataChannel·환경변수 + Phase 1 게이트 | **설계 (구현 입력)** |
 | `specs/supabase-auth.md` | Supabase Auth·Google OAuth·models 테이블 스키마·RLS | **설계 (구현 입력)** |
 

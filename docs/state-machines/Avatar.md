@@ -16,7 +16,7 @@ tags: [fsm]
        │ user selects model in /models page
        ▼
 ┌─────────────┐
-│  LOADING    │ (fetch rig.json + PNG parts from Supabase Storage)
+│  LOADING    │ (fetch project.json + webp parts from Supabase Storage)
 └──────┬──────┘
        │ success
        ▼
@@ -27,7 +27,7 @@ tags: [fsm]
        │ → PixiJS container created
        │ → parameter stream ready
        ▼
-┌──────────────┐ (blendshape 52ch @ 30fps [WIP], FFD deformation)
+┌──────────────┐ (blendshape 52ch @ 30fps via RT-02, keyform mesh-deform)
 │  RENDERING   │
 └──────┬───────┘
        │ participant leaves
@@ -41,7 +41,7 @@ Parallel to above:
         any error during LOADING
         ▼
     ┌───────┐
-    │ ERROR │ (network timeout, malformed rig.json, missing image)
+    │ ERROR │ (network timeout, malformed project.json, missing image)
     └───────┘
 ```
 
@@ -50,14 +50,14 @@ Parallel to above:
 | From | To | Trigger | Source | Notes |
 |------|-----|---------|--------|-------|
 | UNLOADED | LOADING | User selects model in `/models` | `userStore.selectAvatar(model_id)` | Zustand action |
-| LOADING | READY | Rig JSON + all PNGs loaded | Pixi.Loader success | `trackingStore.avatar_state = "READY"` |
-| LOADING | ERROR | Network timeout (>10s) | Loader timeout | Retry button shown |
-| LOADING | ERROR | Invalid rig.json (parse error) | Loader error handler | Show "model corrupted" message |
+| LOADING | READY | project.json + all webp parts loaded | fetch + `<img>` load success | `trackingStore.avatar_state = "READY"` |
+| LOADING | ERROR | Network timeout (>10s) | Load timeout | Retry button shown |
+| LOADING | ERROR | Invalid project.json (parse error) | Load error handler | Show "model corrupted" message |
 | LOADING | MEMORY_ERROR | WebGL context creation failed or memory exhausted | PixiJS.Application error | Fallback to static image + voice-only badge; 3-retry limit |
 | READY | RENDERING | Participant joins room + container allocated | `stageStore.createAvatarContainer(participant_id)` | PixiJS render loop starts |
 | RENDERING | READY | Participant leaves room | `stageStore.removeAvatarContainer(participant_id)` | PixiJS container destroyed; WebGL freed |
 | RENDERING | UNLOADED | Avatar model switched during room | `userStore.selectAvatar(other_id)` | Old container destroyed; new model loads |
-| RENDERING | ERROR | Runtime error during blendshape apply | Try/catch in ParameterDriver | Avatar freeze in last valid pose |
+| RENDERING | ERROR | Runtime error during blendshape apply | Try/catch in blendshapesToRigParams/draw | Avatar freeze in last valid pose |
 | ERROR | READY | User clicks "Retry" (during LOADING error) | `trackingStore.retryLoadAvatar()` | Restart LOADING |
 | ERROR | UNLOADED | User selects different model | `userStore.selectAvatar(other_id)` | Clear error |
 | MEMORY_ERROR | READY | User clicks "Retry" after resolution decrease | `trackingStore.retryLoadAvatar()` | Attempt LOADING with lower resources |
@@ -66,7 +66,7 @@ Parallel to above:
 ## Edge Cases
 
 1. **Default Avatar for New Users**
-   - If user has no model selected, show silhouette avatar (no rig.json, simple gradient + eyes)
+   - If user has no model selected, show silhouette avatar (no project.json, simple gradient + eyes)
    - Transitions directly UNLOADED → READY (no LOADING step)
    - Always works, no failure path
 
@@ -76,10 +76,11 @@ Parallel to above:
    - CPU bottleneck: 6×52 blendshape channels × 30fps = 9360 params/sec
    - Solution: batch uniform updates; unroll FFD matrix multiply
 
-3. **BBW Skinning Not Implemented**
-   - Use FFD (Free-Form Deformation) cage-based mesh deformation instead [WIP]
-   - Advantage: no bone data needed, linear algebra only
-   - Limitation: less precise face detail vs. real skinning
+3. **Mesh Deformation (구현됨 — `public/aria-player/src/core/rig.js`)**
+   - FFD (Free-Form Deformation) 격자 케이지 워프 = 주 변형(MESH-DEFORM-001, 공식 Cubism 등가)
+   - 정점 키폼(EYE-NATURAL-002)·2D 조합 키폼(MULTI-KEYFORM-2D-001)으로 얼굴 디테일 보강
+   - N-관절 LBS 스키닝(BBW-SKIN-001)·이음새 skin_blend도 구현 — bone 데이터 불필요, 선형대수만
+   - 경로 B: 이 렌더러를 `src/lib/pixi/aria/`로 네이티브 이식(인스턴스화)
 
 4. **WebGL Context Loss** (mobile/browser tab backgrounded)
    - `webglcontextlost` 이벤트 감지 시 즉시 **degraded 모드**로 전환 (Ghost Speaker 방지, RUNTIME-HARDENING-REVIEW H7)
@@ -127,7 +128,7 @@ Parallel to above:
 
 - **Zustand stores**: `userStore` (selected_model_id, avatar_data), `trackingStore` (avatar_state, load_error, model_rig)
 - **Event sources**:
-  - Supabase Storage: GET `/models/{user_id}/rig.json` and `/models/{user_id}/parts/*.png`
+  - Supabase Storage: GET `/models/{user_id}/{model_id}/project.json` and `…/parts/*.webp` (PoC: `avatars/{c}/`)
   - `stageStore`: participant join/leave triggers container lifecycle
   - DataChannel `blendshape`: when Tracking state = PAUSED (tab backgrounded), AvatarCanvas freezes on last valid frame (no new frames rendered until TRACKING resumes)
 - **Side effects**:
