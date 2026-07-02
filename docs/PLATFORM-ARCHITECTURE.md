@@ -246,7 +246,10 @@ Settings > Environment Variables
 
 ---
 
-## 3. 평older 구조
+## 3. 폴더 구조 (⚠️ 폐기 — §12로 대체됨)
+
+> **이 섹션은 옛 `snack-web/` 설계 유물입니다. 현행 폴더 구조 SSOT는 아래 [§12 스캐폴드 & 폴더 구조](#12-스캐폴드--폴더-구조-g-139)입니다.**
+> 여기의 `auth·lobby·stage·settings` 피처명, `i18n/`·`styles/`·`components/layout` 폴더, `pages/` 부재는 모두 옛 구조이며 `ChatterBox/`(§12)와 다릅니다. **새 폴더 추가·이동은 §12만 따르세요.** (CLAUDE.md도 §12를 SSOT로 지목)
 
 ```text
 snack-web/
