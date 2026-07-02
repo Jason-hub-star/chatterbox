@@ -8,6 +8,22 @@ tags: [hub]
 
 P0 블로커 완료 후, 101개 Feature ID 구현 순서 및 병렬 가능 작업 가이드.
 
+> **축 구분(중요):** 이 문서의 `Phase`는 **빌드 의존성 블록(무엇부터 만드나)** 축 — 착수 순서의 SSOT다. 완료 판정·AC·데모 마일스톤은 [[MILESTONES]](별개 축). 두 문서의 Phase 번호는 **같은 번호라도 다른 것을 가리킨다** (예: 여기 Phase 1 = 인증+통신, MILESTONES Phase 1 = 2인 음성 데모). 아래 crosswalk로 매핑한다.
+
+### Crosswalk — 빌드 블록 ↔ 데모 마일스톤
+
+| 빌드 블록 (이 문서) | 주로 여는 데모 마일스톤 ([[MILESTONES]]) |
+|---|---|
+| Phase 0 스캐폴드 | Phase 0 스캐폴드 & 기반 연결 |
+| Phase 1A 인증 | Phase 0 이메일 로그인 · Phase 2 인증 완성 |
+| Phase 1B LiveKit 통신 | **Phase 1 2인 음성 PoC** |
+| Phase 2 DB + 방 로직 | Phase 2 방 운영 |
+| Phase 3A 아바타 렌더 | Phase 1 표정 · Phase 3 묵대 |
+| Phase 3B 더빙 | Phase 3~4 DUB |
+| Phase 4 AI(VGEN) + 완성 | Phase 4 정식화 & 배포 |
+
+> 다대다 매핑인 이유: 데모 마일스톤은 "보여줄 수 있는 것" 기준(예: 표정 데모는 LiveKit+아바타 두 블록이 필요), 빌드 블록은 "의존성 순서" 기준이라 축이 다르다.
+
 ---
 
 ## 선행 조건

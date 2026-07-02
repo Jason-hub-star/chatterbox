@@ -6,6 +6,8 @@ tags: [guide]
 
 > G-141 산출 문서. 각 Phase의 "완료" 기준. PR 병합 및 배포 결정의 게이트.
 
+> **축 구분(중요):** 이 문서의 `Phase`는 **데모/제품 마일스톤 + 완료 게이트(AC)** 축이다 — "무엇을 언제 시연할 수 있나". **무엇부터 만드나(빌드 착수 순서)는 [[IMPLEMENTATION-ORDER]]가 SSOT**이며, 두 문서의 Phase 번호는 **서로 다른 축(1:1 아님)**이다. 매핑은 IMPLEMENTATION-ORDER 상단 crosswalk 참조. 구현 진행률은 `npm run docs:progress`.
+
 ---
 
 ## Phase 0 — 스캐폴드 & 기반 연결
