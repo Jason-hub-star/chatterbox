@@ -7,6 +7,7 @@ import { joinRoom, leaveRoom } from '@/lib/rooms'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import AvatarLayer from '@/features/avatar/AvatarLayer'
 import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
+import DubPanel from '@/features/dub/DubPanel'
 
 // Phase 1B PoC: 2인 오디오 연결 최소 UI.
 // ponytail: 무대(StageLayout)·씬·채팅 패널은 Phase 2~3 (contracts/RoomView.md).
@@ -204,6 +205,8 @@ export default function RoomPage() {
           </div>
         </section>
       )}
+
+      <DubPanel roomId={roomId} />
 
       <div className="mt-8 flex gap-3">
         <button
