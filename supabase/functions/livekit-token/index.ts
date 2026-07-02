@@ -1,50 +1,39 @@
 // supabase/functions/livekit-token/index.ts
-// SSOT: docs/specs/livekit-edge-fn.md §1
+// SSOT: docs/specs/livekit-edge-fn.md §1·§4.1
 //
-// Phase 1B PoC 범위: "로그인한 사용자면 방 토큰을 서명해 준다"까지만.
 // 시크릿(LIVEKIT_API_SECRET)은 이 함수 안에서만 사용 — 클라이언트 노출 금지 (보안 성역).
 //
-// ponytail: 아래 프로덕션 게이트는 rooms/room_participants/users 테이블(Phase 2 INFRA-06)에
-//   의존하므로 PoC에서는 의도적으로 생략한다. 테이블 도입 시 §4.1 5-게이트를 그대로 복원할 것:
-//   (1) users.onboarding_step IN ('lobby','done')     — 온보딩 게이트
-//   (2) rooms.id = roomName AND status != 'ended'      — 방 존재/상태
-//   (3) host_id 또는 room_participants 활성 행           — 방 자격
-//   (4) is_disabled_by_host=false, state!='left'        — 강퇴/퇴장 무효화
-//   (5) user_blocks 양방향 차단 게이트 (§4 / G-84)
-//   또한 token_version metadata·refresh-livekit-token·kick/leave/webhook(§6~7)도 Phase 2에서 추가.
-//   지금은 canPublish=true 고정(둘 다 actor). role 기반 발행 권한도 Phase 2.
+// Phase 2 게이트(핵심): roomName(=rooms.id)에 대해 호출자의 **활성 room_participants 행**이
+//   있어야만 토큰을 서명한다. 이것이 "URL만 알면 입장" 취약점을 막는 지점 —
+//   방 입장은 반드시 create-room / join-public-room Edge Function 을 거쳐 참가자 행을 만든 뒤에만 가능.
+// identity 는 auth.uid() 유지(기존 아바타/원격 구동 코드와 호환).
+//
+// ponytail(후속 슬라이스에서 복원, §4.1): users.onboarding_step(온보딩 미구현) · age_band(미수집) ·
+//   user_blocks 양방향(테이블 미생성)·refresh-livekit-token·kick/leave/webhook 강제(§6~7)는 이번 슬라이스 범위 밖.
+//   token metadata.token_version 은 지금 심어 둔다(후속 webhook 무효화가 토큰 재발급 없이 붙도록).
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { AccessToken } from "npm:livekit-server-sdk";
 
 const cors = {
-  // ponytail: PoC는 '*' 허용. 프로덕션에서는 앱 오리진으로 좁힌다.
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "*", // ponytail: PoC '*'. 프로덕션은 앱 오리진으로 좁힌다.
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: cors });
-  }
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405, headers: cors });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
 
-  // 사용자 인증 토큰으로 Supabase 클라이언트 생성 (RLS 적용)
+  // 호출자 인증 (anon 클라 + Authorization)
   const authHeader = req.headers.get("authorization") ?? "";
-  const supabase = createClient(
+  const anon = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     { global: { headers: { Authorization: authHeader } } },
   );
-
-  // 게이트 (1/1, PoC): Supabase Auth 사용자 검증만
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return json({ error: "Unauthorized" }, 401);
-  }
+  const { data: { user }, error: authError } = await anon.auth.getUser();
+  if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
   let body: { roomName?: unknown };
   try {
@@ -57,7 +46,34 @@ Deno.serve(async (req) => {
     return json({ error: "Invalid roomName" }, 400);
   }
 
-  // AccessToken 발급. identity = Supabase auth uid (참가자 유일 식별자).
+  // 게이트 검증은 service_role 로(RLS 우회, 서버 판정).
+  const service = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+
+  // (1) 프로필 매핑 auth_id → users.id
+  const { data: appUser } = await service
+    .from("users").select("id").eq("auth_id", user.id).is("deleted_at", null).single();
+  if (!appUser) return json({ error: "No profile" }, 403);
+
+  // (2) 방 존재 + 종료 아님
+  const { data: room } = await service
+    .from("rooms").select("id, status").eq("id", roomName).single();
+  if (!room) return json({ error: "Room not found" }, 404);
+  if (room.status === "ended") return json({ error: "Room ended" }, 409);
+
+  // (3) 활성 참가자 자격 + (4) 강퇴 아님
+  const { data: part } = await service
+    .from("room_participants")
+    .select("token_version, is_disabled_by_host, role")
+    .eq("room_id", roomName).eq("user_id", appUser.id).neq("state", "left")
+    .maybeSingle();
+  if (!part) return json({ error: "Not a participant" }, 403);
+  if (part.is_disabled_by_host) return json({ error: "Disabled by host" }, 403);
+
+  // AccessToken 발급. identity = auth uid. metadata 에 token_version(후속 webhook 무효화용).
   const at = new AccessToken(
     Deno.env.get("LIVEKIT_API_KEY")!,
     Deno.env.get("LIVEKIT_API_SECRET")!,
@@ -65,22 +81,20 @@ Deno.serve(async (req) => {
       identity: user.id,
       name: user.email ?? user.id,
       ttl: 600, // 10분. 만료 없는 토큰 금지.
+      metadata: JSON.stringify({ token_version: part.token_version }),
     },
   );
 
   at.addGrant({
     roomJoin: true,
     room: roomName,
-    canPublish: true, // ponytail: PoC는 전원 actor. role 기반 canPublish는 Phase 2.
+    canPublish: part.role !== "viewer", // actor 발행, viewer 구독 전용
     canSubscribe: true,
     canPublishData: true,
   });
 
   return json(
-    {
-      server_url: Deno.env.get("LIVEKIT_SERVER_URL"),
-      token: await at.toJwt(),
-    },
+    { server_url: Deno.env.get("LIVEKIT_SERVER_URL"), token: await at.toJwt() },
     201,
   );
 });
