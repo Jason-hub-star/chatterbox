@@ -6,7 +6,7 @@ tags: [hub]
   GAP-MATRIX — 구현 전 누락 스펙 감시판
   갱신 규칙: 항목이 채워지면 상태를 DONE으로, 블로커면 BLOCKED로 바꾼다.
   Haiku가 공식문서 조사 → Opus가 스펙 작성 → 이 파일로 진행 추적.
-  Updated: 2026-07-01
+  Updated: 2026-07-02
 -->
 <!-- opencode: 2026-06-29 - G-31·G-53 OBS는 P2 방송 송출 옵션으로 deferred, G-32 MOB 계약은 유지. Coded with OpenCode; high-cost model review recommended. -->
 
@@ -43,7 +43,6 @@ tags: [hub]
 | G-106 | 대본 포맷 import | 레이어5 |
 | G-107 | PWA 설치 지원 | 레이어5 |
 | G-117 | 다크/라이트 테마 전환 | 5차분석 |
-| G-132 | 시드 데이터 전략 (`SEED-DATA.md` 미작성) | 8차분석 |
 | G-136 | API/SDK 버저닝 정책 | 8차분석 |
 | G-138 | 외부 서비스 가입 절차 (`CONTRIBUTING.md` 미작성) | 8차분석 |
 | G-148 | 시드 데이터 갱신 주기 (G-132 연계) | 9차분석 |
@@ -264,7 +263,7 @@ tags: [hub]
 | **G-129** | **빌드 순서·Feature 의존성 트리** (101개 Feature ID 구현 순서) | P1 | 코딩 착수 시 무엇부터 만들지 불명확 — AUTH→LOBBY→ROOM 의존 체인 미정 | [[IMPLEMENTATION-ORDER]] (P0 Feature 의존성 DAG·스프린트 블록 3~5개·병렬 가능 Feature 명시) | `DONE` |
 | **G-130** | **Vite SPA(플랫폼) 배포 명세** | P1 | Cloudflare Pages 배포·환경 변수 주입·CDN 캐시·Edge Function 동시 배포 미문서화 | [[DEPLOY-PLATFORM]] (Cloudflare Pages 빌드 설정·`wrangler.toml`·Supabase Edge Function 배포 순서·Vercel 랜딩과 분리 운영) | `DONE` |
 | **G-131** | **랜딩↔플랫폼 URL·라우팅 전환 전략** | P1 | snack-web-khaki.vercel.app(Next.js) ↔ Vite SPA — 동일 도메인? 서브도메인? 분기 라우팅? 미정 | `PLATFORM-ARCHITECTURE.md §7.4` URL전략 신설 (MVP 별도 URL·프로덕션 서브도메인·Cloudflare DNS CNAME·동일도메인 Workers 필요) | `DONE` |
-| **G-132** | **시드 데이터 전략** (데모룸·기본 모델·템플릿 대본) | P2 | 런칭 첫날 방 0개·모델 0개 → 첫인상 최악. LOB-07 데모룸·CNT-08 첫 대본·MOD-01 기본 모델 필요 | `SEED-DATA.md` 예정 (seed SQL·기본 모델 에셋 목록·템플릿 대본 2~3개·데모룸 운영 일정) | `LATER` |
+| **G-132** | **시드 데이터 전략** (데모룸·기본 모델·템플릿 대본) | ~~P2~~ **P1** | 런칭 첫날 방 0개·모델 0개 → 첫인상 최악. **⚠️ 우선순위 역전 해소(21차):** 파생 G-184/G-188(연습방·시드대본팩)이 P1인데 그 선행조건인 본 항목이 P2였음 → **P1로 승격.** LOB-10/CNT-09(FEATURE-SPEC P1)의 선행 | `SEED-DATA.md` 예정 (seed SQL·기본 모델 에셋 목록·템플릿 대본 2~3개·데모룸 운영 일정) | `RESEARCH` |
 | **G-133** | **전체 인프라 월별 비용 추정** (DAU 100/1K/10K 스케일) | P1 | Supabase Pro·LiveKit Cloud·fal.ai·OpenAI Whisper·R2 합산 월 청구액 미산출 — 수익 모델 성립 여부 불투명 | [[COST-ESTIMATE]] (서비스별 단가표·DAU 3시나리오 비용표·fal.ai 95% 점유·손익분기 분석·비용 제어 전략) | `DONE` |
 | **G-134** | **운영 모니터링 대시보드 설계** | P1 | 실시간 방 수·동시 접속자·생성 요청·API 지연·에러율 — Sentry만으론 부족, 운영 가시성 無 | `specs/MonitoringDashboard.md` (Supabase Realtime 지표·LiveKit 방 통계·fal.ai 큐 길이·Sentry 에러율 집계·대시보드 툴 선택) | `DONE` |
 | **G-135** | **DB 스키마 마이그레이션 전략** | P1 | 스키마 변경 시 `supabase migration`·기존 데이터 변환·롤백·제로다운타임 방법 미문서화 | `specs/MigrationStrategy.md` (supabase migration 워크플로·로컬→staging→prod 순서·3단계 제로다운타임 패턴·DOWN 마이그레이션) | `DONE` |
@@ -465,12 +464,35 @@ tags: [hub]
 | **G-266** | **친구·크리에이터 알림 트리거 스펙 부재 + CTA 불명확** | P1 | `FriendSystem.md` L75 스텁 → `friend_joined`/`followed_creator_stream_start` 트리거 확정 + `SettingsPage.md` 필드 추가 + `LobbyPage.md` 초대수락 알림 + 크레딧부족 CTA 명시 | `DONE` |
 | **G-267** | **리텐션 UX(재방문 연결·온보딩후 가이드·성취시각화) 부재** | P1 | `LobbyPage.md` PastRoomsSection CTA + 신규유저 배너 + `ProfilePage.md` §활동 요약(G-79 해소) | `DONE` |
 
+### 21차 분석 — 착수 전 향후취약점·미리설계 seam 리뷰 (G-268~G-279)
+
+> 방법: Haiku 8병렬 스캔(섹션별 미래리스크 씨앗) → Fable 4클러스터 리뷰 → Opus 충돌검증(원본직접) + Haiku 4 외부조사. 상세·출처는 [[FORWARD-REVIEW-2026-07]].
+> **COVERED / 중복 아님(확인함):** G-152(계정삭제·내보내기) UI계약 DONE·백엔드는 Phase1 구현 항목 | G-135(마이그레이션 3단계) DONE·강제는 G-137 DoD 범위 | token_version 3중방어 `SecurityPolicies §8.2·8.6` 기존 커버.
+> **우선순위 재검토 권고(주인님 판단):** i18n(G-17 LATER)·API버저닝(G-136 LATER)·rate-limit 저장소는 외부조사상 "지금이 저렴" 신호 있으나 단일 1st-party 클라 단계에선 defer 방어 가능.
+> **오탐 기각:** rig-format §7 ↔ VGEN 출력 충돌 → `STACK-COMPARE-VIDEOGEN.md:108`이 단일 WebGL 캔버스 텍스처 합성으로 이미 정합. 조치 없음.
+
+| **G-ID** | **항목** | **우선** | **근거/산출문서** | **상태** |
+|---|---|---|---|---|
+| **G-268** | **VGEN provider 어댑터 인터페이스 + 모델·단가 app_config 외부화** ⭐ | P1 | `VideoGenProvider` 추상화 + `app_config.VGEN_MODELS`(단가·최대길이). Seedance 2.5 단가 미발표·소송 리스크 대비 무배포 스왑. 근거 [[FORWARD-REVIEW-2026-07]] §2·§4.1 | `RESEARCH` |
+| **G-269** | **STT provider 추상화 (Whisper→AssemblyAI/Deepgram 평가)** | P1 | Whisper diarization 미지원(+10~15% WER). AssemblyAI Universal-3 Pro $0.006/분(한·일) / Deepgram Nova-3 $0.0043/분 → 비용↓ 품질↑. `state-machines/DubSession.md` §4.1 | `RESEARCH` |
+| **G-270** | **크레딧/구독 가격 지속가능성 재설계** | P0 | $9.99/100cr가 원가 하회, fal.ai 비용 지배. 단일 벤더 스왑(30~50%)으론 손익분기 불가 → 가격+어댑터 병행. `COST-ESTIMATE.md`·`specs/VgenCostAnalysis.md` | `RESEARCH` |
+| **G-271** | **idempotency_key 단일 공식 통일** | P1 | 메시지·VGEN 포맷 산재 → 이중 차감/환불. `SHA256(entity+user+action+floor(ts/10000))` 전 mutable API. `DATA-SCHEMA.md §1.6·1.8` | `RESEARCH` |
+| **G-272** | **크레딧 남용 카운터 + 환불 남용 임계값** | P1 | 120초 timeout·10초 버킷 우회 → 조직적 환불 루프. refund/generation count 컬럼 + `VGEN_REFUND_ABUSE_THRESHOLD`. `specs/RefundPolicy.md` | `RESEARCH` |
+| **G-273** | **모더레이션 카테고리 공유 enum SSOT 통일** | P1 | `vgen_jobs.flagged_categories TEXT[]`(제약없음)·유저신고 category·CommunityGuidelines 3곳 드리프트 → 필터/통계 붕괴. `CommunityGuidelines.md`를 SSOT로 참조 통일 + DoD 체크 | `RESEARCH` |
+| **G-274** | **GDPR 공동저작물 삭제 처리 명세** | P1 | Art.17 "1인 요청=전체 삭제" 아님(외부조사). FK cascade에서 공동저작물은 **user_id만 제거·영상 보존**, 익명화 경로. `legal/UGC-OWNERSHIP.md`·`legal/DATA-EXPORT.md` | `RESEARCH` |
+| **G-275** | **일본 미성년(16세미만) 보호자 동의 — APPI 2026-04 법적 의무** | P0 | 이메일 인증만으론 위법(본인+보호자 인증 필요). `users.parental_consent_status`+`parental_consent_tokens` seam + 일본 법무 자문. `contracts/AgeGate.md`·G-258 연계 | `RESEARCH` |
+| **G-276** | **Phase 1 PoC 게이트 — MediaPipe SAB fps + 저사양 6인 렌더 실측** | P0 | L1 교차격리 켜면 서드파티 로드 차단 위험·L4 저사양 WebGL 손실. PoC fps 실측이 아키텍처 확정 게이트. `PLATFORM-SECURITY-RISKS-B.md §2.2` | `RESEARCH` |
+| **G-277** | **런타임 구현 스펙 상세화 — blendshape 재정렬 버퍼 + 메모리 완화 정책** | P1 | TURN 폴백 seq 역전 버퍼·메모리 부족 해상도 감소 로직이 규칙만 있고 세부 미정. `state-machines/WebRTC.md §6`·`Avatar.md §6`·`RUNTIME-HARDENING-REVIEW.md` H7/H10 | `RESEARCH` |
+| **G-278** | **확장 버전 필드 seam (format_version·minClientVersion·epoch 토큰가드)** | P1 | blendshape `format_version`·rig.json `minClientVersion`·authority_epoch 토큰 metadata 가드 각 1~3줄. 없으면 프로토콜 재협상/재연결 강제. `specs/rig-format.md`·`state-machines/HostAuthority.md` | `RESEARCH` |
+| **G-279** | **모더레이션 규모화·법적 면책 요건** | P1 | 자동필터 30~60% 누락·"AI 사용"은 정보통신망법상 비면책. 감사로그+이의제기 기록(면책요건) + 외주 계획(DAU 500~1,000, 필리핀 $400~600/인). `MODERATION-OPS.md`·`PRODUCT-READINESS.md` | `RESEARCH` |
+
 ---
 
 ## 진행 로그
 
 | 날짜 | 항목 | 내용 |
 |---|---|---|
+| 2026-07-02 | **G-268~G-279 등록 + G-132 P1 승격 (21차 분석)** | 착수 전 향후취약점·미리설계 seam 리뷰. Haiku 8병렬 스캔 → Fable 4클러스터 리뷰 → Opus 충돌검증(원본직접) + Haiku 4 외부조사. 신규 [[FORWARD-REVIEW-2026-07]] 문서. 신규 갭 12개(P0 3: G-270 가격지속성·G-275 일본미성년동의·G-276 PoC게이트 / P1 9). **우선순위 역전 수정**: G-132 시드데이터 P2→P1(RESEARCH), LATER 목록서 제거 — 파생 G-184/G-188(P1)의 선행조건. **중복 아님 확인**: G-152·G-135·token_version 기존 커버. **오탐 기각**: rig↔VGEN 충돌(STACK-COMPARE-VIDEOGEN:108 단일캔버스 정합). 외부조사 결론: STT는 Whisper→AssemblyAI/Deepgram(비용↓품질↑), 일본 APPI 2026-04 16세미만 부모동의 법적의무, 자동모더 30~60%누락+비면책. |
 | 2026-06-30 | **G-153·154·155·158·159·190 DONE** | P1 RESEARCH 6개 완결. G-153/159: PLATFORM-ARCHITECTURE §4 Discord/Twitter OAuth "P1 Phase 2" 주석 추가. G-154: HostConsole.md RaiseHandQueue 섹션 (손들기 Realtime + invite_to_stage DataChannel + room_participants.raise_hand_at). G-155: HostConsole.md Chat Safety 섹션 (HOST-09 슬로우모드·HOST-10 금칙어·HOST-11 채팅 클리어 + DataChannel slow_mode/chat_clear 타입 등록). G-158: contracts/ViewerGate.md 신규 작성 (입장 조건 매트릭스·resolveRole() 타입스크립트·Room FSM 전이·_INDEX.md 31개). G-190: VGEN-13 FEATURE-SPEC 등록 확인. CONTRACT-HEALTH RESEARCH 카운트(7개) 추가. |
 | 2026-06-30 | **G-184~G-190 등록** | 2차 사용자 감정 분석 반영 — cold start, 리허설 피드백, 트래킹 품질 불안, 호스트 이탈, 시드 대본, 방송용 클린 모드, 작품함 검색 ID 누락을 FEATURE-SPEC/GAP-MATRIX에 연결. |
 | 2026-06-30 | **G-180~G-183 DONE** | VDo.Ninja·StreamYard·Riverside식 UX 벤치마크 반영. 15초 초대 직입, Stage Manager Overlay, 로컬 백업 녹화, 항상 켜진 데모룸을 Feature ID/계약/API/스키마/제품 준비도 문서에 연결. |

@@ -71,6 +71,7 @@ tags: [hub]
 | `DESIGN-DIRECTION.md` | 비주얼 컨셉(모닥불)·씬 시스템·GPT Image 2 파이프라인·룸 레이아웃 E형 SSOT | **설계 (구현 입력)** |
 | `ONBOARDING-FLOW.md` | 통합 온보딩 3트랙(초대·직접·재방문) + 공통 Green Room 게이트 | **설계 (구현 입력)** |
 | `GAP-MATRIX.md` | 구현 전 누락 스펙 감시판 — 블로커·계약·SM 갭 추적 | **설계 (진행추적)** |
+| `FORWARD-REVIEW-2026-07.md` | 착수 전 향후취약점·미리설계 seam 리뷰 (Haiku스캔→Fable리뷰→Opus충돌검증+외부조사). GAP-MATRIX G-268~G-279 근거 | 조사/설계 |
 | `specs/livekit-edge-fn.md` | LiveKit 토큰 발급 Edge Function 코드·환경변수·배포 | **설계 (구현 입력)** |
 | `specs/rig-format.md` | ChatterBox rig JSON v1 — PNG파츠 포맷·ARKit 52 매핑·**§7 Vtube 파이프라인 연동(G-12 확정)** | **설계 (구현 입력)** |
 | `specs/SecurityPolicies.md` | 인증·RLS·LiveKit 토큰·미디어·모더레이션·DataChannel·환경변수 + Phase 1 게이트 | **설계 (구현 입력)** |
