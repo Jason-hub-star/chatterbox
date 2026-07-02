@@ -37,13 +37,24 @@ describe('roomStore', () => {
     expect(s.error).toBe('연결 실패')
   })
 
-  it('reset 은 초기 상태로 되돌린다', () => {
+  it('addMessage 는 순서대로 누적한다', () => {
+    const store = useRoomStore.getState()
+    store.addMessage({ id: '1', sender: 'a', text: '안녕', ts: 1, isLocal: true })
+    store.addMessage({ id: '2', sender: 'b', text: '반가워', ts: 2, isLocal: false })
+    const msgs = useRoomStore.getState().messages
+    expect(msgs.map((m) => m.text)).toEqual(['안녕', '반가워'])
+    expect(msgs[1].isLocal).toBe(false)
+  })
+
+  it('reset 은 초기 상태(메시지 포함)로 되돌린다', () => {
     const store = useRoomStore.getState()
     store.setConnectionState('FAILED')
     store.setMicEnabled(true)
+    store.addMessage({ id: '1', sender: 'a', text: 'x', ts: 1, isLocal: true })
     store.reset()
     const s = useRoomStore.getState()
     expect(s.connectionState).toBe('DISCONNECTED')
     expect(s.micEnabled).toBe(false)
+    expect(s.messages).toEqual([])
   })
 })

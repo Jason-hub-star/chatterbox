@@ -33,6 +33,7 @@ export function useLiveKitRoom(roomId: string) {
   const {
     setConnectionState,
     setParticipants,
+    addMessage,
     setMicEnabled,
     setError,
     reset,
@@ -79,6 +80,24 @@ export function useLiveKitRoom(roomId: string) {
       track.detach().forEach((el) => el.remove())
     })
 
+    // 채팅: 'chat' 토픽 수신 → store. sender는 LiveKit participant에서 취득(payload 신뢰 안 함).
+    room.on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
+      if (topic !== 'chat') return
+      try {
+        const data = JSON.parse(new TextDecoder().decode(payload))
+        if (typeof data?.text !== 'string') return
+        addMessage({
+          id: crypto.randomUUID(),
+          sender: participant?.name || participant?.identity || '알 수 없음',
+          text: data.text,
+          ts: typeof data.ts === 'number' ? data.ts : Date.now(),
+          isLocal: false,
+        })
+      } catch {
+        /* 잘못된 페이로드 무시 */
+      }
+    })
+
     ;(async () => {
       try {
         setConnectionState('CONNECTING')
@@ -112,6 +131,7 @@ export function useLiveKitRoom(roomId: string) {
     session,
     setConnectionState,
     setParticipants,
+    addMessage,
     setMicEnabled,
     setError,
     reset,
@@ -125,9 +145,31 @@ export function useLiveKitRoom(roomId: string) {
     setMicEnabled(next)
   }, [setMicEnabled])
 
+  const sendChat = useCallback(
+    async (text: string) => {
+      const room = roomRef.current
+      const trimmed = text.trim()
+      if (!room || !trimmed) return
+      const ts = Date.now()
+      await room.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({ text: trimmed, ts })),
+        { reliable: true, topic: 'chat' },
+      )
+      // publishData는 발신자 자신에게 echo되지 않으므로 로컬 메시지는 직접 추가.
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: room.localParticipant.name || room.localParticipant.identity,
+        text: trimmed,
+        ts,
+        isLocal: true,
+      })
+    },
+    [addMessage],
+  )
+
   const leave = useCallback(async () => {
     await roomRef.current?.disconnect()
   }, [])
 
-  return { toggleMic, leave }
+  return { toggleMic, sendChat, leave }
 }

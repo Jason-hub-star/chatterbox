@@ -19,15 +19,28 @@ export interface RoomParticipant {
   isSpeaking: boolean
 }
 
+// DataChannel 'chat' 토픽 메시지 (WebRTC.md DataChannel Multiplexing).
+// ponytail: messages 테이블 영속화·sanitize 3단계(SecurityPolicies §6.4)는 Phase 2.
+// 출력 XSS는 React 기본 이스케이프로 커버(dangerouslySetInnerHTML 미사용).
+export interface ChatMessage {
+  id: string
+  sender: string
+  text: string
+  ts: number
+  isLocal: boolean
+}
+
 interface RoomStore {
   // 상태
   connectionState: ConnectionState
   participants: RoomParticipant[]
+  messages: ChatMessage[]
   micEnabled: boolean
   error: string | null
   // 액션
   setConnectionState: (state: ConnectionState) => void
   setParticipants: (participants: RoomParticipant[]) => void
+  addMessage: (message: ChatMessage) => void
   setMicEnabled: (enabled: boolean) => void
   setError: (error: string | null) => void
   reset: () => void
@@ -36,6 +49,7 @@ interface RoomStore {
 const INITIAL = {
   connectionState: 'DISCONNECTED' as ConnectionState,
   participants: [] as RoomParticipant[],
+  messages: [] as ChatMessage[],
   micEnabled: false,
   error: null as string | null,
 }
@@ -45,6 +59,7 @@ export const useRoomStore = create<RoomStore>((set) => ({
 
   setConnectionState: (connectionState) => set({ connectionState }),
   setParticipants: (participants) => set({ participants }),
+  addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
   setMicEnabled: (micEnabled) => set({ micEnabled }),
   setError: (error) => set({ error }),
   reset: () => set({ ...INITIAL }),

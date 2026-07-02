@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
@@ -24,16 +25,34 @@ const STATE_COLOR: Record<ConnectionState, string> = {
 export default function RoomPage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
-  const { toggleMic, leave } = useLiveKitRoom(roomId)
+  const { toggleMic, sendChat, leave } = useLiveKitRoom(roomId)
 
   const connectionState = useRoomStore((s) => s.connectionState)
   const participants = useRoomStore((s) => s.participants)
+  const messages = useRoomStore((s) => s.messages)
   const micEnabled = useRoomStore((s) => s.micEnabled)
   const error = useRoomStore((s) => s.error)
+
+  const [draft, setDraft] = useState('')
+  const connected = connectionState === 'CONNECTED'
+
+  // 새 메시지 도착 시 목록 하단으로 자동 스크롤.
+  const listRef = useRef<HTMLUListElement>(null)
+  useEffect(() => {
+    const el = listRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages])
 
   async function onLeave() {
     await leave()
     navigate('/lobby', { replace: true })
+  }
+
+  async function onSend(e: React.FormEvent) {
+    e.preventDefault()
+    if (!draft.trim()) return
+    await sendChat(draft)
+    setDraft('')
   }
 
   return (
@@ -75,7 +94,7 @@ export default function RoomPage() {
       <div className="mt-8 flex gap-3">
         <button
           onClick={toggleMic}
-          disabled={connectionState !== 'CONNECTED'}
+          disabled={!connected}
           className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
         >
           {micEnabled ? '🎙 마이크 끄기' : '🔇 마이크 켜기'}
@@ -87,6 +106,45 @@ export default function RoomPage() {
           나가기
         </button>
       </div>
+
+      <section className="mt-8 max-w-xl">
+        <h2 className="text-sm font-semibold text-stage-text-muted">채팅</h2>
+        <ul
+          ref={listRef}
+          className="mt-2 h-64 space-y-1 overflow-y-auto rounded-lg border border-stage-border p-3 text-sm"
+          aria-label="채팅 메시지"
+        >
+          {messages.length === 0 && (
+            <li className="text-stage-text-muted">아직 메시지가 없어요.</li>
+          )}
+          {messages.map((m) => (
+            <li key={m.id}>
+              <span className={m.isLocal ? 'text-fire-amber' : 'text-stage-text-muted'}>
+                {m.sender}
+              </span>
+              <span className="text-stage-text-muted">: </span>
+              <span>{m.text}</span>
+            </li>
+          ))}
+        </ul>
+        <form onSubmit={onSend} className="mt-2 flex gap-2">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            disabled={!connected}
+            aria-label="메시지 입력"
+            placeholder={connected ? '메시지를 입력하세요' : '연결되면 입력할 수 있어요'}
+            className="flex-1 rounded-lg border border-stage-border bg-transparent px-3 py-2 text-sm disabled:opacity-40"
+          />
+          <button
+            type="submit"
+            disabled={!connected || !draft.trim()}
+            className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+          >
+            보내기
+          </button>
+        </form>
+      </section>
     </main>
   )
 }

@@ -38,7 +38,7 @@ tags: [guide]
 
 ### Acceptance Criteria
 
-- [ ] LiveKit Room 연결 — 2인 음성 수신 확인 (`npm run dev` 2개 탭)
+- [x] LiveKit Room 연결 — 2인 음성 수신 확인 (`npm run dev` 2개 탭) — 2026-07-02 실증: `livekit-token` Edge Function 배포 + 2계정·2탭 오디오 트랙 상호수신 + 채팅(DataChannel `chat`) 양방향 송수신 확인. (MediaPipe/아바타/DB CRUD/RLS 게이트는 Phase 2~3)
 - [ ] MediaPipe FaceLandmarker Full 모델 로드 (CDN), 52 blendshape 추출
 - [ ] blendshape → PixiJS 아바타 리그 파라미터 매핑 (최소 눈 깜박임·입 모양)
 - [ ] LiveKit DataChannel reliable 메시지로 blendshape 전송 → 상대방 아바타 반영
