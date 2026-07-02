@@ -9,9 +9,17 @@ import {
 import { useUserStore } from '@/stores/userStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
+import {
+  encodeBlendshapeFrame,
+  decodeBlendshapeFrame,
+  type BlendshapeFrame,
+} from '@/lib/blendshapeCodec'
 
 // SSOT: reference/patterns/livekit-client.md · state-machines/WebRTC.md
-// Phase 1B PoC: 오디오 전용 2인 연결. 영상·채팅·blendshape·토큰갱신은 Phase 2 (ponytail).
+// Phase 1B PoC: 오디오 + 채팅 + blendshape(표정) 2인 연결. 영상·토큰갱신·재정렬버퍼는 Phase 2 (ponytail).
+
+// blendshape 송신 스로틀: 계약 30Hz 이하로 상한(~20Hz). lossy 채널이라 프레임 드롭 무해.
+const BLENDSHAPE_SEND_INTERVAL_MS = 50
 
 function mapConnState(s: ConnectionState) {
   switch (s) {
@@ -27,9 +35,20 @@ function mapConnState(s: ConnectionState) {
   }
 }
 
-export function useLiveKitRoom(roomId: string) {
+export function useLiveKitRoom(
+  roomId: string,
+  opts?: { onBlendshapes?: (identity: string, frame: BlendshapeFrame) => void },
+) {
   const roomRef = useRef<Room | null>(null)
   const session = useUserStore((s) => s.session)
+
+  // 수신 콜백은 ref로 (effect deps 오염 방지). 송신 스로틀·seq도 ref로 유지.
+  const onBlendshapesRef = useRef(opts?.onBlendshapes)
+  useEffect(() => {
+    onBlendshapesRef.current = opts?.onBlendshapes
+  }, [opts?.onBlendshapes])
+  const lastSentRef = useRef(0)
+  const seqRef = useRef(0)
   const {
     setConnectionState,
     setParticipants,
@@ -80,8 +99,14 @@ export function useLiveKitRoom(roomId: string) {
       track.detach().forEach((el) => el.remove())
     })
 
-    // 채팅: 'chat' 토픽 수신 → store. sender는 LiveKit participant에서 취득(payload 신뢰 안 함).
+    // 표정: 'blendshape' 토픽(220B 바이너리) 수신 → 검증 후 콜백. 고빈도라 store 안 거치고 ref로 흘림.
+    // sender identity는 LiveKit participant에서만 취득(payload 신뢰 안 함).
     room.on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
+      if (topic === 'blendshape') {
+        const frame = decodeBlendshapeFrame(payload) // 길이/crc16 불일치 시 null → 드롭
+        if (frame && participant) onBlendshapesRef.current?.(participant.identity, frame)
+        return
+      }
       if (topic !== 'chat') return
       try {
         const data = JSON.parse(new TextDecoder().decode(payload))
@@ -167,9 +192,27 @@ export function useLiveKitRoom(roomId: string) {
     [addMessage],
   )
 
+  // 표정 송신: 원본 blendshape 맵 → 220B 프레임(seq++·crc16). 스로틀 초과분은 드롭(lossy).
+  const sendBlendshapes = useCallback((blendshapes: Record<string, number>) => {
+    const room = roomRef.current
+    if (!room || room.state !== ConnectionState.Connected) return
+    const now = Date.now()
+    if (now - lastSentRef.current < BLENDSHAPE_SEND_INTERVAL_MS) return
+    lastSentRef.current = now
+    seqRef.current = (seqRef.current % 65535) + 1
+    void room.localParticipant
+      .publishData(encodeBlendshapeFrame(blendshapes, seqRef.current, now), {
+        reliable: false,
+        topic: 'blendshape',
+      })
+      .catch(() => {
+        /* lossy 채널 — 송신 실패 무시 */
+      })
+  }, [])
+
   const leave = useCallback(async () => {
     await roomRef.current?.disconnect()
   }, [])
 
-  return { toggleMic, sendChat, leave }
+  return { toggleMic, sendChat, sendBlendshapes, leave }
 }

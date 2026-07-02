@@ -91,7 +91,7 @@ Two independent streams run in parallel during CONNECTED state:
 |---------|---------|------------|---------|------|-------|
 | `script-cue` (reliable) | Yes | Confirmed | `{cue_index, ts}` | ~0.5 Hz | Host cue navigation |
 | `chat` (reliable) | Yes | Confirmed | `{sender, text, ts}` | Variable | Text messages (async) |
-| `blendshape` (unreliable) | No | Unordered | 52 float32 values | 30 Hz | [WIP] Expression tracking |
+| `blendshape` (unreliable) | No | Unordered | 52 float32 values | 30 Hz | [PoC] 구현: `src/lib/blendshapeCodec.ts` (220B+crc16+seq, isNewerSeq stale-drop). 5프레임 재정렬버퍼·헤드포즈·Worker는 Phase 2 |
 | `room-authority` (reliable) | Yes | Confirmed | Host ID, locked, slot grants | ~0.1 Hz | Room state broadcasts |
 
 ## Edge Cases

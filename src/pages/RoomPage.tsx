@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
+import { toFaceParams } from '@/hooks/useFaceTracking'
+import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
+import type { ProceduralAvatar } from '@/lib/pixi/proceduralAvatar'
+import AvatarLayer from '@/features/avatar/AvatarLayer'
 
 // Phase 1B PoC: 2인 오디오 연결 최소 UI.
 // ponytail: 무대(StageLayout)·아바타·씬·채팅 패널은 Phase 2~3 (contracts/RoomView.md).
@@ -25,7 +29,20 @@ const STATE_COLOR: Record<ConnectionState, string> = {
 export default function RoomPage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
-  const { toggleMic, sendChat, leave } = useLiveKitRoom(roomId)
+
+  // 원격 아바타(participant identity → Pixi 인스턴스)와 마지막 seq. 고빈도 구동은 ref로만(리렌더 없음).
+  const remoteAvatars = useRef<Map<string, ProceduralAvatar>>(new Map())
+  const lastSeq = useRef<Map<string, number>>(new Map())
+  const handleBlendshapes = useCallback((identity: string, frame: BlendshapeFrame) => {
+    if (!isNewerSeq(lastSeq.current.get(identity) ?? 0, frame.seq)) return // 역전·중복 드롭
+    lastSeq.current.set(identity, frame.seq)
+    // RT-02 프레임에 헤드포즈 없음 → roll=0. blendshape만으로 표정 구동.
+    remoteAvatars.current.get(identity)?.update(toFaceParams(frame.blendshapes, 0))
+  }, [])
+
+  const { toggleMic, sendChat, sendBlendshapes, leave } = useLiveKitRoom(roomId, {
+    onBlendshapes: handleBlendshapes,
+  })
 
   const connectionState = useRoomStore((s) => s.connectionState)
   const participants = useRoomStore((s) => s.participants)
@@ -35,6 +52,15 @@ export default function RoomPage() {
 
   const [draft, setDraft] = useState('')
   const connected = connectionState === 'CONNECTED'
+
+  // 떠난 참가자의 seq 추적을 정리한다. (안 지우면 같은 identity로 재입장 시 옛 seq가 남아
+  // 새 프레임을 전부 stale로 드롭 → 아바타 프리즈.)
+  useEffect(() => {
+    const present = new Set(participants.map((p) => p.identity))
+    for (const id of lastSeq.current.keys()) {
+      if (!present.has(id)) lastSeq.current.delete(id)
+    }
+  }, [participants])
 
   // 새 메시지 도착 시 목록 하단으로 자동 스크롤.
   const listRef = useRef<HTMLUListElement>(null)
@@ -90,6 +116,19 @@ export default function RoomPage() {
           ))}
         </ul>
       </section>
+
+      {connected && (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold text-stage-text-muted">아바타</h2>
+          <div className="mt-2 rounded-lg border border-stage-border p-4">
+            <AvatarLayer
+              participants={participants}
+              sendBlendshapes={sendBlendshapes}
+              remoteAvatars={remoteAvatars}
+            />
+          </div>
+        </section>
+      )}
 
       <div className="mt-8 flex gap-3">
         <button

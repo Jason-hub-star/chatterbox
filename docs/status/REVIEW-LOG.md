@@ -13,6 +13,23 @@ tags: [status]
 
 > 최신순. 서브리뷰는 "검증 후 반영"이 원칙 — 오탐 기각·제안코드 버그도 기록한다.
 
+## 2026-07-02 · blendshape 전송 — 페이블 리뷰 1패스 + Opus 대조
+
+- **대상**: 코덱/송수신/훅/배선(위 자기리뷰와 동일 파일). 페이블(diversity, 주인님 요청) 3건 + 안전목록(seq·isNewerSeq·byteOffset·프루닝·스로틀·콜백ref·StrictMode·고빈도ref = 모두 안전 확인, Opus와 일치).
+- **P0 "CRC-16 표준 불일치" → 오탐(기각)**: 페이블이 검증 벡터를 혼동. `"123456789"` → **0x29B1 = CRC-16/CCITT-FALSE(init 0xFFFF)** = 내 코드 값 = 정답. 0x31C3은 **XMODEM(init 0x0000)** 값. 게다가 crc16은 **송·수신 동일 함수**(같은 모듈)라 "양단 계산 상이" 시나리오 자체가 불가(외부 상호운용 없음). 이중 오탐. → 회귀 가드로 표준 벡터 테스트(`crc16('123456789')===0x29B1`) 추가.
+- **P1 "NaN/Inf 미검증" → 진짜(반영)**: 페이블 근거(MediaPipe가 NaN 생성·PixiJS 무한루프)는 부실 — MediaPipe blendshape은 [0,1] 정규화값이고 onFrame은 얼굴 감지 시에만 발화, 무한루프도 아님. **그러나 핵심은 타당**: `decodeBlendshapeFrame`은 신뢰 불가 원격 경계인데 유한성 검증 부재 → crc 맞는 NaN 프레임(손상·악의 peer)이 `s += (NaN-s)*a`로 EMA 상태 **영구 오염**(이후 정상 프레임도 NaN 고정). 코드 주석("디코드는 반드시 검증")과도 모순. → `Number.isFinite` 드롭 + 테스트(NaN·Inf) 반영.
+- **P2 "browRaise /2" → 오탐(기각)**: 이 feature 코드 아님 — 기존 `toFaceParams`(웹캠 실사용자 확인·테스트 존재). `/2`는 평균 아니라 `Math.min(1,…)` 클램프된 **의도적 게인**(눈썹 blendshape는 1.0 도달 드묾). 결함 아님.
+- **게이트**: test 30/30(코덱 13)·tsc0·lint클린·docs:check PASS.
+- **교훈**: 표준 CRC 판정은 "이름"이 아니라 **검증 벡터**로 — init값(0x0000=XMODEM vs 0xFFFF=CCITT-FALSE)이 같은 poly에서도 결과를 가른다. 서브리뷰의 "표준" 주장도 ground truth(테스트 벡터) 대조 후 반영.
+
+## 2026-07-02 · blendshape 표정 전송(LiveKit DataChannel) — Opus 자기리뷰
+
+- **대상**: `blendshapeCodec.ts`(220B 프레임·crc16·seq)·`useLiveKitRoom`(송수신)·`useFaceTracking`(onFrame)·`AvatarLayer`/`RemoteAvatar`·`RoomPage` 배선.
+- **seq stale → 재입장 프리즈 (진짜)**: `lastSeq` Map을 참가자 퇴장 시 안 지워 같은 identity 재입장(새로고침 등) 시 상대 seq가 1로 리셋되는데 `isNewerSeq(옛높은값,1)=false` → 새 프레임 전부 드롭 → 아바타 프리즈. `RoomPage`에 참가자 목록 변화 시 부재 identity의 lastSeq 프루닝 effect 추가. 반영.
+- **계약 정합(진짜·문서정정)**: MILESTONES가 blendshape을 `reliable`로 적었으나 SSOT(WebRTC.md)는 `unreliable/lossy`(30Hz 표정은 reliable 시 head-of-line 블로킹). 계약대로 unreliable 구현 + MILESTONES 문구 정정.
+- **확인(오탐 아님)**: 고빈도 프레임이 React state를 안 거치는지 — 수신 콜백은 ref Map만 만지고 `.update()`만 호출(setState 없음) → 리렌더 폭주 없음. 콜백 ref 갱신은 렌더가 아닌 effect에서(react-hooks/refs 준수). crc16/길이 검증으로 손상·비정상 원격 페이로드 드롭(네트워크 경계 성역).
+- **실증**: 헤드리스 2계정·2탭 E2E — A→B·B→A 양방향, 극단 표정 송신 시 상대 원격 아바타 영역 픽셀 diff PASS + 스샷 육안(눈감음·입벌림·눈썹) 정확 반응·콘솔에러0. 단위 11건(라운드트립·crc손상·byteOffset·seq순환) 추가(총 28).
+
 ## 2026-07-02 · 아리아/Storage 통합 보안 — 페이블 1패스 + Opus 대조
 
 - **대상**: `?project=` URL 로드, 공개 Storage 버킷, iframe 카메라/중첩, crossOrigin/CORS, service_role 격리.

@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import type { FaceLandmarker } from '@mediapipe/tasks-vision'
 import {
   createFaceLandmarker,
@@ -27,11 +27,18 @@ export function toFaceParams(bs: Record<string, number>, roll: number): FacePara
 export function useFaceTracking(
   videoRef: RefObject<HTMLVideoElement | null>,
   avatarRef: RefObject<ProceduralAvatar | null>,
+  opts?: { onFrame?: (blendshapes: Record<string, number>) => void },
 ): void {
   const setState = useTrackingStore((s) => s.setState)
   const setFaceDetected = useTrackingStore((s) => s.setFaceDetected)
   const setFps = useTrackingStore((s) => s.setFps)
   const setError = useTrackingStore((s) => s.setError)
+
+  // 콜백은 ref로 흘려보내 effect(카메라/추론 루프) 재실행을 막는다. 갱신은 렌더가 아닌 effect에서.
+  const onFrameRef = useRef(opts?.onFrame)
+  useEffect(() => {
+    onFrameRef.current = opts?.onFrame
+  }, [opts?.onFrame])
 
   useEffect(() => {
     let cancelled = false
@@ -57,8 +64,10 @@ export function useFaceTracking(
         setFaceDetected(detected)
         prevDetected = detected
       }
-      if (detected && avatarRef.current) {
-        avatarRef.current.update(toFaceParams(blendshapeMap(result), headRoll(result)))
+      if (detected) {
+        const bs = blendshapeMap(result)
+        if (avatarRef.current) avatarRef.current.update(toFaceParams(bs, headRoll(result)))
+        onFrameRef.current?.(bs) // 원본 52 blendshape 맵을 송신측으로 (RT-02는 헤드포즈 미포함)
       }
 
       frames++
