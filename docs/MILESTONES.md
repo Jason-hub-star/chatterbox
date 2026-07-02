@@ -16,8 +16,8 @@ tags: [guide]
 
 - [x] `ChatterBox` 레포 생성, Vite 8 + React 19.2 + TypeScript 6 + Tailwind 4 초기화 (설계 예상 Vite 5 → 실제 8)
 - [x] `@/` alias 설정 완료, `tsc --noEmit` 에러 0개
-- [ ] Supabase 클라이언트 연결 — 이메일/비밀번호 로그인 성공 (코드 완료: LoginPage/RegisterPage·userStore.login/signUpWithEmail·ProtectedRoute — 실 로그인 런타임 실증 대기, 대시보드 Confirm email 설정 필요)
-- [ ] Zustand `userStore`에 로그인 세션 저장, 새로고침 후 세션 유지 확인 (코드 완료: init() getSession+onAuthStateChange App 연결 — 실 세션유지 런타임 실증 대기)
+- [x] Supabase 클라이언트 연결 — 이메일/비밀번호 로그인 성공 (Confirm email OFF, Auth REST 실증: signUp 즉시세션·login 토큰·getUser·오답거부, 테스트유저 admin 삭제 / UI 폼은 동일 호출 래핑)
+- [ ] Zustand `userStore`에 로그인 세션 저장, 새로고침 후 세션 유지 확인 (코드 완료 + init() getSession/onAuthStateChange App 연결 — 브라우저 새로고침 세션유지 실증만 남음)
 - [x] `app_config` 테이블 시드 + `useConfigStore` 로드 확인 (supabase CLI 마이그레이션, anon REST 12행/enabled 10 검증)
 - [x] react-router (v8) 라우트 트리 구성 (`/`, `/login`, `/register`, `/lobby`, `/rooms/:roomId`, `/settings` — 보호 라우트는 ProtectedRoute 가드)
 - [x] Tailwind 4 디자인 토큰 (`stage-base`, `fire-amber`, `stage-text`) 적용 확인 (2026-07-01 무채색 개정 기준)
