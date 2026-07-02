@@ -16,13 +16,13 @@ tags: [guide]
 
 - [x] `ChatterBox` 레포 생성, Vite 8 + React 19.2 + TypeScript 6 + Tailwind 4 초기화 (설계 예상 Vite 5 → 실제 8)
 - [x] `@/` alias 설정 완료, `tsc --noEmit` 에러 0개
-- [ ] Supabase 클라이언트 연결 — 이메일/비밀번호 로그인 성공
-- [ ] Zustand `userStore`에 로그인 세션 저장, 새로고침 후 세션 유지 확인
+- [ ] Supabase 클라이언트 연결 — 이메일/비밀번호 로그인 성공 (코드 완료: LoginPage/RegisterPage·userStore.login/signUpWithEmail·ProtectedRoute — 실 로그인 런타임 실증 대기, 대시보드 Confirm email 설정 필요)
+- [ ] Zustand `userStore`에 로그인 세션 저장, 새로고침 후 세션 유지 확인 (코드 완료: init() getSession+onAuthStateChange App 연결 — 실 세션유지 런타임 실증 대기)
 - [x] `app_config` 테이블 시드 + `useConfigStore` 로드 확인 (supabase CLI 마이그레이션, anon REST 12행/enabled 10 검증)
-- [x] react-router (v8) 라우트 트리 구성 (`/`, `/lobby`, `/rooms/:roomId`, `/settings`)
+- [x] react-router (v8) 라우트 트리 구성 (`/`, `/login`, `/register`, `/lobby`, `/rooms/:roomId`, `/settings` — 보호 라우트는 ProtectedRoute 가드)
 - [x] Tailwind 4 디자인 토큰 (`stage-base`, `fire-amber`, `stage-text`) 적용 확인 (2026-07-01 무채색 개정 기준)
-- [ ] Vitest 단위 테스트 환경 설정 (`npm run test` 통과)
-- [ ] `DEFINITION-OF-DONE.md` 기본 DoD 5항목 CI 통과
+- [x] Vitest 단위 테스트 환경 설정 (`npm run test` 통과 — configStore.getFlag 2케이스, supabase 목킹)
+- [ ] `DEFINITION-OF-DONE.md` 기본 DoD 5항목 CI 통과 (로컬 tsc·lint(ESLint 9 flat)·build·test 그린 / CI 워크플로 미생성·커버리지 게이트 미설정)
 
 **검증 시나리오:**
 1. 이메일 회원가입 → 이메일 인증 → 로그인 → 로비 화면 표시
