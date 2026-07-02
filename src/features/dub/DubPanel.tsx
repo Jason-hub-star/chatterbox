@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useUserStore } from '@/stores/userStore'
+import DubRecorder from '@/features/dub/DubRecorder'
 import {
   uploadDubSource, createDubSession, startTranscription, assignRoles,
   recordConsent, startRecording, fetchRoomMembers, fetchActiveDubSession,
@@ -213,19 +214,16 @@ export default function DubPanel({ roomId }: { roomId: string }) {
         </div>
       )}
 
-      {/* RECORDING: 다음 슬라이스에서 실제 캡처 */}
+      {/* RECORDING: 실제 녹음 캡처 (DUB-04) */}
       {status === 'recording' && (
-        <div className="mt-3 space-y-2">
-          <p className="text-sm text-stage-text">녹음 단계에 진입했어요. (실제 녹음 캡처는 다음 업데이트)</p>
-          <ul className="space-y-1 text-sm">
-            {tracks.map((t) => (
-              <li key={t.id} className="flex items-center gap-2">
-                <span className="flex-1 truncate">{t.speakerName} · {t.transcriptText}</span>
-                <span className="text-xs text-stage-text-muted">{memberName(t.participantId)} · {t.status}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <DubRecorder
+          dubSessionId={session!.id}
+          myId={myId}
+          isHost={isHost}
+          tracks={tracks}
+          members={members}
+          onChanged={refresh}
+        />
       )}
     </section>
   )

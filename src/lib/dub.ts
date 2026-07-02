@@ -74,6 +74,35 @@ export const startRecording = (accessToken: string, dubSessionId: string) =>
     'start-dub-recording', accessToken, { dub_session_id: dubSessionId },
   )
 
+// ── 녹음(DUB-04) ────────────────────────────────────────────────────
+// 소스 재생용 signed URL (원본 음소거 재생).
+export const getDubSourceUrl = (accessToken: string, dubSessionId: string) =>
+  callFn<{ url: string }>('get-dub-source-url', accessToken, { dub_session_id: dubSessionId })
+    .then((r) => r.url)
+
+// 녹음 blob 업로드 → Storage path 반환 (create-dub-recording-upload → uploadToSignedUrl).
+export async function uploadDubRecording(accessToken: string, dubTrackId: string, blob: Blob): Promise<string> {
+  const { path, token } = await callFn<{ path: string; token: string }>(
+    'create-dub-recording-upload', accessToken, { dub_track_id: dubTrackId },
+  )
+  const { error } = await supabase.storage
+    .from(DUB_BUCKET)
+    .uploadToSignedUrl(path, token, blob, { contentType: 'audio/webm' })
+  if (error) throw new Error(`녹음 업로드 실패: ${error.message}`)
+  return path
+}
+
+export const submitDubTrack = (accessToken: string, dubTrackId: string, recordingPath: string, durationMs: number) =>
+  callFn<{ track_id: string; status: string }>(
+    'submit-dub-track', accessToken,
+    { dub_track_id: dubTrackId, recording_path: recordingPath, duration_ms: durationMs },
+  )
+
+export const confirmDubTrack = (accessToken: string, dubTrackId: string) =>
+  callFn<{ track_id: string; status: string; all_synced: boolean }>(
+    'confirm-dub-track', accessToken, { dub_track_id: dubTrackId },
+  )
+
 export async function fetchRoomMembers(accessToken: string, roomId: string): Promise<RoomMember[]> {
   const { members } = await callFn<{
     members: Array<{ user_id: string; display_name: string | null; slot_index: number; role: string }>
