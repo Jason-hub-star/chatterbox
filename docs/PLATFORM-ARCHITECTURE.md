@@ -1070,7 +1070,7 @@ LiveKit 월 비용 ≈ $0.001/분 × 분당 참가자 시간
 
 ### Phase 0 — 스캐폴드
 1. Vite + React 19 + Tailwind 4 + TypeScript 프로젝트 생성.
-2. react-router-dom 라우트 트리 구성.
+2. react-router (v8) 라우트 트리 구성.
 3. i18next + Supabase client 연결.
 4. 기존 design token 이식.
 

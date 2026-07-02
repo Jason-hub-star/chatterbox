@@ -14,7 +14,7 @@ npm create vite@latest ChatterBox -- --template react-ts
 cd ChatterBox
 
 # 핵심 의존성
-npm install react-router-dom zustand @tanstack/react-query
+npm install react-router zustand @tanstack/react-query   # react-router = v8 단일 패키지 (구 react-router-dom 통합, react ≥19.2.7 필수 — PLATFORM-ARCHITECTURE §2.1)
 npm install @supabase/supabase-js livekit-client @livekit/components-react
 npm install pixi.js @mediapipe/tasks-vision
 npm install motion @radix-ui/react-dialog @radix-ui/react-slot
@@ -58,11 +58,13 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: 'es2020',
     sourcemap: mode === 'development',
+    // ⚠️ Vite 8: manualChunks 객체 형태는 타입에서 제거됨 — 함수형 (id)=>string 으로 작성해야 build 통과.
+    //    아래 객체 예시는 개념 설명용. 실제 코드는 함수형으로 변환하거나, vendor가 적으면 생략(vite 자동 청킹).
     rollupOptions: {
       output: {
         manualChunks: {
           'vendor-react':    ['react', 'react-dom'],
-          'vendor-router':   ['react-router-dom'],
+          'vendor-router':   ['react-router'],
           'vendor-state':    ['zustand', '@tanstack/react-query'],
           'vendor-livekit':  ['livekit-client', '@livekit/components-react'],
           'vendor-pixi':     ['pixi.js'],
@@ -133,7 +135,7 @@ Tailwind 4는 JS config 파일 없음. 모든 설정이 CSS 변수로.
 {
   "scripts": {
     "dev":         "vite",
-    "build":       "tsc -b && vite build",
+    "build":       "tsc --noEmit && vite build",
     "build:analyze": "cross-env MODE=analyze vite build",
     "preview":     "vite preview",
     "type-check":  "tsc --noEmit",
@@ -149,6 +151,8 @@ Tailwind 4는 JS config 파일 없음. 모든 설정이 CSS 변수로.
 ---
 
 ## tsconfig.json
+
+> **실측 반영(2026-07-02 · Vite 8 / TS 6):** composite + `references` + `tsconfig.node.json` 방식은 `TS6310`(referenced project may not disable emit)로 막힘. **단일 tsconfig + `tsc --noEmit`** 로 단순화했다(`vite.config.ts`를 include, `tsconfig.node.json` 불필요).
 
 ```json
 {
@@ -168,12 +172,12 @@ Tailwind 4는 JS config 파일 없음. 모든 설정이 CSS 변수로.
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "tests"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "tests", "vite.config.ts"]
 }
 ```
 

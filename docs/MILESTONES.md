@@ -19,7 +19,7 @@ tags: [guide]
 - [ ] Supabase 클라이언트 연결 — 이메일/비밀번호 로그인 성공
 - [ ] Zustand `userStore`에 로그인 세션 저장, 새로고침 후 세션 유지 확인
 - [ ] `app_config` 테이블 시드 + `useConfigStore` 로드 확인
-- [ ] react-router-dom 라우트 트리 구성 (`/`, `/lobby`, `/rooms/:roomId`, `/settings`)
+- [ ] react-router (v8) 라우트 트리 구성 (`/`, `/lobby`, `/rooms/:roomId`, `/settings`)
 - [ ] Tailwind 4 디자인 토큰 (`stage-base`, `fire-amber`, `stage-text`) 적용 확인 (2026-07-01 무채색 개정 기준)
 - [ ] Vitest 단위 테스트 환경 설정 (`npm run test` 통과)
 - [ ] `DEFINITION-OF-DONE.md` 기본 DoD 5항목 CI 통과
