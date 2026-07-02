@@ -7,7 +7,8 @@ import tseslint from 'typescript-eslint'
 // ESLint 9 flat config — DoD 기본 항목 #2 (npm run lint 에러 0).
 export default tseslint.config(
   // docs/ 는 문서·참고용 예제 코드(marketing-automation 등) — 앱 빌드 대상이 아니므로 lint 제외.
-  { ignores: ['dist', 'coverage', 'node_modules', 'docs'] },
+  // supabase/functions 는 Deno 런타임(npm:/jsr: import, Deno 전역) — 프론트 lint/tsc 대상 아님.
+  { ignores: ['dist', 'coverage', 'node_modules', 'docs', 'supabase/functions'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
