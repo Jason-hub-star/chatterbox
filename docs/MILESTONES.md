@@ -103,7 +103,7 @@ tags: [guide]
 ### Acceptance Criteria
 
 - [ ] `npm run build` 성공, `dist/` 크기 gzip 초기 번들 < 200 KB
-- [ ] Cloudflare Pages 배포 완료 (`*.pages.dev` URL 접근 가능)
+- [x] Cloudflare Pages 배포 완료 (`*.pages.dev` URL 접근 가능) — 2026-07-03: 프로젝트 `chatterbox`→`chatterbox-7r8.pages.dev`(unlisted). 번들 비밀키 감사 통과·헤드리스 실렌더(React 마운트·콘솔0)·배포판 E2E **14/14**(인증·방·상호프레즌스·아바타·채팅·**더빙 3b 풀 클릭스루**). 재배포/검증 스킬 `cf-pages-deploy-verify`. 공개 런칭은 별개(핵심 다듬은 뒤).
 - [ ] 설정 페이지: 오디오 입력 선택, 웹캠 선택, 단축키 확인
 - [ ] Push-to-talk (스페이스바), 전체 뮤트 (F키) 동작
 - [ ] 필살기 핫키 + Lottie 효과 최소 2종

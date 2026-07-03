@@ -6,6 +6,8 @@ tags: [guide]
 
 > G-130 산출 문서. Next.js 랜딩(Vercel)과 별개로, Vite SPA를 Cloudflare Pages에 배포하는 완전한 절차.
 
+> **As-built (2026-07-03):** ChatterBox 앱 SPA 최초 배포 완료. 프로젝트 `chatterbox` → `https://chatterbox-7r8.pages.dev`(unlisted). 계정 gmdqn2tp(`CLOUDFLARE_ACCOUNT_ID=276b9380f073c8007ba2d3d41b2c6703` — Pages 설정파일은 `account_id` 키 미지원이라 env 로만). 최초 배포는 `wrangler pages project create chatterbox --production-branch=main` 선행 필요. 재배포·검증은 스킬 **`cf-pages-deploy-verify`**(함정 4개 + 번들 비밀키 감사 + 헤드리스 실렌더 게이트). 백엔드가 이미 프로덕션이라 SPA만 올리면 완전 동작(배포판 E2E 14/14 실증). 공개 런칭(Cloudflare Access 게이트 포함)은 별개 결정.
+
 ## 빌드 설정
 
 ### Cloudflare Pages 프로젝트 생성
