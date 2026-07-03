@@ -13,6 +13,13 @@
 
 const enc = new TextEncoder();
 
+// R2 시크릿 누락 시 undefined 가 서명에 coerce 되어 조용히 잘못된 URL 을 만드는 걸 막는다(명시 실패).
+function env(name: string): string {
+  const v = Deno.env.get(name);
+  if (!v) throw new Error(`R2 설정 누락: ${name}`);
+  return v;
+}
+
 function hex(bytes: Uint8Array): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -38,10 +45,10 @@ function encodeKey(key: string): string {
 
 // SigV4 presigned URL (query 서명, UNSIGNED-PAYLOAD). method = "PUT" | "GET".
 async function presign(method: string, key: string, expiresSec: number): Promise<string> {
-  const account = Deno.env.get("R2_ACCOUNT_ID")!;
-  const bucket = Deno.env.get("R2_BUCKET")!;
-  const accessKey = Deno.env.get("R2_ACCESS_KEY_ID")!;
-  const secretKey = Deno.env.get("R2_SECRET_ACCESS_KEY")!;
+  const account = env("R2_ACCOUNT_ID");
+  const bucket = env("R2_BUCKET");
+  const accessKey = env("R2_ACCESS_KEY_ID");
+  const secretKey = env("R2_SECRET_ACCESS_KEY");
   const host = `${account}.r2.cloudflarestorage.com`;
   const region = "auto";
   const service = "s3";

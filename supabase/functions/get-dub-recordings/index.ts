@@ -48,12 +48,12 @@ Deno.serve(async (req) => {
     .order("start_time_ms", { ascending: true });
 
   const recordings: Array<{ track_id: string; start_time_ms: number; url: string }> = [];
+  // presignGet 은 로컬 HMAC 계산이라 실패=전역 설정 문제 → skip(은폐) 대신 전파.
+  // 부분 발급으로 합성 입력(트랙)이 조용히 누락되는 걸 막는다.
   for (const t of tracks ?? []) {
     if (!t.recording_url) continue;
-    try {
-      const url = await presignGet(t.recording_url, TTL_SEC);
-      recordings.push({ track_id: t.id, start_time_ms: t.start_time_ms, url });
-    } catch { /* 개별 발급 실패는 skip */ }
+    const url = await presignGet(t.recording_url, TTL_SEC);
+    recordings.push({ track_id: t.id, start_time_ms: t.start_time_ms, url });
   }
 
   return json({ recordings }, 200);
