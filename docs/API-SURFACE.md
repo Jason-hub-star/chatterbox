@@ -74,6 +74,7 @@ tags: [hub, spec]
 | `POST /functions/v1/submit-dub-output` | `Host` | `{ output_id, output_path?, file_size_bytes?, duration_ms?, error_message? }` | `{ output_id, status: 'ready'\|'failed' }` | 성공→output ready + 세션 completed / 실패(error_message)→output failed + 세션 recording 복귀; 경로 프리픽스 검증 | [[DubCompositor]], [[DATA-SCHEMA]] |
 | `POST /functions/v1/get-dub-output-url` | 방 멤버 | `{ dub_session_id }` | `{ url, file_size_bytes, duration_ms }` | 최신 ready 완성본 signed download URL(멤버 검증) | [[DubCompositor]] |
 | `POST /functions/v1/get-dub-recordings` | 방 멤버 | `{ dub_session_id }` | `{ recordings: [{ track_id, start_time_ms, url }] }` | synced 트랙 녹음 signed URL 일괄(호스트 합성용 다운로드) | [[DubCompositor]] |
+| `POST /functions/v1/separate-dub-audio` | `Host` | `{ dub_session_id }` | `{ dub_session_id, background_urls: string[], stem_count }` | 소스 signed URL → fal.ai Demucs(`fal-ai/demucs`) 원어 대사(vocals) 제거 → 비보컬 배경 스템 URL. DB 무변경 순수 컴퓨트·호스트 게이트(크레딧 보호). `FAL_KEY` 서버 시크릿(성역·VITE 노출 금지) | [[DubCompositor]], [[dub-audio-separation-anime]] |
 
 ## Trust, Safety, Account APIs
 
