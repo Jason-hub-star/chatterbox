@@ -39,6 +39,8 @@ export function useLiveKitRoom(
   roomId: string,
   opts?: {
     onBlendshapes?: (identity: string, frame: BlendshapeFrame) => void
+    // 대본 cue 동기: 호스트가 진행한 cue_index 를 수신(reliable·ordered 'script-cue' 토픽, API-SURFACE §DataChannel).
+    onCue?: (payload: { sceneId: string; cueIndex: number }) => void
     // false면 연결 보류 — 방 입장(room_participants 행 생성)이 끝난 뒤에만 연결한다.
     // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 전에 연결하면 403으로 실패한다.
     enabled?: boolean
@@ -53,6 +55,10 @@ export function useLiveKitRoom(
   useEffect(() => {
     onBlendshapesRef.current = opts?.onBlendshapes
   }, [opts?.onBlendshapes])
+  const onCueRef = useRef(opts?.onCue)
+  useEffect(() => {
+    onCueRef.current = opts?.onCue
+  }, [opts?.onCue])
   const lastSentRef = useRef(0)
   const seqRef = useRef(0)
   const {
@@ -111,6 +117,15 @@ export function useLiveKitRoom(
       if (topic === 'blendshape') {
         const frame = decodeBlendshapeFrame(payload) // 길이/crc16 불일치 시 null → 드롭
         if (frame && participant) onBlendshapesRef.current?.(participant.identity, frame)
+        return
+      }
+      if (topic === 'script-cue') {
+        try {
+          const data = JSON.parse(new TextDecoder().decode(payload))
+          if (typeof data?.cueIndex === 'number' && typeof data?.sceneId === 'string') {
+            onCueRef.current?.({ sceneId: data.sceneId, cueIndex: data.cueIndex })
+          }
+        } catch { /* 잘못된 페이로드 무시 */ }
         return
       }
       if (topic !== 'chat') return
@@ -217,9 +232,19 @@ export function useLiveKitRoom(
       })
   }, [])
 
+  // 대본 cue 진행 송신(호스트): reliable·ordered 로 전 참가자에 cue_index 브로드캐스트.
+  const sendCue = useCallback(async (sceneId: string, cueIndex: number) => {
+    const room = roomRef.current
+    if (!room) return
+    await room.localParticipant.publishData(
+      new TextEncoder().encode(JSON.stringify({ sceneId, cueIndex })),
+      { reliable: true, topic: 'script-cue' },
+    )
+  }, [])
+
   const leave = useCallback(async () => {
     await roomRef.current?.disconnect()
   }, [])
 
-  return { toggleMic, sendChat, sendBlendshapes, leave }
+  return { toggleMic, sendChat, sendBlendshapes, sendCue, leave }
 }

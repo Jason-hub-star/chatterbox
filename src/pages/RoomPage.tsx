@@ -10,6 +10,8 @@ import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import AvatarLayer from '@/features/avatar/AvatarLayer'
 import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import DubPanel from '@/features/dub/DubPanel'
+import ScriptPanel from '@/features/script/ScriptPanel'
+import { SEED_SCRIPTS } from '@/features/script/cues'
 
 // Phase 1B PoC: 2인 오디오 연결 최소 UI.
 // ponytail: 무대(StageLayout)·씬·채팅 패널은 Phase 2~3 (contracts/RoomView.md).
@@ -78,8 +80,19 @@ export default function RoomPage() {
     remoteAvatars.current.get(identity)?.(frame)
   }, [])
 
-  const { toggleMic, sendChat, sendBlendshapes, leave } = useLiveKitRoom(roomId, {
+  // 대본 텔레프롬프터: 호스트가 진행한 cue_index 를 수신 → 전원이 같은 위치를 본다.
+  const [cueIndex, setCueIndex] = useState(0)
+  const [myRole, setMyRole] = useState<string | null>(null)
+  // 수신 방어: 다른 씬 메시지 무시 + cueIndex 범위 클램프(변조·스테일·멀티씬 대비).
+  const handleCue = useCallback((p: { sceneId: string; cueIndex: number }) => {
+    const sc = SEED_SCRIPTS[0]
+    if (p.sceneId !== sc.id) return
+    setCueIndex(Math.max(0, Math.min(sc.cues.length - 1, p.cueIndex)))
+  }, [])
+
+  const { toggleMic, sendChat, sendBlendshapes, sendCue, leave } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
+    onCue: handleCue,
     enabled: joinPhase === 'ready',
   })
 
@@ -127,6 +140,30 @@ export default function RoomPage() {
     (identity: string) => resolveAvatarUrl(memberAvatars[identity]),
     [memberAvatars],
   )
+
+  // 대본 진행 권한 = 호스트(생성자=slot 0). ponytail: 정확한 host_id 판정(현재 public_rooms 뷰는 host_id 제외).
+  const mySlotIndex = useRoomStore((s) => s.mySlotIndex)
+  const isHost = mySlotIndex === 0
+  const script = SEED_SCRIPTS[0]
+  // ponytail: cue 진행 권한은 현재 **클라이언트 게이트만**(호스트에게만 버튼 노출) — 악의적 참가자가
+  // 'script' 토픽을 직접 publish 하면 desync 가능. Phase 2 서버 권한(scripts 테이블 host-only UPDATE +
+  // Edge Function 검증, contracts/ScriptPanel.md·state-machines/Script.md)으로 승급. MVP(초대 기반 협업방)는 수용.
+  const advanceCue = useCallback((delta: number) => {
+    const next = Math.max(0, Math.min(script.cues.length - 1, cueIndex + delta))
+    if (next === cueIndex) return
+    setCueIndex(next)
+    void sendCue(script.id, next) // reliable 브로드캐스트 → 전 참가자 동기(자기 echo 없음, 로컬은 위에서 갱신)
+  }, [cueIndex, sendCue, script])
+
+  // 호스트: 연결 직후 + 참가자 변동 시 현재 cue 를 재브로드캐스트.
+  // reliable DataChannel 은 첫 publishData 로 개설되며 그 메시지가 유실될 수 있어(모든 세션 첫 진행 유실),
+  // 연결 시 warm-up 겸 현재 상태를 흘려 채널을 연다. 겸사겸사 늦게 입장한 참가자도 현재 cue 로 동기.
+  const cueIndexRef = useRef(cueIndex)
+  useEffect(() => { cueIndexRef.current = cueIndex }, [cueIndex])
+  useEffect(() => {
+    if (!isHost || !connected) return
+    void sendCue(script.id, cueIndexRef.current)
+  }, [isHost, connected, memberKey, sendCue, script])
 
   // 새 메시지 도착 시 목록 하단으로 자동 스크롤.
   const listRef = useRef<HTMLUListElement>(null)
@@ -234,6 +271,17 @@ export default function RoomPage() {
             />
           </div>
         </section>
+      )}
+
+      {connected && (
+        <ScriptPanel
+          script={script}
+          cueIndex={cueIndex}
+          isHost={isHost}
+          myRole={myRole}
+          onPickRole={setMyRole}
+          onAdvance={advanceCue}
+        />
       )}
 
       <DubPanel roomId={roomId} />
