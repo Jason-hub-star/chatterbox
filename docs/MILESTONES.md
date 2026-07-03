@@ -42,8 +42,8 @@ tags: [guide]
 - [x] MediaPipe FaceLandmarker Full 모델 로드 (CDN), 52 blendshape 추출 — 2026-07-02 실증: `@mediapipe/tasks-vision@0.10.21` + face_landmarker float16 CDN 로드, categoryName→score 맵 추출. (모델 URL 정정: 구 `mediapipe-tasks/...` 404 → `mediapipe-models/.../float16/1/`)
 - [x] blendshape → PixiJS 아바타 리그 파라미터 매핑 (최소 눈 깜박임·입 모양) — 2026-07-02 실증 2건: ①`/avatar-poc` 웹캠→blendshape→절차적 PixiJS v8 얼굴(눈깜박·입벌림·미소·눈썹·머리기울임) 반응 PASS. ②`/avatar-aria` **실 rig(아리아)** — Vtube AUTORIG 런타임(`mini_cubism_app`, PixiJS v8·Cubism 파라미터 25개)을 `public/aria-player/`(런타임만 1.5MB), **캐릭터 에셋(character.json+parts)은 Supabase Storage `avatars/aria/`에서 URL 로드**(레포는 아바타 수와 무관하게 고정, AvatarCanvas.md/DATA-SCHEMA models 스토리지 설계 정합). `drive.html`(검증된 blendshape→Cubism 매핑: 적응형 눈 baseline·THA4 양눈링크·입 4단 snap·머리 pose), `?project=<url>`로 캐릭터 무관 로드. 헤드리스: 로컬에셋 제거 후에도 중첩 iframe 모델이 Storage에서 렌더+구동 PASS(CORS+crossOrigin 검증)·콘솔에러0. ponytail: iframe 임베드(단일 로컬 아바타). LiveKit 원격 파라미터 구동(멀티플레이어)·`rig.js` 네이티브 이식은 다음 단계
 - [x] LiveKit DataChannel `blendshape` 토픽(**unreliable/lossy** — SSOT WebRTC.md 계약, reliable 아님)으로 표정 전송 → 상대방 아바타 반영 — 2026-07-02 실증: RT-02 220B 바이너리 프레임(`Float32Array(52)`+timestamp+seq+crc16, `src/lib/blendshapeCodec.ts`) 송수신. 송신 스로틀 ~20Hz, 수신 crc16/길이 검증+seq stale-drop(`isNewerSeq`). `RoomPage`+`features/avatar/{AvatarLayer,RemoteAvatar}`: 내 얼굴→송신, 원격 참가자 아바타는 ref Map으로 직접 구동(React state 우회). **헤드리스 2계정·2탭 E2E**: A→B·B→A 양방향, 극단 표정 송신 시 상대 탭 원격 아바타가 정확히 반응(영역 픽셀 diff PASS)·콘솔에러0·tsc/lint/test 28. ponytail: 5프레임 재정렬버퍼(TURN 전용)·헤드포즈 전송·Web Worker는 Phase 2
-- [ ] 방 생성/입장/퇴장 (`rooms`, `room_participants` 테이블) CRUD 완료
-- [ ] RLS 검증: 방 참가자만 채팅/blendshape 수신 가능
+- [x] 방 생성/입장/퇴장 (`rooms`, `room_participants` 테이블) CRUD 완료 — 2026-07-02 실증: `create-room`·`join-public-room`(멱등·최저빈슬롯)·`leave-room`(호스트 자동승계·빈방 ended) Edge Functions 프로덕션 배포 + 3계정 통합테스트 17/17 + 프로덕션 API E2E 10/10 PASS(비참가자 livekit-token 403 포함).
+- [x] RLS 검증: 방 참가자만 채팅/blendshape 수신 가능 — 2026-07-02 실증: `is_room_member()` SECURITY DEFINER(재귀회피) + 참가자-only SELECT psql 실측(멤버조회 1·비멤버 0·클라 직접 INSERT 정책위반 거부). 채팅/blendshape는 `livekit-token` 게이트가 활성 `room_participants` 행을 요구 → 비참가자는 토큰 거부(403)라 room 연결·채널 수신 자체 불가.
 - [ ] iOS Safari: MediaPipe 불가 → 키보드 표정 트리거(1~5 키) 동작 확인
 - [ ] 저사양 PC(Acer 등)에서 N=2 아바타 60fps 측정 PASS
 
@@ -59,11 +59,11 @@ tags: [guide]
 
 ### Acceptance Criteria
 
-- [ ] 로비 피드 (라이브 방 목록, 실시간 Realtime 갱신)
-- [ ] 방 생성 폼 (공개/비밀번호/장르 태그)
-- [ ] 방장 기능: 참가자 강퇴, 방 잠금, 슬롯 재배치
-- [ ] `ROOM_MAX_USERS` Feature Flag — 6명 초과 시 입장 거부
-- [ ] 방 권한 위임 (방장 → 다른 참가자)
+- [ ] 로비 피드 (라이브 방 목록, 실시간 Realtime 갱신) — 부분: `LobbyPage`+`public_rooms` 뷰로 방 목록·생성 O. **Realtime 자동갱신 미구현(수동 새로고침)** → 남은 개발.
+- [ ] 방 생성 폼 (공개/비밀번호/장르 태그) — 부분: 공개방 기본 생성 O(`create-room`). **비밀번호방(`room_secrets`)·장르 태그 미구현** → 남은 개발.
+- [ ] 방장 기능: 참가자 강퇴, 방 잠금, 슬롯 재배치 — 미구현(defer) → 남은 개발.
+- [ ] `ROOM_MAX_USERS` Feature Flag — 6명 초과 시 입장 거부 — 부분: `join-public-room` 최저빈슬롯 채움 로직 O. **초과 시 flag 게이트 거부 미확인** → 남은 개발.
+- [ ] 방 권한 위임 (방장 → 다른 참가자) — 부분: 호스트 퇴장 시 `leave-room` 자동 승계 O. **명시적 위임 UI·브로드캐스트 미구현** → 남은 개발.
 - [ ] 크레딧 시스템: 잔액 표시, 크레딧 0 시 VGEN 버튼 비활성화 (표시만, 구현은 Phase 4)
 - [ ] Sentry 에러 수집 확인 (의도적 에러 발생 → Sentry Dashboard 수신)
 
@@ -81,8 +81,8 @@ tags: [guide]
 ### Acceptance Criteria
 
 - [ ] 6인 슬롯 레이아웃 (좌3·우3), 드래그 순서 변경
-- [ ] 대본 패널 (Teleprompter): 방장 큐 전진/후퇴 → 모든 참가자 동기
-- [ ] 내 대사 줄 강조, 개인 글자 크기 조절
+- [x] 대본 패널 (Teleprompter): 방장 큐 전진/후퇴 → 모든 참가자 동기 — 2026-07-03 실증: `features/script/{cues.ts,ScriptPanel.tsx}`·`useLiveKitRoom` `'script-cue'` reliable DataChannel·호스트 warm-up 재브로드캐스트. **2탭 실 LiveKit E2E 12/12 PASS**. as-built: 클라 게이트(호스트=slot0)·서버권한/DB저장은 defer(G-286).
+- [ ] 내 대사 줄 강조, 개인 글자 크기 조절 — 부분: 내 대사 강조 O(`ScriptPanel` "▶ 내 차례", 현재 cue 역할==내 역할). **개인 글자 크기 조절 미구현** → 남은 개발.
 - [ ] CDN 비디오 동기 재생 (타임스탬프 기반, ±200ms 이내)
 - [ ] 배경 선택기 (미리 정의된 배경 5종 이상)
 - [ ] Active-speaker 강조 (말하는 참가자 Z-order 앞)
