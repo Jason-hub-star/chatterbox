@@ -107,6 +107,12 @@ export const confirmDubTrack = (accessToken: string, dubTrackId: string) =>
 export interface DubRecordingUrl { trackId: string; startTimeMs: number; url: string }
 export interface DubOutput { url: string; fileSizeBytes: number | null; durationMs: number | null }
 
+// 음원분리(G-280): 원어 대사(vocals) 제거 → 비보컬 배경 스템 URL. 합성 중간에 호스트가 호출.
+export const separateDubAudio = (accessToken: string, dubSessionId: string) =>
+  callFn<{ dub_session_id: string; background_urls: string[]; stem_count: number }>(
+    'separate-dub-audio', accessToken, { dub_session_id: dubSessionId },
+  )
+
 // 합성 시작: dub_outputs(compositing) 생성 + 산출물 업로드 URL. 세션 compositing 전이.
 export const startDubCompositing = (accessToken: string, dubSessionId: string) =>
   callFn<{ output_id: string; path: string; token: string }>(

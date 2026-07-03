@@ -2,13 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { useUserStore } from '@/stores/userStore'
 import {
   startDubCompositing, uploadDubOutput, finalizeDubOutput, getDubOutputUrl,
-  fetchDubRecordings, getDubSourceUrl, type DubTrack,
+  fetchDubRecordings, getDubSourceUrl, separateDubAudio, type DubTrack,
 } from '@/lib/dub'
 import { mixAndMux, type DubCue } from '@/lib/ffmpeg'
 
-// Phase 3B 슬라이스 3a: 더빙 완성본 합성(DUB-05, 원본 재더빙).
+// Phase 3B 슬라이스 3a/3b: 더빙 완성본 합성(DUB-05, 원본 재더빙 + 음원분리 배경합류).
 // 계약(DubCompositor.md) 준수: allSynced+호스트 게이트·브라우저 ffmpeg.wasm·미리보기·다운로드.
-// ponytail defer: 음원분리 stem 합류(G-280)·아바타 오버레이·Realtime 진행구독·공유링크·새 더빙 리셋.
+// 3b(G-280): 합성 전 separate-dub-audio(fal Demucs)로 원어 대사 제거 → 비보컬 배경 스템을
+//   mixAndMux background 로 amix → 이중음성 없이 원어 배경음 위에 한국어 더빙.
+// ponytail defer: 아바타 오버레이·Realtime 진행구독·공유링크·새 더빙 리셋·스템 캐시(재과금 방지).
 
 interface Props {
   dubSessionId: string
@@ -18,7 +20,7 @@ interface Props {
   onChanged: () => void | Promise<void>
 }
 
-type Phase = 'idle' | 'downloading' | 'mixing' | 'uploading' | 'error'
+type Phase = 'idle' | 'separating' | 'downloading' | 'mixing' | 'uploading' | 'error'
 
 export default function DubCompositor({ dubSessionId, status, isHost, tracks, onChanged }: Props) {
   const token = useUserStore((s) => s.session?.access_token)
@@ -30,7 +32,7 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
   const allSynced = tracks.length > 0 && tracks.every((t) => t.status === 'synced')
   const isCompleted = status === 'completed'
   const isCompositing = status === 'compositing'
-  const busy = phase === 'downloading' || phase === 'mixing' || phase === 'uploading'
+  const busy = phase === 'separating' || phase === 'downloading' || phase === 'mixing' || phase === 'uploading'
 
   // 완료 세션: 완성본 URL 로드(게스트·재로드 포함)
   useEffect(() => {
@@ -48,19 +50,26 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
     setError(null); setProgress(0)
     let outputId = ''
     try {
-      setPhase('downloading')
+      setPhase('separating')
       const started = await startDubCompositing(token, dubSessionId)
       outputId = started.output_id
-      const [srcUrl, recs] = await Promise.all([
+      // 분리(느림, ~1분)를 소스/녹음 URL 조회와 병렬. sep 이 이 단계 시간을 지배.
+      const [srcUrl, recs, sep] = await Promise.all([
         getDubSourceUrl(token, dubSessionId),
         fetchDubRecordings(token, dubSessionId),
+        separateDubAudio(token, dubSessionId),
       ])
+      setPhase('downloading')
       const srcBlob = await (await fetch(srcUrl)).blob()
       const cues: DubCue[] = await Promise.all(
         recs.map(async (r) => ({ blob: await (await fetch(r.url)).blob(), startMs: r.startTimeMs })),
       )
+      // 비보컬 배경 스템 다운로드 → mixAndMux background(원어 대사 대신 이 위에 더빙 amix).
+      const background = await Promise.all(
+        sep.background_urls.map(async (u) => (await fetch(u)).blob()),
+      )
       setPhase('mixing')
-      const out = await mixAndMux(srcBlob, cues, [], setProgress)
+      const out = await mixAndMux(srcBlob, cues, background, setProgress)
       setPhase('uploading')
       await uploadDubOutput(started.path, started.token, out)
       await finalizeDubOutput(token, { outputId, outputPath: started.path, fileSizeBytes: out.size })
@@ -77,7 +86,8 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
     }
   }, [token, dubSessionId, onChanged])
 
-  const phaseLabel = phase === 'downloading' ? '소스·녹음 내려받는 중…'
+  const phaseLabel = phase === 'separating' ? '음원 분리 중… (원어 대사 제거·배경음 추출, 최대 1분)'
+    : phase === 'downloading' ? '소스·녹음 내려받는 중…'
     : phase === 'mixing' ? `합성 중… ${Math.round(progress * 100)}%`
     : phase === 'uploading' ? '완성본 업로드 중…' : ''
 
