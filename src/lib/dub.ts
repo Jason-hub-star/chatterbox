@@ -32,7 +32,7 @@ export interface DubTrack {
   transcriptText: string
   status: 'assigned' | 'recording' | 'submitted' | 'synced'
 }
-export interface RoomMember { userId: string; displayName: string | null; slotIndex: number; role: string }
+export interface RoomMember { userId: string; authId: string; displayName: string | null; avatarUrl: string | null; slotIndex: number; role: string }
 export interface RoleAssignment { segment_id: number; participant_id: string }
 
 // ── 업로드(create-dub-upload → storage signed upload) ────────────────
@@ -161,10 +161,14 @@ export async function fetchDubOutput(dubSessionId: string): Promise<boolean> {
 
 export async function fetchRoomMembers(accessToken: string, roomId: string): Promise<RoomMember[]> {
   const { members } = await callFn<{
-    members: Array<{ user_id: string; display_name: string | null; slot_index: number; role: string }>
+    members: Array<{
+      user_id: string; auth_id: string; display_name: string | null
+      avatar_url: string | null; slot_index: number; role: string
+    }>
   }>('list-room-members', accessToken, { room_id: roomId })
   return members.map((m) => ({
-    userId: m.user_id, displayName: m.display_name, slotIndex: m.slot_index, role: m.role,
+    userId: m.user_id, authId: m.auth_id, displayName: m.display_name,
+    avatarUrl: m.avatar_url, slotIndex: m.slot_index, role: m.role,
   }))
 }
 

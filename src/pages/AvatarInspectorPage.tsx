@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
-import { AriaAvatar } from '@/lib/pixi/aria'
+import { Link, useSearchParams } from 'react-router'
+import { RigAvatar } from '@/lib/pixi/rig'
 
-// B1 게이트: 아리아 실 rig의 **네이티브 이식**(src/lib/pixi/aria) 미리보기.
-// 왼쪽 = 네이티브 AriaAvatar(경로 B), 오른쪽 = aria-player 런타임 iframe(동일 project.json, ?renderer=pixi).
+// B1 게이트: 아리아 실 rig의 **네이티브 이식**(src/lib/pixi/rig) 미리보기.
+// 왼쪽 = 네이티브 RigAvatar(경로 B), 오른쪽 = aria-player 런타임 iframe(동일 project.json, ?renderer=pixi).
 // 중립 포즈로 나란히 대조 → 픽셀/시각 정합 확인. 슬라이더로 FFD 격자변형·키폼·눈커버·물리를 실증.
+// ?project=<url> 로 임의 아바타를 네이티브 렌더러로 검사(기본 아리아). 새 rig 배포 검증용.
 // ponytail: 자동 픽셀 diff(Playwright)는 후속. B1은 시각 대조 게이트.
 const ARIA_PROJECT = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/avatars/aria/project.json`
-const REFERENCE_SRC = `/aria-player/index.html?renderer=pixi&project=${encodeURIComponent(ARIA_PROJECT)}`
 
 interface Slider {
   id: string
@@ -29,9 +29,12 @@ const SLIDERS: Slider[] = [
   { id: 'ParamEyeROpen', label: '오른눈 개폐 (커버)', min: 0, max: 1, step: 0.02, def: 1 },
 ]
 
-export default function AriaNativePage() {
+export default function AvatarInspectorPage() {
+  const [searchParams] = useSearchParams()
+  const projectUrl = searchParams.get('project') || ARIA_PROJECT
+  const referenceSrc = `/aria-player/index.html?renderer=pixi&project=${encodeURIComponent(projectUrl)}`
   const mountRef = useRef<HTMLDivElement>(null)
-  const avatarRef = useRef<AriaAvatar | null>(null)
+  const avatarRef = useRef<RigAvatar | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
   const [params, setParams] = useState<Record<string, number>>(
@@ -40,10 +43,10 @@ export default function AriaNativePage() {
 
   useEffect(() => {
     let cancelled = false
-    let created: AriaAvatar | null = null
+    let created: RigAvatar | null = null
     const mount = mountRef.current
     if (mount) {
-      AriaAvatar.create(mount, { projectUrl: ARIA_PROJECT, size: 480 })
+      RigAvatar.create(mount, { projectUrl, size: 480 })
         .then((av) => {
           if (cancelled) {
             av.destroy()
@@ -53,7 +56,7 @@ export default function AriaNativePage() {
           avatarRef.current = av
           setStatus('ready')
           if (import.meta.env.DEV) {
-            ;(window as unknown as { __ariaAvatar?: AriaAvatar }).__ariaAvatar = av
+            ;(window as unknown as { __rigAvatar?: RigAvatar }).__rigAvatar = av
           }
         })
         .catch((e: unknown) => {
@@ -67,7 +70,7 @@ export default function AriaNativePage() {
       created?.destroy()
       avatarRef.current = null
     }
-  }, [])
+  }, [projectUrl])
 
   function onSlide(id: string, value: number) {
     setParams((prev) => ({ ...prev, [id]: value }))
@@ -84,7 +87,7 @@ export default function AriaNativePage() {
     <main className="flex min-h-screen flex-col bg-stage-base text-stage-text">
       <header className="flex items-center justify-between border-b border-stage-border px-6 py-3">
         <div>
-          <h1 className="text-lg font-bold">아리아 — 네이티브 rig (경로 B, B1 게이트)</h1>
+          <h1 className="text-lg font-bold">아바타 인스펙터 — 네이티브 rig</h1>
           <p className="text-xs text-stage-text-muted">
             왼쪽 = 네이티브 이식 렌더 · 오른쪽 = aria-player 런타임(동일 project.json). 중립 포즈 대조.
           </p>
@@ -111,7 +114,7 @@ export default function AriaNativePage() {
             aria-label="네이티브 아바타 캔버스"
           />
           <figcaption className="text-xs text-stage-text-muted">
-            네이티브 이식 (src/lib/pixi/aria)
+            네이티브 이식 (src/lib/pixi/rig)
             {status === 'loading' && ' · 로딩 중…'}
             {status === 'ready' && ' · 렌더 중'}
             {status === 'error' && ' · 오류'}
@@ -120,7 +123,7 @@ export default function AriaNativePage() {
 
         <figure className="flex flex-col items-center gap-2">
           <iframe
-            src={REFERENCE_SRC}
+            src={referenceSrc}
             title="aria-player 런타임 참조"
             className="rounded-lg border border-stage-border"
             style={{ width: 480, height: 480 }}

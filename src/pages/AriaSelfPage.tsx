@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { AriaAvatar, createExpressionDriver, type HeadPose } from '@/lib/pixi/aria'
+import { RigAvatar, createExpressionDriver, type HeadPose } from '@/lib/pixi/rig'
 import { useFaceTracking } from '@/hooks/useFaceTracking'
 import { useTrackingStore, type TrackingState } from '@/stores/trackingStore'
 
@@ -27,7 +27,7 @@ const STATE_COLOR: Record<TrackingState, string> = {
 export default function AriaSelfPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const mountRef = useRef<HTMLDivElement>(null)
-  const avatarRef = useRef<AriaAvatar | null>(null)
+  const avatarRef = useRef<RigAvatar | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const state = useTrackingStore((s) => s.state)
@@ -40,10 +40,10 @@ export default function AriaSelfPage() {
 
   useEffect(() => {
     let cancelled = false
-    let created: AriaAvatar | null = null
+    let created: RigAvatar | null = null
     const mount = mountRef.current
     if (mount) {
-      AriaAvatar.create(mount, { projectUrl: ARIA_PROJECT, size: 420 })
+      RigAvatar.create(mount, { projectUrl: ARIA_PROJECT, size: 420 })
         .then((av) => {
           if (cancelled) {
             av.destroy()
@@ -51,7 +51,7 @@ export default function AriaSelfPage() {
           }
           created = av
           avatarRef.current = av
-          if (import.meta.env.DEV) (window as unknown as { __ariaAvatar?: AriaAvatar }).__ariaAvatar = av
+          if (import.meta.env.DEV) (window as unknown as { __ariaAvatar?: RigAvatar }).__ariaAvatar = av
         })
         .catch((e: unknown) => {
           if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e))
@@ -84,7 +84,7 @@ export default function AriaSelfPage() {
           </p>
         </div>
         <nav className="flex gap-4 text-sm text-stage-text-muted">
-          <Link to="/avatar-aria-native" className="hover:text-stage-text">
+          <Link to="/avatar-inspect" className="hover:text-stage-text">
             B1 게이트
           </Link>
           <Link to="/avatar-aria" className="hover:text-stage-text">

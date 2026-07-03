@@ -9,11 +9,11 @@
 
 import { Application } from 'pixi.js'
 import type { AriaRigParams, RigContext } from './types'
-import { loadAriaProject } from './loader'
+import { loadRigProject } from './loader'
 import { createRigMath, type RigMath } from './rigMath'
 import { createRenderer, type Renderer } from './renderer'
 
-export interface AriaAvatarOptions {
+export interface RigAvatarOptions {
   projectUrl: string // project.json URL — 모델별(아리아 하드코딩 아님)
   size?: number // 표시 캔버스 한 변(px). 내부는 canvas_size(예 2048²) 렌더 후 CSS 다운스케일.
   transparent?: boolean // 룸 합성용 투명 배경(기본 false = #f4f0e8, 플레이어 골든 대조).
@@ -21,7 +21,7 @@ export interface AriaAvatarOptions {
 
 const MAX_DT = 1 / 15 // 탭 복귀 시 물리 폭주 방지
 
-export class AriaAvatar {
+export class RigAvatar {
   private disposed = false
   private tick = (): void => {}
 
@@ -33,8 +33,8 @@ export class AriaAvatar {
     private readonly ownedParams: Set<string>,
   ) {}
 
-  static async create(container: HTMLElement, options: AriaAvatarOptions): Promise<AriaAvatar> {
-    const { project, rig: rigConfig, images } = await loadAriaProject(options.projectUrl)
+  static async create(container: HTMLElement, options: RigAvatarOptions): Promise<RigAvatar> {
+    const { project, rig: rigConfig, images } = await loadRigProject(options.projectUrl)
 
     const ctx: RigContext = {
       project,
@@ -75,7 +75,7 @@ export class AriaAvatar {
       (project.physics_profiles || []).map((p) => p.output_parameter).filter(Boolean) as string[],
     )
 
-    const avatar = new AriaAvatar(app, ctx, rig, renderer, ownedParams)
+    const avatar = new RigAvatar(app, ctx, rig, renderer, ownedParams)
     avatar.start()
     return avatar
   }

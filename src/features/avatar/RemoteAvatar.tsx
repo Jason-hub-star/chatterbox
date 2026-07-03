@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { AriaAvatar, createExpressionDriver } from '@/lib/pixi/aria'
+import { RigAvatar, createExpressionDriver } from '@/lib/pixi/rig'
 import type { BlendshapeFrame } from '@/lib/blendshapeCodec'
 
 // 원격 참가자 1명의 네이티브 아리아 아바타(경로 B). 생성 시 registry에 **프레임 싱크**를 등록 —
@@ -20,12 +20,12 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry }: P
 
   useEffect(() => {
     let cancelled = false
-    let created: AriaAvatar | null = null
+    let created: RigAvatar | null = null
     const reg = registry.current // RoomPage에서 1회 생성된 안정적 Map — 캡처해 cleanup에서 사용.
     const mount = mountRef.current
     const driver = createExpressionDriver({ mirror: false }) // 원격은 셀카 거울 아님
     if (mount) {
-      AriaAvatar.create(mount, { projectUrl, size: 240 })
+      RigAvatar.create(mount, { projectUrl, size: 240 })
         .then((av) => {
           if (cancelled) {
             av.destroy()
@@ -35,7 +35,7 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry }: P
           reg?.set(identity, (frame) => av.setParams(driver(frame.blendshapes, null)))
           // dev 전용: 헤드리스 E2E에서 원격 아바타 렌더 반응을 extract로 검증하기 위한 주입 훅.
           if (import.meta.env.DEV) {
-            const w = window as unknown as { __remoteAvatars?: Map<string, AriaAvatar> }
+            const w = window as unknown as { __remoteAvatars?: Map<string, RigAvatar> }
             ;(w.__remoteAvatars ??= new Map()).set(identity, av)
           }
         })
@@ -48,7 +48,7 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry }: P
       cancelled = true
       reg?.delete(identity)
       if (import.meta.env.DEV) {
-        ;(window as unknown as { __remoteAvatars?: Map<string, AriaAvatar> }).__remoteAvatars?.delete(identity)
+        ;(window as unknown as { __remoteAvatars?: Map<string, RigAvatar> }).__remoteAvatars?.delete(identity)
       }
       created?.destroy()
     }

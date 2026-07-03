@@ -4,6 +4,8 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
 import { useUserStore } from '@/stores/userStore'
 import { joinRoom, leaveRoom } from '@/lib/rooms'
+import { fetchRoomMembers } from '@/lib/dub'
+import { resolveAvatarUrl } from '@/lib/avatars'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import AvatarLayer from '@/features/avatar/AvatarLayer'
 import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
@@ -11,8 +13,7 @@ import DubPanel from '@/features/dub/DubPanel'
 
 // Phase 1B PoC: 2인 오디오 연결 최소 UI.
 // ponytail: 무대(StageLayout)·씬·채팅 패널은 Phase 2~3 (contracts/RoomView.md).
-// 경로 B: 아바타는 네이티브 아리아 실 rig. PoC는 전원 아리아(같은 URL) — 프로덕션은 참가자별 avatar URL.
-const ARIA_PROJECT = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/avatars/aria/project.json`
+// 경로 B: 아바타는 네이티브 아리아 실 rig. 참가자별 avatar URL(users.avatar_url) — 미설정은 기본 아바타(resolveAvatarUrl).
 
 const STATE_LABEL: Record<ConnectionState, string> = {
   DISCONNECTED: '연결 안 됨',
@@ -34,6 +35,7 @@ export default function RoomPage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
   const session = useUserStore((s) => s.session)
+  const myAvatarUrl = useUserStore((s) => s.avatarUrl)
 
   // 입장 단계: LiveKit 연결 전에 반드시 room_participants 행을 만든다(멱등).
   // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 성공 후에만 연결(enabled).
@@ -66,7 +68,7 @@ export default function RoomPage() {
   }, [session, roomId])
 
   // 원격 아바타 프레임 싱크(participant identity → 구동 함수)와 마지막 seq. 고빈도 구동은 ref로만(리렌더 없음).
-  // 싱크는 RemoteAvatar가 자기 AriaAvatar+드라이버로 등록 — RoomPage는 아바타 타입을 모른다(디커플).
+  // 싱크는 RemoteAvatar가 자기 RigAvatar+드라이버로 등록 — RoomPage는 아바타 타입을 모른다(디커플).
   const remoteAvatars = useRef<Map<string, RemoteFrameSink>>(new Map())
   const lastSeq = useRef<Map<string, number>>(new Map())
   const handleBlendshapes = useCallback((identity: string, frame: BlendshapeFrame) => {
@@ -98,6 +100,33 @@ export default function RoomPage() {
       if (!present.has(id)) lastSeq.current.delete(id)
     }
   }, [participants])
+
+  // 참가자별 아바타: LiveKit identity(=auth uid)로 각 멤버의 avatar_url 을 찾는다.
+  // memberKey(정렬된 identity 문자열)로만 재조회 — participants 참조는 발화/메타 이벤트마다 바뀌므로
+  // 멤버 집합이 실제로 바뀔 때(입장/퇴장)에만 list-room-members 를 호출한다(불필요 재조회 방지).
+  // ponytail: 세션 중 아바타 변경 실시간 전파는 후속(현재는 멤버 변동 시 반영).
+  const memberKey = participants.map((p) => p.identity).sort().join(',')
+  const [memberAvatars, setMemberAvatars] = useState<Record<string, string | null>>({})
+  useEffect(() => {
+    if (joinPhase !== 'ready' || !session) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const members = await fetchRoomMembers(session.access_token, roomId)
+        if (cancelled) return
+        const map: Record<string, string | null> = {}
+        for (const m of members) map[m.authId] = m.avatarUrl
+        setMemberAvatars(map)
+      } catch { /* 명단 조회 실패 → 기본 아바타 fallback */ }
+    })()
+    return () => { cancelled = true }
+  }, [joinPhase, session, roomId, memberKey])
+
+  const selfProjectUrl = resolveAvatarUrl(myAvatarUrl)
+  const remoteProjectUrl = useCallback(
+    (identity: string) => resolveAvatarUrl(memberAvatars[identity]),
+    [memberAvatars],
+  )
 
   // 새 메시지 도착 시 목록 하단으로 자동 스크롤.
   const listRef = useRef<HTMLUListElement>(null)
@@ -198,7 +227,8 @@ export default function RoomPage() {
           <div className="mt-2 rounded-lg border border-stage-border p-4">
             <AvatarLayer
               participants={participants}
-              projectUrl={ARIA_PROJECT}
+              selfProjectUrl={selfProjectUrl}
+              remoteProjectUrl={remoteProjectUrl}
               sendBlendshapes={sendBlendshapes}
               remoteAvatars={remoteAvatars}
             />

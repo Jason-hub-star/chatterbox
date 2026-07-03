@@ -50,7 +50,7 @@ async function loadImages(project: Project): Promise<Map<string, HTMLImageElemen
   return images
 }
 
-export async function loadAriaProject(projectUrl: string): Promise<LoadedAvatar> {
+export async function loadRigProject(projectUrl: string): Promise<LoadedAvatar> {
   assertTrustedOrigin(projectUrl)
   const response = await fetch(projectUrl)
   if (!response.ok) throw new Error(`${projectUrl} ${response.status}`)

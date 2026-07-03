@@ -12,7 +12,7 @@ import RoomPage from '@/pages/RoomPage'
 import SettingsPage from '@/pages/SettingsPage'
 import AvatarPocPage from '@/pages/AvatarPocPage'
 import AriaPocPage from '@/pages/AriaPocPage'
-import AriaNativePage from '@/pages/AriaNativePage'
+import AvatarInspectorPage from '@/pages/AvatarInspectorPage'
 import AriaSelfPage from '@/pages/AriaSelfPage'
 
 const router = createBrowserRouter([
@@ -22,7 +22,7 @@ const router = createBrowserRouter([
   // Phase 1 PoC: 표정 트래킹 (인증 불필요 — 데모/테스트용).
   { path: '/avatar-poc', element: <AvatarPocPage /> }, // 절차적 얼굴
   { path: '/avatar-aria', element: <AriaPocPage /> }, // 실 rig(아리아) — iframe PoC
-  { path: '/avatar-aria-native', element: <AriaNativePage /> }, // 실 rig 네이티브 이식 (경로 B, B1 게이트)
+  { path: '/avatar-inspect', element: <AvatarInspectorPage /> }, // 실 rig 네이티브 이식 (경로 B, B1 게이트)
   { path: '/avatar-aria-self', element: <AriaSelfPage /> }, // 웹캠 → 네이티브 아리아 self drive (경로 B, B2)
   {
     path: '/lobby',

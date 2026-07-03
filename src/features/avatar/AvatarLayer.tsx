@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
-import { AriaAvatar, createExpressionDriver, type HeadPose } from '@/lib/pixi/aria'
+import { RigAvatar, createExpressionDriver, type HeadPose } from '@/lib/pixi/rig'
 import { useFaceTracking } from '@/hooks/useFaceTracking'
 import { useTrackingStore } from '@/stores/trackingStore'
 import type { RoomParticipant } from '@/stores/roomStore'
@@ -10,15 +10,17 @@ import RemoteAvatar, { type RemoteFrameSink } from './RemoteAvatar'
 // 등록돼 수신 프레임으로 구동된다. self는 로컬이라 head pose(머리 방향)까지 반영, 송신은 52 blendshape만.
 interface Props {
   participants: RoomParticipant[]
-  projectUrl: string
+  // 참가자별 아바타: 내 아바타와 각 원격 아바타의 project.json URL 을 identity 로 분기(하드코딩 아님).
+  selfProjectUrl: string
+  remoteProjectUrl: (identity: string) => string
   sendBlendshapes: (blendshapes: Record<string, number>) => void
   remoteAvatars: RefObject<Map<string, RemoteFrameSink>>
 }
 
-export default function AvatarLayer({ participants, projectUrl, sendBlendshapes, remoteAvatars }: Props) {
+export default function AvatarLayer({ participants, selfProjectUrl, remoteProjectUrl, sendBlendshapes, remoteAvatars }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const selfMountRef = useRef<HTMLDivElement>(null)
-  const selfAvatarRef = useRef<AriaAvatar | null>(null)
+  const selfAvatarRef = useRef<RigAvatar | null>(null)
   const trackingState = useTrackingStore((s) => s.state)
 
   // self는 셀카 거울(video scaleX−1)과 방향 일치 → mirror on.
@@ -27,10 +29,10 @@ export default function AvatarLayer({ participants, projectUrl, sendBlendshapes,
   // 로컬 self-view 아바타(네이티브 아리아). StrictMode 이중 마운트 가드.
   useEffect(() => {
     let cancelled = false
-    let created: AriaAvatar | null = null
+    let created: RigAvatar | null = null
     const mount = selfMountRef.current
     if (mount) {
-      AriaAvatar.create(mount, { projectUrl, size: 160 })
+      RigAvatar.create(mount, { projectUrl: selfProjectUrl, size: 160 })
         .then((av) => {
           if (cancelled) {
             av.destroy()
@@ -48,7 +50,7 @@ export default function AvatarLayer({ participants, projectUrl, sendBlendshapes,
       created?.destroy()
       selfAvatarRef.current = null
     }
-  }, [projectUrl])
+  }, [selfProjectUrl])
 
   // 웹캠 → MediaPipe → self-view 구동(head pose 포함) + blendshape 송신(52ch, head pose 미포함).
   const onFrame = useCallback(
@@ -106,7 +108,7 @@ export default function AvatarLayer({ participants, projectUrl, sendBlendshapes,
             key={p.identity}
             identity={p.identity}
             name={p.name}
-            projectUrl={projectUrl}
+            projectUrl={remoteProjectUrl(p.identity)}
             registry={remoteAvatars}
           />
         ))

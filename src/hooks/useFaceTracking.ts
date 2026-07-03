@@ -8,7 +8,7 @@ import {
   hasFace,
 } from '@/lib/mediapipe/faceLandmarker'
 import type { FaceParams, ProceduralAvatar } from '@/lib/pixi/proceduralAvatar'
-import type { HeadPose } from '@/lib/pixi/aria'
+import type { HeadPose } from '@/lib/pixi/rig'
 import { useTrackingStore } from '@/stores/trackingStore'
 
 // MediaPipe blendshape(categoryName) → 아바타 FaceParams.
