@@ -3,6 +3,7 @@
 // 입력: { dub_session_id }  출력: { recordings: [{ track_id, start_time_ms, url }] }
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { presignGet } from "../_shared/r2.ts";
 
 const TTL_SEC = 3600;
 
@@ -49,10 +50,10 @@ Deno.serve(async (req) => {
   const recordings: Array<{ track_id: string; start_time_ms: number; url: string }> = [];
   for (const t of tracks ?? []) {
     if (!t.recording_url) continue;
-    const { data: signed } = await service.storage
-      .from("dub-assets")
-      .createSignedUrl(t.recording_url, TTL_SEC);
-    if (signed) recordings.push({ track_id: t.id, start_time_ms: t.start_time_ms, url: signed.signedUrl });
+    try {
+      const url = await presignGet(t.recording_url, TTL_SEC);
+      recordings.push({ track_id: t.id, start_time_ms: t.start_time_ms, url });
+    } catch { /* 개별 발급 실패는 skip */ }
   }
 
   return json({ recordings }, 200);

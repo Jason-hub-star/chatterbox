@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase'
 // SSOT: docs/API-SURFACE.md, docs/state-machines/DubSession.md
 
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
-const DUB_BUCKET = 'dub-assets'
 
 async function callFn<T>(name: string, accessToken: string, body: unknown): Promise<T> {
   const res = await fetch(`${FN_BASE}/${name}`, {
@@ -16,6 +15,12 @@ async function callFn<T>(name: string, accessToken: string, body: unknown): Prom
   const json = await res.json().catch(() => null)
   if (!res.ok) throw new Error(json?.error ? String(json.error) : `${name} 실패 (${res.status})`)
   return json as T
+}
+
+// presigned PUT(R2)로 blob 직접 업로드. Supabase Storage uploadToSignedUrl 대체(R2 egress $0).
+async function putToR2(uploadUrl: string, body: Blob, contentType: string): Promise<void> {
+  const res = await fetch(uploadUrl, { method: 'PUT', body, headers: { 'Content-Type': contentType } })
+  if (!res.ok) throw new Error(`업로드 실패 (${res.status})`)
 }
 
 // ── 타입 ────────────────────────────────────────────────────────────
@@ -37,14 +42,11 @@ export interface RoleAssignment { segment_id: number; participant_id: string }
 
 // ── 업로드(create-dub-upload → storage signed upload) ────────────────
 export async function uploadDubSource(accessToken: string, roomId: string, file: File): Promise<string> {
-  const { path, token } = await callFn<{ path: string; token: string }>(
+  const { path, uploadUrl } = await callFn<{ path: string; uploadUrl: string }>(
     'create-dub-upload', accessToken,
     { room_id: roomId, file_name: file.name, size_bytes: file.size, mime_type: file.type },
   )
-  const { error } = await supabase.storage
-    .from(DUB_BUCKET)
-    .uploadToSignedUrl(path, token, file, { contentType: file.type })
-  if (error) throw new Error(`업로드 실패: ${error.message}`)
+  await putToR2(uploadUrl, file, file.type)
   return path
 }
 
@@ -80,15 +82,12 @@ export const getDubSourceUrl = (accessToken: string, dubSessionId: string) =>
   callFn<{ url: string }>('get-dub-source-url', accessToken, { dub_session_id: dubSessionId })
     .then((r) => r.url)
 
-// 녹음 blob 업로드 → Storage path 반환 (create-dub-recording-upload → uploadToSignedUrl).
+// 녹음 blob 업로드 → path 반환 (create-dub-recording-upload → presigned PUT).
 export async function uploadDubRecording(accessToken: string, dubTrackId: string, blob: Blob): Promise<string> {
-  const { path, token } = await callFn<{ path: string; token: string }>(
+  const { path, uploadUrl } = await callFn<{ path: string; uploadUrl: string }>(
     'create-dub-recording-upload', accessToken, { dub_track_id: dubTrackId },
   )
-  const { error } = await supabase.storage
-    .from(DUB_BUCKET)
-    .uploadToSignedUrl(path, token, blob, { contentType: 'audio/webm' })
-  if (error) throw new Error(`녹음 업로드 실패: ${error.message}`)
+  await putToR2(uploadUrl, blob, 'audio/webm')
   return path
 }
 
@@ -115,17 +114,13 @@ export const separateDubAudio = (accessToken: string, dubSessionId: string) =>
 
 // 합성 시작: dub_outputs(compositing) 생성 + 산출물 업로드 URL. 세션 compositing 전이.
 export const startDubCompositing = (accessToken: string, dubSessionId: string) =>
-  callFn<{ output_id: string; path: string; token: string }>(
+  callFn<{ output_id: string; path: string; uploadUrl: string }>(
     'create-dub-output-upload', accessToken, { dub_session_id: dubSessionId },
   )
 
-// 합성 결과 blob 업로드 → Storage path 반환.
-export async function uploadDubOutput(path: string, uploadToken: string, blob: Blob): Promise<string> {
-  const { error } = await supabase.storage
-    .from(DUB_BUCKET)
-    .uploadToSignedUrl(path, uploadToken, blob, { contentType: 'video/mp4' })
-  if (error) throw new Error(`합성본 업로드 실패: ${error.message}`)
-  return path
+// 합성 결과 blob 업로드(presigned PUT). path 는 startDubCompositing 이 이미 반환하므로 void.
+export async function uploadDubOutput(uploadUrl: string, blob: Blob): Promise<void> {
+  await putToR2(uploadUrl, blob, 'video/mp4')
 }
 
 // 확정: 성공(outputPath 등) → ready+completed / 실패(errorMessage) → failed+recording 복귀.

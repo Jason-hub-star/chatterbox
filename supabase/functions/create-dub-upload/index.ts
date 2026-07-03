@@ -1,12 +1,13 @@
-// create-dub-upload: 더빙 소스 영상 업로드용 signed upload URL 발급(호스트 전용).
+// create-dub-upload: 더빙 소스 영상 업로드용 R2 presigned PUT URL 발급(호스트 전용).
 // SSOT: docs/contracts/DubSessionSelector.md, docs/specs/MediaConfig.md §4(Whisper ≤25MB)
-// 입력: { room_id, file_name, size_bytes, mime_type }  출력: { path, token }
+// 입력: { room_id, file_name, size_bytes, mime_type }  출력: { path, uploadUrl }
 //
-// 흐름: 클라가 이 토큰으로 storage.uploadToSignedUrl(path, token, file) → create-dub-session 호출.
-// ponytail: R2 이관 시 createSignedUploadUrl → R2 presign 으로 교체(인터페이스 동일).
+// 흐름: 클라가 fetch(uploadUrl, {method:'PUT', body:file}) → create-dub-session 호출.
+// 저장소: Cloudflare R2(egress $0). presign = _shared/r2.ts 자체 SigV4.
 // ponytail: age 게이트(18+)는 테스트계정 age_band=null 로 데모 차단 → 후속 슬라이스에서 활성.
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { presignPut } from "../_shared/r2.ts";
 
 const MAX_BYTES = 25 * 1024 * 1024; // Whisper 입력 상한
 const ALLOWED_MIME = ["video/mp4", "video/webm", "audio/mpeg", "audio/mp4", "audio/wav"];
@@ -51,11 +52,13 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!room) return json({ error: "호스트만 더빙 영상을 올릴 수 있어요." }, 403);
 
-  const path = `${roomId}/sources/${crypto.randomUUID()}.${EXT[mime]}`;
-  const { data: signed, error: sErr } = await service.storage
-    .from("dub-assets")
-    .createSignedUploadUrl(path);
-  if (sErr || !signed) return json({ error: "업로드 URL 발급 실패", detail: sErr?.message }, 500);
+  const key = `${roomId}/sources/${crypto.randomUUID()}.${EXT[mime]}`;
+  let uploadUrl: string;
+  try {
+    uploadUrl = await presignPut(key);
+  } catch (e) {
+    return json({ error: "업로드 URL 발급 실패", detail: String(e) }, 500);
+  }
 
-  return json({ path: signed.path, token: signed.token }, 200);
+  return json({ path: key, uploadUrl }, 200);
 });

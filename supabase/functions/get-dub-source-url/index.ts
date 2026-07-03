@@ -2,9 +2,10 @@
 // SSOT: docs/contracts/DubRecorder.md §2 (원본 영상 음소거 재생)
 // 입력: { dub_session_id }  출력: { url }
 //
-// dub-assets 는 비공개 버킷 → 클라가 직접 서명 불가. service_role 로 짧은 TTL signed URL 발급.
+// R2 비공개 버킷 → service_role(R2 시크릿)로 짧은 TTL presigned GET URL 발급. presign = _shared/r2.ts.
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { presignGet } from "../_shared/r2.ts";
 
 const TTL_SEC = 3600;
 
@@ -41,10 +42,12 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!me) return json({ error: "방 참가자만 볼 수 있어요." }, 403);
 
-  const { data: signed, error } = await service.storage
-    .from("dub-assets")
-    .createSignedUrl(sess.source_video_url, TTL_SEC);
-  if (error || !signed) return json({ error: "URL 발급 실패", detail: error?.message }, 500);
+  let url: string;
+  try {
+    url = await presignGet(sess.source_video_url, TTL_SEC);
+  } catch (e) {
+    return json({ error: "URL 발급 실패", detail: String(e) }, 500);
+  }
 
-  return json({ url: signed.signedUrl }, 200);
+  return json({ url }, 200);
 });

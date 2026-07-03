@@ -9,6 +9,7 @@
 //   노래 보컬도 vocals 로 제거됨(Demucs 한계) → 대사특화 AudioShake 승급은 [[dub-audio-separation-anime]].
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { presignGet } from "../_shared/r2.ts";
 
 const FAL_URL = "https://fal.run/fal-ai/demucs";
 const TIMEOUT_MS = 140_000;
@@ -44,10 +45,13 @@ Deno.serve(async (req) => {
   if (room.host_id !== userId) return json({ error: "호스트만 음원분리를 할 수 있어요." }, 403);
   if (!sess.source_video_url) return json({ error: "소스가 없어요." }, 409);
 
-  // 소스 signed URL(fal 이 fetch). fal Demucs 는 mp4 도 직접 수용(실증).
-  const { data: signed, error: sErr } = await service.storage
-    .from("dub-assets").createSignedUrl(sess.source_video_url, 600);
-  if (sErr || !signed) return json({ error: "소스 URL 생성 실패" }, 500);
+  // 소스 presigned URL(fal 이 fetch). fal Demucs 는 mp4 도 직접 수용(실증).
+  let sourceUrl: string;
+  try {
+    sourceUrl = await presignGet(sess.source_video_url, 600);
+  } catch {
+    return json({ error: "소스 URL 생성 실패" }, 500);
+  }
 
   // fal Demucs 동기 호출(140s 타임아웃).
   const ctrl = new AbortController();
@@ -56,7 +60,7 @@ Deno.serve(async (req) => {
     const resp = await fetch(FAL_URL, {
       method: "POST",
       headers: { Authorization: `Key ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ audio_url: signed.signedUrl }),
+      body: JSON.stringify({ audio_url: sourceUrl }),
       signal: ctrl.signal,
     });
     clearTimeout(timer);

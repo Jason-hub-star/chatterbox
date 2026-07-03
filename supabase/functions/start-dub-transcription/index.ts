@@ -9,6 +9,7 @@
 // ponytail: MVP 는 동기 호출(작은 파일 전제). 재시도(≤2)·pg_cron 자동타임아웃은 후속.
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { r2Get } from "../_shared/r2.ts";
 
 const WHISPER_URL = "https://api.openai.com/v1/audio/transcriptions";
 const TIMEOUT_MS = 120_000;
@@ -49,9 +50,13 @@ Deno.serve(async (req) => {
   // TRANSCRIBING 진입
   await service.from("dub_sessions").update({ status: "transcribing", error_message: null }).eq("id", sessionId);
 
-  // 소스 다운로드(service_role)
-  const { data: blob, error: dErr } = await service.storage.from("dub-assets").download(sess.source_video_url);
-  if (dErr || !blob) {
+  // 소스 다운로드(R2, Edge 시크릿). Whisper 는 URL 입력 불가라 바이트를 가져와 multipart 업로드.
+  let blob: Blob;
+  try {
+    const r2res = await r2Get(sess.source_video_url);
+    if (!r2res.ok) throw new Error(`r2 ${r2res.status}`);
+    blob = await r2res.blob();
+  } catch {
     await service.from("dub_sessions").update({ status: "failed", error_message: "source_download_error" }).eq("id", sessionId);
     return json({ error: "소스 다운로드 실패" }, 500);
   }

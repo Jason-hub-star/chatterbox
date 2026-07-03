@@ -1,10 +1,11 @@
-// create-dub-output-upload: 합성 결과 mp4 업로드용 signed upload URL(호스트 전용·전 트랙 synced).
+// create-dub-output-upload: 합성 결과 mp4 업로드용 R2 presigned PUT URL(호스트 전용·전 트랙 synced).
 // SSOT: docs/contracts/DubCompositor.md (원본 재더빙 코어), docs/state-machines/DubSession.md (RECORDING→COMPOSITING)
-// 입력: { dub_session_id }  출력: { output_id, path, token }
+// 입력: { dub_session_id }  출력: { output_id, path, uploadUrl }
 //
 // dub_outputs 는 클라 write 정책 없음(SELECT만) → service_role 로만 생성. 합성은 브라우저 ffmpeg.wasm.
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { presignPut } from "../_shared/r2.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -53,14 +54,16 @@ Deno.serve(async (req) => {
     .single();
   if (insErr || !output) return json({ error: "출력 생성 실패", detail: insErr?.message }, 500);
 
-  const path = `${sess.room_id}/outputs/${sess.id}-${crypto.randomUUID()}.mp4`;
-  const { data: signed, error } = await service.storage
-    .from("dub-assets")
-    .createSignedUploadUrl(path);
-  if (error || !signed) return json({ error: "업로드 URL 발급 실패", detail: error?.message }, 500);
+  const key = `${sess.room_id}/outputs/${sess.id}-${crypto.randomUUID()}.mp4`;
+  let uploadUrl: string;
+  try {
+    uploadUrl = await presignPut(key);
+  } catch (e) {
+    return json({ error: "업로드 URL 발급 실패", detail: String(e) }, 500);
+  }
 
   // 세션 compositing 전이(게스트 UI가 "합성 중" 표시)
   await service.from("dub_sessions").update({ status: "compositing" }).eq("id", sess.id);
 
-  return json({ output_id: output.id, path: signed.path, token: signed.token }, 200);
+  return json({ output_id: output.id, path: key, uploadUrl }, 200);
 });

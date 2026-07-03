@@ -3,6 +3,7 @@
 // 입력: { dub_session_id }  출력: { url, file_size_bytes, duration_ms }
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { presignGet } from "../_shared/r2.ts";
 
 const TTL_SEC = 3600;
 
@@ -50,13 +51,15 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!output || !output.output_object_key) return json({ error: "완성본이 아직 없어요." }, 404);
 
-  const { data: signed, error } = await service.storage
-    .from("dub-assets")
-    .createSignedUrl(output.output_object_key, TTL_SEC);
-  if (error || !signed) return json({ error: "URL 발급 실패", detail: error?.message }, 500);
+  let url: string;
+  try {
+    url = await presignGet(output.output_object_key, TTL_SEC);
+  } catch (e) {
+    return json({ error: "URL 발급 실패", detail: String(e) }, 500);
+  }
 
   return json(
-    { url: signed.signedUrl, file_size_bytes: output.file_size_bytes, duration_ms: output.duration_ms },
+    { url, file_size_bytes: output.file_size_bytes, duration_ms: output.duration_ms },
     200,
   );
 });

@@ -1,10 +1,11 @@
-// create-dub-recording-upload: 참가자 녹음 오디오 업로드용 signed upload URL(트랙 소유자 전용).
+// create-dub-recording-upload: 참가자 녹음 오디오 업로드용 R2 presigned PUT URL(트랙 소유자 전용).
 // SSOT: docs/contracts/DubRecorder.md §5 (Direct storage.upload 금지 — Edge 경유·소유자·프리픽스 강제)
-// 입력: { dub_track_id }  출력: { path, token }
+// 입력: { dub_track_id }  출력: { path, uploadUrl }
 //
 // ponytail: 청크/resume(ROOM-23)·quota·체크섬은 후속. MVP 는 단일 업로드.
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { presignPut } from "../_shared/r2.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -33,11 +34,13 @@ Deno.serve(async (req) => {
   const sess = track.dub_sessions as unknown as { room_id: string; status: string };
   if (sess.status !== "recording") return json({ error: `현재 상태(${sess.status})에선 녹음 불가` }, 409);
 
-  const path = `${sess.room_id}/recordings/${track.id}-${crypto.randomUUID()}.webm`;
-  const { data: signed, error } = await service.storage
-    .from("dub-assets")
-    .createSignedUploadUrl(path);
-  if (error || !signed) return json({ error: "업로드 URL 발급 실패", detail: error?.message }, 500);
+  const key = `${sess.room_id}/recordings/${track.id}-${crypto.randomUUID()}.webm`;
+  let uploadUrl: string;
+  try {
+    uploadUrl = await presignPut(key);
+  } catch (e) {
+    return json({ error: "업로드 URL 발급 실패", detail: String(e) }, 500);
+  }
 
-  return json({ path: signed.path, token: signed.token }, 200);
+  return json({ path: key, uploadUrl }, 200);
 });
