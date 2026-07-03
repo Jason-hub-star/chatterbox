@@ -1,0 +1,11 @@
+# Cloudflare Pages — ChatterBox Vite SPA
+# SSOT: docs/DEPLOY-PLATFORM.md
+# VITE_ 변수는 `npm run build` 시 dist 로 구워지므로 여기 [vars] 불필요(값은 .env).
+# 서버 전용 키(FAL_KEY·SUPABASE_SERVICE_ROLE_KEY·LIVEKIT_API_SECRET 등)는 절대 여기 두지 않는다
+#   — Supabase Edge Function secret 전용(릴리스 블로커, DEPLOY-PLATFORM.md §Release blocker).
+# 배포: npx wrangler pages deploy   (pages_build_output_dir 사용)
+name = "chatterbox"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-07-03"
+# 계정 선택: 배포 시 CLOUDFLARE_ACCOUNT_ID=276b9380f073c8007ba2d3d41b2c6703 (gmdqn2tp@gmail.com)
+# — Pages 설정 파일은 account_id 키를 지원하지 않아 env 로 전달.
