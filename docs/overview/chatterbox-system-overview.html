@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0;padding:0}img{max-width:100%}</style>
+</head><body>
+<title>ChatterBox 시스템 설계</title>
+<style>
+  :root{
+    --ground:#0e1119; --panel:#161a26; --panel2:#1e2233; --panel3:#262b3f;
+    --line:#2b3044; --line2:#3a4058;
+    --ink:#eef0fa; --muted:#969cbb; --faint:#626884;
+    /* layer hues — 아키텍처 계층을 색으로 인코딩 */
+    --client:#5bd1e6;  /* 브라우저(화면) */
+    --edge:#a08cff;    /* 엣지+데이터(로직) */
+    --ext:#f2b04e;     /* 외부 서비스(바깥) */
+    /* the one bold accent — 실시간 "on-air" */
+    --live:#ff4d6d;
+    /* status semantics — accent와 분리 */
+    --done:#3ecf8e; --partial:#efab54; --plan:#6d78a8;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"Helvetica Neue",sans-serif;
+  }
+  *{box-sizing:border-box}
+  .cb{
+    background:
+      radial-gradient(1100px 520px at 88% -12%, rgba(255,77,109,.10), transparent 58%),
+      radial-gradient(760px 460px at 2% 4%, rgba(91,209,230,.07), transparent 60%),
+      radial-gradient(900px 520px at 50% 116%, rgba(160,140,255,.08), transparent 62%),
+      var(--ground);
+    color:var(--ink); font-family:var(--sans); min-height:100vh;
+    padding:44px 20px 72px; -webkit-font-smoothing:antialiased; line-height:1.55;
+  }
+  .cb .in{max-width:940px; margin:0 auto}
+
+  /* ── header ── */
+  .cb .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--live); margin:0 0 14px; display:flex; align-items:center; gap:11px}
+  .cb .onair{display:inline-flex; align-items:center; gap:7px; color:var(--live)}
+  .cb .dot{width:8px; height:8px; border-radius:50%; background:var(--live); box-shadow:0 0 0 0 rgba(255,77,109,.6);
+    animation:pulse 2.4s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,77,109,.55)} 70%{box-shadow:0 0 0 9px rgba(255,77,109,0)} 100%{box-shadow:0 0 0 0 rgba(255,77,109,0)}}
+  @media(prefers-reduced-motion:reduce){ .cb .dot{animation:none} }
+  .cb h1{font-size:clamp(29px,5.6vw,44px); line-height:1.05; margin:0 0 15px; font-weight:850;
+    letter-spacing:-.022em; text-wrap:balance}
+  .cb .lede{font-size:16px; color:var(--muted); margin:0 0 12px; max-width:64ch}
+  .cb .lede b{color:var(--ink); font-weight:650}
+  .cb .lede .c{color:var(--client); font-weight:700} .cb .lede .e{color:var(--edge); font-weight:700} .cb .lede .x{color:var(--ext); font-weight:700}
+  .cb .src{font-family:var(--mono); font-size:11.5px; color:var(--faint); margin:0 0 30px}
+
+  /* ── section scaffold ── */
+  .cb section{margin:0 0 34px}
+  .cb .kick{font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--faint); margin:0 0 4px}
+  .cb h2{font-size:19px; font-weight:750; letter-spacing:-.01em; margin:0 0 16px}
+  .cb h2 .q{color:var(--muted); font-weight:500; font-size:14px; margin-left:8px}
+
+  /* ── 1. architecture stack (vertical spine, layer-coded) ── */
+  .cb .stack{position:relative; padding-left:26px}
+  .cb .stack::before{content:""; position:absolute; left:9px; top:18px; bottom:20px; width:2px;
+    background:linear-gradient(180deg,var(--client),var(--edge) 52%,var(--ext))}
+  .cb .tier{position:relative; margin-bottom:13px}
+  .cb .tier::before{content:""; position:absolute; left:-21px; top:20px; width:14px; height:14px; border-radius:50%;
+    background:var(--panel3); border:2px solid var(--line2); z-index:1}
+  .cb .tier.c::before{border-color:var(--client)} .cb .tier.e::before{border-color:var(--edge)} .cb .tier.x::before{border-color:var(--ext)}
+  .cb .band{background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:15px 17px}
+  .cb .band.c{box-shadow:inset 3px 0 0 var(--client)} .cb .band.e{box-shadow:inset 3px 0 0 var(--edge)} .cb .band.x{box-shadow:inset 3px 0 0 var(--ext)}
+  .cb .thead{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:11px}
+  .cb .tname{font-size:16px; font-weight:750}
+  .cb .thost{font-family:var(--mono); font-size:11.5px; color:var(--muted)}
+  .cb .c .tname{color:var(--client)} .cb .e .tname{color:var(--edge)} .cb .x .tname{color:var(--ext)}
+  .cb .chips{display:flex; flex-wrap:wrap; gap:7px}
+  .cb .chip{font-size:12.5px; font-weight:550; padding:5px 10px; border-radius:8px;
+    background:var(--panel2); border:1px solid var(--line); color:var(--ink)}
+  .cb .chip small{color:var(--faint); font-weight:400; font-family:var(--mono); font-size:10.5px}
+
+  /* ── 2. domain matrix ── */
+  .cb .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(272px,1fr)); gap:12px}
+  .cb .dcard{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 15px 13px;
+    display:flex; flex-direction:column; gap:8px; position:relative}
+  .cb .dtop{display:flex; align-items:center; gap:9px}
+  .cb .ldot{width:9px; height:9px; border-radius:50%; flex:none}
+  .cb .ldot.c{background:var(--client)} .cb .ldot.e{background:var(--edge)} .cb .ldot.x{background:var(--ext)}
+  .cb .ldot.ex{background:linear-gradient(120deg,var(--edge),var(--ext))}
+  .cb .dname{font-size:15px; font-weight:700; letter-spacing:-.01em}
+  .cb .den{color:var(--faint); font-weight:400; font-family:var(--mono); font-size:11px; margin-left:2px}
+  .cb .pill{margin-left:auto; font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.06em;
+    padding:3px 8px; border-radius:20px; text-transform:uppercase; white-space:nowrap}
+  .cb .pill.done{color:var(--done); background:rgba(62,207,142,.12); border:1px solid rgba(62,207,142,.34)}
+  .cb .pill.part{color:var(--partial); background:rgba(239,171,84,.12); border:1px solid rgba(239,171,84,.32)}
+  .cb .pill.plan{color:var(--plan); background:rgba(109,120,168,.14); border:1px solid rgba(109,120,168,.34)}
+  .cb .dpurp{font-size:13px; color:var(--muted); line-height:1.5}
+  .cb .ids{display:flex; flex-wrap:wrap; gap:5px; margin-top:auto}
+  .cb .id{font-family:var(--mono); font-size:10px; color:var(--faint); background:var(--panel2);
+    border:1px solid var(--line); border-radius:5px; padding:2px 6px}
+
+  /* ── 3. flows ── */
+  .cb .flows{display:grid; gap:12px}
+  .cb .flow{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px}
+  .cb .ftitle{font-size:14px; font-weight:700; margin:0 0 11px; display:flex; align-items:center; gap:8px}
+  .cb .fbadge{font-family:var(--mono); font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px;
+    color:var(--ground)}
+  .cb .fbadge.c{background:var(--client)} .cb .fbadge.x{background:var(--ext)} .cb .fbadge.e{background:var(--edge)}
+  .cb .seq{display:flex; flex-wrap:wrap; align-items:center; gap:6px}
+  .cb .node{font-size:12.5px; padding:5px 10px; border-radius:8px; background:var(--panel2);
+    border:1px solid var(--line); color:var(--ink); white-space:nowrap}
+  .cb .node b{color:var(--live); font-weight:650}
+  .cb .node em{font-style:normal; color:var(--faint); font-family:var(--mono); font-size:10px; margin-left:4px}
+  .cb .arr{color:var(--faint); font-family:var(--mono); font-size:13px; flex:none}
+
+  /* ── 4. build ledger ── */
+  .cb .ledger{background:linear-gradient(180deg,var(--panel),#12151f); border:1px solid var(--line); border-radius:14px; padding:19px 20px}
+  .cb .phbar{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:0 0 8px}
+  .cb .ph{height:auto; border-radius:7px; background:var(--panel2); border:1px solid var(--line);
+    padding:9px 8px 8px; position:relative; overflow:hidden}
+  .cb .ph .pfill{position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,rgba(62,207,142,.20),rgba(62,207,142,.05))}
+  .cb .ph.part .pfill{background:linear-gradient(90deg,rgba(239,171,84,.20),rgba(239,171,84,.05))}
+  .cb .ph.plan .pfill{background:none}
+  .cb .ph .pn{position:relative; font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:.05em}
+  .cb .ph .pl{position:relative; font-size:11.5px; font-weight:600; margin-top:2px}
+  .cb .ph .ps{position:relative; font-family:var(--mono); font-size:9.5px; margin-top:3px}
+  .cb .ph.done .ps{color:var(--done)} .cb .ph.part .ps{color:var(--partial)} .cb .ph.plan .ps{color:var(--plan)}
+  .cb .phscale{font-family:var(--mono); font-size:10px; color:var(--faint); text-align:right; margin:0 0 18px}
+  .cb .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:15px}
+  .cb .tile{text-align:center; padding:12px 8px; background:var(--panel2); border:1px solid var(--line); border-radius:10px}
+  .cb .tile .v{font-size:26px; font-weight:820; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+  .cb .tile .k{font-size:11px; color:var(--muted); margin-top:2px}
+  .cb .tile.done .v{color:var(--done)} .cb .tile.part .v{color:var(--partial)} .cb .tile.plan .v{color:var(--plan)}
+  .cb .note{font-size:13px; color:var(--muted); line-height:1.55; margin:0}
+  .cb .note b{color:var(--ink); font-weight:650}
+
+  /* legend + foot */
+  .cb .legend{display:flex; flex-wrap:wrap; gap:14px; margin:26px 0 0; padding-top:16px; border-top:1px solid var(--line);
+    font-size:11.5px; color:var(--muted); font-family:var(--mono)}
+  .cb .lg{display:inline-flex; align-items:center; gap:6px}
+  .cb .sw{width:10px; height:10px; border-radius:3px; flex:none}
+  .cb .foot{margin-top:16px; color:var(--faint); font-size:11.5px; font-family:var(--mono); line-height:1.6}
+
+  a:focus-visible, .dcard:focus-visible{outline:2px solid var(--live); outline-offset:2px}
+  @media(max-width:600px){ .cb .phbar{grid-template-columns:repeat(2,1fr)} .cb .tiles{grid-template-columns:1fr} }
+</style>
+
+<div class="cb"><div class="in">
+
+  <!-- ══ HEADER ══ -->
+  <p class="eyebrow"><span class="onair"><span class="dot"></span>ChatterBox</span> · 시스템 설계 한 장</p>
+  <h1>PNG이 배우가 되는 실시간 연기 무대</h1>
+  <p class="lede">그림으로 만든 버튜버가 <b>웹캠 표정</b>으로 움직이고, 친구들과 <b>한 방</b>에 모여 목소리로 연기하고,
+    기존 영상을 <b>역할 나눠 더빙</b>합니다. 아래는 그걸 굴리는 세 계층 —
+    <span class="c">브라우저</span> · <span class="e">엣지+데이터</span> · <span class="x">외부 서비스</span> — 과 기능 도메인·핵심 흐름·현재 진도예요.</p>
+  <p class="src">SSOT 기반 · FEATURE-SPEC · API-SURFACE · MILESTONES · 실제 코드 트리(도메인 8 · Edge 함수 20 · 마이그레이션 5) 대조 · 2026-07-03</p>
+
+  <!-- ══ 1. ARCHITECTURE STACK ══ -->
+  <section>
+    <p class="kick">01 · Architecture</p>
+    <h2>세 계층 스택<span class="q">요청은 위→아래로 흐르고, 비밀키는 엣지 아래로 못 넘어옵니다</span></h2>
+    <div class="stack">
+
+      <div class="tier c">
+        <div class="band c">
+          <div class="thead"><span class="tname">브라우저 (클라이언트)</span><span class="thost">Cloudflare Pages · chatterbox-7r8.pages.dev</span></div>
+          <div class="chips">
+            <span class="chip">React 19 <small>SPA</small></span>
+            <span class="chip">Vite 8</span>
+            <span class="chip">Zustand <small>4 스토어</small></span>
+            <span class="chip">PixiJS v8 <small>아바타 렌더</small></span>
+            <span class="chip">MediaPipe <small>52ch 트래킹</small></span>
+            <span class="chip">ffmpeg.wasm <small>더빙 합성</small></span>
+            <span class="chip">livekit-client</span>
+            <span class="chip">Tailwind 4</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tier e">
+        <div class="band e">
+          <div class="thead"><span class="tname">엣지 + 데이터 (Supabase)</span><span class="thost">프로젝트 owfcrolbvikkqrotmleq</span></div>
+          <div class="chips">
+            <span class="chip">Edge Functions <small>Deno · 20개</small></span>
+            <span class="chip">Postgres + RLS</span>
+            <span class="chip">Auth <small>users/auth 분리</small></span>
+            <span class="chip">Storage <small>avatars · dub-assets</small></span>
+            <span class="chip">Realtime</span>
+            <span class="chip">is_room_member() <small>SECURITY DEFINER</small></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tier x">
+        <div class="band x">
+          <div class="thead"><span class="tname">외부 서비스</span><span class="thost">서버 시크릿으로만 호출 · 클라이언트 노출 금지</span></div>
+          <div class="chips">
+            <span class="chip">LiveKit Cloud <small>WebRTC SFU · 음성·데이터채널</small></span>
+            <span class="chip">OpenAI Whisper <small>더빙 STT</small></span>
+            <span class="chip">fal.ai Demucs <small>음원 분리</small></span>
+            <span class="chip">fal.ai Seedance <small>영상생성 · 예정</small></span>
+            <span class="chip">Vtube AUTORIG <small>아바타 공장</small></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ 2. DOMAIN MATRIX ══ -->
+  <section>
+    <p class="kick">02 · Feature Domains</p>
+    <h2>기능 도메인 12<span class="q">색점 = 주 계층 · 우측 칩 = 현재 상태</span></h2>
+    <div class="grid">
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot c"></span><span class="dname">아바타 <span class="den">avatar</span></span><span class="pill done">완료</span></div>
+        <div class="dpurp">Vtube 오토리그 rig을 PixiJS v8로 네이티브 렌더 + 표정 드라이버. 멀티플레이어 검증.</div>
+        <div class="ids"><span class="id">MOD-01~04</span><span class="id">ROOM-03</span><span class="id">CNT-04</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot c"></span><span class="dname">트래킹 <span class="den">tracking</span></span><span class="pill done">완료</span></div>
+        <div class="dpurp">웹캠 → MediaPipe 52 블렌드셰이프 + 헤드포즈 → 스무딩 → 아바타 파라미터.</div>
+        <div class="ids"><span class="id">MOD-02/03</span><span class="id">RT-02/04</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot e"></span><span class="dname">방 <span class="den">room</span></span><span class="pill part">부분</span></div>
+        <div class="dpurp">생성·입장·퇴장·호스트 승계·RLS 게이트 완료. 비밀번호방·강퇴·강제뮤트는 미구현.</div>
+        <div class="ids"><span class="id">ROOM-01~11</span><span class="id">HOST-01~13</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot c"></span><span class="dname">무대 <span class="den">stage</span></span><span class="pill part">부분</span></div>
+        <div class="dpurp">6인 원형 좌석 배치 + active-speaker 강조 완료. 드래그 재배치·DB slot 저장은 미구현.</div>
+        <div class="ids"><span class="id">ROOM-02</span><span class="id">ROOM-07</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot c"></span><span class="dname">대본 <span class="den">script</span></span><span class="pill done">완료</span></div>
+        <div class="dpurp">텔레프롬프터 — 호스트 큐 전진/후퇴가 전원 동기, "내 차례" 강조. 2탭 E2E 12/12.</div>
+        <div class="ids"><span class="id">ROOM-06</span><span class="id">RT-03</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot e"></span><span class="dname">채팅 <span class="den">chat</span></span><span class="pill done">완료</span></div>
+        <div class="dpurp">텍스트 채팅 기본 동작(DataChannel 동기). 서버 sanitize·슬로우모드·금칙어는 확장 예정.</div>
+        <div class="ids"><span class="id">ROOM-05</span><span class="id">HOST-09~11</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot ex"></span><span class="dname">더빙 <span class="den">dub</span></span><span class="pill done">완료</span></div>
+        <div class="dpurp">업로드→STT→역할배정→동의→녹음→합성 5단계 전부. fal 원음제거 + ffmpeg.wasm mux. 배포판 5/5.</div>
+        <div class="ids"><span class="id">DUB-01~05</span><span class="id">Edge ×11</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot ex"></span><span class="dname">영상생성 <span class="den">vgen</span></span><span class="pill plan">계획</span></div>
+        <div class="dpurp">협업 프롬프트 → fal Seedance → 메인뷰 소스교체 + 크레딧 차감·모더레이션. 스캐폴드만.</div>
+        <div class="ids"><span class="id">VGEN-01~13</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot e"></span><span class="dname">크레딧·결제 <span class="den">credits</span></span><span class="pill plan">계획</span></div>
+        <div class="dpurp">잔액·차감·자동환불·Stripe 구매. VGEN/DUB 비용 게이트의 전제. 미착수.</div>
+        <div class="ids"><span class="id">INF-06/08</span><span class="id">SET-08</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot e"></span><span class="dname">신뢰·안전 <span class="den">trust</span></span><span class="pill plan">계획</span></div>
+        <div class="dpurp">신고·차단·모더레이션·연령확인·audit 로그. P0 안전 게이트지만 테이블·함수 미생성.</div>
+        <div class="ids"><span class="id">SEC-01~08</span><span class="id">HOST-08</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot c"></span><span class="dname">모바일 뷰어 <span class="den">viewer</span></span><span class="pill plan">계획</span></div>
+        <div class="dpurp">관전·채팅·폴 참여(트래킹 없음, read-only 게이트). 관객 반응/투표 포함. 미착수.</div>
+        <div class="ids"><span class="id">MOB-01/02</span><span class="id">ROOM-19~22</span></div>
+      </div>
+
+      <div class="dcard" tabindex="0">
+        <div class="dtop"><span class="ldot e"></span><span class="dname">OBS 송출 <span class="den">obs</span></span><span class="pill plan">계획</span></div>
+        <div class="dpurp">토큰 기반 투명배경·크로마키·단일아바타 풀스크린 출력. P2 릴리스 블록.</div>
+        <div class="ids"><span class="id">OBS-01~04</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ 3. KEY FLOWS ══ -->
+  <section>
+    <p class="kick">03 · Key Flows</p>
+    <h2>핵심 흐름 3종<span class="q">번호 순서 = 실제 실행 순서 · <b style="color:var(--live)">빨강</b> = 서버 게이트</span></h2>
+    <div class="flows">
+
+      <div class="flow">
+        <p class="ftitle"><span class="fbadge c">A</span>방 입장 → 라이브 연기</p>
+        <div class="seq">
+          <span class="node">로그인</span><span class="arr">→</span>
+          <span class="node">로비 <em>public_rooms</em></span><span class="arr">→</span>
+          <span class="node"><b>입장</b> <em>정원·연령 게이트</em></span><span class="arr">→</span>
+          <span class="node"><b>livekit-token</b> <em>참가자 검증</em></span><span class="arr">→</span>
+          <span class="node">LiveKit 연결</span><span class="arr">→</span>
+          <span class="node">웹캠·음성·채팅·아바타 동기</span>
+        </div>
+      </div>
+
+      <div class="flow">
+        <p class="ftitle"><span class="fbadge x">B</span>아바타 렌더 (Vtube 공장 → ChatterBox 무대)</p>
+        <div class="seq">
+          <span class="node">AUTORIG 공장 <em>PNG→rig</em></span><span class="arr">→</span>
+          <span class="node">character.json + PNG 파츠</span><span class="arr">→</span>
+          <span class="node">Supabase Storage <em>avatars/</em></span><span class="arr">→</span>
+          <span class="node">PixiJS v8 네이티브</span><span class="arr">→</span>
+          <span class="node">표정 드라이버 <em>52ch→Cubism</em></span><span class="arr">→</span>
+          <span class="node">라이브 얼굴</span>
+        </div>
+      </div>
+
+      <div class="flow">
+        <p class="ftitle"><span class="fbadge e">C</span>더빙 파이프라인 5단계</p>
+        <div class="seq">
+          <span class="node">① MP4 업로드</span><span class="arr">→</span>
+          <span class="node">② STT <em>Whisper</em></span><span class="arr">→</span>
+          <span class="node">③ 역할 배정</span><span class="arr">→</span>
+          <span class="node">④ 파트별 녹음 <em>synced</em></span><span class="arr">→</span>
+          <span class="node">⑤ 합성 <b>fal 원음제거</b> + ffmpeg.wasm</span><span class="arr">→</span>
+          <span class="node">완성본 다운로드</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ 4. BUILD LEDGER ══ -->
+  <section>
+    <p class="kick">04 · Build Status</p>
+    <h2>지금 어디까지<span class="q">데모/제품 마일스톤 축 (MILESTONES.md)</span></h2>
+    <div class="ledger">
+      <div class="phbar">
+        <div class="ph done"><span class="pfill" style="width:90%"></span><div class="pn">Phase 0</div><div class="pl">스캐폴드</div><div class="ps">거의 완료</div></div>
+        <div class="ph done"><span class="pfill" style="width:100%"></span><div class="pn">Phase 1</div><div class="pl">2인 방 PoC</div><div class="ps">완료</div></div>
+        <div class="ph part"><span class="pfill" style="width:40%"></span><div class="pn">Phase 2</div><div class="pl">방 운영·인증</div><div class="ps">부분</div></div>
+        <div class="ph part"><span class="pfill" style="width:45%"></span><div class="pn">Phase 3</div><div class="pl">무대 완성</div><div class="ps">부분</div></div>
+        <div class="ph part"><span class="pfill" style="width:35%"></span><div class="pn">Phase 4</div><div class="pl">배포·정식화</div><div class="ps">부분</div></div>
+        <div class="ph plan"><span class="pfill"></span><div class="pn">Phase 5</div><div class="pl">유저 활성화</div><div class="ps">계획</div></div>
+      </div>
+      <p class="phscale">채움 = 대략 진도 · 게이트는 Phase별 Acceptance Criteria 달성</p>
+
+      <div class="tiles">
+        <div class="tile done"><div class="v">5</div><div class="k">완료 도메인</div></div>
+        <div class="tile part"><div class="v">2</div><div class="k">부분 구현</div></div>
+        <div class="tile plan"><div class="v">5</div><div class="k">계획/미착수</div></div>
+      </div>
+
+      <p class="note"><b>정직한 현재:</b> 핵심 실시간 루프(<b>방·음성·표정·아바타·대본·무대</b>)와 <b>더빙 전체 파이프라인</b>이 배포판에서 실동작합니다.
+      다음 큰 미개척지는 <b>영상생성(VGEN)</b>과 그 전제인 <b>크레딧·신뢰안전</b> — 모두 서버 테이블·Edge 함수부터 새로 지어야 하는 영역이에요.</p>
+    </div>
+  </section>
+
+  <!-- legend -->
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:var(--client)"></span>브라우저</span>
+    <span class="lg"><span class="sw" style="background:var(--edge)"></span>엣지+데이터</span>
+    <span class="lg"><span class="sw" style="background:var(--ext)"></span>외부 서비스</span>
+    <span class="lg"><span class="sw" style="background:var(--done)"></span>완료</span>
+    <span class="lg"><span class="sw" style="background:var(--partial)"></span>부분</span>
+    <span class="lg"><span class="sw" style="background:var(--plan)"></span>계획</span>
+    <span class="lg"><span class="sw" style="background:var(--live)"></span>서버 게이트</span>
+  </div>
+  <p class="foot">Vtube = 아바타 <b>공장</b> · ChatterBox = 실시간 <b>무대</b> — 두 프로젝트는 rig 계약(character.json)으로 이어집니다.<br>PM 편집용 기준 문서 · 도메인 카드/상태칩/흐름 노드를 직접 고쳐 설계도를 발전시키세요.</p>
+
+</div></div>
+
+</body></html>

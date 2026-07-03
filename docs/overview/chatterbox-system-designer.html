@@ -1,0 +1,261 @@
+<!--
+  chatterbox-system-designer.html - ChatterBox 시스템 관계도
+  형식: /Users/family/Desktop/데이터베이스 구조.html 스타일의 단일 HTML 캔버스
+  사용: 더블클릭 실행. 노드 드래그, 호버 연결 강조, 계획 기능 토글 지원. 외부 의존성 0.
+-->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatterBox · 시스템 관계도</title>
+<style>
+  :root{
+    --bg:#171717; --grid:#232323; --panel:#1f1f1f; --node:#242424; --node-hd:#2b2b2b;
+    --border:#343434; --text:#ededed; --muted:#8a8a8a; --dim:#666;
+    --green:#3ecf8e; --green-dk:#2a9d6e; --cyan:#5bd1e6; --violet:#a08cff;
+    --amber:#e8b34a; --red:#ff5b78; --edge:#474747; --edge-hi:#3ecf8e; --edge-plan:#3a3a3a;
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+  header{position:fixed;top:0;left:0;right:0;height:58px;z-index:30;display:flex;align-items:center;gap:18px;padding:0 22px;background:rgba(23,23,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;letter-spacing:.2px}
+  .brand .dot{width:11px;height:11px;border-radius:3px;background:var(--green);box-shadow:0 0 10px var(--green)}
+  .brand small{color:var(--muted);font-weight:500;font-size:12px}
+  .sub{color:var(--muted);font-size:12.5px;border-left:1px solid var(--border);padding-left:18px}
+  .sub b{color:var(--green);font-weight:650}
+  .spacer{flex:1}
+	  .ctrl{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;overflow-x:auto;max-width:70vw}
+	  .toolgroup{display:flex;align-items:center;gap:7px;padding:3px;border:1px solid #2c2c2c;border-radius:9px;background:rgba(31,31,31,.7);flex:none}
+	  .toolgroup.primary{border-color:#34594a;background:rgba(62,207,142,.07)}
+	  .toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none;flex:none;white-space:nowrap}
+  .toggle input{display:none}
+  .switch{width:34px;height:19px;border-radius:20px;background:#3a3a3a;position:relative;transition:.2s}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#bbb;transition:.2s}
+  .toggle input:checked + .switch{background:var(--green-dk)}
+  .toggle input:checked + .switch::after{left:17px;background:#fff}
+  .btn{font-size:12.5px;color:var(--muted);text-decoration:none;background:#262626;border:1px solid var(--border);padding:6px 12px;border-radius:7px;cursor:pointer;transition:.15s;white-space:nowrap;flex:none}
+  .btn:hover{color:var(--text);border-color:#4a4a4a}
+  #stage{position:absolute;inset:58px 0 0 0;overflow:auto;background:radial-gradient(circle at 1px 1px,var(--grid) 1px,transparent 0) 0 0/26px 26px}
+  #canvas{position:relative;width:2400px;height:1450px;transform-origin:top left}
+  #edges{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
+  #edges path{fill:none;stroke:var(--edge);stroke-width:1.7;transition:stroke .15s,opacity .15s,stroke-width .15s}
+  #edges path.plan{stroke:var(--edge-plan);stroke-dasharray:5 5}
+  #edges path.hi{stroke:var(--edge-hi);stroke-width:2.6;opacity:1}
+  #edges path.faded{opacity:.12}
+  .node{position:absolute;width:244px;background:var(--node);border:1px solid var(--border);border-radius:11px;z-index:2;box-shadow:0 8px 28px rgba(0,0,0,.45);transition:opacity .15s,box-shadow .15s,border-color .15s;overflow:hidden}
+  .node.faded{opacity:.28}
+  .node.active{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 12px 34px rgba(0,0,0,.55)}
+  .node.neighbor{border-color:var(--green-dk)}
+  .node.plan{border-style:dashed;opacity:.92}
+  .node.plan.faded{opacity:.22}
+  .node-hd{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:grab;background:var(--node-hd);border-bottom:1px solid var(--border)}
+  .node-hd:active{cursor:grabbing}
+  .seq{width:30px;height:22px;border-radius:7px;display:grid;place-items:center;background:#1f1f1f;border:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:850;font-family:var(--mono);flex-shrink:0}
+  .viz{width:35px;height:31px;position:relative;flex-shrink:0}
+  .viz.browser{border:2px solid var(--cyan);border-radius:5px;background:rgba(91,209,230,.12)}
+  .viz.browser::before{content:"";position:absolute;left:11px;right:11px;bottom:-7px;height:2px;background:var(--cyan)}
+  .viz.browser::after{content:"";position:absolute;left:7px;right:7px;bottom:-11px;height:2px;background:var(--cyan)}
+  .viz.users::before,.viz.users::after{content:"";position:absolute;border:2px solid var(--cyan);background:rgba(91,209,230,.12);border-radius:50%}
+  .viz.users::before{width:15px;height:15px;left:8px;top:0;box-shadow:-11px 12px 0 -2px rgba(91,209,230,.12),-11px 12px 0 0 var(--cyan),13px 12px 0 -2px rgba(91,209,230,.12),13px 12px 0 0 var(--cyan)}
+  .viz.users::after{left:4px;right:4px;bottom:0;height:13px;border-radius:9px 9px 5px 5px}
+  .viz.db,.viz.storage{border:2px solid var(--violet);border-radius:50%/16%;background:linear-gradient(180deg,rgba(160,140,255,.22),rgba(160,140,255,.08))}
+  .viz.db::before,.viz.storage::before{content:"";position:absolute;left:-2px;right:-2px;top:-2px;height:10px;border:2px solid currentColor;border-bottom:0;border-radius:50%;color:var(--violet);background:#242424}
+  .viz.db::after,.viz.storage::after{content:"";position:absolute;left:-2px;right:-2px;bottom:-2px;height:10px;border:2px solid currentColor;border-top:0;border-radius:50%;color:var(--violet)}
+  .viz.storage{border-color:var(--amber)}
+  .viz.storage::before,.viz.storage::after{color:var(--amber)}
+  .viz.api{border:2px solid var(--amber);border-radius:4px;background:rgba(232,179,74,.13)}
+  .viz.api::after{content:"API";position:absolute;inset:0;display:grid;place-items:center;color:var(--amber);font:800 10px var(--mono)}
+  .viz.gate{width:29px;height:29px;margin:1px 3px;transform:rotate(45deg);border:2px solid var(--red);background:rgba(255,91,120,.13);border-radius:5px}
+  .viz.gate::after{content:"IF";position:absolute;inset:0;display:grid;place-items:center;transform:rotate(-45deg);color:var(--red);font:850 10px var(--mono)}
+  .viz.rtc{border:2px solid var(--amber);border-radius:50%;background:rgba(232,179,74,.12)}
+  .viz.rtc::before{content:"";position:absolute;inset:6px;border:2px solid var(--amber);border-radius:50%}
+  .viz.rtc::after{content:"";position:absolute;left:15px;top:-5px;width:2px;height:39px;background:var(--amber);transform:rotate(38deg)}
+  .viz.ai{border:2px solid var(--amber);border-radius:15px;background:rgba(232,179,74,.12)}
+  .viz.ai::before{content:"";position:absolute;width:15px;height:15px;left:4px;top:-8px;border:2px solid var(--amber);border-radius:50%;background:#242424;box-shadow:14px 3px 0 -2px #242424,14px 3px 0 0 var(--amber)}
+  .viz.file{border:2px solid var(--amber);border-radius:4px;background:rgba(232,179,74,.12)}
+  .viz.file::before{content:"";position:absolute;right:-2px;top:-2px;border-left:10px solid transparent;border-bottom:10px solid rgba(232,179,74,.45)}
+	  .title{min-width:0;display:block;line-height:1.2}
+	  .nm-main{display:block;font-weight:760;font-size:13.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+	  .nm-id{display:block;margin-top:2px;color:var(--dim);font:10px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(62,207,142,.15);color:var(--green);white-space:nowrap}
+  .node.part .badge{background:rgba(232,179,74,.15);color:var(--amber)}
+  .node.plan .badge{background:rgba(138,138,138,.16);color:#aaa}
+  .node-desc{padding:8px 13px;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--border);line-height:1.45}
+  .row{display:flex;align-items:center;gap:8px;padding:6px 13px;font-size:12px;font-family:var(--mono);border-bottom:1px solid #292929}
+  .row:last-child{border-bottom:none}
+  .row .k{width:17px;text-align:center;font-size:10px;color:var(--dim);flex-shrink:0}
+  .row .k.ok{color:var(--green)} .row .k.part{color:var(--amber)} .row .k.plan{color:var(--dim)}
+  .row .v{margin-left:auto;color:var(--dim);font-size:10.5px}
+	  .legend{position:fixed;bottom:18px;left:18px;z-index:20;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px;font-size:12px;color:var(--muted)}
+  .legend h4{font-size:11px;color:var(--text);margin-bottom:9px;letter-spacing:.4px;text-transform:uppercase}
+  .legend .r{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .sw{width:14px;height:14px;border-radius:4px;background:var(--green)}
+  .sw.c{background:var(--cyan)} .sw.e{background:var(--violet)} .sw.x{background:var(--amber)} .sw.g{background:var(--red)}
+  .lg-line{width:26px;height:0;border-top:2px solid var(--edge)}
+  .lg-line.plan{border-top:2px dashed var(--edge-plan)}
+	  .hint{position:fixed;bottom:72px;right:18px;z-index:20;font-size:11.5px;color:var(--dim)}
+	  .zoomdock{position:fixed;right:18px;bottom:18px;z-index:22;display:flex;align-items:center;gap:6px;padding:6px;background:rgba(31,31,31,.92);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.35)}
+	  .zoomdock .btn{padding:6px 9px}
+	  .panel-btn{position:absolute;top:8px;right:8px;border:0;background:#2a2a2a;color:var(--muted);width:22px;height:22px;border-radius:6px;cursor:pointer}
+	  .panel-btn:hover{color:var(--text)}
+	  .panel-minimized{width:auto!important;padding:10px 42px 10px 13px!important}
+	  .panel-minimized .r{display:none}
+	  .toast{position:fixed;right:18px;top:72px;z-index:40;max-width:360px;background:#202020;border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--muted);font-size:12px;line-height:1.5;box-shadow:0 14px 40px rgba(0,0,0,.42);opacity:0;transform:translateY(-6px);pointer-events:none;transition:.15s}
+  .toast.on{opacity:1;transform:translateY(0)}
+  .toast b{display:block;color:var(--text);font-size:13px;margin-bottom:4px}
+	  @media(max-width:760px){header{height:auto;min-height:58px;align-items:flex-start;flex-direction:column;padding:12px 16px;gap:8px}.sub{border-left:0;padding-left:0}.ctrl{width:100%;max-width:100%}#stage{inset:118px 0 0 0}.legend,.hint{display:none}.zoomdock{left:12px;right:12px;justify-content:center}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot"></span>ChatterBox <small>시스템 관계도</small></div>
+	  <div class="sub">순서대로 보는 확장 캔버스 · <b>스크롤해서 흐름 추적</b> · DB/Storage는 원기둥 아이콘</div>
+	  <div class="spacer"></div>
+	  <div class="ctrl">
+	    <div class="toolgroup primary">
+	      <label class="toggle"><input type="checkbox" id="togPlan" checked><span class="switch"></span>계획 기능</label>
+	      <a class="btn" href="chatterbox-branch-designer.html">분기 관계도</a>
+	    </div>
+	    <div class="toolgroup">
+	      <button class="btn" id="btnReset">레이아웃 초기화</button>
+	    </div>
+	  </div>
+	</header>
+	
+	<div id="stage"><div id="canvas"><svg id="edges"></svg></div></div>
+	<div class="legend">
+	  <button class="panel-btn" data-toggle-panel title="접기/펼치기">−</button>
+	  <h4>범례</h4>
+	  <div class="r"><span class="sw c"></span>브라우저/클라이언트</div>
+	  <div class="r"><span class="sw e"></span>엣지/데이터</div>
+  <div class="r"><span class="sw x"></span>외부 서비스</div>
+  <div class="r"><span class="sw g"></span>서버 게이트/분기</div>
+	  <div class="r"><span class="lg-line"></span>구현/운영 연결</div>
+	  <div class="r"><span class="lg-line plan"></span>계획 연결</div>
+	</div>
+	<div class="hint">캔버스 스크롤 · 노드 헤더 드래그 · 노드 호버로 연결 강조 · 노드 클릭으로 설명</div>
+	<div class="zoomdock" aria-label="캔버스 확대 축소">
+	  <button class="btn" id="btnFit">전체보기</button>
+	  <button class="btn" id="btnZoomOut">-</button>
+	  <button class="btn" id="btnZoomReset">100%</button>
+	  <button class="btn" id="btnZoomIn">+</button>
+	</div>
+	<div class="toast" id="toast"></div>
+
+<script>
+const NODES = [
+  {id:"users",step:"01",icon:"users",x:80,y:460,type:"client",badge:"사용자",desc:"배우, 호스트, 관객이 같은 웹 앱에 들어온다.",rows:[["배우","웹캠/음성","ok"],["호스트","방 운영","ok"],["관객","모바일 뷰어","plan"]]},
+  {id:"browser_app",step:"02",icon:"browser",x:420,y:460,type:"client",badge:"구현",desc:"React SPA. 무대, 로비, 설정, 더빙 화면의 진입점.",rows:[["React 19","SPA","ok"],["Zustand","4 stores","ok"],["Tailwind","UI","ok"]]},
+  {id:"room_gate",step:"03",icon:"gate",x:760,y:460,type:"gate",badge:"부분",desc:"방 입장 전 정원, 멤버십, 연령, 권한을 판정하는 서버 게이트.",rows:[["capacity","done","ok"],["age gate","planned","plan"],["host control","partial","part"]]},
+  {id:"supabase_edge",step:"04",icon:"api",x:1100,y:460,type:"edgebox",badge:"구현",desc:"비밀키가 필요한 서버 작업과 권한 검증을 담당한다.",rows:[["Edge Functions","Deno","ok"],["Auth","users","ok"],["Realtime","sync","ok"]]},
+  {id:"postgres",step:"05",icon:"db",x:1440,y:360,type:"edgebox",badge:"구현",desc:"방, 멤버, 더빙, 권한 데이터의 원장. RLS가 접근을 강제한다.",rows:[["Postgres","SQL","ok"],["RLS","policy","ok"],["is_room_member","SECDEF","ok"]]},
+  {id:"storage",step:"06",icon:"storage",x:1440,y:640,type:"edgebox",badge:"부분",desc:"아바타 파츠, 더빙 원본, 결과물과 로그를 저장한다.",rows:[["avatars","bucket","ok"],["dub-assets","bucket","ok"],["audit logs","planned","plan"]]},
+  {id:"livekit",step:"07",icon:"rtc",x:1100,y:140,type:"external",badge:"구현",desc:"방 음성, WebRTC 연결, DataChannel 실시간 동기화를 담당한다.",rows:[["SFU","voice","ok"],["DataChannel","avatar/chat","ok"],["token","edge issued","ok"]]},
+  {id:"tracking",step:"08",icon:"browser",x:420,y:140,type:"client",badge:"구현",desc:"웹캠 표정을 52개 blendshape로 읽어 아바타 파라미터로 보낸다.",rows:[["MediaPipe","52ch","ok"],["smoothing","driver","ok"],["head pose","face","ok"]]},
+  {id:"avatar_stage",step:"09",icon:"browser",x:760,y:140,type:"client",badge:"구현",desc:"PixiJS로 PNG rig 파츠를 렌더링하고 표정/말하기 상태를 반영한다.",rows:[["PixiJS v8","render","ok"],["character.json","rig","ok"],["active speaker","stage","ok"]]},
+  {id:"autorig",step:"10",icon:"file",x:80,y:140,type:"external",badge:"구현",desc:"PNG 그림을 rig 계약(character.json)과 파츠로 바꾸는 아바타 공장.",rows:[["PNG","input","ok"],["parts","output","ok"],["rig contract","json","ok"]]},
+  {id:"dub_pipeline",step:"11",icon:"gate",x:760,y:820,type:"gate",badge:"구현",desc:"업로드, STT, 역할배정, 동의, 녹음, 합성으로 이어지는 더빙 흐름.",rows:[["upload","MP4","ok"],["consent gate","412","ok"],["mux","ffmpeg.wasm","ok"]]},
+  {id:"whisper",step:"12",icon:"ai",x:1100,y:820,type:"external",badge:"구현",desc:"더빙 영상의 음성을 텍스트로 전사한다.",rows:[["STT","whisper-1","ok"],["segments","script","ok"]]},
+  {id:"demucs",step:"13",icon:"ai",x:1100,y:1080,type:"external",badge:"구현",desc:"원본 영상에서 보컬을 분리해 더빙 목소리와 겹치지 않게 한다.",rows:[["fal.ai","Demucs","ok"],["background","audio","ok"]]},
+  {id:"branch_tool",step:"14",icon:"gate",x:80,y:820,type:"gate",badge:"문서",desc:"로그인, 정원, 동의, 연령, 크레딧 게이트를 참/거짓으로 시뮬레이션한다.",rows:[["branch designer","open","ok"],["true/false","sim","ok"]]},
+  {id:"trust_safety",step:"P1",icon:"db",x:420,y:820,type:"edgebox",badge:"계획",plan:true,desc:"신고, 차단, 연령확인, 모더레이션, audit 로그.",rows:[["report/block","planned","plan"],["age check","planned","plan"],["audit","planned","plan"]]},
+  {id:"vgen",step:"P2",icon:"ai",x:1440,y:140,type:"external",badge:"계획",plan:true,desc:"협업 프롬프트로 짧은 영상을 만들고 메인 소스로 교체한다.",rows:[["fal Seedance","planned","plan"],["moderation","needed","plan"]]},
+  {id:"credits",step:"P3",icon:"db",x:1440,y:980,type:"edgebox",badge:"계획",plan:true,desc:"영상생성/더빙 비용을 차감하고 실패 시 환불하는 전제 시스템.",rows:[["balance","planned","plan"],["Stripe","planned","plan"],["refund","planned","plan"]]}
+];
+const EDGES = [
+  ["users","browser_app"],["browser_app","tracking"],["tracking","avatar_stage"],["autorig","avatar_stage"],
+  ["browser_app","room_gate"],["room_gate","supabase_edge"],["supabase_edge","postgres"],["supabase_edge","livekit"],["livekit","browser_app"],
+  ["browser_app","dub_pipeline"],["dub_pipeline","whisper"],["dub_pipeline","demucs"],["dub_pipeline","storage"],["supabase_edge","storage"],
+  ["branch_tool","room_gate"],["room_gate","trust_safety",true],["room_gate","credits",true],["credits","vgen",true],["vgen","browser_app",true],
+  ["trust_safety","postgres",true],["credits","postgres",true]
+];
+const LABELS = {
+  users:"사용자",
+  browser_app:"웹 앱",
+  room_gate:"입장 게이트",
+  supabase_edge:"서버 함수",
+  postgres:"DB 원장",
+  storage:"파일 저장소",
+  livekit:"실시간 음성",
+  tracking:"표정 추적",
+  avatar_stage:"아바타 무대",
+  autorig:"오토리그",
+  dub_pipeline:"더빙 파이프라인",
+  whisper:"STT 전사",
+  demucs:"보컬 분리",
+  branch_tool:"분기 설계도",
+  trust_safety:"신뢰/안전",
+  vgen:"영상 생성",
+  credits:"크레딧/결제"
+};
+const canvas=document.getElementById("canvas"),stage=document.getElementById("stage"),svg=document.getElementById("edges"),toast=document.getElementById("toast");
+const SVGNS="http://www.w3.org/2000/svg";
+let showPlan=true, scale=1, drag=null;
+function cls(n){return "node "+n.type+(n.plan?" plan":"")+(n.badge==="부분"?" part":"");}
+function labelOf(n){return n.name||LABELS[n.id]||n.id;}
+function buildNodes(){
+  NODES.forEach(n=>{
+    const el=document.createElement("div"); el.className=cls(n); el.id="node-"+n.id; el.dataset.node=n.id; el.style.left=n.x+"px"; el.style.top=n.y+"px";
+    el.innerHTML=`<div class="node-hd" data-drag="${n.id}"><span class="seq">${n.step||""}</span><span class="viz ${n.icon||n.type}" aria-hidden="true"></span><span class="title"><span class="nm-main">${labelOf(n)}</span><span class="nm-id">${n.id}</span></span><span class="badge">${n.badge}</span></div>
+      <div class="node-desc">${n.desc}</div>`+n.rows.map(r=>`<div class="row"><span class="k ${r[2]||""}">●</span><span>${r[0]}</span><span class="v">${r[1]}</span></div>`).join("");
+    canvas.appendChild(el);
+  });
+}
+function center(id){const e=document.getElementById("node-"+id);return{x:e.offsetLeft+e.offsetWidth/2,y:e.offsetTop+e.offsetHeight/2,l:e.offsetLeft,r:e.offsetLeft+e.offsetWidth,t:e.offsetTop,b:e.offsetTop+e.offsetHeight};}
+function drawEdges(){
+  svg.innerHTML="";
+  EDGES.forEach((e,i)=>{if(e[2]&&!showPlan)return;const a=center(e[0]),b=center(e[1]);let ax,bx,ay=a.y,by=b.y;
+    if(Math.abs(a.x-b.x)>Math.abs(a.y-b.y)){ax=a.x<b.x?a.r:a.l;bx=a.x<b.x?b.l:b.r;}else{ax=a.x;bx=b.x;ay=a.y<b.y?a.b:a.t;by=a.y<b.y?b.t:b.b;}
+    const dx=Math.max(40,Math.abs(bx-ax)*.45),dy=Math.max(40,Math.abs(by-ay)*.45);
+    const c1x=ax+(ax<bx?dx:-dx),c2x=bx+(ax<bx?-dx:dx),c1y=ay+(ay<by?dy:-dy),c2y=by+(ay<by?-dy:dy);
+    const p=document.createElementNS(SVGNS,"path");p.setAttribute("d",`M ${ax} ${ay} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${bx} ${by}`);
+    p.classList.add("edge");if(e[2])p.classList.add("plan");p.dataset.from=e[0];p.dataset.to=e[1];svg.appendChild(p);
+  });
+}
+function fitToScreen(){
+  let w=0,h=0;document.querySelectorAll(".node").forEach(n=>{if(n.style.display==="none")return;w=Math.max(w,n.offsetLeft+n.offsetWidth);h=Math.max(h,n.offsetTop+n.offsetHeight);});
+  const pad=560;
+  canvas.style.width=Math.max(2400,w+pad)+"px";canvas.style.height=Math.max(1450,h+pad)+"px";
+  canvas.style.transform="scale("+scale+")";canvas.style.marginLeft="0";canvas.style.marginTop="0";drawEdges();
+}
+function setZoom(next){
+  scale=Math.max(.28,Math.min(1.8,next));
+  fitToScreen();
+}
+function fitAll(){
+  let w=0,h=0;document.querySelectorAll(".node").forEach(n=>{if(n.style.display==="none")return;w=Math.max(w,n.offsetLeft+n.offsetWidth);h=Math.max(h,n.offsetTop+n.offsetHeight);});
+  scale=Math.max(.28,Math.min(stage.clientWidth/(w+160),stage.clientHeight/(h+160),1));
+  stage.scrollLeft=0;stage.scrollTop=0;fitToScreen();
+}
+function neighborsOf(id){const set=new Set([id]);EDGES.forEach(e=>{if(e[0]===id)set.add(e[1]);if(e[1]===id)set.add(e[0]);});return set;}
+function focusNode(id){const set=neighborsOf(id);document.querySelectorAll(".node").forEach(n=>{const on=n.dataset.node===id,near=set.has(n.dataset.node);n.classList.toggle("active",on);n.classList.toggle("neighbor",!on&&near);n.classList.toggle("faded",!near);});
+  svg.querySelectorAll("path").forEach(p=>{const on=p.dataset.from===id||p.dataset.to===id;p.classList.toggle("hi",on);p.classList.toggle("faded",!on);});}
+function clearFocus(){document.querySelectorAll(".node").forEach(n=>n.classList.remove("active","neighbor","faded"));svg.querySelectorAll("path").forEach(p=>p.classList.remove("hi","faded"));}
+function showToast(id){const n=NODES.find(x=>x.id===id);toast.innerHTML=`<b>${labelOf(n)} <span class="nm-id">${n.id}</span></b>${n.desc}`;toast.classList.add("on");clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove("on"),2600);}
+canvas.addEventListener("mousedown",e=>{const hd=e.target.closest("[data-drag]");if(!hd)return;const node=document.getElementById("node-"+hd.dataset.drag);drag={node,sx:e.clientX,sy:e.clientY,ox:parseFloat(node.style.left),oy:parseFloat(node.style.top)};e.preventDefault();});
+window.addEventListener("mousemove",e=>{if(!drag)return;drag.node.style.left=Math.max(0,drag.ox+(e.clientX-drag.sx)/scale)+"px";drag.node.style.top=Math.max(0,drag.oy+(e.clientY-drag.sy)/scale)+"px";fitToScreen();});
+window.addEventListener("mouseup",()=>drag=null);
+function bind(){document.querySelectorAll(".node").forEach(n=>{n.addEventListener("mouseenter",()=>{if(!drag)focusNode(n.dataset.node)});n.addEventListener("mouseleave",clearFocus);n.addEventListener("click",()=>showToast(n.dataset.node));});}
+function resetLayout(){NODES.forEach(n=>{const el=document.getElementById("node-"+n.id);el.style.left=n.x+"px";el.style.top=n.y+"px";});fitToScreen();}
+document.getElementById("togPlan").addEventListener("change",e=>{showPlan=e.target.checked;NODES.filter(n=>n.plan).forEach(n=>document.getElementById("node-"+n.id).style.display=showPlan?"":"none");fitToScreen();});
+document.getElementById("btnFit").addEventListener("click",fitAll);
+document.getElementById("btnZoomOut").addEventListener("click",()=>setZoom(scale-.12));
+document.getElementById("btnZoomIn").addEventListener("click",()=>setZoom(scale+.12));
+document.getElementById("btnZoomReset").addEventListener("click",()=>setZoom(1));
+document.getElementById("btnReset").addEventListener("click",resetLayout);
+document.addEventListener("click",e=>{
+  const btn=e.target.closest("[data-toggle-panel]");
+  if(!btn) return;
+  const panel=btn.closest(".legend");
+  if(!panel) return;
+  panel.classList.toggle("panel-minimized");
+  btn.textContent=panel.classList.contains("panel-minimized")?"+":"−";
+});
+window.addEventListener("resize",fitToScreen);
+buildNodes();bind();fitToScreen();
+</script>
+</body>
+</html>

@@ -99,6 +99,9 @@ tags: [hub]
 | `status/SCOUT.md` | 랜딩 리팩토링 배턴 (`SCOUT_READY`) — 다음 세션 진입점 | 스크래치 (gitignore) |
 | `meeting/index.html` | 기능 배치 회의 보드(자유 캔버스, localStorage) | 도구 (회의 스냅샷 → JSON로 SPEC 역반영) |
 | `meeting/ux-layout-picker.html` | UX 레이아웃 피커 — Settings·Stage·VGen·DUB·예약·게스트 템플릿 + 아이콘 디렉션 | 도구 (선택 후 계약서 작성 착수) |
+| `overview/chatterbox-system-designer.html` | PM용 시스템 설계 뷰(용어 툴팁·도메인 상태 토글·JSON export). **SSOT 아님 — SPEC/ARCHITECTURE에서 파생한 사람용 뷰** | 도구 (뷰, 에이전트 온보딩 대상 아님) |
+| `overview/chatterbox-branch-designer.html` | PM용 분기 설계 스튜디오(참/거짓 시뮬레이터·드래그 순서편집). **SSOT 아님** | 도구 (뷰) |
+| `overview/chatterbox-system-overview.html` | 정적 시스템 개요 프레젠테이션(designer의 읽기전용 스냅샷) | 도구 (뷰, 보존) |
 
 > **원시 조사 보존 정책:** 서브에이전트 원시 리포트는 `research/`에 둔다. LiveKit·MediaPipe·PixiJS·Supabase·Cloudflare 원시 조사 5종은 파일로 남기지 않고 `PLATFORM-SECURITY-RISKS-B.md`로 직접 종합했다(종합본이 SSOT). 재현이 필요하면 동일 프롬프트로 재조사.
 

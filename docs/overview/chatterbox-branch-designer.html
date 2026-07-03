@@ -1,0 +1,609 @@
+<!--
+  chatterbox-branch-designer.html - ChatterBox 참/거짓 분기 관계도
+  형식: /Users/family/Desktop/데이터베이스 구조.html 스타일의 단일 HTML 캔버스
+  사용: 더블클릭 실행. 노드 드래그, 호버 연결 강조, 참/거짓 시뮬레이션 지원. 외부 의존성 0.
+-->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatterBox · 분기 관계도</title>
+<style>
+  :root{
+    --bg:#171717; --grid:#232323; --panel:#1f1f1f; --node:#242424; --node-hd:#2b2b2b;
+    --border:#343434; --text:#ededed; --muted:#8a8a8a; --dim:#666;
+    --green:#3ecf8e; --green-dk:#2a9d6e; --red:#ff5b78; --amber:#e8b34a;
+    --blue:#5b9dff; --edge:#474747; --edge-hi:#3ecf8e; --edge-false:#ff5b78; --edge-plan:#3a3a3a;
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+  header{position:fixed;top:0;left:0;right:0;height:58px;z-index:30;display:flex;align-items:center;gap:18px;padding:0 22px;background:rgba(23,23,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;letter-spacing:.2px}
+  .brand .dot{width:11px;height:11px;border-radius:3px;background:var(--green);box-shadow:0 0 10px var(--green)}
+  .brand small{color:var(--muted);font-weight:500;font-size:12px}
+  .sub{color:var(--muted);font-size:12.5px;border-left:1px solid var(--border);padding-left:18px}
+  .sub b{color:var(--green);font-weight:650}
+  .spacer{flex:1}
+	  .ctrl{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;overflow-x:auto;max-width:72vw}
+	  .toolgroup{display:flex;align-items:center;gap:7px;padding:3px;border:1px solid #2c2c2c;border-radius:9px;background:rgba(31,31,31,.7);flex:none}
+	  .toolgroup.primary{border-color:#34594a;background:rgba(62,207,142,.07)}
+	  .btn{font-size:12.5px;color:var(--muted);text-decoration:none;background:#262626;border:1px solid var(--border);padding:6px 12px;border-radius:7px;cursor:pointer;transition:.15s;white-space:nowrap;flex:none}
+  .btn:hover{color:var(--text);border-color:#4a4a4a}
+  .btn.on{color:var(--green);border-color:var(--green-dk);background:rgba(62,207,142,.1)}
+  #stage{position:absolute;inset:58px 0 0 0;overflow:auto;background:radial-gradient(circle at 1px 1px,var(--grid) 1px,transparent 0) 0 0/26px 26px}
+  #canvas{position:relative;width:2450px;height:1450px;transform-origin:top left}
+  #edges{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
+  #edges path{fill:none;stroke:var(--edge);stroke-width:1.7;transition:stroke .15s,opacity .15s,stroke-width .15s}
+  #edges path.plan{stroke:var(--edge-plan);stroke-dasharray:5 5}
+  #edges path.true.sel{stroke:var(--green);stroke-width:3}
+  #edges path.false.sel{stroke:var(--red);stroke-width:3}
+  #edges path.hi{stroke:var(--edge-hi);stroke-width:2.6;opacity:1}
+  #edges path.faded{opacity:.12}
+  #edges path.preview{stroke:var(--green);stroke-width:3;stroke-dasharray:7 5;opacity:.95}
+	  .node{position:absolute;width:270px;background:var(--node);border:1px solid var(--border);border-radius:11px;z-index:2;box-shadow:0 8px 28px rgba(0,0,0,.45);transition:opacity .15s,box-shadow .15s,border-color .15s;overflow:hidden}
+	  .node.faded{opacity:.28}
+	  .node.active{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 12px 34px rgba(0,0,0,.55)}
+	  .node.neighbor{border-color:var(--green-dk)}
+	  .node.plan{border-style:dashed;opacity:.92}
+	  .node.incomplete{border-color:rgba(232,179,74,.72)}
+	  .node-hd{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:grab;background:var(--node-hd);border-bottom:1px solid var(--border)}
+  .node-hd:active{cursor:grabbing}
+  .quick-actions{position:absolute;top:7px;right:8px;z-index:4;display:flex;gap:5px;opacity:0;transform:translateY(-3px);transition:.15s;pointer-events:none}
+  .node:hover .quick-actions,.node:focus-within .quick-actions,body.editing .node .quick-actions{opacity:1;transform:translateY(0);pointer-events:auto}
+  .node:hover .badge,body.editing .node .badge{opacity:0}
+  .qbtn{width:27px;height:25px;border-radius:7px;border:1px solid #3b3b3b;background:#1d1d1d;color:var(--muted);font:800 11px var(--mono);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.26)}
+  .qbtn:hover{color:var(--text);border-color:#565656;background:#292929}
+  .qbtn.edit{color:var(--green);border-color:rgba(62,207,142,.35)}
+  .qbtn.del{color:var(--red);border-color:rgba(255,91,120,.35)}
+  .edit-chip{display:none;position:absolute;left:12px;top:44px;z-index:3;padding:4px 7px;border-radius:7px;background:rgba(62,207,142,.13);border:1px solid rgba(62,207,142,.35);color:var(--green);font-size:11px;font-weight:750;pointer-events:none}
+  body.editing .node .edit-chip{display:block}
+  .seq{width:30px;height:22px;border-radius:7px;display:grid;place-items:center;background:#1f1f1f;border:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:850;font-family:var(--mono);flex-shrink:0}
+  .ic{min-width:36px;height:28px;border-radius:7px;display:grid;place-items:center;background:rgba(62,207,142,.13);color:var(--green);font-size:10px;font-weight:850;font-family:var(--mono);flex-shrink:0;padding:0 6px}
+  .node.plan .ic{background:rgba(232,179,74,.13);color:var(--amber)}
+	  .title{min-width:0;display:block;line-height:1.2}
+	  .nm-main{display:block;font-weight:760;font-size:13.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+	  .nm-id{display:block;margin-top:2px;color:var(--dim);font:10px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+	  .badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(62,207,142,.15);color:var(--green);white-space:nowrap}
+	  .node.plan .badge{background:rgba(138,138,138,.16);color:#aaa}
+	  .q{padding:8px 13px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);line-height:1.45}
+	  .issue{display:block;margin:8px 13px 0;padding:5px 7px;border-radius:7px;background:rgba(232,179,74,.1);border:1px solid rgba(232,179,74,.32);color:var(--amber);font:700 11px var(--mono)}
+  .fork{display:flex;align-items:flex-start;gap:8px;width:100%;border:0;border-bottom:1px solid #292929;background:transparent;color:var(--text);padding:9px 13px;text-align:left;cursor:pointer;font-family:inherit}
+  .fork:last-child{border-bottom:none}
+  .fork:hover{background:#2a2a2a}
+  .fork::after{content:"↗";margin-left:auto;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#1f1f1f;border:1px solid #3a3a3a;color:var(--muted);font-size:12px;flex-shrink:0}
+  .fork:hover::after{color:var(--green);border-color:var(--green-dk)}
+  .fork .k{width:18px;font-size:11px;line-height:1.5;font-family:var(--mono);font-weight:850;flex-shrink:0}
+  .fork.true .k{color:var(--green)} .fork.false .k{color:var(--red)}
+  .fork .to{display:block;font-size:12.5px;font-weight:700}
+  .fork .note{display:block;margin-top:2px;font-size:11px;color:var(--muted);line-height:1.35}
+  .node[data-state="true"] .fork.true{background:rgba(62,207,142,.12);box-shadow:inset 3px 0 0 var(--green)}
+  .node[data-state="false"] .fork.false{background:rgba(255,91,120,.12);box-shadow:inset 3px 0 0 var(--red)}
+  .node[data-state="true"] .fork.false,.node[data-state="false"] .fork.true{opacity:.45}
+	  .scenario{position:fixed;right:18px;bottom:76px;z-index:20;width:min(440px,calc(100vw - 36px));background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px;font-size:12px;color:var(--muted);line-height:1.5}
+  .scenario h4{font-size:11px;color:var(--text);margin-bottom:9px;letter-spacing:.4px;text-transform:uppercase}
+  .scenario .t{color:var(--green);font-weight:700}.scenario .f{color:var(--red);font-weight:700}
+	  .legend{position:fixed;bottom:18px;left:18px;z-index:20;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px;font-size:12px;color:var(--muted)}
+  .legend h4{font-size:11px;color:var(--text);margin-bottom:9px;letter-spacing:.4px;text-transform:uppercase}
+  .legend .r{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .lg-line{width:26px;height:0;border-top:2px solid var(--edge)}
+  .lg-line.t{border-color:var(--green)} .lg-line.f{border-color:var(--red)} .lg-line.plan{border-top:2px dashed var(--edge-plan)}
+	  .editor{position:fixed;top:76px;right:18px;z-index:25;width:360px;max-height:calc(100vh - 112px);overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:11px;box-shadow:0 18px 48px rgba(0,0,0,.48);padding:14px;display:none}
+	  body.editing .editor{display:block}
+	  .edit-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+	  .editor h3{font-size:13px}
+	  .saved{font-size:10.5px;color:var(--green);border:1px solid rgba(62,207,142,.35);border-radius:20px;padding:2px 7px;background:rgba(62,207,142,.08);white-space:nowrap}
+	  .edit-current{margin:-2px 0 11px;padding:7px 9px;border-radius:8px;background:#1a1a1a;border:1px solid #2b2b2b;color:var(--muted);font-size:11.5px}
+	  .editor .empty{font-size:12px;color:var(--muted);line-height:1.5}
+  .field{margin-bottom:9px}
+  .field label{display:block;font:700 10px var(--mono);color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  .field input,.field textarea,.field select{width:100%;border:1px solid var(--border);background:#191919;color:var(--text);border-radius:7px;padding:7px 8px;font:12px -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif}
+  .field textarea{min-height:56px;resize:vertical}
+  .field.invalid input,.field.invalid select{border-color:var(--red)}
+  .warn{margin-top:4px;color:var(--red);font-size:11px;line-height:1.35}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .checks{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 12px;color:var(--muted);font-size:12px}
+  .checks label{display:flex;align-items:center;gap:6px}
+  .editor-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  body.editing .node{cursor:pointer}
+  body.editing .node.selected{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 12px 34px rgba(0,0,0,.55)}
+  body.connecting .fork{outline:1px dashed rgba(62,207,142,.35);outline-offset:-3px}
+	  body.connecting .fork.pending{background:rgba(62,207,142,.18);box-shadow:inset 3px 0 0 var(--green)}
+	  body.connecting .node{cursor:crosshair}
+	  body.connecting .node.connect-target{border-color:var(--green-dk)}
+	  body.linking{cursor:crosshair;user-select:none}
+	  body.linking .fork{cursor:grabbing}
+	  .node.drop-target{border-color:var(--green);box-shadow:0 0 0 2px rgba(62,207,142,.55),0 14px 38px rgba(0,0,0,.55)}
+	  .connect-guide{position:fixed;left:50%;top:72px;z-index:45;transform:translateX(-50%);display:none;min-width:min(520px,calc(100vw - 32px));background:#202020;border:1px solid var(--green-dk);border-radius:10px;padding:10px 13px;box-shadow:0 16px 44px rgba(0,0,0,.42);color:var(--text);font-size:12px;line-height:1.45}
+	  .connect-guide b{color:var(--green)}
+	  body.connecting .connect-guide,body.linking .connect-guide,.connect-guide.show{display:block}
+	  .zoomdock{position:fixed;right:18px;bottom:18px;z-index:22;display:flex;align-items:center;gap:6px;padding:6px;background:rgba(31,31,31,.92);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.35)}
+	  .zoomdock .btn{padding:6px 9px}
+	  .panel-btn{position:absolute;top:8px;right:8px;border:0;background:#2a2a2a;color:var(--muted);width:22px;height:22px;border-radius:6px;cursor:pointer}
+	  .panel-btn:hover{color:var(--text)}
+	  .panel-minimized{width:auto!important;padding:10px 42px 10px 13px!important}
+	  .panel-minimized .r,.panel-minimized .panel-body{display:none}
+	  @media(max-width:760px){header{height:auto;min-height:58px;align-items:flex-start;flex-direction:column;padding:12px 16px;gap:8px}.sub{border-left:0;padding-left:0}.ctrl{width:100%;max-width:100%}#stage{inset:118px 0 0 0}.legend{display:none}.scenario{left:12px;right:12px;bottom:70px;width:auto;max-height:30vh;overflow:auto}.editor{left:12px;right:12px;top:128px;width:auto;max-height:48vh}.zoomdock{left:12px;right:12px;justify-content:center}.connect-guide{top:126px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot"></span>ChatterBox <small>분기 관계도</small></div>
+  <div class="sub">순서대로 보는 확장 캔버스 · <b>참/거짓 시뮬레이션</b> · 스크롤/드래그 가능</div>
+	  <div class="spacer"></div>
+	  <div class="ctrl">
+	    <div class="toolgroup primary">
+	      <button class="btn" id="btnEdit">편집 모드</button>
+	      <button class="btn" id="btnConnect">연결 모드</button>
+	      <button class="btn" id="btnAdd">분기 추가</button>
+	    </div>
+	    <div class="toolgroup">
+	      <a class="btn" href="chatterbox-system-designer.html">시스템 관계도</a>
+	      <button class="btn" id="btnExport">JSON 내보내기</button>
+	      <button class="btn" id="btnImport">JSON 불러오기</button>
+	      <button class="btn" id="btnClear">시뮬레이션 초기화</button>
+	      <button class="btn" id="btnReset">기본 프리셋</button>
+	    </div>
+	    <input type="file" id="importFile" accept="application/json" hidden>
+	  </div>
+	</header>
+	
+	<div id="stage"><div id="canvas"><svg id="edges"></svg></div></div>
+	<div class="legend">
+	  <button class="panel-btn" data-toggle-panel title="접기/펼치기">−</button>
+	  <h4>범례</h4>
+	  <div class="r"><span class="lg-line t"></span>참/성공 선택</div>
+	  <div class="r"><span class="lg-line f"></span>거짓/실패 선택</div>
+	  <div class="r"><span class="lg-line"></span>기본 연결</div>
+	  <div class="r"><span class="lg-line plan"></span>계획 게이트</div>
+	</div>
+	<div class="scenario" id="scenario"><button class="panel-btn" data-toggle-panel title="접기/펼치기">−</button><h4>현재 시나리오</h4><div class="panel-body">게이트의 참/거짓 행을 클릭하면 여기에 사용자 경로가 쌓입니다.</div></div>
+	<div class="connect-guide" id="connectGuide"></div>
+	<div class="zoomdock" aria-label="캔버스 확대 축소">
+	  <button class="btn" id="btnFit">전체보기</button>
+	  <button class="btn" id="btnZoomOut">-</button>
+	  <button class="btn" id="btnZoomReset">100%</button>
+	  <button class="btn" id="btnZoomIn">+</button>
+	</div>
+	<aside class="editor" id="editor"></aside>
+
+<script>
+const DEFAULT_NODES = [
+	  {id:"login",name:"로그인",step:"01",x:80,y:430,badge:"AUTH",q:"인증에 성공했는가?",built:true,
+    t:{to:"lobby",label:"로비 / 이어서 온보딩",note:"세션 발급 후 public_rooms 목록으로 진입"},
+    f:{to:"login_error",label:"로그인 폼 유지 + 에러",note:"자격증명 오류 메시지 표시, 재시도"}},
+	  {id:"lobby",name:"방 목록",step:"02",x:460,y:430,badge:"ROOM",q:"공개 방 목록에서 입장할 방을 선택한다.",built:true,terminal:true,
+    t:{to:"capacity",label:"방 입장 시도",note:"선택한 room_id로 입장 게이트 실행"},
+    f:{to:"lobby",label:"대기/탐색 유지",note:"아직 방을 선택하지 않음"}},
+	  {id:"capacity",name:"정원 확인",step:"03",x:840,y:430,badge:"ROOM",q:"방 정원에 빈 자리가 있는가?",built:true,
+    t:{to:"token",label:"livekit-token 발급",note:"가장 낮은 빈 슬롯 배정 후 WebRTC 연결"},
+    f:{to:"spectator",label:"만석 안내",note:"배우 슬롯 없음. 관전 또는 대기 유도"}},
+	  {id:"token",name:"토큰 발급",step:"04",x:1220,y:430,badge:"RTC",q:"토큰 발급과 LiveKit 연결이 성공했는가?",built:true,
+    t:{to:"stage",label:"라이브 무대 입장",note:"음성, 채팅, 아바타 DataChannel 연결"},
+    f:{to:"reconnect",label:"재연결/에러 안내",note:"토큰 만료 또는 네트워크 실패"}},
+	  {id:"stage",name:"라이브 무대",step:"05",x:1220,y:760,badge:"LIVE",q:"실시간 연기 무대",built:true,terminal:true,
+    t:{to:"dub_consent",label:"더빙 녹음으로 이동",note:"방 참가자가 더빙 플로우를 시작"},
+    f:{to:"stage",label:"라이브 유지",note:"대본/채팅/아바타 동기 계속"}},
+	  {id:"dub_consent",name:"더빙 동의",step:"06",x:840,y:760,badge:"DUB",q:"참가자 전원이 녹음에 동의했는가?",built:true,
+    t:{to:"recording",label:"녹음 시작",note:"all_consented 확인 후 start-dub-recording 허용"},
+    f:{to:"wait_consent",label:"미동의자 대기",note:"동의 게이트 412. 동의 수집 재브로드캐스트"}},
+	  {id:"recording",name:"녹음/합성",step:"07",x:460,y:760,badge:"DUB",q:"역할별 녹음과 합성이 완료됐는가?",built:true,
+    t:{to:"download",label:"완성본 다운로드",note:"Demucs + ffmpeg.wasm mux 결과물 제공"},
+    f:{to:"retry_record",label:"재녹음/복구",note:"누락 파트 또는 합성 실패 복구"}},
+	  {id:"age",name:"성인 인증",step:"P1",x:80,y:90,badge:"TRUST",q:"성인 인증이 완료됐는가?",built:false,plan:true,
+    t:{to:"capacity",label:"성인 콘텐츠 방 허용",note:"연령 게이트 통과 플래그 세팅"},
+    f:{to:"blocked",label:"차단 + 안내",note:"미인증/미성년 입장 거부"}},
+	  {id:"credit",name:"크레딧 확인",step:"P2",x:460,y:90,badge:"CREDIT",q:"영상생성 크레딧이 충분한가?",built:false,plan:true,
+    t:{to:"vgen",label:"fal Seedance 실행",note:"차감 후 생성 큐 등록"},
+    f:{to:"billing",label:"충전 유도",note:"잔액 부족. Stripe 구매 모달"}},
+	  {id:"vgen",name:"영상 생성",step:"P3",x:840,y:90,badge:"VGEN",q:"영상 생성이 성공했는가?",built:false,plan:true,
+    t:{to:"stage",label:"메인 소스 교체",note:"생성된 영상을 무대 소스로 반영"},
+    f:{to:"refund",label:"실패 + 환불",note:"실패 시 크레딧 자동 환불"}},
+	  {id:"login_error",name:"로그인 실패",step:"E1",x:80,y:740,badge:"END",q:"로그인 실패 상태",built:true,end:true},
+	  {id:"spectator",name:"관전/대기",step:"E2",x:1600,y:90,badge:"END",q:"관전/대기 모드",built:false,end:true,plan:true},
+	  {id:"reconnect",name:"재연결",step:"E3",x:1600,y:430,badge:"END",q:"재연결 안내",built:true,end:true},
+	  {id:"wait_consent",name:"동의 대기",step:"E4",x:1220,y:1080,badge:"END",q:"동의 대기",built:true,end:true},
+	  {id:"download",name:"다운로드",step:"08",x:80,y:1080,badge:"END",q:"완성본 다운로드",built:true,end:true},
+	  {id:"retry_record",name:"재녹음/복구",step:"E5",x:460,y:1080,badge:"END",q:"재녹음/복구",built:true,end:true},
+	  {id:"blocked",name:"차단 안내",step:"E6",x:80,y:270,badge:"END",q:"차단 안내",built:false,end:true,plan:true},
+	  {id:"billing",name:"결제/충전",step:"E7",x:1600,y:620,badge:"END",q:"결제/충전",built:false,end:true,plan:true},
+	  {id:"refund",name:"환불 처리",step:"E8",x:840,y:1080,badge:"END",q:"환불 처리",built:false,end:true,plan:true}
+];
+const BRANCH_LABELS = {
+  login:"로그인",
+  lobby:"방 목록",
+  capacity:"정원 확인",
+  token:"토큰 발급",
+  stage:"라이브 무대",
+  dub_consent:"더빙 동의",
+  recording:"녹음/합성",
+  age:"성인 인증",
+  credit:"크레딧 확인",
+  vgen:"영상 생성",
+  login_error:"로그인 실패",
+  spectator:"관전/대기",
+  reconnect:"재연결",
+  wait_consent:"동의 대기",
+  download:"다운로드",
+  retry_record:"재녹음/복구",
+  blocked:"차단 안내",
+  billing:"결제/충전",
+  refund:"환불 처리"
+};
+const KEY="cb-branch-designer-v2";
+	const state = {sim:{}, selected:null, editing:false, connecting:null};
+	const canvas=document.getElementById("canvas"),stage=document.getElementById("stage"),svg=document.getElementById("edges"),scenario=document.getElementById("scenario"),editor=document.getElementById("editor"),connectGuide=document.getElementById("connectGuide");
+const SVGNS="http://www.w3.org/2000/svg";
+let scale=1,drag=null,linkDrag=null,suppressForkClick=false;
+let NODES = loadNodes();
+
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function loadNodes(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(!raw) return clone(DEFAULT_NODES);
+    const parsed=JSON.parse(raw);
+    return normalizeNodes(Array.isArray(parsed)?parsed:(parsed.nodes||DEFAULT_NODES));
+  }catch(e){return clone(DEFAULT_NODES);}
+}
+function saveNodes(){try{localStorage.setItem(KEY,JSON.stringify({nodes:NODES},null,2));}catch(e){}}
+function normalizeNodes(nodes){
+  return clone(nodes).map(n=>{
+	    n.id=String(n.id||("node_"+Date.now()));
+	    n.name=n.name||BRANCH_LABELS[n.id]||n.id;
+	    n.step=n.step||"";
+    n.badge=n.badge||"NEW";
+    n.q=n.q||"새 분기 조건";
+    n.x=Number(n.x)||80; n.y=Number(n.y)||80;
+    n.built=!!n.built; n.plan=!!n.plan; n.end=!!n.end;
+    if(!n.end){
+      n.t=n.t||{to:"",label:"참일 때",note:"설명"};
+      n.f=n.f||{to:"",label:"거짓일 때",note:"설명"};
+    }
+    return n;
+  });
+	}
+	function nodeById(id){return NODES.find(n=>n.id===id);}
+	function missingChoices(n){
+	  if(n.end) return [];
+	  const ids=new Set(NODES.map(x=>x.id));
+	  const miss=[];
+	  if(!n.t||!ids.has(n.t.to)) miss.push("T");
+	  if(!n.f||!ids.has(n.f.to)) miss.push("F");
+	  return miss;
+	}
+	function scenarioHtml(title, body){return `<button class="panel-btn" data-toggle-panel title="접기/펼치기">${scenario.classList.contains("panel-minimized")?"+":"−"}</button><h4>${title}</h4><div class="panel-body">${body}</div>`;}
+	function buildNodes(){
+	  canvas.querySelectorAll(".node").forEach(n=>n.remove());
+	  NODES.forEach(n=>{
+	    const missing=missingChoices(n);
+	    const el=document.createElement("div");el.className="node"+(n.plan?" plan":"")+(missing.length?" incomplete":"")+(state.selected===n.id?" selected":"");el.id="node-"+n.id;el.dataset.node=n.id;el.style.left=n.x+"px";el.style.top=n.y+"px";
+	    const issue=missing.length?`<span class="issue">${missing.join("/")} 미연결</span>`:"";
+	    const body=n.end?`<div class="q">${esc(n.q)}${issue}</div>`:`<div class="q">${esc(n.q)}${issue}</div>
+	      <button class="fork true" data-node="${esc(n.id)}" data-choice="true"><span class="k">T</span><span><span class="to">${esc(n.t.label)}</span><span class="note">${esc(n.t.note)}</span></span></button>
+	      <button class="fork false" data-node="${esc(n.id)}" data-choice="false"><span class="k">F</span><span><span class="to">${esc(n.f.label)}</span><span class="note">${esc(n.f.note)}</span></span></button>`;
+	    el.innerHTML=`<div class="edit-chip">클릭해서 수정</div>
+	      <div class="quick-actions" aria-label="${esc(n.name)} 빠른 편집">
+	        <button class="qbtn edit" data-action="edit" data-node="${esc(n.id)}" title="수정">✎</button>
+	        <button class="qbtn copy" data-action="duplicate" data-node="${esc(n.id)}" title="복제">⧉</button>
+	        <button class="qbtn del" data-action="delete" data-node="${esc(n.id)}" title="삭제">×</button>
+	      </div>
+	      <div class="node-hd" data-drag="${esc(n.id)}"><span class="seq">${esc(n.step)}</span><span class="ic">${esc(n.badge)}</span><span class="title"><span class="nm-main">${esc(n.name)}</span><span class="nm-id">${esc(n.id)}</span></span><span class="badge">${n.built?"구현":"계획"}</span></div>${body}`;
+    if(state.sim[n.id]) el.dataset.state=state.sim[n.id];
+    canvas.appendChild(el);
+  });
+}
+function allEdges(){
+  const ids=new Set(NODES.map(n=>n.id));
+  const out=[];NODES.forEach(n=>{
+    if(n.end) return;
+    if(n.t&&ids.has(n.t.to))out.push({from:n.id,to:n.t.to,choice:"true",plan:n.plan});
+    if(n.f&&ids.has(n.f.to))out.push({from:n.id,to:n.f.to,choice:"false",plan:n.plan});
+  });return out;
+}
+function center(id){const e=document.getElementById("node-"+id);return{x:e.offsetLeft+e.offsetWidth/2,y:e.offsetTop+e.offsetHeight/2,l:e.offsetLeft,r:e.offsetLeft+e.offsetWidth,t:e.offsetTop,b:e.offsetTop+e.offsetHeight};}
+function drawEdges(){
+  svg.innerHTML="";
+  allEdges().forEach(e=>{const a=center(e.from),b=center(e.to);let ax,bx,ay=a.y,by=b.y;
+    if(Math.abs(a.x-b.x)>Math.abs(a.y-b.y)){ax=a.x<b.x?a.r:a.l;bx=a.x<b.x?b.l:b.r;}else{ax=a.x;bx=b.x;ay=a.y<b.y?a.b:a.t;by=a.y<b.y?b.t:b.b;}
+    const dx=Math.max(40,Math.abs(bx-ax)*.45),dy=Math.max(40,Math.abs(by-ay)*.45);
+    const p=document.createElementNS(SVGNS,"path");p.setAttribute("d",`M ${ax} ${ay} C ${ax+(ax<bx?dx:-dx)} ${ay+(ay<by?dy:-dy)}, ${bx+(ax<bx?-dx:dx)} ${by+(ay<by?-dy:dy)}, ${bx} ${by}`);
+    p.classList.add("edge",e.choice);if(e.plan)p.classList.add("plan");if(state.sim[e.from]===e.choice)p.classList.add("sel");
+    p.dataset.from=e.from;p.dataset.to=e.to;p.dataset.choice=e.choice;svg.appendChild(p);
+  });
+}
+function fitToScreen(){
+  let w=0,h=0;document.querySelectorAll(".node").forEach(n=>{w=Math.max(w,n.offsetLeft+n.offsetWidth);h=Math.max(h,n.offsetTop+n.offsetHeight);});
+  const pad=560;
+  canvas.style.width=Math.max(2450,w+pad)+"px";canvas.style.height=Math.max(1450,h+pad)+"px";
+  canvas.style.transform="scale("+scale+")";canvas.style.marginLeft="0";canvas.style.marginTop="0";drawEdges();
+}
+function setZoom(next){
+  scale=Math.max(.28,Math.min(1.8,next));
+  fitToScreen();
+}
+function fitAll(){
+  let w=0,h=0;document.querySelectorAll(".node").forEach(n=>{w=Math.max(w,n.offsetLeft+n.offsetWidth);h=Math.max(h,n.offsetTop+n.offsetHeight);});
+  scale=Math.max(.28,Math.min(stage.clientWidth/(w+160),stage.clientHeight/(h+160),1));
+  stage.scrollLeft=0;stage.scrollTop=0;fitToScreen();
+}
+function neighborsOf(id){const set=new Set([id]);allEdges().forEach(e=>{if(e.from===id)set.add(e.to);if(e.to===id)set.add(e.from);});return set;}
+function focusNode(id){const set=neighborsOf(id);document.querySelectorAll(".node").forEach(n=>{const on=n.dataset.node===id,near=set.has(n.dataset.node);n.classList.toggle("active",on);n.classList.toggle("neighbor",!on&&near);n.classList.toggle("faded",!near);});
+  svg.querySelectorAll("path").forEach(p=>{const on=p.dataset.from===id||p.dataset.to===id;p.classList.toggle("hi",on);p.classList.toggle("faded",!on);});}
+function clearFocus(){document.querySelectorAll(".node").forEach(n=>n.classList.remove("active","neighbor","faded"));svg.querySelectorAll("path").forEach(p=>p.classList.remove("hi","faded"));}
+function canvasPoint(clientX,clientY){
+  const r=canvas.getBoundingClientRect();
+  return {x:(clientX-r.left)/scale,y:(clientY-r.top)/scale};
+}
+function forkPoint(fork){
+  const r=fork.getBoundingClientRect(), c=canvas.getBoundingClientRect();
+  return {x:(r.right-c.left)/scale,y:(r.top+r.height/2-c.top)/scale};
+}
+function curvePath(a,b){
+  const dx=Math.max(40,Math.abs(b.x-a.x)*.45);
+  return `M ${a.x} ${a.y} C ${a.x+dx} ${a.y}, ${b.x-dx} ${b.y}, ${b.x} ${b.y}`;
+}
+function previewPath(){
+  let p=document.getElementById("edge-preview");
+  if(!p){
+    p=document.createElementNS(SVGNS,"path");
+    p.id="edge-preview";
+    p.classList.add("preview");
+    svg.appendChild(p);
+  }
+  return p;
+}
+function clearDropTarget(){document.querySelectorAll(".node.drop-target").forEach(n=>n.classList.remove("drop-target"));}
+function showGuide(html,ms){
+  connectGuide.innerHTML=html;
+  connectGuide.classList.add("show");
+  clearTimeout(showGuide.t);
+  if(ms) showGuide.t=setTimeout(()=>connectGuide.classList.remove("show"),ms);
+}
+function dropTargetAt(clientX,clientY){
+  const el=document.elementFromPoint(clientX,clientY);
+  return el ? el.closest(".node") : null;
+}
+function clearLinkDrag(keepGuide){
+  linkDrag=null;
+  document.body.classList.remove("linking");
+  clearDropTarget();
+  const p=document.getElementById("edge-preview");
+  if(p) p.remove();
+  if(!keepGuide) connectGuide.classList.remove("show");
+}
+function startLinkDrag(fork,e){
+  const from=nodeById(fork.dataset.node);
+  if(!from||from.end) return;
+  const choice=fork.dataset.choice;
+  linkDrag={from:from.id,choice,start:forkPoint(fork),moved:false};
+  document.body.classList.add("linking");
+  showGuide(`<b>드래그 연결</b> ${esc(from.name||from.id)}의 ${choice==="true"?"참":"거짓"} 줄을 원하는 카드 위에 놓으세요.`);
+  e.preventDefault();
+}
+function moveLinkDrag(e){
+  if(!linkDrag) return;
+  const pt=canvasPoint(e.clientX,e.clientY);
+  if(Math.abs(pt.x-linkDrag.start.x)+Math.abs(pt.y-linkDrag.start.y)>6) linkDrag.moved=true;
+  previewPath().setAttribute("d",curvePath(linkDrag.start,pt));
+  clearDropTarget();
+  const target=dropTargetAt(e.clientX,e.clientY);
+  if(target) target.classList.add("drop-target");
+}
+function finishLinkDrag(e){
+  if(!linkDrag) return;
+  const wasMoved=linkDrag.moved;
+  const target=dropTargetAt(e.clientX,e.clientY);
+  let connected=false;
+  if(wasMoved&&target){
+    const from=nodeById(linkDrag.from);
+    if(from&&!from.end){
+      from[linkDrag.choice==="true"?"t":"f"].to=target.dataset.node;
+      state.selected=from.id;
+      saveNodes();
+      suppressForkClick=true;
+      renderAll();
+      const dest=nodeById(target.dataset.node);
+      showGuide(`<b>연결 완료</b> ${esc(from.name||from.id)} → ${esc(dest ? dest.name : target.dataset.node)} 로 이어졌습니다.`,1800);
+      connected=true;
+    }
+  }else if(wasMoved){
+    showGuide("<b>연결 취소</b> 선 끝을 연결할 카드 위에 놓아야 합니다.",1500);
+    connected=true;
+  }
+  clearLinkDrag(connected);
+  if(wasMoved) suppressForkClick=true;
+}
+function renderScenario(){
+  document.querySelectorAll(".node").forEach(n=>{const s=state.sim[n.dataset.node]; if(s)n.dataset.state=s; else delete n.dataset.state;});
+	  const chosen=Object.keys(state.sim).map(id=>{const n=nodeById(id); if(!n||n.end)return ""; const k=state.sim[id], d=n[k==="true"?"t":"f"];return `<div>${esc(n.name||n.id)} <span class="${k==="true"?"t":"f"}">${k==="true"?"참":"거짓"}</span> → ${esc(d.label)}</div>`;}).filter(Boolean);
+	  scenario.innerHTML=scenarioHtml("현재 시나리오", chosen.length?chosen.join(""):"게이트의 참/거짓 행을 클릭하면 여기에 사용자 경로가 쌓입니다.");
+	  drawEdges();
+	}
+function renderAll(){buildNodes();bind();fitToScreen();renderScenario();renderEditor();}
+function renderEditor(){
+  if(!state.editing){editor.innerHTML="";return;}
+  const n=nodeById(state.selected);
+	  if(!n){editor.innerHTML='<div class="edit-head"><h3>분기 편집</h3><span class="saved">자동 저장</span></div><div class="empty">노드를 선택하거나 “분기 추가”를 누르세요. 기본 프리셋은 현재 ChatterBox 프로젝트 구조입니다.</div>';return;}
+	  editor.innerHTML=`<div class="edit-head"><h3>분기 편집</h3><span class="saved">자동 저장됨</span></div>
+	    <div class="edit-current">현재 편집: <b>${esc(n.name)}</b> <span class="nm-id">${esc(n.id)}</span></div>
+	    <div class="field"><label>표시 이름</label><input data-f="name" value="${esc(n.name)}"></div>
+	    <div class="twocol"><div class="field"><label>ID</label><input data-f="id" value="${esc(n.id)}"></div><div class="field"><label>순서</label><input data-f="step" value="${esc(n.step)}"></div></div>
+    <div class="twocol"><div class="field"><label>배지</label><input data-f="badge" value="${esc(n.badge)}"></div><div class="field"><label>X / Y</label><input data-f="xy" value="${Math.round(n.x)}, ${Math.round(n.y)}"></div></div>
+    <div class="field"><label>질문 / 상태 설명</label><textarea data-f="q">${esc(n.q)}</textarea></div>
+    <div class="checks"><label><input type="checkbox" data-f="built" ${n.built?"checked":""}>구현됨</label><label><input type="checkbox" data-f="plan" ${n.plan?"checked":""}>계획</label><label><input type="checkbox" data-f="end" ${n.end?"checked":""}>종료 노드</label></div>
+    ${n.end?"":`
+    ${targetField("t.to","참 → 이동 대상",n.t.to)}
+    <div class="field"><label>참 라벨</label><input data-f="t.label" value="${esc(n.t.label)}"></div>
+    <div class="field"><label>참 설명</label><textarea data-f="t.note">${esc(n.t.note)}</textarea></div>
+    ${targetField("f.to","거짓 → 이동 대상",n.f.to)}
+    <div class="field"><label>거짓 라벨</label><input data-f="f.label" value="${esc(n.f.label)}"></div>
+    <div class="field"><label>거짓 설명</label><textarea data-f="f.note">${esc(n.f.note)}</textarea></div>`}
+    <div class="editor-actions"><button class="btn" id="btnDuplicate">복제</button><button class="btn" id="btnDelete">삭제</button></div>`;
+  editor.querySelectorAll("[data-f]").forEach(input=>input.addEventListener("change",()=>updateSelected(input)));
+  document.getElementById("btnDelete").addEventListener("click",deleteSelected);
+  document.getElementById("btnDuplicate").addEventListener("click",duplicateSelected);
+}
+function targetOptions(value){
+  const hasValue=!value||NODES.some(n=>n.id===value);
+  return '<option value="">연결 없음</option>'
+    +(hasValue?"":`<option value="${esc(value)}" selected>없는 노드: ${esc(value)}</option>`)
+	    +NODES.map(n=>`<option value="${esc(n.id)}" ${n.id===value?"selected":""}>${esc(n.name||n.id)} · ${esc(n.id)}${n.end?" (END)":""}</option>`).join("");
+}
+function targetField(field,label,value){
+  const bad=value&&!nodeById(value);
+  return `<div class="field ${bad?"invalid":""}"><label>${label}</label><select data-f="${field}">${targetOptions(value)}</select>${bad?`<div class="warn">대상 노드 “${esc(value)}”가 없습니다.</div>`:""}</div>`;
+}
+function updateSelected(input){
+  const n=nodeById(state.selected); if(!n)return;
+  const f=input.dataset.f, val=input.type==="checkbox"?input.checked:input.value;
+  if(f==="id"){
+    const old=n.id, next=String(val).trim().replace(/\s+/g,"_"); if(!next||next!==old&&nodeById(next))return;
+    n.id=next; NODES.forEach(x=>{if(x.t&&x.t.to===old)x.t.to=next;if(x.f&&x.f.to===old)x.f.to=next;}); if(state.sim[old]){state.sim[next]=state.sim[old];delete state.sim[old];} state.selected=next;
+  }else if(f==="xy"){
+    const m=String(val).split(",").map(v=>parseFloat(v.trim())); if(m.length>=2&&!isNaN(m[0])&&!isNaN(m[1])){n.x=Math.max(0,m[0]);n.y=Math.max(0,m[1]);}
+  }else if(f.indexOf(".")>0){const p=f.split("."); n[p[0]][p[1]]=String(val);}
+  else if(f==="end"){n.end=!!val; if(!n.end){n.t=n.t||{to:"",label:"참일 때",note:"설명"};n.f=n.f||{to:"",label:"거짓일 때",note:"설명"};}}
+  else n[f]=val;
+  saveNodes(); renderAll();
+}
+function addNode(){
+  const id="branch_"+Date.now();
+	  const n={id,name:"새 분기",step:"NEW",x:stage.scrollLeft/scale+stage.clientWidth/(2*scale)-135,y:stage.scrollTop/scale+stage.clientHeight/(2*scale)-80,badge:"NEW",q:"새 분기 조건",built:false,plan:true,t:{to:"",label:"참일 때",note:"설명"},f:{to:"",label:"거짓일 때",note:"설명"}};
+	  NODES.push(n); state.selected=id; if(!state.editing)toggleEdit(true); saveNodes(); renderAll();
+	}
+function selectNode(id){
+  state.selected=id;
+  if(!state.editing){
+    state.editing=true;
+    document.body.classList.add("editing");
+    document.getElementById("btnEdit").classList.add("on");
+  }
+  renderAll();
+}
+function duplicateNode(id){
+  const n=nodeById(id||state.selected); if(!n)return;
+  const copy=clone(n); copy.id=n.id+"_copy"; while(nodeById(copy.id))copy.id+="_copy";
+  copy.name=(n.name||n.id)+" 복사"; copy.x+=48; copy.y+=48; copy.step="COPY";
+  NODES.push(copy); state.selected=copy.id; if(!state.editing)toggleEdit(true); saveNodes(); renderAll();
+  showGuide(`<b>복제 완료</b> ${esc(copy.name)} 카드가 추가됐습니다.`,1500);
+}
+function deleteNode(id){
+  id=id||state.selected;
+  const n=nodeById(id);
+  if(!n||!confirm(`“${n.name||n.id}” 분기를 삭제할까요?`))return;
+  let broken=0;
+  NODES=NODES.filter(x=>x.id!==id);
+  NODES.forEach(x=>{if(x.t&&x.t.to===id){x.t.to="";broken++;}if(x.f&&x.f.to===id){x.f.to="";broken++;}});
+  delete state.sim[id]; state.selected=null; saveNodes(); renderAll();
+  showGuide(`<b>삭제 완료</b> ${broken?broken+"개 연결이 미연결 처리됐습니다.":"연결 변경 없이 삭제됐습니다."}`,1800);
+}
+function duplicateSelected(){duplicateNode(state.selected);}
+function deleteSelected(){deleteNode(state.selected);}
+function toggleEdit(force){state.editing=force==null?!state.editing:force;document.body.classList.toggle("editing",state.editing);document.getElementById("btnEdit").classList.toggle("on",state.editing);renderEditor();}
+function toggleConnect(force){
+  if(force===false) state.connecting=null;
+  else if(force===true) state.connecting={from:null,choice:null};
+  else state.connecting=state.connecting?null:{from:null,choice:null};
+  document.body.classList.toggle("connecting",!!state.connecting);
+  document.getElementById("btnConnect").classList.toggle("on",!!state.connecting);
+  updateConnectHint();
+}
+function updateConnectHint(){
+  document.querySelectorAll(".fork").forEach(f=>f.classList.toggle("pending",state.connecting&&f.dataset.node===state.connecting.from&&f.dataset.choice===state.connecting.choice));
+	  document.querySelectorAll(".node").forEach(n=>n.classList.toggle("connect-target",!!(state.connecting&&state.connecting.from)));
+	  if(state.connecting&&state.connecting.from){
+	    const from=nodeById(state.connecting.from);
+	    connectGuide.innerHTML=`<b>2단계</b> ${esc(from ? from.name : state.connecting.from)}의 ${state.connecting.choice==="true"?"참":"거짓"} 경로를 연결할 대상 노드를 클릭하세요.`;
+	    scenario.innerHTML=scenarioHtml("연결 모드", `${esc(from ? from.name : state.connecting.from)}의 ${state.connecting.choice==="true"?"참":"거짓"} 경로를 연결할 대상 노드를 클릭하세요.`);
+	  }else if(state.connecting){
+	    connectGuide.innerHTML="<b>1단계</b> 먼저 출발 노드의 참/거짓 행을 클릭하세요.";
+	    scenario.innerHTML=scenarioHtml("연결 모드", "먼저 출발 노드의 참/거짓 행을 클릭하세요.");
+	  }else{
+	    connectGuide.innerHTML="";
+	    renderScenario();
+	  }
+	}
+function resetLayout(){NODES=clone(DEFAULT_NODES);state.sim={};state.selected=null;saveNodes();renderAll();}
+function exportJson(){const blob=new Blob([JSON.stringify({nodes:NODES},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="chatterbox-branches.json";a.click();URL.revokeObjectURL(a.href);}
+function importJson(file){const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);NODES=normalizeNodes(Array.isArray(o)?o:(o.nodes||[]));state.sim={};state.selected=null;saveNodes();renderAll();}catch(e){alert("JSON 불러오기 실패");}};r.readAsText(file);}
+canvas.addEventListener("click",e=>{
+  const action=e.target.closest("[data-action]");
+  if(action){
+    e.preventDefault();
+    e.stopPropagation();
+    const id=action.dataset.node;
+    if(action.dataset.action==="edit") selectNode(id);
+    if(action.dataset.action==="duplicate") duplicateNode(id);
+    if(action.dataset.action==="delete") deleteNode(id);
+    return;
+  }
+  const b=e.target.closest(".fork");
+  const node=e.target.closest(".node");
+  if(suppressForkClick){suppressForkClick=false;e.preventDefault();e.stopPropagation();return;}
+  if(state.connecting&&b&&(!state.connecting.from||b.dataset.node===state.connecting.from)){
+    state.connecting={from:b.dataset.node,choice:b.dataset.choice};
+    updateConnectHint();
+    e.stopPropagation();
+    return;
+  }
+  if(state.connecting&&node&&state.connecting.from){
+    const from=nodeById(state.connecting.from);
+    if(from&&!from.end){
+      from[state.connecting.choice==="true"?"t":"f"].to=node.dataset.node;
+      saveNodes();
+    }
+    state.connecting={from:null,choice:null};
+    renderAll();
+    updateConnectHint();
+    return;
+  }
+  if(state.editing&&node){selectNode(node.dataset.node);return;}
+  if(!b)return;
+  const id=b.dataset.node,choice=b.dataset.choice;
+  state.sim[id]=state.sim[id]===choice?undefined:choice;
+  if(!state.sim[id])delete state.sim[id];
+  renderScenario();
+});
+canvas.addEventListener("mousedown",e=>{
+  if(e.target.closest("[data-action]")) return;
+  const fork=e.target.closest(".fork");
+  if(!fork) return;
+  startLinkDrag(fork,e);
+});
+canvas.addEventListener("mousedown",e=>{if(e.target.closest("[data-action]"))return;const hd=e.target.closest("[data-drag]");if(!hd)return;const node=document.getElementById("node-"+hd.dataset.drag);drag={node,sx:e.clientX,sy:e.clientY,ox:parseFloat(node.style.left),oy:parseFloat(node.style.top)};e.preventDefault();});
+window.addEventListener("mousemove",e=>{if(linkDrag){moveLinkDrag(e);return;}if(!drag)return;const id=drag.node.dataset.node,n=nodeById(id);n.x=Math.max(0,drag.ox+(e.clientX-drag.sx)/scale);n.y=Math.max(0,drag.oy+(e.clientY-drag.sy)/scale);drag.node.style.left=n.x+"px";drag.node.style.top=n.y+"px";fitToScreen();});
+window.addEventListener("mouseup",e=>{if(linkDrag)finishLinkDrag(e);if(drag){saveNodes();renderEditor();}drag=null;});
+function bind(){document.querySelectorAll(".node").forEach(n=>{n.addEventListener("mouseenter",()=>{if(!drag&&!linkDrag)focusNode(n.dataset.node)});n.addEventListener("mouseleave",()=>{if(!linkDrag)clearFocus();});});}
+document.getElementById("btnEdit").addEventListener("click",()=>toggleEdit());
+document.getElementById("btnConnect").addEventListener("click",()=>toggleConnect());
+document.getElementById("btnAdd").addEventListener("click",addNode);
+document.getElementById("btnExport").addEventListener("click",exportJson);
+document.getElementById("btnImport").addEventListener("click",()=>document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change",e=>{if(e.target.files[0])importJson(e.target.files[0]);e.target.value="";});
+document.getElementById("btnFit").addEventListener("click",fitAll);
+document.getElementById("btnZoomOut").addEventListener("click",()=>setZoom(scale-.12));
+document.getElementById("btnZoomIn").addEventListener("click",()=>setZoom(scale+.12));
+document.getElementById("btnZoomReset").addEventListener("click",()=>setZoom(1));
+document.getElementById("btnClear").addEventListener("click",()=>{state.sim={};renderScenario();});
+document.getElementById("btnReset").addEventListener("click",()=>{if(confirm("기본 ChatterBox 프로젝트 구조 프리셋으로 되돌릴까요?"))resetLayout();});
+document.addEventListener("click",e=>{
+  const btn=e.target.closest("[data-toggle-panel]");
+  if(!btn) return;
+  const panel=btn.closest(".legend,.scenario");
+  if(!panel) return;
+  panel.classList.toggle("panel-minimized");
+  btn.textContent=panel.classList.contains("panel-minimized")?"+":"−";
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&linkDrag) clearLinkDrag();
+  if(e.key==="Escape"&&state.connecting) toggleConnect(false);
+});
+window.addEventListener("resize",fitToScreen);
+renderAll();
+</script>
+</body>
+</html>
