@@ -19,6 +19,7 @@
 | Skill | Use When |
 |---|---|
 | `supabase-slice-verify` | DB-backed 슬라이스(마이그레이션·Edge Function·프론트)를 통합테스트/헤드리스 브라우저 E2E로 실측할 때 (evidence-review는 근거 기록, 이 스킬은 실행 하네스) |
+| `avatar-deploy` | Vtube rig 를 ChatterBox 아바타로 배포(Storage+매니페스트)하고 네이티브 렌더러로 실렌더 검증할 때 (`scripts/deploy-avatar.mjs` + 렌더검증 하네스) |
 
 ## 감사·건강성
 
