@@ -11,6 +11,8 @@ E형 무대 레이아웃의 인원 수 자동 배치 엔진. MVP는 ParticipantS
 
 ponytail: 8슬롯 하단 2개는 과거 프로토타입 흔적이다. DB `rooms.max_participants`와 FEATURE-SPEC ROOM-02가 6인 기준이므로 MVP에서는 비활성이다. 8인 방을 되살릴 때는 DB max, RLS, LiveKit 권한, 레이아웃을 같이 올린다.
 
+> **구현 상태 (2026-07-03, 기능 MVP — 2탭 실 LiveKit E2E 16/16 실렌더 검증):** 원형 무대 코어 구현. `features/stage/{stageLayout.ts(6석 좌표),StageSlot.tsx,SelfAvatar.tsx,Stage.tsx}`. **as-built 차이(계약=forward 스펙):** 배치가 **E형(좌3·우3)→원형 3×3 그리드**(센터 프레임을 상/중/하 × 좌·우 6석이 둘러쌈)로 바뀜 — DESIGN-DIRECTION §6.1이 E형을 원형으로 대체(위 본문 E형 설명·아래 Props의 좌컬럼/우컬럼은 구버전). 좌석 = **identity 안정정렬**(전 클라 동일 좌석·DB `slot_index` 미사용)·인원변동 spring 애니 미적용·props 는 `participantCount` 대신 `participants`+per-participant `projectUrl`. **active-speaker**: 말하는 참가자를 z↑·확대·amber glow(LiveKit `isSpeaking`, `StageSlot`). self 는 rig+웹캠 코너 pip(`SelfAvatar` 가 트래킹·송신 소유), 원격은 `RemoteAvatar`. **검증(2탭 실렌더)**: 6슬롯 원형·양 클라 좌석 일관성·아바타 렌더·active-speaker glow·데이터경로 회귀(A 입벌림→B 원격 `ParamMouthOpenY=1.00`)·빈자리4·센터프레임 — 스크린샷 확인. **defer(G-287):** 드래그 재배치·정밀 좌표·아바타→센터 glow 연결선(별자리)·DB slot_index 배정·희소 인원 균형배치(2명 top-heavy)·spring 애니·remote 호스트 crown·센터 프레임 콘텐츠(공유 비디오/씬). 아래 계약(participantCount·slot_index 배치·spring)은 forward 스펙.
+
 ## Props Interface
 
 ```typescript

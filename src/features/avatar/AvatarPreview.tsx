@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { RigAvatar } from '@/lib/pixi/rig'
 
-// 얼굴추적 없이 rig 를 중립 포즈로 보여주는 미리보기(설정 아바타 선택 등). AvatarLayer self-mount 패턴 재사용.
+// 얼굴추적 없이 rig 를 중립 포즈로 보여주는 미리보기(설정 아바타 선택 등). features/stage/SelfAvatar self-mount 패턴 재사용.
 export default function AvatarPreview({ projectUrl, size = 200 }: { projectUrl: string; size?: number }) {
   const mountRef = useRef<HTMLDivElement>(null)
 

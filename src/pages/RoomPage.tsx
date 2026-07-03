@@ -7,7 +7,7 @@ import { joinRoom, leaveRoom } from '@/lib/rooms'
 import { fetchRoomMembers } from '@/lib/dub'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
-import AvatarLayer from '@/features/avatar/AvatarLayer'
+import Stage from '@/features/stage/Stage'
 import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import DubPanel from '@/features/dub/DubPanel'
 import ScriptPanel from '@/features/script/ScriptPanel'
@@ -260,9 +260,9 @@ export default function RoomPage() {
 
       {connected && (
         <section className="mt-8">
-          <h2 className="text-sm font-semibold text-stage-text-muted">아바타</h2>
+          <h2 className="text-sm font-semibold text-stage-text-muted">무대</h2>
           <div className="mt-2 rounded-lg border border-stage-border p-4">
-            <AvatarLayer
+            <Stage
               participants={participants}
               selfProjectUrl={selfProjectUrl}
               remoteProjectUrl={remoteProjectUrl}

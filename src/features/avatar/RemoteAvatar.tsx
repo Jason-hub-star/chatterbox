@@ -13,9 +13,11 @@ interface Props {
   name: string
   projectUrl: string
   registry: RefObject<Map<string, RemoteFrameSink>>
+  // 렌더 픽셀 크기(무대 슬롯에서 축소). 기본 240.
+  size?: number
 }
 
-export default function RemoteAvatar({ identity, name, projectUrl, registry }: Props) {
+export default function RemoteAvatar({ identity, name, projectUrl, registry, size = 240 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -25,7 +27,7 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry }: P
     const mount = mountRef.current
     const driver = createExpressionDriver({ mirror: false }) // 원격은 셀카 거울 아님
     if (mount) {
-      RigAvatar.create(mount, { projectUrl, size: 240 })
+      RigAvatar.create(mount, { projectUrl, size })
         .then((av) => {
           if (cancelled) {
             av.destroy()
@@ -52,7 +54,7 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry }: P
       }
       created?.destroy()
     }
-  }, [identity, projectUrl, registry])
+  }, [identity, projectUrl, registry, size])
 
   return (
     <figure className="flex flex-col items-center gap-2">
@@ -60,7 +62,7 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry }: P
         ref={mountRef}
         data-remote-avatar={identity}
         className="overflow-hidden rounded-lg border border-stage-border bg-[#f4f0e8]"
-        style={{ width: 240, height: 240 }}
+        style={{ width: size, height: size }}
       />
       <figcaption className="text-xs text-stage-text-muted">{name}</figcaption>
     </figure>
