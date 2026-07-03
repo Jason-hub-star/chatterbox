@@ -98,7 +98,7 @@ interface AvatarCanvasProps {
 | `Storage: …/parts/*.webp` | 텍스처 이미지 로드 | `<img crossOrigin="anonymous">` + Storage CORS |
 
 **Realtime:** 불필요 (static asset, 세션 중 모델 변경 없음)
-**렌더러:** `src/lib/pixi/aria/`(경로 B로 `public/aria-player`에서 이식 완료 2026-07-02) — **participant별 `AriaAvatar` 인스턴스 = 각자 PixiJS Application(= 각자 WebGL 컨텍스트)**. 파일: `AriaAvatar.ts`(수명주기+티커)·`renderer.ts`(draw_pixi 인스턴스화)·`rigMath.ts`(rig+physics 팩토리)·`loader.ts`·`expressionDriver.ts`(blendshape→ParamXxx). 구동: 로컬 `AvatarLayer`(head pose+gaze), 원격 `RemoteAvatar`(RT-02 52ch→인스턴스별 드라이버, head pose 없음·gaze 있음).
+**렌더러:** `src/lib/pixi/rig/`(경로 B로 `public/aria-player`에서 이식 완료 2026-07-02) — **participant별 `RigAvatar` 인스턴스 = 각자 PixiJS Application(= 각자 WebGL 컨텍스트)**. 파일: `RigAvatar.ts`(수명주기+티커)·`renderer.ts`(draw_pixi 인스턴스화)·`rigMath.ts`(rig+physics 팩토리)·`loader.ts`·`expressionDriver.ts`(blendshape→ParamXxx). 구동: 로컬 `AvatarLayer`(head pose+gaze), 원격 `RemoteAvatar`(RT-02 52ch→인스턴스별 드라이버, head pose 없음·gaze 있음).
 > ⚠️ **스케일 ceiling (ponytail)**: 아바타별 Application이라 N명 = N WebGL 컨텍스트(브라우저 한계 ~8–16 → 실질 ~6인) + 같은 49텍스처 ×N 메모리. 6인 초과·메모리 압박 시 **단일 Application + participant별 Container(텍스처 공유)**로 리팩터가 업그레이드 경로. PoC(2탭 E2E)에선 인스턴스별로 충분 검증.
 > ⚠️ **이식 필수조건**: `draw_pixi.js`(`let app`·`const nodes`)·`state.js`(`const state`)는 **모듈 싱글턴**이라 그대로면 아바타 1개만 가능(`buildScene`의 `nodes.clear()`가 이전 것 파괴). 인스턴스화(`class`/팩토리로 `{app,nodes,parameters,project,rig,images}` 캡슐화)가 멀티 participant의 전제. `rig.js` 변형 수학은 무수정(`state.` 24참조를 주입 ctx로 치환).
 

@@ -15,7 +15,7 @@ tags: [spec]
 > **SSOT(현행): Vtube AUTORIG `project.json` (mini_cubism mesh-deform rig).**
 > 연속 파라미터(`ParamXxx`) → 키폼/디포머 격자 변형으로 PNG(webp) 파츠 메시를 워프한다.
 > 렌더러는 `public/aria-player/src/core/{rig.js,draw_pixi.js}`(PixiJS v8)로 **이미 구현·검증됨**.
-> 경로 B = 이 렌더러를 `src/lib/pixi/aria/`로 네이티브 이식해 원격 파라미터로 구동.
+> 경로 B = 이 렌더러를 `src/lib/pixi/rig/`로 네이티브 이식해 원격 파라미터로 구동.
 
 ---
 

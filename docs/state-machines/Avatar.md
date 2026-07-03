@@ -80,7 +80,7 @@ Parallel to above:
    - FFD (Free-Form Deformation) 격자 케이지 워프 = 주 변형(MESH-DEFORM-001, 공식 Cubism 등가)
    - 정점 키폼(EYE-NATURAL-002)·2D 조합 키폼(MULTI-KEYFORM-2D-001)으로 얼굴 디테일 보강
    - N-관절 LBS 스키닝(BBW-SKIN-001)·이음새 skin_blend도 구현 — bone 데이터 불필요, 선형대수만
-   - 경로 B: 이 렌더러를 `src/lib/pixi/aria/`로 네이티브 이식(인스턴스화)
+   - 경로 B: 이 렌더러를 `src/lib/pixi/rig/`로 네이티브 이식(인스턴스화)
 
 4. **WebGL Context Loss** (mobile/browser tab backgrounded)
    - `webglcontextlost` 이벤트 감지 시 즉시 **degraded 모드**로 전환 (Ghost Speaker 방지, RUNTIME-HARDENING-REVIEW H7)

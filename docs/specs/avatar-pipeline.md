@@ -68,7 +68,7 @@ tags: [spec]
 
 ## 5. ChatterBox 함의 (경로 B & 그 이후)
 
-- **경로 B(현재)**: `public/aria-player` 렌더러를 `src/lib/pixi/aria/`로 이식(인스턴스화) + RT-02 blendshape → `blendshapesToRigParams()` → 원격 아바타 구동. **리그·와이어는 이미 준비됨** — 할 일은 매핑/구동 배선.
+- **경로 B(현재)**: `public/aria-player` 렌더러를 `src/lib/pixi/rig/`로 이식(인스턴스화) + RT-02 blendshape → `blendshapesToRigParams()` → 원격 아바타 구동. **리그·와이어는 이미 준비됨** — 할 일은 매핑/구동 배선.
 - **다음(매핑/UI 층 = 싼 고가치)**: cheek/eyeSmile/brow 매핑 보강 + 표정 핫키(ParamEyeExpr·accent 트리거) + One-Euro 스무딩. 리그 변경 0.
 - **멀티 스케일(B3+)**: N명 시 AOI 선택구독 + active-speaker 활성 + 적응 레이트(52ch×30fps≈6.2Kb/s/명, N² 완화). `state-machines/Avatar.md` 6인 렌더와 정합.
 

@@ -14,7 +14,7 @@
     "docs:check:strict": "node scripts/check-contract-docs.mjs . --strict",
     "docs:health": "node scripts/check-contract-docs.mjs . --health",
     "docs:progress": "node scripts/progress.mjs",
-    "docs:overview": "node scripts/gen-overview.js"
+    "docs:overview": "node scripts/gen-overview.cjs"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

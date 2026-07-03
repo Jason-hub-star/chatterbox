@@ -18,7 +18,7 @@
           },
           {
             "type": "command",
-            "command": "echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(GAP-MATRIX|contracts/_INDEX|FEATURE-SPEC|DATA-SCHEMA|state-machines)' && node scripts/gen-overview.js 2>/dev/null || true",
+            "command": "echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(GAP-MATRIX|contracts/_INDEX|FEATURE-SPEC|DATA-SCHEMA|state-machines)' && node scripts/gen-overview.cjs 2>/dev/null || true",
             "timeout": 10000,
             "statusMessage": "Overview sync..."
           }
