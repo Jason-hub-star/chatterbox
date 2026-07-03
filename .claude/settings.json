@@ -24,6 +24,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/docs-check-gate.sh",
+            "timeout": 20000,
+            "statusMessage": "Docs check gate..."
+          }
+        ]
+      }
     ]
   }
 }
