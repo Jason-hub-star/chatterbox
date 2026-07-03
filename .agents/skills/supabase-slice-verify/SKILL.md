@@ -33,12 +33,17 @@ DB-backed 슬라이스(DUB-04 녹음·DUB-05 합성·방 기능 등)를 **추측
 8. **vite dev는 로컬 supabase로** — `VITE_SUPABASE_URL=$API_URL VITE_SUPABASE_ANON_KEY=$ANON_KEY npm run dev -- --port <p>`. 브라우저 부팅+작업이 bash 2분 기본을 넘으니 Bash `timeout`을 넉넉히.
 9. **외부 API 우회** — 세션을 admin(service_role)으로 목표 상태(예: recording+synced)로 직접 시드 → 대상 레이어만 검증. `admin.storage.from(bucket).upload(path, buf)`로 실 파일 시드.
 10. **미디어는 합법 합성으로** — `ffmpeg -f lavfi ...`·`say`. 저작권 자료 다운로드 금지.
+11. **2탭 룸 E2E: StrictMode 조인 경쟁** — dev StrictMode가 조인 effect를 2번 발화 → fresh 조인이 slot 인서트 경쟁 → 한쪽 `409`로 입장 실패(A는 create-room으로 slot0 보유라 무경쟁). **두 계정을 서버측에서 미리 join**시켜 브라우저는 rejoin만 하게. (`templates/room-2tab-e2e.mjs`가 처리.)
+12. **2탭은 페이지가 무거워 playwright 액션 타임아웃** — MediaPipe+아바타 2탭이라 `selectOption`/`click` 액션어빌리티가 30s 타임아웃. **DOM 직접(`page.evaluate`)** 으로 조작·판독(값 set + `change` dispatch, textContent 읽기).
+13. **reliable DataChannel 첫 메시지 유실** — reliable 채널이 첫 `publishData`로 개설되며 그 메시지 유실(=모든 세션 첫 액션 유실). 앱이 연결/입장 시 현재 상태 **재브로드캐스트**하거나, 테스트는 첫 액션 전 2~3s warm-up + 넉넉한 timeout(~25s). LiveKit 클라우드 연결이라 배포된 백엔드 대상이 편함.
 
 ## Steps
 
 1. **셋업:** `bash .claude/skills/supabase-slice-verify/scripts/setup-local.sh $SCRATCH` (스택 미기동이면 `supabase start` 먼저).
 2. **통합테스트:** `templates/integration-test.mjs`를 scratch로 복사·수정(셋업/시드 + 200/403/409·상태전이·RLS 단언). 실행: `set -a; . $SCRATCH/sb.env; set +a; export SUPABASE_URL="$API_URL"; cd $SCRATCH && node <test>.mjs`.
-3. **브라우저 E2E(필요 시):** `npm install --no-save playwright-core`; vite dev 기동; `templates/browser-e2e.mjs` 복사·수정(kong 재작성 필수, 외부 CDN 쓰면 인터셉트 추가); 산출물은 `ffprobe` 등으로 실측.
+3. **브라우저 E2E(필요 시):** `npm install --no-save playwright-core`; vite dev 기동; 산출물은 `ffprobe` 등으로 실측.
+   - **단일 탭**(Storage 왕복·ffmpeg.wasm·미디어 캡처): `templates/browser-e2e.mjs`(kong 재작성 필수, 외부 CDN 쓰면 인터셉트 추가).
+   - **2탭 실시간 룸**(DataChannel chat·blendshape·script-cue 동기·참가자별 렌더·호스트 권한): `templates/room-2tab-e2e.mjs`(함정 11~13 처리 — 서버 pre-join·evaluate 상호작용·채널 warm-up). LiveKit 클라우드라 배포 백엔드 대상 권장.
 4. **게이트:** `npm run type-check && npm run lint && npm run test && npm run build && npm run docs:check`.
 5. **정리:** `pkill -f "supabase functions serve"; pkill -f vite`; `npm remove --no-save playwright-core`; 임시 자산 삭제. (로컬 스택은 남겨도 됨.) 결과는 `evidence-review`로 기록.
 
@@ -57,4 +62,4 @@ DB-backed 슬라이스(DUB-04 녹음·DUB-05 합성·방 기능 등)를 **추측
 
 ## 참고
 - Edge Function 관례: `_shared/supa.ts`(`cors·json·getAppUser·isUuid·serviceClient`). 호스트 검증은 `dub_sessions → rooms(host_id)` 조인. 쓰기는 service_role 전용.
-- 성공 사례: 슬라이스1(22/22+4/4)·슬라이스2(18/18+실브라우저 9/9)·슬라이스3a(20/20+실 ffmpeg E2E 10/10).
+- 성공 사례: 슬라이스1(22/22+4/4)·슬라이스2(18/18+실브라우저 9/9)·슬라이스3a(20/20+실 ffmpeg E2E 10/10)·아바타선택(10/10)·**대본 텔레프롬프터 2탭 룸 E2E 12/12**·blendshape 멀티플레이어(B3).
