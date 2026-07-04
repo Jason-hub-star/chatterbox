@@ -28,7 +28,7 @@ created: 2026-07-02
 | 라이브러리 | 버전 | 설치 명령 | 용도 |
 |---|---|---|---|
 | `@fal-ai/client` | **1.10.1** (최신) | `npm install @fal-ai/client` | JavaScript queue submit/polling |
-| Seedance 2.0 Fast | (fal.ai 호스팅) | 모델 ID: `bytedance/seedance-2.0/fast/text-to-video` | T2V, 15초 max, 720p, $0.2419/초 |
+| Seedance 2.0 (reference) | (fal.ai 호스팅) | 모델 ID: `bytedance/seedance-2.0/reference-to-video` (slice1b 기본·캐릭터 고정) / `.../fast/text-to-video` (slice1 관통) | 15초 max·720p~1080p·`image_urls`≤9·`aspect_ratio` 9:16 네이티브. 단가는 해상도·tier별 → VgenCostAnalysis §1 |
 
 **출처**: [npm @fal-ai/client](https://www.npmjs.com/package/@fal-ai/client) | [fal.ai 클라이언트 설명서](https://fal.ai/docs/clients/javascript) | [Seedance 2.0 Fast API](https://fal.ai/models/bytedance/seedance-2.0/fast/text-to-video)
 
@@ -39,7 +39,7 @@ created: 2026-07-02
 FAL_KEY=sk_xxx...  # fal.ai API 키 (서비스 계정)
 
 # .env.local (클라이언트, 필요시)
-REACT_APP_VGEN_MODEL=bytedance/seedance-2.0/fast/text-to-video
+REACT_APP_VGEN_MODEL=bytedance/seedance-2.0/reference-to-video
 REACT_APP_VGEN_PROVIDER=fal-ai
 ```
 
@@ -59,7 +59,7 @@ Edge Function (Deno):
   2. 모더레이션 (OpenAI)
   3. 크레딧 게이트 (비관적 잠금)
   4. vgen_jobs INSERT (idempotency_key, status='pending')
-  5. Cloudflare Workflows 트리거 또는 fal.ai 직접 제출
+  5. fal 직접 제출(webhook_url 동봉) → 즉시 반환. vgen-webhook 이 완료 콜백 처리 (§3.1)
   ↓
 return { job_id, status: 'queued' }
 ```

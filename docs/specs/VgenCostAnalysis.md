@@ -5,32 +5,41 @@ tags: [spec]
 # VGEN 생성 단가 분석 (G-118)
 
 > **SSOT**: 이 문서. 크레딧 정책 변경 시 SecurityPolicies.md §12와 함께 갱신.  
-> **조사 기준일**: 2026-06-30
+> **조사 기준일**: 2026-06-30 · **개정**: 2026-07-04 (reference-to-video 전환 + 해상도 가중 크레딧, §4.5)
 
 ---
 
-## §1 모델 단가표 (fal.ai 기준, 720p)
+## §1 모델 단가표 (fal.ai 기준)
 
-| 모델 | 초당 단가 | 최대 길이 | 5초 | 10초 | 15초 | 30초 | fal.ai 가용 |
-|------|---------|---------|-----|------|------|------|----------|
-| Seedance 2.0 Fast | $0.2419/초 | 15초 | $1.21 | $2.42 | $3.63 | - | ✅ |
-| Seedance 2.0 Standard | $0.3034/초 | 15초 | $1.52 | $3.03 | $4.55 | - | ✅ |
-| Seedance 2.5 (예상) | 미공개 (2.0+30~40% 예측) | **30초** | ~$1.70 | ~$3.40 | ~$5.10 | ~$10.20 | ❌ 2026-07 예정 |
+> **갱신 2026-07-04**: 캐릭터 고정을 위해 reference-to-video로 전환하며 해상도·tier·입력별 실단가를 반영. 값은 구현 직전 fal 페이지로 재확인. 출처: [fal.ai/models/bytedance/seedance-2.0/reference-to-video](https://fal.ai/models/bytedance/seedance-2.0/reference-to-video).
 
-1080p는 720p 대비 약 2.25배 추가 비용.
+| 모델·tier | 해상도 | 초당 단가 | 5초 | 10초 | 15초 |
+|---|---|---|---|---|---|
+| Seedance 2.0 **Fast** | 720p | $0.2419/초 | $1.21 | $2.42 | $3.63 |
+| Seedance 2.0 **Standard** | 720p | $0.3024/초 | $1.51 | $3.02 | $4.54 |
+| Seedance 2.0 **Standard** | **1080p** | $0.682/초 | $3.41 | **$6.82** | $10.23 |
+| Seedance 2.0 (비디오 입력 참조 시) | 720p | $0.1814/초 (0.6배) | $0.91 | $1.81 | $2.72 |
+| 480p · 4K | 토큰식 | $0.014/1K토큰(≤1080p) · $0.008/1K(4K) | — | 4K 10초 ≈ $15.5 | — |
+
+- **최고 화질 = 1080p(standard)**. Fast는 720p 상한 → 1080p 이상은 non-fast standard tier. 4K는 enum엔 있으나 reference 엔드포인트 지원이 미확정이라 배포 시 실 API로 확정한다.
+- 비디오 입력 참조 시 0.6배 할인(이미지 참조엔 미적용). 오디오 생성은 무료.
+- Seedance 2.5(30초·4K)는 2026-07 출시 예정, `VGEN_MODEL_ID` 교체로 전환(§5).
 
 ---
 
-## §2 크레딧 단위 설계
+## §2 크레딧 단위 설계 — 해상도 가중 (2026-07-04 개정)
 
-**1 크레딧 = 1초 생성** (길이 독립적 과금)
+**1 크레딧 ≈ 720p 1초.** 해상도가 오르면 실단가가 급등(1080p는 720p의 2.8배)하므로 크레딧을 해상도 가중한다. 기존 "1초=1크레딧, 길이·해상도 독립"은 fast 720p 전제였고 reference-to-video 1080p 도입으로 폐기.
 
-| 생성 | 소요 크레딧 | Seedance 2.0 Fast 원가 |
-|------|---------|-----|
-| 5초 쇼츠 | 5 credits | $1.21 |
-| 10초 클립 | 10 credits | $2.42 |
-| 15초 씬 | 15 credits | $3.63 |
-| 30초 풀씬 (2.5) | 30 credits | ~$10.20 (예상) |
+| 해상도·tier | 크레딧/초 | 초당 실단가 |
+|---|---|---|
+| 720p (fast) | 1 credit/s | $0.2419 |
+| 720p (standard) | 1.25 credit/s | $0.3024 |
+| 1080p (standard) | 3 credit/s | $0.682 |
+
+예) 1080p 10초 = **30 credits**(실비 $6.82) · 720p 5초 = **5 credits**(실비 $1.21).
+
+**MUST NOT**: 해상도를 무시하고 초=크레딧 고정 과금 — 1080p 10초를 10크레딧에 팔면 $6.82 적자.
 
 ---
 
@@ -57,15 +66,16 @@ Edge Function에서 모델을 환경 변수로 선택하되, 하드코딩 금지
 ```typescript
 // supabase/functions/vgen-generate/index.ts (향후 구현 시)
 
-// 환경 변수 기반 모델 선택 (기본값: Fast)
+// 환경 변수 기반 모델 선택 (기본값: reference-to-video = 캐릭터 고정, slice1b)
 const VGEN_MODEL_ID = Deno.env.get("VGEN_MODEL_ID") ?? 
-  "bytedance/seedance-2.0/fast/text-to-video"
+  "bytedance/seedance-2.0/reference-to-video"
 
 // 모델별 최대 길이 매핑 (API 호출 전 검증)
 const MAX_DURATION: Record<string, number> = {
-  "bytedance/seedance-2.0/fast/text-to-video": 15,
-  "bytedance/seedance-2.0/text-to-video": 15,
-  "bytedance/seedance-2.5/text-to-video": 30,  // 2026-07 예정
+  "bytedance/seedance-2.0/reference-to-video": 15,  // 캐릭터 고정(slice1b 기본)
+  "bytedance/seedance-2.0/fast/reference-to-video": 15,  // 720p 상한·저가 반복용
+  "bytedance/seedance-2.0/fast/text-to-video": 15,  // slice1 관통(캐릭터 랜덤)
+  "bytedance/seedance-2.5/reference-to-video": 30,  // 2026-07 예정
 }
 
 // 사용자 요청 duration 검증
@@ -79,25 +89,44 @@ if (!modelMaxDuration || duration > modelMaxDuration) {
   )
 }
 
-// fal.ai 호출
+// fal.ai 호출 (reference-to-video)
 const result = await fal.subscribe(VGEN_MODEL_ID, {
   input: {
     prompt: promptText,
+    image_urls: referenceUrls,   // 캐릭터 참조 이미지, 최대 9장 (R2 presign URL)
+    aspect_ratio: format,        // "9:16"(쇼츠) | "16:9" | "1:1" ... — 생성 시 네이티브
+    resolution,                  // "720p" | "1080p" (§2 해상도 가중 크레딧)
     duration: Math.min(duration, modelMaxDuration),
+    generate_audio: true,
   }
 })
 ```
 
 **Supabase Secrets 설정**:
 ```bash
-supabase secrets set VGEN_MODEL_ID="bytedance/seedance-2.0/fast/text-to-video"
+supabase secrets set VGEN_MODEL_ID="bytedance/seedance-2.0/reference-to-video"
 ```
 
 **Seedance 2.5 전환 시** (2026-07 예정):
 ```bash
-supabase secrets set VGEN_MODEL_ID="bytedance/seedance-2.5/text-to-video"
+supabase secrets set VGEN_MODEL_ID="bytedance/seedance-2.5/reference-to-video"
 # 클라이언트 재배포 불필요 — 서버만 갱신
 ```
+
+---
+
+## §4.5 slice1b — reference-to-video 확장 (2026-07-04 결정)
+
+slice1(text-to-video 관통)에서의 확장. **사용자가 자기 캐릭터로 세로 쇼츠를 만들게 한다.**
+
+- **모델**: `text-to-video` → `reference-to-video`. 참조 이미지(캐릭터 시트)로 얼굴·의상·화풍 고정. text-to-video는 매 생성 얼굴이 달라 캐릭터 고정 불가.
+- **참조 이미지**: `image_urls` 최대 9장. R2 업로드 → presign → fal 전달. 다각도(정면·측면·전신)일수록 일관성↑. 텍스트가 섞이거나 지나치게 저해상한 조각은 금지(디테일 손실 → 컷마다 얼굴 흔들림). 참조는 픽셀 복제가 아니라 "캐릭터 유지 + 프롬프트대로 새 장면".
+- **화면비 네이티브**: 쇼츠(9:16)는 생성 시 `aspect_ratio:"9:16"`로 **바로 세로 출력**. 사후 FORMAT_CONVERTING(별도 crop/resize 잡)은 이미 만든 16:9 자산을 세로로 돌리는 **폴백**으로만 유지한다(state-machines/Vgen.md · contracts/VgenExport.md). 신규 쇼츠는 사후 변환 불필요.
+- **해상도**: 720p(fast) ~ 1080p(standard). 최고=1080p. §1·§2 해상도 가중 크레딧 적용.
+- **UI (사용자 친화, SSOT: contracts/VgenPanel.md §구도·작화 프리셋)**: 자유 프롬프트만이 아니라 **구도(카메라 앵글)·카메라 무빙·작화 스타일·분위기 프리셋을 선택**해 프롬프트를 조합한다. 참조 이미지 업로드 + 해상도/화면비 선택 포함.
+- **비용 절약**: 프롬프트가 매번 달라 dedup 캐시는 부수적. 대신 ①무료 티어(Jimeng/Dreamina)로 프롬프트·참조 확정 ②반복 튜닝은 저해상·짧게(480p 5초 ≈$0.7 / 720p 5초 $1.21) ③확정본만 1080p 10초($6.82). 프로바이더 교체(BytePlus 직접 등)는 어댑터 재작성 비용이 있어 관통 검증 후로 defer.
+- **PoC 실증 (2026-07-04)**: fal 직접 호출로 **참조 1장 → reference-to-video 480p·9:16·5초** 생성 성공(496×864·h264·**오디오 포함**·토끼귀 캐릭터·의상 일치, 실비 ≈$0.70). **확인된 것**: ① reference-to-video는 여러 컷이 담긴 **그리드 콜라주 1장에서도 공통 캐릭터를 추출**(격자·텍스트 아티팩트 없음) → 참조 형태에 관대(단 얼굴 선명·1~3장 클린 컷이 이론상 최적은 유지). ② `aspect_ratio:"9:16"` 네이티브 세로·`generate_audio` 정상. ③ `image_urls`는 fal storage 업로드 URL 또는 공개 URL 필요. 최소 관통(모델·세로·오디오·캐릭터)이 480p 5초 $0.7로 검증됨.
+- **남은 것**: R2 참조 업로드 배선 · 구도/작화 프리셋 UI · 해상도 가중 크레딧 RPC · 프로덕션 배포 · 1080p 최종 품질 확인.
 
 ---
 
@@ -125,4 +154,4 @@ supabase secrets set VGEN_MODEL_ID="bytedance/seedance-2.5/text-to-video"
 
 ## 한줄정리
 
-Seedance 2.0 Fast를 기본값으로 월 100 크레딧 = $24.19 원가 → $9.99 판매 적자 모델이며, Seedance 2.5 출시 시 환경 변수 `VGEN_MODEL_ID` 교체만으로 클라이언트 재배포 없이 전환 가능.
+slice1b부터 기본 모델은 캐릭터 고정 `reference-to-video`(참조 `image_urls` ≤9장·`aspect_ratio` 네이티브 세로)이고, 크레딧은 해상도 가중(720p 1·1080p 3 credit/s)이며, 모델·해상도 상향은 `VGEN_MODEL_ID` 교체로 클라이언트 재배포 없이 전환한다.

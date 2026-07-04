@@ -47,7 +47,7 @@ tags: [guide]
 
 | 공급사 | API 경로 | 입력 | 길이 | 가격(초당) | async | 상업권 | 비고 |
 |---|---|---|---|---|---|---|---|
-| ★ **Seedance 2.0** | **fal.ai**(BD 정식파트너). 공식 BytePlus 국제 API는 3월 중단 | T2V·I2V·멀티모달(img9+vid3+aud3) | 15s | **$0.15(480p)~$0.30(720p)** | **poll만**(webhook 미확인) | 전 티어·워터마크無(유료) | 주인님 지정. 네이티브 오디오. ⚠️헐리우드 소송 |
+| ★ **Seedance 2.0** | **fal.ai**(BD 정식파트너). 공식 BytePlus 국제 API는 3월 중단 | T2V·**I2V·reference(img9)**·멀티모달(img9+vid3+aud3) | 15s | **720p $0.24(fast)~$0.30(std)·1080p $0.68(std)** (VgenCostAnalysis §1) | **webhook 확정**(ED25519·15초·10회/2h) | 전 티어·워터마크無(유료) | 주인님 지정. 네이티브 오디오·**9:16 네이티브**·reference로 캐릭터 고정. ⚠️헐리우드 소송 |
 | **Seedance 2.5** | (예정) | T2V·I2V | 30s·4K | 미정 | — | — | **7월 초 출시 예정 — 아직 불가** |
 | **Kling 3.0/Turbo** | 공개 | T2V·I2V | 3–15s | $0.035~0.075 | webhook+poll | 전 티어 | 네이티브 오디오+립싱크, 中벤더 |
 | **Luma Ray 3.14** | 공개 | T2V·I2V·V2V | ~18s | ~$0.08 | webhook+poll | Standard+ | 美벤더, 1080p, 오디오 없음 |

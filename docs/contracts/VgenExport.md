@@ -288,6 +288,8 @@ async function shareToKakao() {
 
 ### 6. 세로형 변환 버튼 (VGEN-11 연동)
 
+> **2026-07-04 정정 (slice1b)**: 신규 쇼츠는 생성 시 `aspect_ratio:"9:16"`로 처음부터 세로 출력하므로 이 변환 버튼이 필요 없다. 이 버튼은 **이미 만든 16:9 자산을 세로로 돌리는 폴백**으로만 유지한다. SSOT: VgenCostAnalysis §4.5 · state-machines/Vgen.md.
+
 **조건:** `format === '16:9'` 일 때만 표시
 
 ```typescript

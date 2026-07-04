@@ -423,6 +423,8 @@ CREATE POLICY "admin_read_flagged" ON vgen_jobs FOR SELECT
 
 ## VGEN-11 세로형 쇼츠 포맷 명세
 
+> **2026-07-04 정정 (slice1b)**: reference-to-video는 생성 시 `aspect_ratio:"9:16"`로 **처음부터 세로로 출력**한다(네이티브). 따라서 신규 쇼츠는 아래 `DONE → FORMAT_CONVERTING` 사후 변환 경로를 타지 않는다. FORMAT_CONVERTING/`output_9x16_url`은 **이미 만든 16:9 자산을 세로로 돌리는 폴백**으로만 유지한다. SSOT: VgenCostAnalysis §4.5.
+
 - **출력 해상도**: 9:16 portrait format (예: 1080×1920, 1080px 기준)
   - Primary format: 16:9 landscape (original fal.ai output) → DB `result_url`
   - Secondary format: 9:16 portrait (on-demand crop/resize via fal.ai) → DB `output_9x16_url` (nullable, generated on-demand)
