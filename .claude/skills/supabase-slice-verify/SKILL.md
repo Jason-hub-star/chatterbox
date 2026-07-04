@@ -42,6 +42,8 @@ DB-backed 슬라이스(DUB-04 녹음·DUB-05 합성·방 기능 등)를 **추측
 13. **reliable DataChannel 첫 메시지 유실** — reliable 채널이 첫 `publishData`로 개설되며 그 메시지 유실(=모든 세션 첫 액션 유실). 앱이 연결/입장 시 현재 상태 **재브로드캐스트**하거나, 테스트는 첫 액션 전 2~3s warm-up + 넉넉한 timeout(~25s). LiveKit 클라우드 연결이라 배포된 백엔드 대상이 편함.
 14. **배포판 E2E는 `BASE=<배포 URL>`로 로컬 dev 불필요** — 프로덕션 프론트+백엔드 실검증. 실 HTTPS·CDN 정상이라 kong 재작성(함정5)·CDN 인터셉트(함정6) **불요**. 백엔드가 프로덕션이므로 시드/정리도 프로덕션 DB에 함(테스트 방·객체는 반드시 `finally`에서 삭제). `templates/deployed-room-e2e.mjs`.
 15. **supabase 쿼리빌더는 네이티브 Promise 아님** — `admin.from(t).delete().eq(...).catch(...)` 는 `catch is not a function`으로 터짐(정리 코드에서 자주 밟음). `await`로 받거나 `try/catch`로 감싼다.
+16. **새 마이그레이션은 serve 재기동만으론 안 걸림** — `setup-local.sh`(함정1)는 functions serve만 재시작하지, 새 컬럼/테이블 마이그를 로컬 DB에 적용하진 않는다. 스키마를 바꿨으면 `supabase migration up` + **PostgREST 스키마 캐시 리로드**(`psql "$DB_URL" -c "NOTIFY pgrst, 'reload schema';"`) 필수. 안 하면 `Could not find the 'X' column of 'T' in the schema cache` 로 500(serve 재기동으론 안 낫는다). `DB_URL` 은 `sb.env` 에 있음.
+17. **실 외부 LLM/API 왕복 검증은 `fn.env` 더미를 실키로 교체** — 함정3은 "안 부르면 더미로 충분"인데, 실제 번역/STT 응답을 검증하려면 `.env` 실키를 `fn.env` 에 써서(값 stdout 금지: `printf 'OPENAI_API_KEY=%s\n' "$KEY" > $SCRATCH/fn.env`) serve 재기동. **검증 끝나면 반드시 더미(`sk-dummy-not-used`)로 복구** — scratch 에 실키 잔존 금지(성역).
 
 ## Steps
 
@@ -69,4 +71,4 @@ DB-backed 슬라이스(DUB-04 녹음·DUB-05 합성·방 기능 등)를 **추측
 
 ## 참고
 - Edge Function 관례: `_shared/supa.ts`(`cors·json·getAppUser·isUuid·serviceClient`). 호스트 검증은 `dub_sessions → rooms(host_id)` 조인. 쓰기는 service_role 전용.
-- 성공 사례: 슬라이스1(22/22+4/4)·슬라이스2(18/18+실브라우저 9/9)·슬라이스3a(20/20+실 ffmpeg E2E 10/10)·아바타선택(10/10)·**대본 텔레프롬프터 2탭 룸 E2E 12/12**·blendshape 멀티플레이어(B3)·**DUB-05 3b(배포 라이브 5/5)·배포판 2탭 E2E 14/14(3b 풀 클릭스루 seed-drive 5 포함)**.
+- 성공 사례: 슬라이스1(22/22+4/4)·슬라이스2(18/18+실브라우저 9/9)·슬라이스3a(20/20+실 ffmpeg E2E 10/10)·아바타선택(10/10)·**대본 텔레프롬프터 2탭 룸 E2E 12/12**·blendshape 멀티플레이어(B3)·**DUB-05 3b(배포 라이브 5/5)·배포판 2탭 E2E 14/14(3b 풀 클릭스루 seed-drive 5 포함)**·**DUB-06 대본 자동번역 통합 9/9(실 gpt-4o-mini JP→KR·마이그 up 후)**.
