@@ -17,7 +17,7 @@ tags: [guide]
 | 축 | 결정 | 근거 |
 |---|---|---|
 | **영상 API** | **공급사 어댑터** + 1차 **Seedance 2.0(fal.ai 경유)**, 폴백 Kling·Luma Ray3.14·Veo3.1 | 주인님 지정 Seedance + 공간 변동성 큼(Sora 종료가 증명) → 하드코딩 금지 |
-| **오케스트레이션** | **Cloudflare Workflows**(durable, webhook 대기) | Supabase Edge는 CPU 2s·월클럭 400s로 수분 잡 불가 |
+| **오케스트레이션** | **Supabase Edge + fal webhook + pg_cron 재조정** (§3.1 정정) | fal webhook 확정 → durable 실행기 불필요. 제출·완료가 각각 짧은 Edge 호출, 인프라 축 0 추가 |
 | **비용방어** | 프롬프트해시 R2 dedup + 크레딧/쿼터 3층 | 초당 과금·협업 트리거 = 비용폭탄 위험 |
 | **모더레이션** | OpenAI Moderation(무료) 프롬프트 사전 + 프레임 사후 | 협업 프롬프트 유해물 책임 |
 | **협업 프롬프트** | LiveKit Text Streams + 앱단 LWW(섹션분할) | CRDT 라이브러리 0개 추가 |
@@ -30,7 +30,7 @@ tags: [guide]
 ```
 협업 프롬프트(섹션별 공동작성) ─▶ [1인 트리거]
   ─▶ Edge Function: 입력검증 + 크레딧 게이트 + OpenAI Moderation(프롬프트)
-  ─▶ Cloudflare Workflow: 공급사 API 호출(키 서버보관) → webhook 대기(폴백 폴링)
+  ─▶ Edge Function: fal 제출(키 서버보관) → 즉시 반환. fal webhook 이 완료를 별도 Edge(vgen-webhook)로 콜백
        └▶ 완료 → 영상 다운로드 → 프레임 샘플 사후 모더레이션 → R2 업로드(key=promptHash)
   ─▶ LiveKit reliable 브로드캐스트: "생성중 40%" → "완료 + 서명URL"
   ─▶ 전원 동시 로드(메인뷰, 타임스탬프 동기)
@@ -68,16 +68,16 @@ tags: [guide]
 
 ## 3. 백엔드 — 비동기·비용·모더레이션
 
-### 3.1 오케스트레이션: Cloudflare Workflows
-| 실행기 | CPU | 월클럭 | 수분 잡 적합 |
-|---|---|---|---|
-| Supabase Edge Fn | CPU 2s | 400s(유료)/150s(무료) | ✗ (요청-응답만) |
-| CF Worker(맨) | 30s~5min | I/O 무제한 | △ |
-| **CF Workflows**(GA) | step당 30s(최대 5분) | **인스턴스 수명 무제한·sleep중 쿼터 미차감**, 동시 50,000(유료) | **✓** |
+### 3.1 오케스트레이션: Supabase Edge + fal webhook + pg_cron
 
-- ⚠️ **Seedance(fal.ai)는 webhook 없이 polling만** → Workflow가 **step마다 5–10초 간격 poll**(잠들었다 깨기 반복)로 완료 대기. webhook형 공급사(Kling)면 콜백 대기로 더 저렴.
-- ⚠️ **스택 추가 결정**: 우리는 현재 CF Pages+R2만 씀. 이건 **CF Workers/Workflows 도입**을 뜻함. 대안은 Supabase `pgmq`+pg_cron 일원화지만, 수분 대기·동시성에서 Workflows가 정직. **→ Workflows 채택, Supabase는 auth/DB/RLS/Realtime 폴백 유지.**
-- ✅ 한도 수치 검증완료(CF Workflows limits docs, Supabase functions/limits).
+**2026-07-04 정정(구현 착수):** 원안은 **Cloudflare Workflows** 였고, 유일 근거는 "Seedance(fal.ai)는 webhook 없이 polling만" 이었다. 그 전제가 `docs/reference/patterns/falai-vgen-pipeline.md:21,:270` 에서 **뒤집혔다 — fal webhook 공식 확인(15초·10회/2시간 재시도)**. webhook 이 되면 수분 잡을 붙들 durable 실행기가 불필요하다:
+
+- `trigger-vgen`(Edge): 모더레이션·크레딧 원자차감·fal 제출 후 **즉시 반환**(짧은 호출, Edge CPU 한도 내).
+- `vgen-webhook`(Edge, **JWT-public + ED25519 서명검증**): fal 완료 콜백 → R2 이관 → 3-way 게이트 → done/환불. **별도의 짧은 호출**.
+- `vgen_jobs` 행이 상태(pending→generating→done/failed). `pg_cron`(5분)이 120초 초과 stuck 행을 실패+환불로 재조정.
+- 결과: **DUB 패턴 그대로(Edge + service_role + R2, `_shared/*` 재사용), 인프라 축 0 추가.** CF Workers/Workflows 도입 폐기.
+
+(원안의 "Edge 는 요청-응답만" 한계는 **polling 전제**였다. webhook 은 연결을 붙들지 않으므로 그 한계에 걸리지 않는다.)
 
 ### 3.2 비용 방어
 - **dedup**: `promptHash = SHA256({prompt, model, settings})`(user/room 제외) → R2 `videos/{hash}.mp4`. 캐시 히트면 0원 즉시 전달. 같은 프롬프트 50회 = 1회 과금.
@@ -132,6 +132,6 @@ tags: [guide]
 ## 7. 미해결·검증 대기
 
 - **Seedance 2.0 PoC**: fal.ai 키 발급 → 15s 클립 실생성 비용·지연 실측. **2.5는 7월 출시 모니터링** 후 마이그레이션.
-- CF Workflows 도입 = 인프라 1축 추가(운영·비용) — ARCHITECTURE-B 반영 필요.
-- fal.ai webhook 지원 여부(현재 polling만 확인), C2PA 워터마크 영속성, fal.ai SLA/데이터 잔류정책 — 계약 전 확인.
+- ~~CF Workflows 도입 = 인프라 1축 추가~~ **철회** — §3.1 정정대로 Edge+webhook+pg_cron(인프라 축 0 추가).
+- ✅ **fal.ai webhook 지원 확인됨**(pipeline §270, 15초·10회/2시간 재시도). C2PA 워터마크 영속성, fal.ai SLA/데이터 잔류정책 — 계약 전 확인.
 - ✅ 검증완료: Sora 종료(9/24/26)·Ray 3.14 실재·Egress 가격·Moderation 무료·CF/Supabase 한도·Seedance fal.ai 경로.

@@ -262,6 +262,8 @@ async function hashSha256(text: string): Promise<string> {
 
 ## 2. Cloudflare Workflows에서 fal 제출 + 폴링/webhook
 
+> ⚠️ **2026-07-04 SUPERSEDED (slice1):** 이 §2 CF Workflows 경로는 **채택하지 않는다**. fal webhook 이 확정(§2.1·:270)이라 durable 실행기가 불필요 — slice1 은 **Edge(`trigger-vgen`) 제출 + `vgen-webhook`(JWT-public·ED25519) 수신 + pg_cron 재조정**(STACK-COMPARE §3.1 정정)으로 구현했다. 아래 Workflows 스켈레톤은 폴링 폴백 참고용 이력.
+
 ### 2.1 폴링 vs Webhook (fal.ai 2026 지원 현황)
 
 | 방식 | 지원 여부 | 지연 | 비용 | 적합성 |
