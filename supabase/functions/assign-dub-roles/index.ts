@@ -8,7 +8,7 @@
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
 
-interface Segment { id: number; start_ms: number; end_ms: number; text: string }
+interface Segment { id: number; start_ms: number; end_ms: number; text: string; translated_text?: string }
 interface Assignment { segment_id: number; participant_id: string }
 
 Deno.serve(async (req) => {
@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
       start_time_ms: seg.start_ms,
       end_time_ms: seg.end_ms,
       transcript_text: seg.text,
+      translated_text: seg.translated_text ?? null,  // DUB-06: STT 후 번역했으면 복사(없으면 null)
       status: "assigned",
     });
   }

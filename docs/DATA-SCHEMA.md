@@ -739,6 +739,7 @@ CREATE TABLE dub_tracks (
   start_time_ms INT NOT NULL,
   end_time_ms INT NOT NULL,
   transcript_text TEXT NOT NULL,  -- original transcript from Whisper
+  translated_text TEXT,           -- DUB-06: JP/EN→KR 번역(nullable, 미번역 시 원문 사용). translate-dub-script/assign-dub-roles 가 채움
   recording_url TEXT,  -- recorded audio URL (R2) after participant dubs
   recording_duration_ms INT,
   local_backup_manifest JSONB,  -- ROOM-23: local MediaRecorder chunk sequence + uploaded chunk keys

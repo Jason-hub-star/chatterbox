@@ -3,7 +3,7 @@ import { useUserStore } from '@/stores/userStore'
 import DubRecorder from '@/features/dub/DubRecorder'
 import DubCompositor from '@/features/dub/DubCompositor'
 import {
-  uploadDubSource, createDubSession, startTranscription, assignRoles,
+  uploadDubSource, createDubSession, startTranscription, translateDubScript, assignRoles,
   recordConsent, startRecording, fetchRoomMembers, fetchActiveDubSession,
   fetchMyUserId, fetchRoomHostId, fetchDubTracks,
   type DubSegment, type DubTrack, type RoomMember,
@@ -33,6 +33,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showTranslation, setShowTranslation] = useState(false)
 
   const isHost = !!myId && myId === hostId
   const segments = session?.diarization_result_json?.segments ?? []
@@ -150,14 +151,33 @@ export default function DubPanel({ roomId }: { roomId: string }) {
       {status === 'ready' && (
         <div className="mt-3 space-y-4">
           <div>
-            <h3 className="text-xs font-semibold text-stage-text-muted">대사 ({segments.length})</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-xs font-semibold text-stage-text-muted">대사 ({segments.length})</h3>
+              {isHost && (
+                <button
+                  disabled={busy}
+                  onClick={() => run(() => translateDubScript(token!, session!.id))}
+                  className="rounded border border-stage-border px-2 py-0.5 text-xs hover:bg-stage-border/30 disabled:opacity-40"
+                >
+                  {busy ? '번역 중…' : '자동 번역 (JP→KR)'}
+                </button>
+              )}
+              {segments.some((s) => s.translated_text) && (
+                <button
+                  onClick={() => setShowTranslation((v) => !v)}
+                  className="rounded border border-stage-border px-2 py-0.5 text-xs"
+                >
+                  {showTranslation ? '원문 보기' : '번역 보기'}
+                </button>
+              )}
+            </div>
             <ul className="mt-2 space-y-1 text-sm">
               {segments.map((seg) => (
                 <li key={seg.id} className="flex items-center gap-2">
                   <span className="w-14 shrink-0 text-xs text-stage-text-muted">
                     {(seg.start_ms / 1000).toFixed(1)}s
                   </span>
-                  <span className="flex-1 truncate">{seg.text}</span>
+                  <span className="flex-1 truncate">{showTranslation && seg.translated_text ? seg.translated_text : seg.text}</span>
                   {isHost ? (
                     <select
                       value={assignedTo(seg.id)}

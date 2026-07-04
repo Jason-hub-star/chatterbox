@@ -27,7 +27,7 @@ async function putToR2(uploadUrl: string, body: Blob, contentType: string): Prom
 export type DubStatus =
   | 'uploaded' | 'transcribing' | 'ready' | 'recording' | 'compositing' | 'completed' | 'failed'
 
-export interface DubSegment { id: number; start_ms: number; end_ms: number; text: string }
+export interface DubSegment { id: number; start_ms: number; end_ms: number; text: string; translated_text?: string }
 export interface DubTrack {
   id: string
   participantId: string
@@ -35,6 +35,7 @@ export interface DubTrack {
   startTimeMs: number
   endTimeMs: number
   transcriptText: string
+  translatedText: string | null
   status: 'assigned' | 'recording' | 'submitted' | 'synced'
 }
 export interface RoomMember { userId: string; authId: string; displayName: string | null; avatarUrl: string | null; slotIndex: number; role: string }
@@ -59,6 +60,12 @@ export const createDubSession = (accessToken: string, roomId: string, sourcePath
 export const startTranscription = (accessToken: string, dubSessionId: string) =>
   callFn<{ dub_session_id: string; status: DubStatus; segment_count: number }>(
     'start-dub-transcription', accessToken, { dub_session_id: dubSessionId },
+  )
+
+// DUB-06: STT 대본 세그먼트를 JP/EN→KR 자동 번역(원문 ko 면 skipped=true·무과금).
+export const translateDubScript = (accessToken: string, dubSessionId: string) =>
+  callFn<{ dub_session_id: string; translated_count: number; skipped_count: number; skipped?: boolean }>(
+    'translate-dub-script', accessToken, { dub_session_id: dubSessionId },
   )
 
 export const assignRoles = (accessToken: string, dubSessionId: string, assignments: RoleAssignment[]) =>
@@ -214,7 +221,7 @@ export async function fetchActiveDubSession(roomId: string) {
 export async function fetchDubTracks(dubSessionId: string): Promise<DubTrack[]> {
   const { data, error } = await supabase
     .from('dub_tracks')
-    .select('id, participant_id, speaker_name, start_time_ms, end_time_ms, transcript_text, status')
+    .select('id, participant_id, speaker_name, start_time_ms, end_time_ms, transcript_text, translated_text, status')
     .eq('dub_session_id', dubSessionId)
     .order('start_time_ms', { ascending: true })
   if (error) throw new Error(error.message)
@@ -225,6 +232,7 @@ export async function fetchDubTracks(dubSessionId: string): Promise<DubTrack[]> 
     startTimeMs: t.start_time_ms,
     endTimeMs: t.end_time_ms,
     transcriptText: t.transcript_text,
+    translatedText: t.translated_text ?? null,
     status: t.status,
   }))
 }

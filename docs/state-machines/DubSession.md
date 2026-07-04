@@ -89,6 +89,7 @@ tags: [fsm]
 | UPLOADED | TRANSCRIBING | 호스트가 [STT 시작] 클릭 | `dubStore.startTranscription()` | Whisper API 호출, `status='transcribing'`, `whisper_job_id` 저장 |
 | UPLOADED | READY | **무대사 소스** (자동감지 또는 호스트 [대사 없음]) | `dubStore.skipTranscription()` | STT/음원분리 스킵. `diarization_result_json={segments:[]}`, `status='ready'` (Edge case 9·G-282) |
 | TRANSCRIBING | READY | Whisper STT 완료 (segments만, **화자분리 없음**) | `dubStore.onTranscriptionSuccess(diarization_result_json)` | `diarization_result_json` 저장(speaker 필드 없음), `status='ready'` |
+| READY | READY | 호스트 [자동 번역] (DUB-06, `translate-dub-script`) | `translateDubScript()` | `diarization_result_json.segments[].translated_text` 채움(원문 `rooms.language='ko'` 면 skip). 역할배정 후면 `dub_tracks.translated_text` 동기화(start_time_ms 매칭). `status='ready'` 유지 |
 | TRANSCRIBING | FAILED | Whisper API 에러/타임아웃 (>120s) | `dubStore.onTranscriptionError(reason)` | **롤백 정책 (C6)**: `status='failed'`, `error_message` 저장, `source_video_url`은 유지 (재시도 가능) |
 | TRANSCRIBING | UPLOADED | 호스트가 [재시도] 클릭 (retry < 2) | `dubStore.retryTranscription()` | `status='uploaded'`로 복귀 후 다시 TRANSCRIBING 진입. 3회 초과 시 FAILED 고정 |
 | READY | RECORDING | 모든 참가자 동의 + 호스트가 [녹음 시작] | `dubStore.startRecording()` | **consent 게이트 (§11)**: `consent_json.all_consented = true` 여야만 전이 가능. `roles_locked_at = now()`, `role_version += 1` |

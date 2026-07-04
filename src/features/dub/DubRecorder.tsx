@@ -35,6 +35,7 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
   const [preview, setPreview] = useState<{ trackId: string; url: string; blob: Blob; durationMs: number } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showTranslation, setShowTranslation] = useState(false)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -134,6 +135,14 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
       )}
 
       {/* 트랙 목록 + 내 트랙 녹음 */}
+      {tracks.some((t) => t.translatedText) && (
+        <button
+          onClick={() => setShowTranslation((v) => !v)}
+          className="rounded border border-stage-border px-2 py-0.5 text-xs text-stage-text-muted hover:text-stage-text"
+        >
+          {showTranslation ? '원문 보기' : '번역 보기'}
+        </button>
+      )}
       <ul className="space-y-2">
         {tracks.map((t) => {
           const mine = t.participantId === myId
@@ -144,7 +153,7 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
                 <span className="w-14 shrink-0 text-xs text-stage-text-muted">
                   {(t.startTimeMs / 1000).toFixed(1)}s
                 </span>
-                <span className="flex-1 truncate">{t.speakerName} · {t.transcriptText}</span>
+                <span className="flex-1 truncate">{t.speakerName} · {showTranslation && t.translatedText ? t.translatedText : t.transcriptText}</span>
                 <span className="shrink-0 text-xs text-stage-text-muted">
                   {memberName(t.participantId)} · {STATUS_MARK[t.status]}
                 </span>
