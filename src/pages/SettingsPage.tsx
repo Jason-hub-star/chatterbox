@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { fetchAvatarPresets, resolveAvatarUrl, type AvatarPreset } from '@/lib/avatars'
 import AvatarPreview from '@/features/avatar/AvatarPreview'
+import LanguageToggle from '@/components/shared/LanguageToggle'
 
 export default function SettingsPage() {
+  const { t } = useTranslation()
   const avatarUrl = useUserStore((s) => s.avatarUrl)
   const setMyAvatar = useUserStore((s) => s.setMyAvatar)
   const [savingUrl, setSavingUrl] = useState<string | null>(null)
@@ -36,22 +39,22 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-screen bg-stage-base text-stage-text p-8">
-      <h1 className="text-3xl font-bold">설정</h1>
+      <h1 className="text-3xl font-bold">{t('settings.title')}</h1>
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">아바타</h2>
-        <p className="mt-1 text-sm text-stage-text-muted">방에서 다른 사람에게 보일 내 아바타를 골라요.</p>
+        <h2 className="text-lg font-semibold">{t('settings.avatar')}</h2>
+        <p className="mt-1 text-sm text-stage-text-muted">{t('settings.avatarDescription')}</p>
         {failed && (
           <p className="mt-2 rounded bg-fire-hot/10 px-3 py-2 text-sm text-fire-hot" role="alert">
-            아바타 저장에 실패했어요. 다시 시도해 주세요.
+            {t('settings.avatarSaveFailed')}
           </p>
         )}
 
         <div className="mt-4 flex flex-wrap gap-6">
           <AvatarPreview projectUrl={current} size={200} />
 
-          <div className="flex flex-col gap-2" role="radiogroup" aria-label="아바타 선택">
-            {loadingPresets && <p className="text-sm text-stage-text-muted">아바타 목록 불러오는 중…</p>}
+          <div className="flex flex-col gap-2" role="radiogroup" aria-label={t('settings.avatarSelection')}>
+            {loadingPresets && <p className="text-sm text-stage-text-muted">{t('settings.loadingAvatars')}</p>}
             {presets.map((p) => {
               const selected = p.projectUrl === current
               return (
@@ -78,9 +81,16 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <p className="mt-8 text-sm text-stage-text-muted">오디오·성능·크레딧 (Phase 4에서 구현)</p>
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">{t('settings.language')}</h2>
+        <div className="mt-2">
+          <LanguageToggle />
+        </div>
+      </section>
+
+      <p className="mt-8 text-sm text-stage-text-muted">{t('settings.futureFeatures')}</p>
       <Link to="/" className="mt-6 inline-block text-fire-amber">
-        ← 홈
+        {t('settings.home')}
       </Link>
     </main>
   )

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import {
   getDubSourceUrl, uploadDubRecording, submitDubTrack, confirmDubTrack,
@@ -24,12 +25,19 @@ interface Props {
   onChanged: () => void | Promise<void>
 }
 
-const STATUS_MARK: Record<DubTrack['status'], string> = {
-  assigned: '대기', recording: '녹음중', submitted: '제출됨', synced: '완료 ✓',
-}
-
 export default function DubRecorder({ dubSessionId, myId, isHost, tracks, members, onChanged }: Props) {
+  const { t } = useTranslation()
   const token = useUserStore((s) => s.session?.access_token)
+
+  const getStatusMark = (status: DubTrack['status']): string => {
+    const marks: Record<DubTrack['status'], string> = {
+      assigned: t('dub.statusAssigned'),
+      recording: t('dub.statusRecording'),
+      submitted: t('dub.statusSubmitted'),
+      synced: t('dub.statusSynced'),
+    }
+    return marks[status]
+  }
   const [sourceUrl, setSourceUrl] = useState<string | null>(null)
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null)
   const [preview, setPreview] = useState<{ trackId: string; url: string; blob: Blob; durationMs: number } | null>(null)
@@ -88,9 +96,9 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
       setRecordingTrackId(trackId)
       rec.start()
     } catch (e) {
-      setError(e instanceof Error ? e.message : '마이크 접근 실패')
+      setError(e instanceof Error ? e.message : t('dub.micAccessError'))
     }
-  }, [isRecording])
+  }, [isRecording, t])
 
   const stopRec = useCallback(() => { recorderRef.current?.stop() }, [])
 
@@ -104,17 +112,17 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
       setPreview(null)
       await onChanged()
     } catch (e) {
-      setError(e instanceof Error ? e.message : '제출 실패')
+      setError(e instanceof Error ? e.message : t('dub.submitError'))
     } finally { setBusy(false) }
-  }, [token, preview, onChanged])
+  }, [token, preview, onChanged, t])
 
   const confirm = useCallback(async (trackId: string) => {
     if (!token) return
     setBusy(true); setError(null)
     try { await confirmDubTrack(token, trackId); await onChanged() }
-    catch (e) { setError(e instanceof Error ? e.message : '확인 실패') }
+    catch (e) { setError(e instanceof Error ? e.message : t('dub.confirmError')) }
     finally { setBusy(false) }
-  }, [token, onChanged])
+  }, [token, onChanged, t])
 
   const syncedCount = tracks.filter((t) => t.status === 'synced').length
   const allSynced = tracks.length > 0 && syncedCount === tracks.length
@@ -126,50 +134,50 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
       {/* 원본 재생 (녹음 중엔 음소거 — 마이크 유입 방지, 헤드폰 권장) */}
       {sourceUrl && (
         <div>
-          <h3 className="text-xs font-semibold text-stage-text-muted">원본 (타이밍 참고)</h3>
+          <h3 className="text-xs font-semibold text-stage-text-muted">{t('dub.sourceLabel')}</h3>
           <audio src={sourceUrl} controls muted={isRecording} className="mt-1 w-full">
             <track kind="captions" />
           </audio>
-          {isRecording && <p className="text-xs text-stage-text-muted">녹음 중엔 원음이 마이크에 섞이지 않도록 음소거돼요(헤드폰 권장).</p>}
+          {isRecording && <p className="text-xs text-stage-text-muted">{t('dub.mutedInfo')}</p>}
         </div>
       )}
 
       {/* 트랙 목록 + 내 트랙 녹음 */}
-      {tracks.some((t) => t.translatedText) && (
+      {tracks.some((track) => track.translatedText) && (
         <button
           onClick={() => setShowTranslation((v) => !v)}
           className="rounded border border-stage-border px-2 py-0.5 text-xs text-stage-text-muted hover:text-stage-text"
         >
-          {showTranslation ? '원문 보기' : '번역 보기'}
+          {showTranslation ? t('dub.showOriginal') : t('dub.showTranslation')}
         </button>
       )}
       <ul className="space-y-2">
-        {tracks.map((t) => {
-          const mine = t.participantId === myId
-          const previewing = preview?.trackId === t.id
+        {tracks.map((track) => {
+          const mine = track.participantId === myId
+          const previewing = preview?.trackId === track.id
           return (
-            <li key={t.id} className="rounded-lg border border-stage-border px-3 py-2 text-sm">
+            <li key={track.id} className="rounded-lg border border-stage-border px-3 py-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="w-14 shrink-0 text-xs text-stage-text-muted">
-                  {(t.startTimeMs / 1000).toFixed(1)}s
+                  {(track.startTimeMs / 1000).toFixed(1)}s
                 </span>
-                <span className="flex-1 truncate">{t.speakerName} · {showTranslation && t.translatedText ? t.translatedText : t.transcriptText}</span>
+                <span className="flex-1 truncate">{track.speakerName} · {showTranslation && track.translatedText ? track.translatedText : track.transcriptText}</span>
                 <span className="shrink-0 text-xs text-stage-text-muted">
-                  {memberName(t.participantId)} · {STATUS_MARK[t.status]}
+                  {memberName(track.participantId)} · {getStatusMark(track.status)}
                 </span>
               </div>
 
-              {mine && t.status !== 'synced' && (
+              {mine && track.status !== 'synced' && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {recordingTrackId === t.id ? (
+                  {recordingTrackId === track.id ? (
                     <button onClick={stopRec}
                       className="rounded-lg bg-fire-hot px-3 py-1.5 text-xs font-semibold text-stage-base">
-                      ■ 중지
+                      {t('dub.stopButton')}
                     </button>
                   ) : (
-                    <button onClick={() => startRec(t.id)} disabled={isRecording || busy}
+                    <button onClick={() => startRec(track.id)} disabled={isRecording || busy}
                       className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
-                      ● 녹음
+                      {t('dub.recordButton')}
                     </button>
                   )}
                   {previewing && (
@@ -179,17 +187,17 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
                       </audio>
                       <button onClick={submit} disabled={busy}
                         className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
-                        {busy ? '제출 중…' : '제출'}
+                        {busy ? t('dub.submitLoading') : t('dub.submitButton')}
                       </button>
                     </>
                   )}
                 </div>
               )}
 
-              {isHost && t.status === 'submitted' && (
-                <button onClick={() => confirm(t.id)} disabled={busy}
+              {isHost && track.status === 'submitted' && (
+                <button onClick={() => confirm(track.id)} disabled={busy}
                   className="mt-2 rounded-lg border border-stage-border px-3 py-1.5 text-xs hover:bg-stage-border/30 disabled:opacity-40">
-                  확인(synced)
+                  {t('dub.confirmButton')}
                 </button>
               )}
             </li>
@@ -199,8 +207,8 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
 
       {/* 하단: 진행도 (전 트랙 synced 시 DubPanel 이 DubCompositor 마운트) */}
       <div className="flex items-center justify-between border-t border-stage-border pt-3">
-        <span className="text-xs text-stage-text-muted">{syncedCount}/{tracks.length} 완료</span>
-        {allSynced && <span className="text-xs text-fire-amber">전원 녹음 완료 — 아래에서 합성</span>}
+        <span className="text-xs text-stage-text-muted">{t('dub.progressDisplay', { count: syncedCount, total: tracks.length })}</span>
+        {allSynced && <span className="text-xs text-fire-amber">{t('dub.recordingComplete')}</span>}
       </div>
     </div>
   )

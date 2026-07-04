@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { createRoom, fetchPublicRooms, type LobbyRoom } from '@/lib/rooms'
 
@@ -7,6 +8,7 @@ import { createRoom, fetchPublicRooms, type LobbyRoom } from '@/lib/rooms'
 // ponytail: 장르/언어 필터·Realtime 라이브 갱신·초대링크·비밀번호는 후속 슬라이스.
 //   (Realtime 로비는 rooms 공개 SELECT 정책이 필요 — 현재 RLS는 참가자 전용이라 수동 새로고침.)
 export default function LobbyPage() {
+  const { t } = useTranslation()
   const email = useUserStore((s) => s.user?.email)
   const session = useUserStore((s) => s.session)
   const logout = useUserStore((s) => s.logout)
@@ -25,11 +27,11 @@ export default function LobbyPage() {
       setRooms(await fetchPublicRooms())
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : '방 목록을 불러오지 못했어요.')
+      setError(e instanceof Error ? e.message : t('lobby.fetchError'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   // 최초 로드: setState 는 async IIFE 안(await 이후)에서만 — set-state-in-effect 회피.
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function LobbyPage() {
           setError(null)
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : '방 목록을 불러오지 못했어요.')
+        if (!cancelled) setError(e instanceof Error ? e.message : t('lobby.fetchError'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -50,7 +52,7 @@ export default function LobbyPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   async function onLogout() {
     await logout()
@@ -59,15 +61,15 @@ export default function LobbyPage() {
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault()
-    const t = title.trim()
-    if (!t || !session) return
+    const trimmedTitle = title.trim()
+    if (!trimmedTitle || !session) return
     setCreating(true)
     setError(null)
     try {
-      const { room_id } = await createRoom(session.access_token, t)
+      const { room_id } = await createRoom(session.access_token, trimmedTitle)
       navigate(`/rooms/${room_id}`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : '방 생성에 실패했어요.')
+      setError(e instanceof Error ? e.message : t('lobby.createError'))
       setCreating(false)
     }
   }
@@ -75,22 +77,22 @@ export default function LobbyPage() {
   return (
     <main className="min-h-screen bg-stage-base text-stage-text p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">로비</h1>
+        <h1 className="text-3xl font-bold">{t('lobby.title')}</h1>
         <button
           onClick={onLogout}
           className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
         >
-          로그아웃
+          {t('lobby.logout')}
         </button>
       </div>
-      {email && <p className="mt-2 text-stage-text-muted">{email} 님, 환영합니다</p>}
+      {email && <p className="mt-2 text-stage-text-muted">{t('lobby.welcome', { email })}</p>}
 
       <form onSubmit={onCreate} className="mt-6 flex gap-2">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          aria-label="방 제목"
-          placeholder="방 제목"
+          aria-label={t('lobby.roomTitleInput')}
+          placeholder={t('lobby.roomTitlePlaceholder')}
           maxLength={80}
           className="flex-1 max-w-sm rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm"
         />
@@ -99,7 +101,7 @@ export default function LobbyPage() {
           disabled={creating || !title.trim()}
           className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
         >
-          {creating ? '만드는 중…' : '방 만들기'}
+          {creating ? t('lobby.creating') : t('lobby.createRoom')}
         </button>
       </form>
 
@@ -112,21 +114,21 @@ export default function LobbyPage() {
       <section className="mt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-stage-text-muted">
-            공개 방 ({rooms.length})
+            {t('lobby.publicRooms')} ({rooms.length})
           </h2>
           <button
             onClick={() => void refresh()}
             className="text-xs text-stage-text-muted hover:text-stage-text"
           >
-            새로고침
+            {t('lobby.refresh')}
           </button>
         </div>
 
         {loading ? (
-          <p className="mt-3 text-sm text-stage-text-muted">불러오는 중…</p>
+          <p className="mt-3 text-sm text-stage-text-muted">{t('common.loading')}</p>
         ) : rooms.length === 0 ? (
           <p className="mt-3 text-sm text-stage-text-muted">
-            열려 있는 방이 없어요. 위에서 새 방을 만들어 보세요.
+            {t('lobby.noRooms')}
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -140,7 +142,7 @@ export default function LobbyPage() {
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{r.title}</p>
                     <p className="text-xs text-stage-text-muted">
-                      {r.hostDisplayName ?? '호스트'} · {r.currentParticipants}/{r.maxParticipants}명
+                      {r.hostDisplayName ?? t('lobby.host')} · {t('lobby.participantCount', { currentParticipants: r.currentParticipants, maxParticipants: r.maxParticipants })}
                     </p>
                   </div>
                   <button
@@ -148,7 +150,7 @@ export default function LobbyPage() {
                     disabled={full}
                     className="shrink-0 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
                   >
-                    {full ? '가득 참' : '입장'}
+                    {full ? t('lobby.full') : t('lobby.join')}
                   </button>
                 </li>
               )

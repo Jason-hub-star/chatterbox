@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useVgenStore } from '@/stores/vgenStore'
 import { getVgenUrl } from '@/lib/vgen'
@@ -8,6 +9,7 @@ import VgenPromptPanel from '@/features/vgen/VgenPromptPanel'
 // SSOT: docs/contracts/VgenPanel.md §VgenStatusTab
 
 export default function VgenStatusTab({ roomId, isHost }: { roomId: string; isHost: boolean }) {
+  const { t } = useTranslation()
   const balance = useUserStore((s) => s.creditBalance)
   const token = useUserStore((s) => s.session?.access_token)
   const recentJobs = useVgenStore((s) => s.recentJobs)
@@ -27,21 +29,21 @@ export default function VgenStatusTab({ roomId, isHost }: { roomId: string; isHo
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-stage-text-muted">🎬 AI 영상생성</h2>
-        <span className="text-xs text-stage-text-muted">크레딧 {balance}</span>
+        <h2 className="text-sm font-semibold text-stage-text-muted">🎬 {t('vgen.tabTitle')}</h2>
+        <span className="text-xs text-stage-text-muted">{t('vgen.creditBalance', { balance })}</span>
       </div>
 
       {isHost && !showPrompt && (
         <button onClick={() => setShowPrompt(true)}
           className="mt-2 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base">
-          프롬프트 열기
+          {t('vgen.promptOpenButton')}
         </button>
       )}
       {showPrompt && <VgenPromptPanel roomId={roomId} onClose={() => setShowPrompt(false)} />}
 
       {isGenerating && (
         <p className="mt-3 text-sm text-stage-text-muted">
-          생성 중… {currentJob?.status === 'generating' ? '영상 만드는 중이에요' : '요청 접수됨'}
+          {currentJob?.status === 'generating' ? t('vgen.generatingMaking') : t('vgen.generatingRequested')}
         </p>
       )}
 
@@ -58,7 +60,7 @@ export default function VgenStatusTab({ roomId, isHost }: { roomId: string; isHo
               <span className="flex-1 truncate text-stage-text">{j.promptText}</span>
               <span className="text-xs text-stage-text-muted">{j.status} · {j.creditCost}cr</span>
               {j.status === 'done' && (
-                <button onClick={() => play(j.id)} className="text-xs text-fire-amber">재생</button>
+                <button onClick={() => play(j.id)} className="text-xs text-fire-amber">{t('vgen.playButton')}</button>
               )}
             </li>
           ))}

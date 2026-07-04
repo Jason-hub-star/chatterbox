@@ -285,6 +285,7 @@ userCredits -= cost
 - 컴포넌트 파일에 비즈니스 로직 작성 금지 — 스토어·서비스로 분리
 - `React.memo`, `useMemo`, `useCallback` 남용 금지 — 측정 후 적용
 - 새 npm 패키지 추가 시 PR 설명에 대안 검토 내용 포함 (CODING-CONVENTIONS.md §ponytail)
+- **UI 문자열 한글 하드코딩 금지** — 사용자 대면 텍스트(JSX 텍스트·placeholder·title·alt·실텍스트 aria-label·버튼/토스트/에러)는 `t('area.key')`(react-i18next). 키는 `src/i18n/locales/ko.ts`(flat dotted, keySeparator:false). 주석·`console.*`·로직/enum 문자열·className 은 대상 아님. (다국어 뚫림 원칙, G-17)
 
 ---
 

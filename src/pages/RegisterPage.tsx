@@ -1,19 +1,21 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { useUserStore } from '@/stores/userStore'
 
 // SSOT: contracts/AuthPage.md — RegisterPage. 이메일/비밀번호 가입만 (Phase 0).
 // 비밀번호 강도: 최소 8자 + 대문자 1 + 숫자 1 (AuthPage.md 회원가입 흐름 §검증).
-function validate(email: string, password: string, confirm: string): string | null {
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return '이메일 형식이 올바르지 않습니다.'
-  if (password.length < 8) return '비밀번호는 최소 8자 이상이어야 합니다.'
-  if (!/[A-Z]/.test(password)) return '비밀번호에 대문자를 1개 이상 포함하세요.'
-  if (!/[0-9]/.test(password)) return '비밀번호에 숫자를 1개 이상 포함하세요.'
-  if (password !== confirm) return '비밀번호가 일치하지 않습니다.'
+function validate(email: string, password: string, confirm: string, t: (key: string) => string): string | null {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return t('register.errors.invalidEmail')
+  if (password.length < 8) return t('register.errors.passwordTooShort')
+  if (!/[A-Z]/.test(password)) return t('register.errors.passwordNoUppercase')
+  if (!/[0-9]/.test(password)) return t('register.errors.passwordNoNumber')
+  if (password !== confirm) return t('register.errors.passwordMismatch')
   return null
 }
 
 export default function RegisterPage() {
+  const { t } = useTranslation()
   const signUp = useUserStore((s) => s.signUpWithEmail)
   const storeError = useUserStore((s) => s.error)
   const authState = useUserStore((s) => s.authState)
@@ -28,7 +30,7 @@ export default function RegisterPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    const v = validate(email, password, confirm)
+    const v = validate(email, password, confirm, t)
     if (v) {
       setLocalError(v)
       return
@@ -46,12 +48,12 @@ export default function RegisterPage() {
     return (
       <main className="min-h-screen bg-stage-base text-stage-text flex items-center justify-center p-6">
         <div className="w-full max-w-sm space-y-4 rounded-2xl bg-stage-panel p-8 text-center">
-          <h1 className="text-2xl font-bold">메일함을 확인해주세요</h1>
+          <h1 className="text-2xl font-bold">{t('register.verification.title')}</h1>
           <p className="text-sm text-stage-text-muted">
-            <span className="text-stage-text">{email}</span> 로 인증 메일을 보냈어요. 링크를 눌러 가입을 완료하세요.
+            <span className="text-stage-text">{email}</span> {t('register.verification.message')}
           </p>
           <Link to="/login" className="inline-block text-fire-amber">
-            로그인으로 돌아가기
+            {t('register.verification.backLink')}
           </Link>
         </div>
       </main>
@@ -61,10 +63,10 @@ export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-stage-base text-stage-text flex items-center justify-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-2xl bg-stage-panel p-8">
-        <h1 className="text-2xl font-bold">회원가입</h1>
+        <h1 className="text-2xl font-bold">{t('register.title')}</h1>
 
         <label className="block space-y-1">
-          <span className="text-sm text-stage-text-muted">이메일</span>
+          <span className="text-sm text-stage-text-muted">{t('register.email')}</span>
           <input
             type="email"
             required
@@ -76,7 +78,7 @@ export default function RegisterPage() {
         </label>
 
         <label className="block space-y-1">
-          <span className="text-sm text-stage-text-muted">비밀번호</span>
+          <span className="text-sm text-stage-text-muted">{t('register.password')}</span>
           <input
             type="password"
             required
@@ -85,11 +87,11 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
           />
-          <span className="text-xs text-stage-text-muted">최소 8자, 대문자·숫자 각 1개 이상</span>
+          <span className="text-xs text-stage-text-muted">{t('register.passwordHint')}</span>
         </label>
 
         <label className="block space-y-1">
-          <span className="text-sm text-stage-text-muted">비밀번호 확인</span>
+          <span className="text-sm text-stage-text-muted">{t('register.passwordConfirm')}</span>
           <input
             type="password"
             required
@@ -111,13 +113,13 @@ export default function RegisterPage() {
           disabled={submitting}
           className="w-full rounded-lg bg-fire-amber py-2 font-medium text-stage-base disabled:opacity-50"
         >
-          {submitting ? '가입 중…' : '회원가입'}
+          {submitting ? t('register.submitting') : t('register.submit')}
         </button>
 
         <p className="text-center text-sm text-stage-text-muted">
-          이미 계정이 있으신가요?{' '}
+          {t('register.hasAccount')}{' '}
           <Link to="/login" className="text-fire-amber">
-            로그인
+            {t('register.loginLink')}
           </Link>
         </p>
       </form>

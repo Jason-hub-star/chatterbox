@@ -1,14 +1,15 @@
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ProceduralAvatar } from '@/lib/pixi/proceduralAvatar'
 import { useFaceTracking } from '@/hooks/useFaceTracking'
 import { useTrackingStore, type TrackingState } from '@/stores/trackingStore'
 
-const STATE_LABEL: Record<TrackingState, string> = {
-  IDLE: '대기',
-  INITIALIZING: 'MediaPipe 로딩 중…',
-  TRACKING: '트래킹 중',
-  ERROR: '오류',
-  UNSUPPORTED: '미지원 기기',
+const STATE_LABEL_KEY: Record<TrackingState, string> = {
+  IDLE: 'avatar.trackingIdle',
+  INITIALIZING: 'avatar.trackingInitializing',
+  TRACKING: 'avatar.trackingActive',
+  ERROR: 'avatar.trackingError',
+  UNSUPPORTED: 'avatar.trackingUnsupported',
 }
 
 const STATE_COLOR: Record<TrackingState, string> = {
@@ -21,6 +22,7 @@ const STATE_COLOR: Record<TrackingState, string> = {
 
 // 웹캠 프리뷰 + 절차적 아바타를 나란히 렌더. 마운트 즉시 트래킹 시작.
 export default function AvatarStage() {
+  const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const avatarRef = useRef<ProceduralAvatar | null>(null)
   const mountRef = useRef<HTMLDivElement>(null)
@@ -61,8 +63,8 @@ export default function AvatarStage() {
       <div className="flex items-center gap-2" role="status" aria-live="polite">
         <span className={`h-2.5 w-2.5 rounded-full ${STATE_COLOR[state]}`} />
         <span className="text-sm text-stage-text-muted">
-          {STATE_LABEL[state]}
-          {state === 'TRACKING' && ` · ${fps}fps · ${faceDetected ? '얼굴 인식됨' : '얼굴 없음'}`}
+          {t(STATE_LABEL_KEY[state])}
+          {state === 'TRACKING' && ` · ${fps}fps · ${faceDetected ? t('avatar.faceDetected') : t('avatar.faceNotDetected')}`}
         </span>
       </div>
 
@@ -81,18 +83,18 @@ export default function AvatarStage() {
             autoPlay
             className="w-[320px] rounded-lg border border-stage-border"
             style={{ transform: 'scaleX(-1)' }}
-            aria-label="웹캠 프리뷰"
+            aria-label={t('avatar.webcamPreview')}
           />
-          <figcaption className="text-xs text-stage-text-muted">웹캠 (내 얼굴)</figcaption>
+          <figcaption className="text-xs text-stage-text-muted">{t('avatar.webcamCaption')}</figcaption>
         </figure>
 
         <figure className="flex flex-col items-center gap-2">
           <div
             ref={mountRef}
             className="overflow-hidden rounded-lg border border-stage-border"
-            aria-label="아바타 캔버스"
+            aria-label={t('avatar.avatarCanvas')}
           />
-          <figcaption className="text-xs text-stage-text-muted">아바타 (표정 반영)</figcaption>
+          <figcaption className="text-xs text-stage-text-muted">{t('avatar.avatarCaption')}</figcaption>
         </figure>
       </div>
     </div>

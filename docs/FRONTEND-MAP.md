@@ -32,13 +32,13 @@ tags: [guide]
 
 | 바꿀 것 | 파일 | 방법 |
 |---|---|---|
-| **텍스트(다국어)** | `src/content/content.ts`(타입) + `src/content/locales/{ko,ja,en}.ts` | 타입에 키 추가 → 3로케일에 값. 컴포넌트는 `useContent()`로 읽음 |
+| **텍스트(다국어)** | `src/i18n/locales/{ko,ja,en}.ts` (react-i18next, flat dotted 키·keySeparator:false) | ko 에 `'area.key': '값'` 추가(키 원천) → 컴포넌트에서 `const { t } = useTranslation()` 후 `t('area.key')`. ja/en 은 `fallbackLng='ko'` 로 점진 채움. **UI 한글 하드코딩 금지(G-17)** |
 | **이미지·영상·Lottie** | `src/content/assets.ts` (`ASSETS`) | 슬롯에 `src` 채우면 `<AssetSlot>`이 자동 렌더(없으면 placeholder). video는 autoplay/loop/poster/reduced-motion 자동 |
 | **모션 토큰**(이징·duration·스프링·variant·blink) | `src/lib/motion.ts` | `EASE.out`·`DURATION`·`SPRING.soft`·`VARIANTS`·`VARIANTS_BLINK` |
 | **디자인 토큰**(색·타이포·radius·shadow·keyframe·marquee/blink 애니) | `tailwind.config.ts` | `theme.extend` |
 | **전역 CSS·유틸**(`.transition-flecto*`·reduced-motion·pin 폴백) | `src/app/globals.css` | `@layer` |
 | **className 병합** | `src/lib/utils.ts` (`cn`) | clsx+tailwind-merge |
-| **언어 컨텍스트** | `src/content/LocaleProvider.tsx` (`useContent`) + `Header`의 `LanguageToggle` | KO/JA/EN |
+| **언어 전환** | `src/i18n/index.ts`(init·`setLang`·localStorage) + `src/components/shared/LanguageToggle.tsx`(SettingsPage §언어) | KO/JA/EN. (구 `content.ts`/`useContent`/`LocaleProvider` 는 폐기 — react-i18next 로 단일화) |
 
 ---
 

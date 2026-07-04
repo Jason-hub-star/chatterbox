@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useUserStore } from '@/stores/userStore'
 
 // SSOT: contracts/AuthPage.md — LoginPage. 이메일/비밀번호 로그인만 (Phase 0).
 export default function LoginPage() {
+  const { t } = useTranslation()
   const login = useUserStore((s) => s.login)
   const error = useUserStore((s) => s.error)
   const authState = useUserStore((s) => s.authState)
@@ -24,10 +26,10 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-stage-base text-stage-text flex items-center justify-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-2xl bg-stage-panel p-8">
-        <h1 className="text-2xl font-bold">로그인</h1>
+        <h1 className="text-2xl font-bold">{t('login.title')}</h1>
 
         <label className="block space-y-1">
-          <span className="text-sm text-stage-text-muted">이메일</span>
+          <span className="text-sm text-stage-text-muted">{t('login.email')}</span>
           <input
             type="email"
             required
@@ -39,7 +41,7 @@ export default function LoginPage() {
         </label>
 
         <label className="block space-y-1">
-          <span className="text-sm text-stage-text-muted">비밀번호</span>
+          <span className="text-sm text-stage-text-muted">{t('login.password')}</span>
           <input
             type="password"
             required
@@ -61,13 +63,13 @@ export default function LoginPage() {
           disabled={submitting}
           className="w-full rounded-lg bg-fire-amber py-2 font-medium text-stage-base disabled:opacity-50"
         >
-          {submitting ? '로그인 중…' : '로그인'}
+          {submitting ? t('login.submitting') : t('login.submit')}
         </button>
 
         <p className="text-center text-sm text-stage-text-muted">
-          계정이 없으신가요?{' '}
+          {t('login.noAccount')}{' '}
           <Link to="/register" className="text-fire-amber">
-            회원가입
+            {t('login.signupLink')}
           </Link>
         </p>
       </form>

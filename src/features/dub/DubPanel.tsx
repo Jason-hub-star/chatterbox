@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import DubRecorder from '@/features/dub/DubRecorder'
 import DubCompositor from '@/features/dub/DubCompositor'
@@ -23,6 +24,7 @@ interface Session {
 }
 
 export default function DubPanel({ roomId }: { roomId: string }) {
+  const { t } = useTranslation()
   const token = useUserStore((s) => s.session?.access_token)
   const [myId, setMyId] = useState<string | null>(null)
   const [hostId, setHostId] = useState<string | null>(null)
@@ -77,7 +79,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
     if (!token) return
     setBusy(true); setError(null)
     try { await fn(); await refresh() }
-    catch (e) { setError(e instanceof Error ? e.message : '작업에 실패했어요.') }
+    catch (e) { setError(e instanceof Error ? e.message : t('dub.actionFailed')) }
     finally { setBusy(false) }
   }
 
@@ -91,10 +93,10 @@ export default function DubPanel({ roomId }: { roomId: string }) {
     <section className="mt-8 rounded-lg border border-stage-border p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-stage-text-muted">
-          더빙 {status && <span className="ml-2 rounded bg-stage-border px-2 py-0.5 text-xs">{status}</span>}
+          {t('dub.header')} {status && <span className="ml-2 rounded bg-stage-border px-2 py-0.5 text-xs">{status}</span>}
         </h2>
         <button onClick={() => void refresh()} className="text-xs text-stage-text-muted hover:text-stage-text">
-          새로고침
+          {t('dub.refresh')}
         </button>
       </div>
 
@@ -107,7 +109,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
             <input
               type="file" accept="video/mp4,video/webm,audio/mp4,audio/mpeg,audio/wav"
               onChange={(e) => setFile(e.currentTarget.files?.[0] ?? null)}
-              aria-label="더빙 소스 파일"
+              aria-label={t('dub.sourceFileLabel')}
             />
             <button
               disabled={!file || busy}
@@ -117,12 +119,12 @@ export default function DubPanel({ roomId }: { roomId: string }) {
               })}
               className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
             >
-              {busy ? '업로드 중…' : '더빙 시작 (영상 업로드)'}
+              {busy ? t('dub.uploadLoading') : t('dub.uploadButton')}
             </button>
-            <span className="text-xs text-stage-text-muted">≤25MB, mp4/webm/음성</span>
+            <span className="text-xs text-stage-text-muted">{t('dub.fileNote')}</span>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-stage-text-muted">호스트가 더빙을 시작하면 참여할 수 있어요.</p>
+          <p className="mt-3 text-sm text-stage-text-muted">{t('dub.hostNotStarted')}</p>
         )
       )}
 
@@ -134,17 +136,17 @@ export default function DubPanel({ roomId }: { roomId: string }) {
             onClick={() => run(() => startTranscription(token!, session!.id))}
             className="mt-3 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
           >
-            {busy ? '요청 중…' : '대본 추출 (STT)'}
+            {busy ? t('dub.sttLoading') : t('dub.sttButton')}
           </button>
-        ) : <p className="mt-3 text-sm text-stage-text-muted">호스트가 대본을 추출하는 중이에요.</p>
+        ) : <p className="mt-3 text-sm text-stage-text-muted">{t('dub.hostTranscribing')}</p>
       )}
 
       {status === 'transcribing' && (
-        <p className="mt-3 text-sm text-stage-text-muted">대본 추출 중… 잠시 후 새로고침 해주세요.</p>
+        <p className="mt-3 text-sm text-stage-text-muted">{t('dub.waitingForTranscribe')}</p>
       )}
 
       {status === 'failed' && (
-        <p className="mt-3 text-sm text-fire-hot">더빙 처리에 실패했어요. (다시 시도는 다음 업데이트)</p>
+        <p className="mt-3 text-sm text-fire-hot">{t('dub.processingFailed')}</p>
       )}
 
       {/* READY: 세그먼트 + 역할배정 + 동의 */}
@@ -152,14 +154,14 @@ export default function DubPanel({ roomId }: { roomId: string }) {
         <div className="mt-3 space-y-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-xs font-semibold text-stage-text-muted">대사 ({segments.length})</h3>
+              <h3 className="text-xs font-semibold text-stage-text-muted">{t('dub.scriptSection', { count: segments.length })}</h3>
               {isHost && (
                 <button
                   disabled={busy}
                   onClick={() => run(() => translateDubScript(token!, session!.id))}
                   className="rounded border border-stage-border px-2 py-0.5 text-xs hover:bg-stage-border/30 disabled:opacity-40"
                 >
-                  {busy ? '번역 중…' : '자동 번역 (JP→KR)'}
+                  {busy ? t('dub.translateLoading') : t('dub.translateButton')}
                 </button>
               )}
               {segments.some((s) => s.translated_text) && (
@@ -167,7 +169,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
                   onClick={() => setShowTranslation((v) => !v)}
                   className="rounded border border-stage-border px-2 py-0.5 text-xs"
                 >
-                  {showTranslation ? '원문 보기' : '번역 보기'}
+                  {showTranslation ? t('dub.showOriginal') : t('dub.showTranslation')}
                 </button>
               )}
             </div>
@@ -184,7 +186,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
                       onChange={(e) => setAssignments((a) => ({ ...a, [seg.id]: e.target.value }))}
                       className="rounded border border-stage-border bg-transparent px-2 py-1 text-xs"
                     >
-                      <option value="">배정…</option>
+                      <option value="">{t('dub.rolePlaceholder')}</option>
                       {members.map((m) => (
                         <option key={m.userId} value={m.userId}>{m.displayName ?? m.userId.slice(0, 8)}</option>
                       ))}
@@ -193,7 +195,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
                     <span className="text-xs text-stage-text-muted">
                       {tracks.find((t) => t.startTimeMs === seg.start_ms)
                         ? memberName(tracks.find((t) => t.startTimeMs === seg.start_ms)!.participantId)
-                        : '미배정'}
+                        : t('dub.roleUnassigned')}
                     </span>
                   )}
                 </li>
@@ -206,21 +208,21 @@ export default function DubPanel({ roomId }: { roomId: string }) {
                   segments.map((s) => ({ segment_id: s.id, participant_id: assignedTo(s.id) }))))}
                 className="mt-2 rounded-lg border border-stage-border px-3 py-1.5 text-xs hover:bg-stage-border/30 disabled:opacity-40"
               >
-                역할 저장
+                {t('dub.roleSaveButton')}
               </button>
             )}
           </div>
 
           <div>
             <h3 className="text-xs font-semibold text-stage-text-muted">
-              동의 {allConsented ? '(전원 완료)' : '(대기 중)'}
+              {t('dub.consentLabel')} {allConsented ? t('dub.consentDone') : t('dub.consentWaiting')}
             </h3>
             <button
               disabled={busy || myConsent}
               onClick={() => run(() => recordConsent(token!, session!.id, true))}
               className="mt-2 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
             >
-              {myConsent ? '동의함 ✓' : '더빙에 동의'}
+              {myConsent ? t('dub.consentYes') : t('dub.consentButton')}
             </button>
           </div>
 
@@ -230,7 +232,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
               onClick={() => run(() => startRecording(token!, session!.id))}
               className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
             >
-              녹음 시작
+              {t('dub.recordingStart')}
             </button>
           )}
         </div>

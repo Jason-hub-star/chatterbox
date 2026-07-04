@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
 import { useUserStore } from '@/stores/userStore'
@@ -18,14 +19,6 @@ import { SEED_SCRIPTS } from '@/features/script/cues'
 // ponytail: 무대(StageLayout)·씬·채팅 패널은 Phase 2~3 (contracts/RoomView.md).
 // 경로 B: 아바타는 네이티브 아리아 실 rig. 참가자별 avatar URL(users.avatar_url) — 미설정은 기본 아바타(resolveAvatarUrl).
 
-const STATE_LABEL: Record<ConnectionState, string> = {
-  DISCONNECTED: '연결 안 됨',
-  CONNECTING: '연결 중…',
-  CONNECTED: '연결됨',
-  RECONNECTING: '재연결 중…',
-  FAILED: '연결 실패',
-}
-
 const STATE_COLOR: Record<ConnectionState, string> = {
   DISCONNECTED: 'bg-stage-border',
   CONNECTING: 'bg-fire-amber',
@@ -35,6 +28,16 @@ const STATE_COLOR: Record<ConnectionState, string> = {
 }
 
 export default function RoomPage() {
+  const { t } = useTranslation()
+
+  const STATE_LABEL: Record<ConnectionState, string> = {
+    DISCONNECTED: t('room.disconnected'),
+    CONNECTING: t('room.connecting'),
+    CONNECTED: t('room.connected'),
+    RECONNECTING: t('room.reconnecting'),
+    FAILED: t('room.failed'),
+  }
+
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
   const session = useUserStore((s) => s.session)
@@ -61,13 +64,14 @@ export default function RoomPage() {
         setJoinPhase('ready')
       } catch (e) {
         if (cancelled) return
-        setJoinError(e instanceof Error ? e.message : '방 입장에 실패했어요.')
+        setJoinError(e instanceof Error ? e.message : t('room.joinError'))
         setJoinPhase('error')
       }
     })()
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t 는 안정적, 언어 변경 시 재조인 방지 위해 제외
   }, [session, roomId])
 
   // 원격 아바타 프레임 싱크(participant identity → 구동 함수)와 마지막 seq. 고빈도 구동은 ref로만(리렌더 없음).
@@ -202,7 +206,7 @@ export default function RoomPage() {
   if (joinPhase === 'joining') {
     return (
       <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text-muted">
-        <p role="status" aria-live="polite">방에 입장하는 중…</p>
+        <p role="status" aria-live="polite">{t('room.joining')}</p>
       </main>
     )
   }
@@ -216,7 +220,7 @@ export default function RoomPage() {
             onClick={() => navigate('/lobby', { replace: true })}
             className="mt-4 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
           >
-            로비로 돌아가기
+            {t('room.backToLobby')}
           </button>
         </div>
       </main>
@@ -226,7 +230,7 @@ export default function RoomPage() {
   return (
     <main className="min-h-screen bg-stage-base text-stage-text p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">방</h1>
+        <h1 className="text-3xl font-bold">{t('room.title')}</h1>
         <div className="flex items-center gap-2" role="status" aria-live="polite">
           <span className={`h-2.5 w-2.5 rounded-full ${STATE_COLOR[connectionState]}`} />
           <span className="text-sm text-stage-text-muted">
@@ -243,7 +247,7 @@ export default function RoomPage() {
 
       <section className="mt-6">
         <h2 className="text-sm font-semibold text-stage-text-muted">
-          참가자 ({participants.length})
+          {t('room.participants')} ({participants.length})
         </h2>
         <ul className="mt-2 space-y-2">
           {participants.map((p) => (
@@ -253,7 +257,7 @@ export default function RoomPage() {
             >
               <span className={`h-2 w-2 rounded-full ${p.isSpeaking ? 'bg-green-500' : 'bg-stage-border'}`} />
               <span>{p.name}</span>
-              {p.isLocal && <span className="text-xs text-stage-text-muted">(나)</span>}
+              {p.isLocal && <span className="text-xs text-stage-text-muted">{t('room.me')}</span>}
             </li>
           ))}
         </ul>
@@ -261,7 +265,7 @@ export default function RoomPage() {
 
       {connected && (
         <section className="mt-8">
-          <h2 className="text-sm font-semibold text-stage-text-muted">무대</h2>
+          <h2 className="text-sm font-semibold text-stage-text-muted">{t('room.stage')}</h2>
           <div className="mt-2 rounded-lg border border-stage-border p-4">
             <Stage
               participants={participants}
@@ -295,25 +299,25 @@ export default function RoomPage() {
           disabled={!connected}
           className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
         >
-          {micEnabled ? '🎙 마이크 끄기' : '🔇 마이크 켜기'}
+          {micEnabled ? t('room.micOff') : t('room.micOn')}
         </button>
         <button
           onClick={onLeave}
           className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
         >
-          나가기
+          {t('room.leave')}
         </button>
       </div>
 
       <section className="mt-8 max-w-xl">
-        <h2 className="text-sm font-semibold text-stage-text-muted">채팅</h2>
+        <h2 className="text-sm font-semibold text-stage-text-muted">{t('room.chat')}</h2>
         <ul
           ref={listRef}
           className="mt-2 h-64 space-y-1 overflow-y-auto rounded-lg border border-stage-border p-3 text-sm"
-          aria-label="채팅 메시지"
+          aria-label={t('room.chatMessages')}
         >
           {messages.length === 0 && (
-            <li className="text-stage-text-muted">아직 메시지가 없어요.</li>
+            <li className="text-stage-text-muted">{t('room.noMessages')}</li>
           )}
           {messages.map((m) => (
             <li key={m.id}>
@@ -330,8 +334,8 @@ export default function RoomPage() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             disabled={!connected}
-            aria-label="메시지 입력"
-            placeholder={connected ? '메시지를 입력하세요' : '연결되면 입력할 수 있어요'}
+            aria-label={t('room.messageInput')}
+            placeholder={connected ? t('room.messagePlaceholder') : t('room.messagePlaceholderDisabled')}
             className="flex-1 rounded-lg border border-stage-border bg-transparent px-3 py-2 text-sm disabled:opacity-40"
           />
           <button
@@ -339,7 +343,7 @@ export default function RoomPage() {
             disabled={!connected || !draft.trim()}
             className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
           >
-            보내기
+            {t('room.send')}
           </button>
         </form>
       </section>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useVgenStore } from '@/stores/vgenStore'
 import { creditCost as costOf, estimateUsd } from '@/lib/fal'
@@ -11,6 +12,7 @@ const DURATIONS = [5, 10] // VGEN_MAX_SEC=10. 15초는 플래그 상향 후 slic
 const MAX_PROMPT = 2000
 
 export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; onClose: () => void }) {
+  const { t } = useTranslation()
   const balance = useUserStore((s) => s.creditBalance)
   const generate = useVgenStore((s) => s.generate)
   const isGenerating = useVgenStore((s) => s.isGenerating)
@@ -30,14 +32,14 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
   return (
     <section className="mt-4 rounded-lg border border-stage-border p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-stage-text">🎬 AI 영상 생성</h3>
-        <button onClick={onClose} className="text-xs text-stage-text-muted hover:text-stage-text">닫기</button>
+        <h3 className="text-sm font-semibold text-stage-text">🎬 {t('vgen.title')}</h3>
+        <button onClick={onClose} className="text-xs text-stage-text-muted hover:text-stage-text">{t('common.close')}</button>
       </div>
 
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value.slice(0, MAX_PROMPT))}
-        placeholder="만들고 싶은 장면을 설명해 주세요 (예: 노을 지는 바닷가를 걷는 소녀)"
+        placeholder={t('vgen.promptPlaceholder')}
         rows={3}
         className="mt-3 w-full resize-none rounded-lg border border-stage-border bg-transparent p-2 text-sm text-stage-text placeholder:text-stage-text-muted"
       />
@@ -47,18 +49,18 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
         {DURATIONS.map((d) => (
           <button key={d} onClick={() => setDuration(d)}
             className={`rounded-lg px-3 py-1 text-sm ${duration === d ? 'bg-fire-amber text-stage-base' : 'border border-stage-border text-stage-text-muted'}`}>
-            {d}초 · {costOf(d)}크레딧
+            {t('vgen.durationLabel', { seconds: d, cost: costOf(d) })}
           </button>
         ))}
-        <span className="ml-auto text-xs text-stage-text-muted">잔액 {balance} · 약 ${estimateUsd(duration)}</span>
+        <span className="ml-auto text-xs text-stage-text-muted">{t('vgen.balanceEstimate', { balance, usd: estimateUsd(duration) })}</span>
       </div>
 
       {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-      {balance < cost && <p className="mt-2 text-xs text-red-400">크레딧이 부족해요.</p>}
+      {balance < cost && <p className="mt-2 text-xs text-red-400">{t('vgen.insufficientCredits')}</p>}
 
       <button onClick={() => setConfirm(true)} disabled={!canSubmit}
         className="mt-3 w-full rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40">
-        {isGenerating ? '생성 중…' : '영상 생성'}
+        {isGenerating ? t('vgen.generating') : t('vgen.generateButton')}
       </button>
 
       <CostConfirmDialog open={confirm} creditCost={cost} balance={balance} onConfirm={onGenerate} onCancel={() => setConfirm(false)} />

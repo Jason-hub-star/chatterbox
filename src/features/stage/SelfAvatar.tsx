@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RigAvatar, createExpressionDriver, type HeadPose } from '@/lib/pixi/rig'
 import { useFaceTracking } from '@/hooks/useFaceTracking'
-import { useTrackingStore } from '@/stores/trackingStore'
+import { useTrackingStore, type TrackingState } from '@/stores/trackingStore'
 
 interface Props {
   projectUrl: string
@@ -9,9 +10,18 @@ interface Props {
   size: number
 }
 
+const STATE_LABEL_KEY: Record<TrackingState, string> = {
+  IDLE: 'avatar.trackingIdle',
+  INITIALIZING: 'avatar.trackingInitializing',
+  TRACKING: 'avatar.trackingActive',
+  ERROR: 'avatar.trackingError',
+  UNSUPPORTED: 'avatar.trackingUnsupported',
+}
+
 // 내 좌석: 웹캠 → MediaPipe → 네이티브 rig self-view 구동(head pose 포함) + blendshape 송신(52ch, head pose 미포함).
 // 웹캠은 트래킹 입력이라 코너 pip 로 작게 유지 — 표시 크기는 트래킹 품질과 무관(스트림 원본 해상도 사용).
 export default function SelfAvatar({ projectUrl, sendBlendshapes, size }: Props) {
+  const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const mountRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<RigAvatar | null>(null)
@@ -78,13 +88,13 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size }: Props)
           muted
           playsInline
           autoPlay
-          aria-label="웹캠 (내 얼굴)"
+          aria-label={t('stage.webcamAriaLabel')}
           className="absolute bottom-1 right-1 w-10 rounded border border-stage-border/80"
           style={{ transform: 'scaleX(-1)' }}
         />
       </div>
       <span className="text-[11px] text-spring-green">
-        나 {trackingState === 'TRACKING' ? '· 표정 전송' : `· ${trackingState}`}
+        {t('stage.selfLabel')} {trackingState === 'TRACKING' ? `· ${t('stage.expressionSending')}` : `· ${t(STATE_LABEL_KEY[trackingState])}`}
       </span>
     </>
   )

@@ -1,4 +1,5 @@
 import { type RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import SelfAvatar from './SelfAvatar'
@@ -23,6 +24,7 @@ export default function Stage({
   sendBlendshapes,
   remoteAvatars,
 }: Props) {
+  const { t } = useTranslation()
   // 최대 6석(§6.4; 8인 배치는 defer). identity 로 키잉해 재정렬돼도 리마운트 없음(PixiJS 캔버스 보존).
   const seated = [...participants]
     .sort((a, b) => a.identity.localeCompare(b.identity))
@@ -33,9 +35,9 @@ export default function Stage({
       {/* 센터 비디오 프레임(메인 뷰) — 콘텐츠(공유 비디오·씬)는 후속. */}
       <div
         className="col-start-2 row-start-2 grid min-h-[120px] place-items-center rounded-lg border border-stage-border bg-stage-panel text-xs text-stage-text-muted"
-        aria-label="메인 뷰"
+        aria-label={t('stage.mainView')}
       >
-        메인 뷰
+        {t('stage.mainView')}
       </div>
 
       {seated.map((p, i) => (
@@ -60,7 +62,7 @@ export default function Stage({
             className="grid place-items-center rounded-lg border border-dashed border-stage-border bg-stage-panel/40 text-[11px] text-stage-text-muted"
             style={{ width: SLOT_PX, height: SLOT_PX }}
           >
-            빈 자리
+            {t('stage.emptySlot')}
           </span>
         </StageSlot>
       ))}

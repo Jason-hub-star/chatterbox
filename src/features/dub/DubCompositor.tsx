@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import {
   startDubCompositing, uploadDubOutput, finalizeDubOutput, getDubOutputUrl,
@@ -23,6 +24,7 @@ interface Props {
 type Phase = 'idle' | 'separating' | 'downloading' | 'mixing' | 'uploading' | 'error'
 
 export default function DubCompositor({ dubSessionId, status, isHost, tracks, onChanged }: Props) {
+  const { t } = useTranslation()
   const token = useUserStore((s) => s.session?.access_token)
   const [phase, setPhase] = useState<Phase>('idle')
   const [progress, setProgress] = useState(0)
@@ -78,22 +80,22 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
       const o = await getDubOutputUrl(token, dubSessionId)
       setOutputUrl(o.url)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : '합성에 실패했어요.'
+      const msg = e instanceof Error ? e.message : t('dub.compositeError')
       setError(msg)
       setPhase('error')
       if (outputId) { try { await finalizeDubOutput(token, { outputId, errorMessage: msg }) } catch { /* noop */ } }
       await onChanged()
     }
-  }, [token, dubSessionId, onChanged])
+  }, [token, dubSessionId, onChanged, t])
 
-  const phaseLabel = phase === 'separating' ? '음원 분리 중… (원어 대사 제거·배경음 추출, 최대 1분)'
-    : phase === 'downloading' ? '소스·녹음 내려받는 중…'
-    : phase === 'mixing' ? `합성 중… ${Math.round(progress * 100)}%`
-    : phase === 'uploading' ? '완성본 업로드 중…' : ''
+  const phaseLabel = phase === 'separating' ? t('dub.phaseSeparating')
+    : phase === 'downloading' ? t('dub.phaseDownloading')
+    : phase === 'mixing' ? t('dub.phaseMixing', { progress: Math.round(progress * 100) })
+    : phase === 'uploading' ? t('dub.phaseUploading') : ''
 
   return (
     <div className="mt-4 border-t border-stage-border pt-4">
-      <h3 className="text-xs font-semibold text-stage-text-muted">완성본 합성 (DUB-05)</h3>
+      <h3 className="text-xs font-semibold text-stage-text-muted">{t('dub.compositeHeader')}</h3>
       {error && <p className="mt-2 rounded bg-fire-hot/10 px-3 py-2 text-sm text-fire-hot" role="alert">{error}</p>}
 
       {/* 완료: 미리보기 + 다운로드 */}
@@ -107,11 +109,11 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
             download={`dub-${dubSessionId}.mp4`}
             className="inline-block rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base"
           >
-            ⬇ 다운로드
+            {t('dub.downloadButton')}
           </a>
         </div>
       )}
-      {isCompleted && !outputUrl && <p className="mt-2 text-sm text-stage-text-muted">완성본을 불러오는 중…</p>}
+      {isCompleted && !outputUrl && <p className="mt-2 text-sm text-stage-text-muted">{t('dub.loadingOutput')}</p>}
 
       {/* 진행 중(호스트 로컬 실행) */}
       {busy && <p className="mt-2 text-sm text-stage-text-muted">{phaseLabel}</p>}
@@ -124,11 +126,11 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
             disabled={!allSynced}
             className="mt-2 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
           >
-            {isCompositing || phase === 'error' ? '합성 다시 시도' : '합성 시작'}
+            {isCompositing || phase === 'error' ? t('dub.compositeRetryButton') : t('dub.compositeStartButton')}
           </button>
         ) : (
           <p className="mt-2 text-sm text-stage-text-muted">
-            {isCompositing ? '호스트가 합성 중이에요…' : '호스트가 완성본을 합성할 수 있어요.'}
+            {isCompositing ? t('dub.hostCompositing') : t('dub.hostCompositeReady')}
           </p>
         )
       )}
