@@ -10,6 +10,7 @@ import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import Stage from '@/features/stage/Stage'
 import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import DubPanel from '@/features/dub/DubPanel'
+import VgenStatusTab from '@/features/vgen/VgenStatusTab'
 import ScriptPanel from '@/features/script/ScriptPanel'
 import { SEED_SCRIPTS } from '@/features/script/cues'
 
@@ -285,6 +286,8 @@ export default function RoomPage() {
       )}
 
       <DubPanel roomId={roomId} />
+
+      <VgenStatusTab roomId={roomId} isHost={isHost} />
 
       <div className="mt-8 flex gap-3">
         <button

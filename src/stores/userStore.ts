@@ -21,6 +21,10 @@ interface UserStore {
   error: string | null
   // 선택한 아바타 project.json URL(users.avatar_url). null 이면 기본 아바타(resolveAvatarUrl).
   avatarUrl: string | null
+  // creditBalance: 내 VGEN 크레딧 잔액. credits 테이블 로드 + Realtime 구독으로 갱신.
+  creditBalance: number
+  // appUserId: users.id(auth_id 아님). credits/vgen 등 users.id 참조용.
+  appUserId: string | null
   // init: 저장된 세션 복원 + auth 변경 구독. supabase-js 가 localStorage 에 세션을 보존하므로 새로고침 후에도 유지.
   init: () => () => void
   login: (email: string, password: string) => Promise<boolean>
@@ -30,10 +34,30 @@ interface UserStore {
   logout: () => Promise<void>
 }
 
-// 내 users.avatar_url 로드(로그인/세션복원 직후). 실패해도 조용히 null 유지 → 기본 아바타 fallback.
+// 크레딧 잔액 로드 + Realtime 구독(생성 후 차감/환불 자동 반영). 단일 활성 채널.
+let creditChannel: ReturnType<typeof supabase.channel> | null = null
+async function loadCredits(userId: string, set: (partial: Partial<UserStore>) => void) {
+  const { data } = await supabase.from('credits').select('balance').eq('user_id', userId).maybeSingle()
+  set({ creditBalance: (data?.balance as number | undefined) ?? 0 })
+  if (creditChannel) void supabase.removeChannel(creditChannel)
+  creditChannel = supabase
+    .channel(`credits:${userId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'credits', filter: `user_id=eq.${userId}` },
+      (p) => set({ creditBalance: (p.new as { balance: number }).balance }),
+    )
+    .subscribe()
+}
+
+// 내 users 프로필(avatar_url + id) 로드 + 크레딧 로드. 실패해도 조용히 fallback.
 async function loadAvatarUrl(authId: string, set: (partial: Partial<UserStore>) => void) {
-  const { data } = await supabase.from('users').select('avatar_url').eq('auth_id', authId).maybeSingle()
-  set({ avatarUrl: (data?.avatar_url as string | null) ?? null })
+  const { data } = await supabase.from('users').select('id, avatar_url').eq('auth_id', authId).maybeSingle()
+  set({
+    avatarUrl: (data?.avatar_url as string | null) ?? null,
+    appUserId: (data?.id as string | undefined) ?? null,
+  })
+  if (data?.id) void loadCredits(data.id as string, set)
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({
@@ -43,6 +67,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
   ready: false,
   error: null,
   avatarUrl: null,
+  creditBalance: 0,
+  appUserId: null,
 
   init: () => {
     supabase.auth.getSession().then(({ data }) => {
@@ -110,6 +136,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
 
   logout: async () => {
     await supabase.auth.signOut()
-    set({ session: null, user: null, authState: 'UNAUTHENTICATED', error: null, avatarUrl: null })
+    if (creditChannel) { void supabase.removeChannel(creditChannel); creditChannel = null }
+    set({ session: null, user: null, authState: 'UNAUTHENTICATED', error: null, avatarUrl: null, creditBalance: 0, appUserId: null })
   },
 }))
