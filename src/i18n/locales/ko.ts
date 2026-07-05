@@ -177,6 +177,8 @@ export const ko: Record<string, string> = {
 
   // --- stage/avatar(무대·아바타) ---
   "stage.mainView": "메인 뷰",
+  "stage.sharedVideo": "공유 영상",
+  "stage.stopShare": "공유 중지",
   "stage.emptySlot": "빈 자리",
   "stage.webcamAriaLabel": "웹캠 (내 얼굴)",
   "stage.selfLabel": "나",
@@ -207,6 +209,7 @@ export const ko: Record<string, string> = {
   "vgen.generatingMaking": "생성 중… 영상 만드는 중이에요",
   "vgen.generatingRequested": "생성 중… 요청 접수됨",
   "vgen.playButton": "재생",
+  "vgen.shareButton": "방에 공유",
   "cost.confirmQuestion": "영상을 생성할까요?",
   "cost.requiredCredits": "필요 크레딧",
   "cost.currentBalance": "현재 잔액",

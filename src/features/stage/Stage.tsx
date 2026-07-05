@@ -4,6 +4,7 @@ import type { RoomParticipant } from '@/stores/roomStore'
 import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import SelfAvatar from './SelfAvatar'
 import StageSlot from './StageSlot'
+import MainView from './MainView'
 import { SLOTS, SLOT_PX } from './stageLayout'
 
 // 원형 무대(경로 B): 센터 프레임을 6석이 3쌍(상/중/하 × 좌·우)으로 둘러싼다(DESIGN-DIRECTION §6.1).
@@ -15,6 +16,8 @@ interface Props {
   remoteProjectUrl: (identity: string) => string
   sendBlendshapes: (blendshapes: Record<string, number>) => void
   remoteAvatars: RefObject<Map<string, RemoteFrameSink>>
+  isHost: boolean
+  onStopShare: () => void
 }
 
 export default function Stage({
@@ -23,6 +26,8 @@ export default function Stage({
   remoteProjectUrl,
   sendBlendshapes,
   remoteAvatars,
+  isHost,
+  onStopShare,
 }: Props) {
   const { t } = useTranslation()
   // 최대 6석(§6.4; 8인 배치는 defer). identity 로 키잉해 재정렬돼도 리마운트 없음(PixiJS 캔버스 보존).
@@ -32,13 +37,9 @@ export default function Stage({
 
   return (
     <div className="grid w-full max-w-3xl grid-cols-3 grid-rows-3 gap-2">
-      {/* 센터 비디오 프레임(메인 뷰) — 콘텐츠(공유 비디오·씬)는 후속. */}
-      <div
-        className="col-start-2 row-start-2 grid min-h-[120px] place-items-center rounded-lg border border-stage-border bg-stage-panel text-xs text-stage-text-muted"
-        aria-label={t('stage.mainView')}
-      >
-        {t('stage.mainView')}
-      </div>
+      {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 placeholder. */}
+      <MainView isHost={isHost} onStop={onStopShare} />
+
 
       {seated.map((p, i) => (
         <StageSlot key={p.identity} col={SLOTS[i].col} row={SLOTS[i].row} speaking={p.isSpeaking}>

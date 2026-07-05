@@ -8,7 +8,15 @@ import VgenPromptPanel from '@/features/vgen/VgenPromptPanel'
 // VGEN 상태 탭(slice1): 잔액·프롬프트 열기(호스트)·생성 진행·최근 목록·재생.
 // SSOT: docs/contracts/VgenPanel.md §VgenStatusTab
 
-export default function VgenStatusTab({ roomId, isHost }: { roomId: string; isHost: boolean }) {
+export default function VgenStatusTab({
+  roomId,
+  isHost,
+  onShare,
+}: {
+  roomId: string
+  isHost: boolean
+  onShare: (jobId: string) => Promise<void>
+}) {
   const { t } = useTranslation()
   const balance = useUserStore((s) => s.creditBalance)
   const token = useUserStore((s) => s.session?.access_token)
@@ -60,7 +68,10 @@ export default function VgenStatusTab({ roomId, isHost }: { roomId: string; isHo
               <span className="flex-1 truncate text-stage-text">{j.promptText}</span>
               <span className="text-xs text-stage-text-muted">{j.status} · {j.creditCost}cr</span>
               {j.status === 'done' && (
-                <button onClick={() => play(j.id)} className="text-xs text-fire-amber">{t('vgen.playButton')}</button>
+                <button onClick={() => play(j.id)} className="text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.playButton')}</button>
+              )}
+              {j.status === 'done' && isHost && (
+                <button onClick={() => void onShare(j.id)} className="text-xs font-semibold text-fire-amber">{t('vgen.shareButton')}</button>
               )}
             </li>
           ))}

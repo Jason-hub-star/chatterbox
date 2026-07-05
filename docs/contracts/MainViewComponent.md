@@ -8,6 +8,8 @@ tags: [contract]
 
 무대 중앙 메인뷰. 배경영상(CDN/R2) 또는 AI생성영상 재생. 모든 참가자가 동일 타임스탬프로 동기화. VGen(AI 생성) 모드 및 DUB(더빙 비디오) 오버레이 지원.
 
+> **구현 상태 (2026-07-05, VGEN-04 공유재생 MVP — 프로덕션 2탭 실 LiveKit E2E 검증):** `features/stage/MainView.tsx` + `stores/stageStore.ts`(신규) 구현, `Stage.tsx` 센터셀에 마운트. **as-built(계약=forward 스펙 축약):** 위 Props(roomId·mode·mediaObjectKey·initialBackgroundUrl 등)는 미사용 — MVP 는 `stageStore.mainVideoUrl` 유무가 곧 상태(mode enum·배경교체·타임스탬프 동기·서명URL 재발급·DUB 오버레이는 forward). 전송=`room-authority` `{ type:'vgen_result', jobId }` — 계약의 `payload.url` 대신 **jobId 만 방송**하고 각 뷰어가 `get-vgen-url`로 자기 서명 URL 을 발급받는다(`members_only` 게이트 서버 재검증 → bearer 누출·만료 공유 없음). `{ type:'vgen_stop' }`=호스트 중지. 영상 종료 시 `onEnded` 로 각 클라 자기정리(15s 타이머 대체). 호스트만 "공유 중지" 표시. 발신 권한은 클라 게이트(호스트 UI, `script-cue` 동급 ceiling); 서버 권한(host_id+authority_epoch 검증)은 forward.
+
 ## Props Interface
 
 ```typescript

@@ -10,6 +10,8 @@ tags: [contract]
 
 AI 영상생성(VGEN) 기능의 두 파트를 담당하는 컴포넌트 쌍.
 
+> **구현 상태 (2026-07-05):** as-built = `features/vgen/{VgenPromptPanel,VgenStatusTab}.tsx`(standalone, 호스트 `[프롬프트 열기]` 로컬 토글 — 아래 `vgen_mode_open`/협업 커서/LWW 프롬프트 patch 는 slice2 forward). **VGEN-04 공유재생 구현·프로덕션 라이브 E2E 검증**: VgenStatusTab 완료(`done`) 잡에 호스트 전용 **`[방에 공유]`** 버튼 → `room-authority` `{ type:'vgen_result', jobId }` 방송 → 전원 센터 [[MainViewComponent]] 재생(세부 그 문서 구현상태). 개별 `[재생]`(get-vgen-url) 은 유지.
+
 - **`VgenPromptPanel`** — 메인뷰 z-3에 마운트되는 협업 프롬프트 편집 패널
 - **`VgenStatusTab`** — 우측 패널 탭 3번 콘텐츠 (상태·히스토리·크레딧)
 

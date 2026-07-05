@@ -5,6 +5,8 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
 import { useUserStore } from '@/stores/userStore'
 import { joinRoom, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword } from '@/lib/rooms'
+import { getVgenUrl } from '@/lib/vgen'
+import { useStageStore } from '@/stores/stageStore'
 import { fetchRoomMembers } from '@/lib/dub'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
@@ -82,6 +84,7 @@ export default function RoomPage() {
     })()
     return () => {
       cancelled = true
+      useStageStore.getState().clearMainVideo() // 방 이탈/전환 시 공유 영상 초기화
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t 는 안정적, 언어 변경 시 재조인 방지 위해 제외
   }, [session, roomId])
@@ -107,9 +110,23 @@ export default function RoomPage() {
     setCueIndex(Math.max(0, Math.min(sc.cues.length - 1, p.cueIndex)))
   }, [])
 
-  const { toggleMic, sendChat, sendBlendshapes, sendCue, leave } = useLiveKitRoom(roomId, {
+  // VGEN 공유재생(VGEN-04): 호스트가 방송한 jobId 로 각자 서명 URL 을 발급받아 센터 MainView 에 재생.
+  const playSharedVgen = useCallback(async (jobId: string) => {
+    if (!session) return
+    try {
+      const url = await getVgenUrl(session.access_token, jobId)
+      useStageStore.getState().setMainVideo(url, jobId)
+    } catch { /* 접근 불가·미완성 → 무시(서버 get-vgen-url 이 멤버십·visibility 게이트) */ }
+  }, [session])
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string }) => {
+    if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
+    else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
+  }, [playSharedVgen])
+
+  const { toggleMic, sendChat, sendBlendshapes, sendCue, sendRoomAuthority, leave } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
     onCue: handleCue,
+    onRoomAuthority: handleRoomAuthority,
     enabled: joinPhase === 'ready',
     onKicked: () => setKicked(true),
   })
@@ -208,11 +225,23 @@ export default function RoomPage() {
     },
     [session, roomId, roomLocked],
   )
+  // VGEN 공유: jobId 방송 + 자기 화면 로컬 반영(publishData self-echo 없음). 중지도 방송+로컬.
+  const shareVgen = useCallback(
+    async (jobId: string) => {
+      await sendRoomAuthority({ type: 'vgen_result', jobId })
+      await playSharedVgen(jobId)
+    },
+    [sendRoomAuthority, playSharedVgen],
+  )
+  const stopShareVgen = useCallback(async () => {
+    await sendRoomAuthority({ type: 'vgen_stop' })
+    useStageStore.getState().clearMainVideo()
+  }, [sendRoomAuthority])
 
   const tabs: RightPanelTab[] = [
     { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} /> },
     { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },
-    { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} /> },
+    { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} onShare={shareVgen} /> },
   ]
   if (isHost) {
     tabs.push({
@@ -261,6 +290,7 @@ export default function RoomPage() {
       }
     }
     await leave()
+    useStageStore.getState().clearMainVideo()
     useRoomStore.getState().setRoomContext({
       currentRoomId: null,
       roomStatus: null,
@@ -397,6 +427,8 @@ export default function RoomPage() {
                   remoteProjectUrl={remoteProjectUrl}
                   sendBlendshapes={sendBlendshapes}
                   remoteAvatars={remoteAvatars}
+                  isHost={isHost}
+                  onStopShare={stopShareVgen}
                 />
               </div>
             </section>

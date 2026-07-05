@@ -42,6 +42,8 @@ export function useLiveKitRoom(
     onBlendshapes?: (identity: string, frame: BlendshapeFrame) => void
     // 대본 cue 동기: 호스트가 진행한 cue_index 를 수신(reliable·ordered 'script-cue' 토픽, API-SURFACE §DataChannel).
     onCue?: (payload: { sceneId: string; cueIndex: number }) => void
+    // room-authority(reliable): VGEN 공유재생 등 방 권위 이벤트. { type:'vgen_result', jobId } | { type:'vgen_stop' }.
+    onRoomAuthority?: (msg: { type: string; jobId?: string }) => void
     // false면 연결 보류 — 방 입장(room_participants 행 생성)이 끝난 뒤에만 연결한다.
     // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 전에 연결하면 403으로 실패한다.
     enabled?: boolean
@@ -62,6 +64,10 @@ export function useLiveKitRoom(
   useEffect(() => {
     onCueRef.current = opts?.onCue
   }, [opts?.onCue])
+  const onRoomAuthorityRef = useRef(opts?.onRoomAuthority)
+  useEffect(() => {
+    onRoomAuthorityRef.current = opts?.onRoomAuthority
+  }, [opts?.onRoomAuthority])
   const onKickedRef = useRef(opts?.onKicked)
   useEffect(() => {
     onKickedRef.current = opts?.onKicked
@@ -148,6 +154,14 @@ export function useLiveKitRoom(
           if (typeof data?.cueIndex === 'number' && typeof data?.sceneId === 'string') {
             onCueRef.current?.({ sceneId: data.sceneId, cueIndex: data.cueIndex })
           }
+        } catch { /* 잘못된 페이로드 무시 */ }
+        return
+      }
+      if (topic === 'room-authority') {
+        try {
+          const data = JSON.parse(new TextDecoder().decode(payload))
+          // 접근제어는 수신측 getVgenUrl(멤버십·visibility 게이트)가 재검증 — 여기선 형태만 통과.
+          if (typeof data?.type === 'string') onRoomAuthorityRef.current?.(data)
         } catch { /* 잘못된 페이로드 무시 */ }
         return
       }
@@ -266,9 +280,19 @@ export function useLiveKitRoom(
     )
   }, [])
 
+  // room-authority 송신(reliable): VGEN 공유재생 등. publishData 는 자기 echo 없음 — 발신자는 로컬 반영 별도.
+  const sendRoomAuthority = useCallback(async (payload: Record<string, unknown>) => {
+    const room = roomRef.current
+    if (!room) return
+    await room.localParticipant.publishData(
+      new TextEncoder().encode(JSON.stringify(payload)),
+      { reliable: true, topic: 'room-authority' },
+    )
+  }, [])
+
   const leave = useCallback(async () => {
     await roomRef.current?.disconnect()
   }, [])
 
-  return { toggleMic, sendChat, sendBlendshapes, sendCue, leave }
+  return { toggleMic, sendChat, sendBlendshapes, sendCue, sendRoomAuthority, leave }
 }
