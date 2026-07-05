@@ -24,9 +24,6 @@ export default function AriaPocPage() {
           <Link to="/avatar-inspect" className="hover:text-stage-text">
             네이티브 rig (B)
           </Link>
-          <Link to="/avatar-poc" className="hover:text-stage-text">
-            절차적 PoC
-          </Link>
           <Link to="/" className="hover:text-stage-text">
             홈
           </Link>

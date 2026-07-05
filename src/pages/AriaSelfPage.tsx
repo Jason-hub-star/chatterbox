@@ -72,7 +72,7 @@ export default function AriaSelfPage() {
   )
 
   // 절차적 아바타 없이(null) onFrame으로만 네이티브 아리아 구동.
-  useFaceTracking(videoRef, null, { onFrame })
+  useFaceTracking(videoRef, { onFrame })
 
   return (
     <main className="flex min-h-screen flex-col bg-stage-base text-stage-text">

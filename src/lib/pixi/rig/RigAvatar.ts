@@ -1,5 +1,5 @@
 // 아리아(및 전 AUTORIG 모델) 실 rig 아바타 — public/aria-player 렌더러의 인스턴스화 이식.
-// 인터페이스는 ProceduralAvatar 호환(create/destroy) + setParams(ParamXxx). 각 인스턴스가
+// 인터페이스는 create/destroy + setParams(ParamXxx) 계약. 각 인스턴스가
 // 자체 App·ctx·rig 수학·렌더러·티커를 소유 → 멀티 participant가 서로 독립(경로 B 전제).
 //
 // 구동 계층(rig-format §3, avatar-pipeline §3):

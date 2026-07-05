@@ -4,14 +4,22 @@ import {
   createFaceLandmarker,
   blendshapeMap,
   extractHeadPose,
-  headRoll,
   hasFace,
 } from '@/lib/mediapipe/faceLandmarker'
-import type { FaceParams, ProceduralAvatar } from '@/lib/pixi/proceduralAvatar'
 import type { HeadPose } from '@/lib/pixi/rig'
 import { useTrackingStore } from '@/stores/trackingStore'
 
-// MediaPipe blendshape(categoryName) → 아바타 FaceParams.
+// blendshape(categoryName) → 아바타 FaceParams (눈뜸·입벌림·미소·눈썹 0~1 + roll 라디안).
+// 순수 매핑 — 트래킹→표정의 의미 계층을 문서화한다(테스트: tests/unit/faceParams.test.ts).
+export interface FaceParams {
+  eyeOpenLeft: number // 0(감음)~1(뜸)
+  eyeOpenRight: number
+  mouthOpen: number // 0~1
+  smile: number // 0~1
+  browRaise: number // 0~1
+  headRoll: number // 라디안
+}
+
 export function toFaceParams(bs: Record<string, number>, roll: number): FaceParams {
   const g = (k: string) => bs[k] ?? 0
   return {
@@ -24,12 +32,10 @@ export function toFaceParams(bs: Record<string, number>, roll: number): FacePara
   }
 }
 
-// 웹캠 → MediaPipe → 아바타 구동 루프. blendshape은 React state가 아닌 Pixi로 직접 흘려보낸다
+// 웹캠 → MediaPipe → onFrame 콜백 루프. blendshape은 React state가 아닌 콜백으로 직접 흘려보낸다
 // (AvatarCanvas.md: 30fps 값을 React에 넣지 않음). state/fps/error만 store로 → UI 배지.
 export function useFaceTracking(
   videoRef: RefObject<HTMLVideoElement | null>,
-  // 절차적 아바타 구동은 선택 — null이면 onFrame으로만 흘려보낸다(네이티브 아리아 self drive).
-  avatarRef: RefObject<ProceduralAvatar | null> | null,
   opts?: { onFrame?: (blendshapes: Record<string, number>, headPose: HeadPose | null) => void },
 ): void {
   const setState = useTrackingStore((s) => s.setState)
@@ -69,7 +75,6 @@ export function useFaceTracking(
       }
       if (detected) {
         const bs = blendshapeMap(result)
-        if (avatarRef?.current) avatarRef.current.update(toFaceParams(bs, headRoll(result)))
         // 52 blendshape + 랜드마크 head pose를 콜백으로 (RT-02 송신엔 bs만 씀 · aria self drive는 둘 다).
         onFrameRef.current?.(bs, extractHeadPose(result))
       }
@@ -124,5 +129,5 @@ export function useFaceTracking(
       landmarker?.close()
       useTrackingStore.getState().reset()
     }
-  }, [videoRef, avatarRef, setState, setFaceDetected, setFps, setError])
+  }, [videoRef, setState, setFaceDetected, setFps, setError])
 }

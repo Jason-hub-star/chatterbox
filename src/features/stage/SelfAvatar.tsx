@@ -64,7 +64,7 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size }: Props)
     },
     [driver, sendBlendshapes],
   )
-  useFaceTracking(videoRef, null, { onFrame })
+  useFaceTracking(videoRef, { onFrame })
 
   // dev 전용: 헤드리스 E2E 에서 실얼굴 없이 DataChannel 왕복을 검증하기 위한 주입 훅.
   useEffect(() => {
