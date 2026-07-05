@@ -1,44 +1,38 @@
-// 활성 참가자로 등록하는 공통 로직(멱등·최저 빈 슬롯·정원). join-public-room / join-room-with-password 공유.
-// 호출부가 room(존재·미종료·lock/password 게이트)을 먼저 통과시킨 뒤 호출한다 — 슬롯 배정만 한 곳에서.
+// 활성 참가자로 등록하는 공통 로직. join-public-room / join-room-with-password 공유.
+// 호출부가 room(존재·미종료·lock/password 게이트)을 먼저 통과시킨 뒤 호출한다.
+//
+// 원자성: 슬롯 배정·정원·current_participants 는 DB 함수 join_room_as_participant 가
+//   rooms 행을 FOR UPDATE 로 잠근 채 처리한다(동시 조인 레이스 차단). 마이그
+//   20260706120000_atomic_room_join. 여기선 그 RPC 를 한 번 호출하고 상태→HTTP 로 매핑만.
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./supa.ts";
 
 export async function joinAsParticipant(
   service: SupabaseClient,
   roomId: string,
-  maxParticipants: number,
   userId: string,
 ): Promise<Response> {
-  const { data: parts } = await service
-    .from("room_participants")
-    .select("id, slot_index, user_id, state")
-    .eq("room_id", roomId)
-    .neq("state", "left");
-  const active = parts ?? [];
+  const { data, error } = await service.rpc("join_room_as_participant", {
+    p_room_id: roomId,
+    p_user_id: userId,
+  });
+  if (error) return json({ error: "Join failed", detail: error.message }, 409);
 
-  // 이미 참가 중이면 기존 행 반환(멱등 — 새로고침/중복 호출 안전)
-  const mine = active.find((p) => p.user_id === userId);
-  if (mine) {
-    return json({ room_id: roomId, participant_id: mine.id, slot_index: mine.slot_index, role: "actor", rejoined: true }, 200);
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { status: string; participant_id: string; slot_index: number }
+    | undefined;
+  if (!row) return json({ error: "Join failed" }, 409);
+
+  switch (row.status) {
+    case "not_found":
+      return json({ error: "Room not found" }, 404);
+    case "full":
+      return json({ error: "Room full" }, 409);
+    case "rejoined":
+      return json({ room_id: roomId, participant_id: row.participant_id, slot_index: row.slot_index, role: "actor", rejoined: true }, 200);
+    case "joined":
+      return json({ room_id: roomId, participant_id: row.participant_id, slot_index: row.slot_index, role: "actor" }, 201);
+    default:
+      return json({ error: "Join failed", detail: row.status }, 409);
   }
-
-  if (active.length >= maxParticipants) return json({ error: "Room full" }, 409);
-
-  // 가장 낮은 빈 슬롯
-  const used = new Set(active.map((p) => p.slot_index));
-  let slot = 0;
-  while (used.has(slot)) slot++;
-
-  const { data: part, error: pErr } = await service
-    .from("room_participants")
-    .insert({ room_id: roomId, user_id: userId, slot_index: slot, role: "actor", state: "connected" })
-    .select("id, slot_index")
-    .single();
-  if (pErr || !part) {
-    // UNIQUE(room_id,user_id) 경합 또는 슬롯 충돌 → 클라 재시도 유도
-    return json({ error: "Join failed", detail: pErr?.message }, 409);
-  }
-
-  await service.from("rooms").update({ current_participants: active.length + 1 }).eq("id", roomId);
-  return json({ room_id: roomId, participant_id: part.id, slot_index: part.slot_index, role: "actor" }, 201);
 }

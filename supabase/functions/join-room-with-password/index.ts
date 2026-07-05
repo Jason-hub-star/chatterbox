@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
   const { data: room, error: rErr } = await service
     .from("rooms")
-    .select("id, status, max_participants, is_locked")
+    .select("id, status, is_locked")
     .eq("id", roomId)
     .single();
   if (rErr || !room) return json({ error: "Room not found" }, 404);
@@ -41,5 +41,5 @@ Deno.serve(async (req) => {
     if (!okPw) return json({ error: "Wrong password" }, 403);
   }
 
-  return await joinAsParticipant(service, room.id, room.max_participants, userId);
+  return await joinAsParticipant(service, room.id, userId);
 });

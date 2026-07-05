@@ -27,12 +27,12 @@ Deno.serve(async (req) => {
 
   const { data: room, error: rErr } = await service
     .from("rooms")
-    .select("id, status, max_participants, is_locked")
+    .select("id, status, is_locked")
     .eq("id", roomId)
     .single();
   if (rErr || !room) return json({ error: "Room not found" }, 404);
   if (room.status === "ended") return json({ error: "Room ended" }, 409);
   if (room.is_locked) return json({ error: "Room is locked" }, 403); // 잠금방은 join-room-with-password 로
 
-  return await joinAsParticipant(service, room.id, room.max_participants, userId);
+  return await joinAsParticipant(service, room.id, userId);
 });
