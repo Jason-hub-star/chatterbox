@@ -13,10 +13,12 @@ import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import DubPanel from '@/features/dub/DubPanel'
 import VgenStatusTab from '@/features/vgen/VgenStatusTab'
 import ScriptPanel from '@/features/script/ScriptPanel'
+import ChatPanel from '@/features/chat/ChatPanel'
+import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import { SEED_SCRIPTS } from '@/features/script/cues'
 
-// Phase 1B PoC: 2인 오디오 연결 최소 UI.
-// ponytail: 무대(StageLayout)·씬·채팅 패널은 Phase 2~3 (contracts/RoomView.md).
+// Phase 1B PoC → 우측 패널 셸 도입: 채팅·DUB·VGen 을 RightPanel 탭 블록으로 통합(contracts/RightPanel.md).
+// 좌측 컬럼 = 참가자·무대·대본 텔레프롬프터·마이크/나가기. 우측 = RightPanel(탭 콘텐츠 주입식).
 // 경로 B: 아바타는 네이티브 아리아 실 rig. 참가자별 avatar URL(users.avatar_url) — 미설정은 기본 아바타(resolveAvatarUrl).
 
 const STATE_COLOR: Record<ConnectionState, string> = {
@@ -103,11 +105,9 @@ export default function RoomPage() {
 
   const connectionState = useRoomStore((s) => s.connectionState)
   const participants = useRoomStore((s) => s.participants)
-  const messages = useRoomStore((s) => s.messages)
   const micEnabled = useRoomStore((s) => s.micEnabled)
   const error = useRoomStore((s) => s.error)
 
-  const [draft, setDraft] = useState('')
   const connected = connectionState === 'CONNECTED'
 
   // 떠난 참가자의 seq 추적을 정리한다. (안 지우면 같은 identity로 재입장 시 옛 seq가 남아
@@ -170,12 +170,13 @@ export default function RoomPage() {
     void sendCue(script.id, cueIndexRef.current)
   }, [isHost, connected, memberKey, sendCue, script])
 
-  // 새 메시지 도착 시 목록 하단으로 자동 스크롤.
-  const listRef = useRef<HTMLUListElement>(null)
-  useEffect(() => {
-    const el = listRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [messages])
+  // 우측 패널 탭(주입식 블록): 채팅·DUB·VGen. 각 탭은 자족적 컴포넌트 — 셸은 전환만 담당.
+  // ponytail: 대본 미러(script)·디렉터 노트(notes, ROOM-17)·사운드보드 탭은 후속(contracts/RightPanel.md 구현 현황).
+  const tabs: RightPanelTab[] = [
+    { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} /> },
+    { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },
+    { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} /> },
+  ]
 
   async function onLeave() {
     if (session) {
@@ -194,13 +195,6 @@ export default function RoomPage() {
       mySlotIndex: null,
     })
     navigate('/lobby', { replace: true })
-  }
-
-  async function onSend(e: React.FormEvent) {
-    e.preventDefault()
-    if (!draft.trim()) return
-    await sendChat(draft)
-    setDraft('')
   }
 
   if (joinPhase === 'joining') {
@@ -245,108 +239,75 @@ export default function RoomPage() {
         </p>
       )}
 
-      <section className="mt-6">
-        <h2 className="text-sm font-semibold text-stage-text-muted">
-          {t('room.participants')} ({participants.length})
-        </h2>
-        <ul className="mt-2 space-y-2">
-          {participants.map((p) => (
-            <li
-              key={p.identity}
-              className="flex items-center gap-2 rounded-lg border border-stage-border px-4 py-2"
-            >
-              <span className={`h-2 w-2 rounded-full ${p.isSpeaking ? 'bg-green-500' : 'bg-stage-border'}`} />
-              <span>{p.name}</span>
-              {p.isLocal && <span className="text-xs text-stage-text-muted">{t('room.me')}</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+        {/* 좌측: 참가자·무대·대본·컨트롤 */}
+        <div className="flex-1 space-y-8">
+          <section>
+            <h2 className="text-sm font-semibold text-stage-text-muted">
+              {t('room.participants')} ({participants.length})
+            </h2>
+            <ul className="mt-2 space-y-2">
+              {participants.map((p) => (
+                <li
+                  key={p.identity}
+                  className="flex items-center gap-2 rounded-lg border border-stage-border px-4 py-2"
+                >
+                  <span className={`h-2 w-2 rounded-full ${p.isSpeaking ? 'bg-green-500' : 'bg-stage-border'}`} />
+                  <span>{p.name}</span>
+                  {p.isLocal && <span className="text-xs text-stage-text-muted">{t('room.me')}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
 
-      {connected && (
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold text-stage-text-muted">{t('room.stage')}</h2>
-          <div className="mt-2 rounded-lg border border-stage-border p-4">
-            <Stage
-              participants={participants}
-              selfProjectUrl={selfProjectUrl}
-              remoteProjectUrl={remoteProjectUrl}
-              sendBlendshapes={sendBlendshapes}
-              remoteAvatars={remoteAvatars}
-            />
-          </div>
-        </section>
-      )}
-
-      {connected && (
-        <ScriptPanel
-          script={script}
-          cueIndex={cueIndex}
-          isHost={isHost}
-          myRole={myRole}
-          onPickRole={setMyRole}
-          onAdvance={advanceCue}
-        />
-      )}
-
-      <DubPanel roomId={roomId} />
-
-      <VgenStatusTab roomId={roomId} isHost={isHost} />
-
-      <div className="mt-8 flex gap-3">
-        <button
-          onClick={toggleMic}
-          disabled={!connected}
-          className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-        >
-          {micEnabled ? t('room.micOff') : t('room.micOn')}
-        </button>
-        <button
-          onClick={onLeave}
-          className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-        >
-          {t('room.leave')}
-        </button>
-      </div>
-
-      <section className="mt-8 max-w-xl">
-        <h2 className="text-sm font-semibold text-stage-text-muted">{t('room.chat')}</h2>
-        <ul
-          ref={listRef}
-          className="mt-2 h-64 space-y-1 overflow-y-auto rounded-lg border border-stage-border p-3 text-sm"
-          aria-label={t('room.chatMessages')}
-        >
-          {messages.length === 0 && (
-            <li className="text-stage-text-muted">{t('room.noMessages')}</li>
+          {connected && (
+            <section>
+              <h2 className="text-sm font-semibold text-stage-text-muted">{t('room.stage')}</h2>
+              <div className="mt-2 rounded-lg border border-stage-border p-4">
+                <Stage
+                  participants={participants}
+                  selfProjectUrl={selfProjectUrl}
+                  remoteProjectUrl={remoteProjectUrl}
+                  sendBlendshapes={sendBlendshapes}
+                  remoteAvatars={remoteAvatars}
+                />
+              </div>
+            </section>
           )}
-          {messages.map((m) => (
-            <li key={m.id}>
-              <span className={m.isLocal ? 'text-fire-amber' : 'text-stage-text-muted'}>
-                {m.sender}
-              </span>
-              <span className="text-stage-text-muted">: </span>
-              <span>{m.text}</span>
-            </li>
-          ))}
-        </ul>
-        <form onSubmit={onSend} className="mt-2 flex gap-2">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            disabled={!connected}
-            aria-label={t('room.messageInput')}
-            placeholder={connected ? t('room.messagePlaceholder') : t('room.messagePlaceholderDisabled')}
-            className="flex-1 rounded-lg border border-stage-border bg-transparent px-3 py-2 text-sm disabled:opacity-40"
-          />
-          <button
-            type="submit"
-            disabled={!connected || !draft.trim()}
-            className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-          >
-            {t('room.send')}
-          </button>
-        </form>
-      </section>
+
+          {connected && (
+            <ScriptPanel
+              script={script}
+              cueIndex={cueIndex}
+              isHost={isHost}
+              myRole={myRole}
+              onPickRole={setMyRole}
+              onAdvance={advanceCue}
+            />
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={toggleMic}
+              disabled={!connected}
+              className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+            >
+              {micEnabled ? t('room.micOff') : t('room.micOn')}
+            </button>
+            <button
+              onClick={onLeave}
+              className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+            >
+              {t('room.leave')}
+            </button>
+          </div>
+        </div>
+
+        {/* 우측: 탭 셸(채팅·DUB·VGen) */}
+        <div className="lg:w-96 lg:shrink-0">
+          <RightPanel tabs={tabs} />
+        </div>
+      </div>
     </main>
   )
 }
