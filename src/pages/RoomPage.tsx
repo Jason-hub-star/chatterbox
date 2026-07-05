@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, leaveRoom } from '@/lib/rooms'
+import { joinRoom, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword } from '@/lib/rooms'
 import { fetchRoomMembers } from '@/lib/dub'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
@@ -15,6 +15,7 @@ import VgenStatusTab from '@/features/vgen/VgenStatusTab'
 import ScriptPanel from '@/features/script/ScriptPanel'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
+import HostConsole from '@/features/room/HostConsole'
 import { SEED_SCRIPTS } from '@/features/script/cues'
 
 // Phase 1B PoC → 우측 패널 셸 도입: 채팅·DUB·VGen 을 RightPanel 탭 블록으로 통합(contracts/RightPanel.md).
@@ -44,11 +45,18 @@ export default function RoomPage() {
   const navigate = useNavigate()
   const session = useUserStore((s) => s.session)
   const myAvatarUrl = useUserStore((s) => s.avatarUrl)
+  const myIdentity = session?.user?.id ?? '' // LiveKit identity = auth uid
 
   // 입장 단계: LiveKit 연결 전에 반드시 room_participants 행을 만든다(멱등).
   // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 성공 후에만 연결(enabled).
-  const [joinPhase, setJoinPhase] = useState<'joining' | 'ready' | 'error'>('joining')
+  const [joinPhase, setJoinPhase] = useState<'joining' | 'ready' | 'error' | 'password'>('joining')
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [kicked, setKicked] = useState(false)
+  // 잠금방: join-public-room 이 "Room is locked" 로 거부하면 비번 입력 단계로. 입장 성공 시 roomLocked=true.
+  const [roomLocked, setRoomLocked] = useState(false)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [pwPhaseBusy, setPwPhaseBusy] = useState(false)
+  const [pwPhaseErr, setPwPhaseErr] = useState<string | null>(null)
 
   useEffect(() => {
     if (!session || !roomId) return
@@ -66,7 +74,9 @@ export default function RoomPage() {
         setJoinPhase('ready')
       } catch (e) {
         if (cancelled) return
-        setJoinError(e instanceof Error ? e.message : t('room.joinError'))
+        const msg = e instanceof Error ? e.message : ''
+        if (msg === 'Room is locked') { setJoinPhase('password'); return } // 비번 입력 단계로
+        setJoinError(msg || t('room.joinError'))
         setJoinPhase('error')
       }
     })()
@@ -101,11 +111,13 @@ export default function RoomPage() {
     onBlendshapes: handleBlendshapes,
     onCue: handleCue,
     enabled: joinPhase === 'ready',
+    onKicked: () => setKicked(true),
   })
 
   const connectionState = useRoomStore((s) => s.connectionState)
   const participants = useRoomStore((s) => s.participants)
   const micEnabled = useRoomStore((s) => s.micEnabled)
+  const mutedByHost = useRoomStore((s) => s.mutedByHost)
   const error = useRoomStore((s) => s.error)
 
   const connected = connectionState === 'CONNECTED'
@@ -172,11 +184,73 @@ export default function RoomPage() {
 
   // 우측 패널 탭(주입식 블록): 채팅·DUB·VGen. 각 탭은 자족적 컴포넌트 — 셸은 전환만 담당.
   // ponytail: 대본 미러(script)·디렉터 노트(notes, ROOM-17)·사운드보드 탭은 후속(contracts/RightPanel.md 구현 현황).
+  const kick = useCallback(
+    async (identity: string) => {
+      if (!session) return
+      await kickParticipant(session.access_token, roomId, identity)
+    },
+    [session, roomId],
+  )
+  const mute = useCallback(
+    async (identity: string, muted: boolean) => {
+      if (!session) return
+      await setParticipantMute(session.access_token, roomId, identity, muted)
+    },
+    [session, roomId],
+  )
+  // 방 비밀번호 설정/해제 → 서버가 반환한 is_locked 를 HostConsole 에 반영.
+  const changePassword = useCallback(
+    async (password: string): Promise<boolean> => {
+      if (!session) return roomLocked
+      const r = await setRoomPassword(session.access_token, roomId, password)
+      setRoomLocked(r.is_locked)
+      return r.is_locked
+    },
+    [session, roomId, roomLocked],
+  )
+
   const tabs: RightPanelTab[] = [
     { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} /> },
     { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },
     { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} /> },
   ]
+  if (isHost) {
+    tabs.push({
+      id: 'host',
+      label: t('host.tab'),
+      render: () => (
+        <HostConsole
+          participants={participants}
+          myIdentity={myIdentity}
+          onKick={kick}
+          onSetMute={mute}
+          onSetPassword={changePassword}
+          initialLocked={roomLocked}
+        />
+      ),
+    })
+  }
+
+  // 잠금방 비번 입장(입장 단계 'password'). 성공 시 roomLocked=true(호스트면 콘솔에 잠금 상태 반영).
+  async function submitJoinPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!session) return
+    setPwPhaseBusy(true)
+    setPwPhaseErr(null)
+    try {
+      const r = await joinRoomWithPassword(session.access_token, roomId, passwordInput)
+      useRoomStore.getState().setRoomContext({
+        currentRoomId: roomId,
+        myParticipantId: r.participant_id,
+        mySlotIndex: r.slot_index,
+      })
+      setRoomLocked(true)
+      setJoinPhase('ready')
+    } catch {
+      setPwPhaseErr(t('room.wrongPassword'))
+      setPwPhaseBusy(false)
+    }
+  }
 
   async function onLeave() {
     if (session) {
@@ -210,6 +284,59 @@ export default function RoomPage() {
       <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
         <div className="text-center">
           <p className="text-fire-hot" role="alert">{joinError}</p>
+          <button
+            onClick={() => navigate('/lobby', { replace: true })}
+            className="mt-4 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+          >
+            {t('room.backToLobby')}
+          </button>
+        </div>
+      </main>
+    )
+  }
+
+  if (joinPhase === 'password') {
+    return (
+      <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
+        <form onSubmit={submitJoinPassword} className="w-full max-w-xs px-6 text-center">
+          <p className="mb-4 text-sm text-stage-text-muted">{t('room.passwordPrompt')}</p>
+          <input
+            type="password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            aria-label={t('room.passwordLabel')}
+            placeholder={t('room.passwordLabel')}
+            maxLength={64}
+            autoFocus
+            className="w-full rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm"
+          />
+          {pwPhaseErr && <p className="mt-2 text-xs text-fire-hot" role="alert">{pwPhaseErr}</p>}
+          <div className="mt-4 flex justify-center gap-2">
+            <button
+              type="submit"
+              disabled={pwPhaseBusy || !passwordInput}
+              className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+            >
+              {t('room.passwordSubmit')}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/lobby', { replace: true })}
+              className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </form>
+      </main>
+    )
+  }
+
+  if (kicked) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
+        <div className="text-center">
+          <p className="text-fire-hot" role="alert">{t('host.kickedNotice')}</p>
           <button
             onClick={() => navigate('/lobby', { replace: true })}
             className="mt-4 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
@@ -286,14 +413,17 @@ export default function RoomPage() {
             />
           )}
 
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
             <button
               onClick={toggleMic}
-              disabled={!connected}
+              disabled={!connected || mutedByHost}
               className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
             >
               {micEnabled ? t('room.micOff') : t('room.micOn')}
             </button>
+            {mutedByHost && (
+              <span className="text-xs text-fire-hot" role="status">{t('room.mutedByHost')}</span>
+            )}
             <button
               onClick={onLeave}
               className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"

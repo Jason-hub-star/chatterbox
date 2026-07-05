@@ -46,6 +46,7 @@ interface RoomStore {
   participants: RoomParticipant[]
   messages: ChatMessage[]
   micEnabled: boolean
+  mutedByHost: boolean            // 호스트가 내 마이크를 강제 음소거(HOST-08)
   error: string | null
   // 방 컨텍스트 (Phase 2)
   currentRoomId: string | null
@@ -58,6 +59,7 @@ interface RoomStore {
   setParticipants: (participants: RoomParticipant[]) => void
   addMessage: (message: ChatMessage) => void
   setMicEnabled: (enabled: boolean) => void
+  setMutedByHost: (muted: boolean) => void
   setError: (error: string | null) => void
   setRoomContext: (ctx: Partial<RoomContext>) => void
   reset: () => void
@@ -68,6 +70,7 @@ const INITIAL = {
   participants: [] as RoomParticipant[],
   messages: [] as ChatMessage[],
   micEnabled: false,
+  mutedByHost: false,
   error: null as string | null,
   currentRoomId: null as string | null,
   roomStatus: null as RoomStatus | null,
@@ -83,6 +86,7 @@ export const useRoomStore = create<RoomStore>((set) => ({
   setParticipants: (participants) => set({ participants }),
   addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
   setMicEnabled: (micEnabled) => set({ micEnabled }),
+  setMutedByHost: (mutedByHost) => set({ mutedByHost }),
   setError: (error) => set({ error }),
   setRoomContext: (ctx) => set({ ...ctx }),
   reset: () => set({ ...INITIAL }),

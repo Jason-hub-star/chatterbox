@@ -37,6 +37,28 @@ export const joinRoom = (accessToken: string, roomId: string) =>
 export const leaveRoom = (accessToken: string, roomId: string) =>
   callFn<LeaveRoomResult>('leave-room', accessToken, { room_id: roomId })
 
+export interface KickResult { ok: boolean; kicked_identity: string; display_name: string | null }
+
+// 호스트 강퇴 (HOST-01). target = LiveKit identity(=auth uid). 서버가 rooms.host_id 로 권한 검증.
+export const kickParticipant = (accessToken: string, roomId: string, targetIdentity: string) =>
+  callFn<KickResult>('kick-participant', accessToken, { room_id: roomId, target_identity: targetIdentity })
+
+export interface MuteResult { ok: boolean; muted: boolean; target_identity: string; display_name: string | null }
+
+// 호스트 음소거/해제 (HOST-08). 서버가 canPublish 를 토글 + muted_by_host 를 DB 에 기록.
+export const setParticipantMute = (accessToken: string, roomId: string, targetIdentity: string, muted: boolean) =>
+  callFn<MuteResult>('set-participant-mute', accessToken, { room_id: roomId, target_identity: targetIdentity, muted })
+
+export interface SetPasswordResult { ok: boolean; is_locked: boolean }
+
+// 호스트 방 비밀번호 설정/해제 (HOST-06). password '' 이면 잠금 해제. 해시는 서버 room_secrets 에만.
+export const setRoomPassword = (accessToken: string, roomId: string, password: string) =>
+  callFn<SetPasswordResult>('set-room-password', accessToken, { room_id: roomId, password })
+
+// 잠금방 비밀번호 입장. 서버가 PBKDF2 로 대조(상수시간). 결과는 join-public-room 과 동일 형태.
+export const joinRoomWithPassword = (accessToken: string, roomId: string, password: string) =>
+  callFn<JoinRoomResult>('join-room-with-password', accessToken, { room_id: roomId, password })
+
 // 로비 목록 행 (public_rooms 뷰, boundary 매핑으로 camelCase).
 export interface LobbyRoom {
   id: string
@@ -46,12 +68,13 @@ export interface LobbyRoom {
   currentParticipants: number
   maxParticipants: number
   hostDisplayName: string | null
+  isLocked: boolean
 }
 
 export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
   const { data, error } = await supabase
     .from('public_rooms')
-    .select('id, title, genre, status, current_participants, max_participants, host_display_name, created_at')
+    .select('id, title, genre, status, current_participants, max_participants, host_display_name, is_locked, created_at')
     .eq('status', 'waiting')
     .order('created_at', { ascending: false })
     .limit(50)
@@ -64,5 +87,6 @@ export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
     currentParticipants: (r.current_participants as number) ?? 0,
     maxParticipants: (r.max_participants as number) ?? 6,
     hostDisplayName: (r.host_display_name as string | null) ?? null,
+    isLocked: (r.is_locked as boolean) ?? false,
   }))
 }

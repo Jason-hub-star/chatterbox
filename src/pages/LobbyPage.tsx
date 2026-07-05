@@ -140,7 +140,10 @@ export default function LobbyPage() {
                   className="flex items-center justify-between gap-4 rounded-lg border border-stage-border px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-semibold">{r.title}</p>
+                    <p className="truncate font-semibold">
+                      {r.isLocked && <span aria-label={t('lobby.locked')} title={t('lobby.locked')}>🔒 </span>}
+                      {r.title}
+                    </p>
                     <p className="text-xs text-stage-text-muted">
                       {r.hostDisplayName ?? t('lobby.host')} · {t('lobby.participantCount', { currentParticipants: r.currentParticipants, maxParticipants: r.maxParticipants })}
                     </p>

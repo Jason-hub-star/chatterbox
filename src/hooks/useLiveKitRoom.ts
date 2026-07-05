@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import {
   ConnectionState,
+  DisconnectReason,
   Room,
   RoomEvent,
   Track,
@@ -44,6 +45,8 @@ export function useLiveKitRoom(
     // false면 연결 보류 — 방 입장(room_participants 행 생성)이 끝난 뒤에만 연결한다.
     // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 전에 연결하면 403으로 실패한다.
     enabled?: boolean
+    // 호스트 강퇴(HOST-01): 서버 removeParticipant → Disconnected(PARTICIPANT_REMOVED) 로 통지.
+    onKicked?: () => void
   },
 ) {
   const roomRef = useRef<Room | null>(null)
@@ -59,6 +62,10 @@ export function useLiveKitRoom(
   useEffect(() => {
     onCueRef.current = opts?.onCue
   }, [opts?.onCue])
+  const onKickedRef = useRef(opts?.onKicked)
+  useEffect(() => {
+    onKickedRef.current = opts?.onKicked
+  }, [opts?.onKicked])
   const lastSentRef = useRef(0)
   const seqRef = useRef(0)
   const {
@@ -66,6 +73,7 @@ export function useLiveKitRoom(
     setParticipants,
     addMessage,
     setMicEnabled,
+    setMutedByHost,
     setError,
     reset,
   } = useRoomStore.getState()
@@ -95,6 +103,21 @@ export function useLiveKitRoom(
     room.on(RoomEvent.ParticipantConnected, refreshParticipants)
     room.on(RoomEvent.ParticipantDisconnected, refreshParticipants)
     room.on(RoomEvent.ActiveSpeakersChanged, refreshParticipants)
+
+    // 호스트 강퇴: 서버 removeParticipant → PARTICIPANT_REMOVED(종단, 재연결 안 함). 다른 사유(내가 나감·
+    // 네트워크)는 무시 — kick 만 통지한다.
+    room.on(RoomEvent.Disconnected, (reason) => {
+      if (reason === DisconnectReason.PARTICIPANT_REMOVED) onKickedRef.current?.()
+    })
+
+    // 호스트 강제 음소거(HOST-08): 서버 updateParticipant(canPublish=false) → 로컬 권한 변경 이벤트.
+    // canPublish 가 꺼지면 LiveKit 이 마이크 트랙을 언퍼블리시하므로 micEnabled 도 false 로 동기.
+    room.on(RoomEvent.ParticipantPermissionsChanged, (_prev, participant) => {
+      if (!participant.isLocal) return
+      const canPublish = participant.permissions?.canPublish ?? true
+      setMutedByHost(!canPublish)
+      if (!canPublish) setMicEnabled(false)
+    })
 
     // 원격 오디오 재생: 구독된 오디오 트랙을 hidden <audio>에 attach.
     room.on(
@@ -180,13 +203,14 @@ export function useLiveKitRoom(
     setParticipants,
     addMessage,
     setMicEnabled,
+    setMutedByHost,
     setError,
     reset,
   ])
 
   const toggleMic = useCallback(async () => {
     const room = roomRef.current
-    if (!room) return
+    if (!room || useRoomStore.getState().mutedByHost) return // 호스트 음소거 중엔 셀프 해제 불가
     const next = !useRoomStore.getState().micEnabled
     await room.localParticipant.setMicrophoneEnabled(next)
     setMicEnabled(next)

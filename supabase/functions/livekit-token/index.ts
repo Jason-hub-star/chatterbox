@@ -13,7 +13,7 @@
 //   token metadata.token_version 은 지금 심어 둔다(후속 webhook 무효화가 토큰 재발급 없이 붙도록).
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { AccessToken } from "npm:livekit-server-sdk";
+import { AccessToken } from "npm:livekit-server-sdk@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*", // ponytail: PoC '*'. 프로덕션은 앱 오리진으로 좁힌다.
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
   // (3) 활성 참가자 자격 + (4) 강퇴 아님
   const { data: part } = await service
     .from("room_participants")
-    .select("token_version, is_disabled_by_host, role")
+    .select("token_version, is_disabled_by_host, muted_by_host, role")
     .eq("room_id", roomName).eq("user_id", appUser.id).neq("state", "left")
     .maybeSingle();
   if (!part) return json({ error: "Not a participant" }, 403);
@@ -88,7 +88,8 @@ Deno.serve(async (req) => {
   at.addGrant({
     roomJoin: true,
     room: roomName,
-    canPublish: part.role !== "viewer", // actor 발행, viewer 구독 전용
+    // actor 발행, viewer 구독 전용. 호스트가 음소거(muted_by_host)한 참가자는 재연결해도 발행 불가(DB 권위).
+    canPublish: part.role !== "viewer" && !part.muted_by_host,
     canSubscribe: true,
     canPublishData: true,
   });
