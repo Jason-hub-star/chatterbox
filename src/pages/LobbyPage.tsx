@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
+import { supabase } from '@/lib/supabase'
 import { createRoom, fetchPublicRooms, type LobbyRoom } from '@/lib/rooms'
 
-// LOB-01/03: 공개 방 목록(public_rooms 뷰) + 방 생성.
-// ponytail: 장르/언어 필터·Realtime 라이브 갱신·초대링크·비밀번호는 후속 슬라이스.
-//   (Realtime 로비는 rooms 공개 SELECT 정책이 필요 — 현재 RLS는 참가자 전용이라 수동 새로고침.)
+// LOB-01/03: 공개 방 목록(public_rooms 뷰) + 방 생성 + 검색 + Realtime 자동갱신.
+// Realtime: rooms 변경 시 트리거가 public 'lobby' 채널로 nudge broadcast(민감컬럼 노출 0·
+//   RLS 무변경) → 여기서 debounce 후 뷰 재조회. 마이그 20260705130000_lobby_realtime_broadcast.
+// 비번방 입장은 클릭 → join-public-room 403 "Room is locked" → RoomPage 비번단계(기구현).
+// ponytail: 장르 필터·초대링크는 후속(genre 컬럼은 있으나 create-room 미배선).
 export default function LobbyPage() {
   const { t } = useTranslation()
   const email = useUserStore((s) => s.user?.email)
@@ -19,6 +22,7 @@ export default function LobbyPage() {
   const [title, setTitle] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   // 버튼용 새로고침(이벤트 핸들러 — 여기서 setState 는 규칙 위반 아님).
   const refresh = useCallback(async () => {
@@ -32,6 +36,15 @@ export default function LobbyPage() {
       setLoading(false)
     }
   }, [t])
+
+  // Realtime nudge 용 조용한 갱신(로딩 스피너 없이 목록만 교체, 일시 오류는 기존 목록 유지).
+  const applyRooms = useCallback(async () => {
+    try {
+      setRooms(await fetchPublicRooms())
+    } catch {
+      /* transient — 기존 목록 유지 */
+    }
+  }, [])
 
   // 최초 로드: setState 는 async IIFE 안(await 이후)에서만 — set-state-in-effect 회피.
   useEffect(() => {
@@ -54,6 +67,23 @@ export default function LobbyPage() {
     }
   }, [t])
 
+  // 로비 Realtime: rooms 트리거의 'lobby' broadcast nudge → debounce 후 뷰 재조회.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const nudge = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => void applyRooms(), 400)
+    }
+    const ch = supabase
+      .channel('lobby')
+      .on('broadcast', { event: 'lobby_change' }, nudge)
+      .subscribe()
+    return () => {
+      if (timer) clearTimeout(timer)
+      void supabase.removeChannel(ch)
+    }
+  }, [applyRooms])
+
   async function onLogout() {
     await logout()
     navigate('/', { replace: true })
@@ -73,6 +103,15 @@ export default function LobbyPage() {
       setCreating(false)
     }
   }
+
+  const q = query.trim().toLowerCase()
+  const filtered = q
+    ? rooms.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          (r.hostDisplayName ?? '').toLowerCase().includes(q),
+      )
+    : rooms
 
   return (
     <main className="min-h-screen bg-stage-base text-stage-text p-8">
@@ -112,16 +151,26 @@ export default function LobbyPage() {
       )}
 
       <section className="mt-8">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <h2 className="text-sm font-semibold text-stage-text-muted">
-            {t('lobby.publicRooms')} ({rooms.length})
+            {t('lobby.publicRooms')} ({filtered.length})
           </h2>
-          <button
-            onClick={() => void refresh()}
-            className="text-xs text-stage-text-muted hover:text-stage-text"
-          >
-            {t('lobby.refresh')}
-          </button>
+          <div className="flex items-center gap-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label={t('lobby.searchLabel')}
+              placeholder={t('lobby.searchPlaceholder')}
+              maxLength={40}
+              className="w-40 rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-xs"
+            />
+            <button
+              onClick={() => void refresh()}
+              className="shrink-0 text-xs text-stage-text-muted hover:text-stage-text"
+            >
+              {t('lobby.refresh')}
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -130,9 +179,11 @@ export default function LobbyPage() {
           <p className="mt-3 text-sm text-stage-text-muted">
             {t('lobby.noRooms')}
           </p>
+        ) : filtered.length === 0 ? (
+          <p className="mt-3 text-sm text-stage-text-muted">{t('lobby.noMatch')}</p>
         ) : (
           <ul className="mt-3 space-y-2">
-            {rooms.map((r) => {
+            {filtered.map((r) => {
               const full = r.currentParticipants >= r.maxParticipants
               return (
                 <li

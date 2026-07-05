@@ -10,6 +10,12 @@ tags: [contract]
 
 방(room) 탐색·생성 페이지 orchestrator. 방 목록 조회, 방 생성 폼, 페이셜 게이트(얼굴 인식 검증), 초대링크 생성·공유 담당.
 
+> **구현 상태 (2026-07-05, LOB-01 로비 마감 MVP)** — 이 계약은 풀비전(초대링크·페이셜게이트·대기열·아카이브)이고 아래는 as-built:
+> - **방 목록·생성**: `public_rooms` 뷰 조회 + `create-room` (제목만). 페이셜게이트·모드선택·설명·장르는 미배선(forward-spec 유지).
+> - **검색(LOB-02)**: 클라이언트측 필터(제목·호스트명 `includes`). 서버 `.ilike`/다중필터(G-60)는 후속.
+> - **비번방 입장(Phase 2 검증②)**: LobbyPage 클릭 → `join-public-room`이 잠금방에 403 `"Room is locked"` → RoomPage가 `password` 단계로 전환 → `join-room-with-password`(PBKDF2 상수시간). **이미 완결·보안검증됨**(`join-public-room/index.ts:35`).
+> - **Realtime 자동갱신 — 계약 §실시간갱신방식(postgres_changes `rooms.on('*')`)에서 편차**: rooms RLS가 참가자 전용이라 비참가자(로비 사용자)에겐 postgres_changes 이벤트가 안 온다. RLS를 넓히면 뷰가 숨긴 내부 컬럼(`host_id`·`authority_state_json`·`background_key`)이 노출되므로 반려. 대신 **DB 트리거가 rooms 변경 시 민감정보 없는 nudge 를 public `lobby` 채널로 `realtime.send(private=false)` broadcast → 클라가 debounce(400ms) 후 뷰 재조회**. 마이그 `20260705130000_lobby_realtime_broadcast`. 감시컬럼=status·is_locked·current_participants·**max_participants**·title·genre·host_id(뷰 노출 + 로비 full 계산용). **fail-open**: 트리거는 `realtime.send` 를 BEGIN..EXCEPTION 으로 감싸 삼킨다 — 브로드캐스트 실패가 핵심 방 쓰기(생성/입장/퇴장)를 롤백시키면 안 됨(AFTER 트리거 미처리 예외=txn abort). 로컬 실측: 정상 delta=4 + anon 클라 수신 PASS + fail-open 양방향 증명(send raise 시 방 INSERT 커밋 유지 / 핸들러 없으면 롤백).
+
 ## Props Interface
 
 ```typescript
