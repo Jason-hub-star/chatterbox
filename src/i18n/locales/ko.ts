@@ -202,6 +202,7 @@ export const ko: Record<string, string> = {
   "vgen.title": "AI 영상 생성",
   "vgen.promptPlaceholder": "만들고 싶은 장면을 설명해 주세요 (예: 노을 지는 바닷가를 걷는 소녀)",
   "vgen.durationLabel": "{{seconds}}초 · {{cost}}크레딧",
+  "vgen.resolution": "해상도",
   "vgen.balanceEstimate": "잔액 {{balance}} · 약 ${{usd}}",
   "vgen.insufficientCredits": "크레딧이 부족해요.",
   "vgen.generating": "생성 중…",

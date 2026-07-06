@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { VgenJob, VgenStatus } from '@/types/vgen'
+import type { VgenResolution } from '@/lib/fal'
 
 // VGEN Edge Function 경계 래퍼 + Realtime 구독. dub.ts / rooms.ts 와 동일 패턴(callFn + 타입드 래퍼).
 // 와이어는 snake_case(DB/API), React 안은 camelCase.
@@ -34,9 +35,9 @@ function mapJob(r: Record<string, unknown>): VgenJob {
 }
 
 // ── Edge Function 래퍼 ──────────────────────────────────────────────
-export const triggerVgen = (accessToken: string, roomId: string, promptText: string, durationSec: number) =>
+export const triggerVgen = (accessToken: string, roomId: string, promptText: string, durationSec: number, resolution: VgenResolution) =>
   callFn<{ job_id: string; status: VgenStatus; credit_cost: number; cached?: boolean }>(
-    'trigger-vgen', accessToken, { room_id: roomId, prompt_text: promptText, duration_sec: durationSec },
+    'trigger-vgen', accessToken, { room_id: roomId, prompt_text: promptText, duration_sec: durationSec, resolution },
   )
 
 export const getVgenUrl = (accessToken: string, jobId: string) =>

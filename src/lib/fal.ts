@@ -19,6 +19,16 @@ export const seedance: VideoGenProvider = {
   maxPromptLength: 2000,
 }
 
-// 크레딧 비용 = 초(1크레딧 = 1초). USD 는 표시용 추정.
-export const creditCost = (durationSec: number): number => durationSec
-export const estimateUsd = (durationSec: number): number => +(durationSec * seedance.usdPerSec).toFixed(2)
+// 해상도 사용자 선택(slice1b). 크레딧은 해상도가중, USD 는 표시용 추정.
+// ⚠️ 서버(trigger-vgen)가 크레딧 권위 — 아래 가중/단가는 trigger-vgen 의 RES_CREDIT_WEIGHT/
+//   RES_USD_PER_SEC 와 동기 유지(표시 추정용). fal Seedance 2.0 실단가 확정 시 양쪽 갱신.
+export type VgenResolution = '480p' | '720p' | '1080p'
+export const RESOLUTIONS: VgenResolution[] = ['480p', '720p', '1080p']
+const RES_CREDIT_WEIGHT: Record<VgenResolution, number> = { '480p': 0.5, '720p': 1, '1080p': 2.5 }
+const RES_USD_PER_SEC: Record<VgenResolution, number> = { '480p': 0.15, '720p': seedance.usdPerSec, '1080p': 0.55 }
+
+// 크레딧 비용 = ceil(초 × 해상도가중), 1크레딧 = 1초@720p 기준.
+export const creditCost = (durationSec: number, resolution: VgenResolution): number =>
+  Math.ceil(durationSec * RES_CREDIT_WEIGHT[resolution])
+export const estimateUsd = (durationSec: number, resolution: VgenResolution): number =>
+  +(durationSec * RES_USD_PER_SEC[resolution]).toFixed(2)

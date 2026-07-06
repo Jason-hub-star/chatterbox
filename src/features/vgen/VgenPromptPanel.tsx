@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useVgenStore } from '@/stores/vgenStore'
-import { creditCost as costOf, estimateUsd } from '@/lib/fal'
+import { creditCost as costOf, estimateUsd, RESOLUTIONS, type VgenResolution } from '@/lib/fal'
 import CostConfirmDialog from '@/components/shared/CostConfirmDialog'
 
 // VGEN 프롬프트 패널(slice1: 호스트 단일작성). 협업 LWW·커서 어웨어니스는 slice2.
@@ -19,14 +19,15 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
   const error = useVgenStore((s) => s.error)
   const [prompt, setPrompt] = useState('')
   const [duration, setDuration] = useState(5)
+  const [resolution, setResolution] = useState<VgenResolution>('720p')
   const [confirm, setConfirm] = useState(false)
 
-  const cost = costOf(duration)
+  const cost = costOf(duration, resolution)
   const canSubmit = prompt.trim().length > 0 && !isGenerating && balance >= cost
 
   const onGenerate = async () => {
     setConfirm(false)
-    await generate(roomId, prompt.trim(), duration)
+    await generate(roomId, prompt.trim(), duration, resolution)
   }
 
   return (
@@ -49,10 +50,20 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
         {DURATIONS.map((d) => (
           <button key={d} onClick={() => setDuration(d)}
             className={`rounded-lg px-3 py-1 text-sm ${duration === d ? 'bg-fire-amber text-stage-base' : 'border border-stage-border text-stage-text-muted'}`}>
-            {t('vgen.durationLabel', { seconds: d, cost: costOf(d) })}
+            {t('vgen.durationLabel', { seconds: d, cost: costOf(d, resolution) })}
           </button>
         ))}
-        <span className="ml-auto text-xs text-stage-text-muted">{t('vgen.balanceEstimate', { balance, usd: estimateUsd(duration) })}</span>
+        <span className="ml-auto text-xs text-stage-text-muted">{t('vgen.balanceEstimate', { balance, usd: estimateUsd(duration, resolution) })}</span>
+      </div>
+
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-xs text-stage-text-muted">{t('vgen.resolution')}</span>
+        {RESOLUTIONS.map((r) => (
+          <button key={r} onClick={() => setResolution(r)} aria-pressed={resolution === r}
+            className={`rounded-lg px-3 py-1 text-sm ${resolution === r ? 'bg-fire-amber text-stage-base' : 'border border-stage-border text-stage-text-muted'}`}>
+            {r}
+          </button>
+        ))}
       </div>
 
       {error && <p className="mt-2 text-sm text-red-400">{error}</p>}

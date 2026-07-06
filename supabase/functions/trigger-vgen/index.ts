@@ -14,7 +14,15 @@ import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const MAX_PROMPT = 2000;
-const USD_PER_SEC = 0.2419; // Seedance 2.0 Fast 720p (VgenCostAnalysis.md §1)
+
+type Res = "480p" | "720p" | "1080p";
+const ALLOWED_RES: Res[] = ["480p", "720p", "1080p"];
+const DEFAULT_RES: Res = "720p";
+// 해상도가중 크레딧(1크레딧=1초@720p 기준). ⚠️ fal Seedance 2.0 실단가 확정 전 보수적(과대) 추정 —
+// VGEN_ENABLED=true 전 라이브 단가로 재검증(1080p 정확 배수 미표기). 4k 는 slice2(단가·reference 미확정).
+const RES_CREDIT_WEIGHT: Record<Res, number> = { "480p": 0.5, "720p": 1, "1080p": 2.5 };
+// USD/초(관측용 추정, fast tier·비디오입력 없음). 720p 확정($0.2419), 480p/1080p 추정.
+const RES_USD_PER_SEC: Record<Res, number> = { "480p": 0.15, "720p": 0.2419, "1080p": 0.55 };
 
 async function sha256hex(s: string): Promise<string> {
   const b = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
@@ -49,7 +57,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 
-  let body: { room_id?: unknown; prompt_text?: unknown; duration_sec?: unknown };
+  let body: { room_id?: unknown; prompt_text?: unknown; duration_sec?: unknown; resolution?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -63,6 +71,9 @@ Deno.serve(async (req) => {
   }
   const duration = Number(body.duration_sec);
   if (!Number.isInteger(duration) || duration <= 0) return json({ error: "Invalid duration_sec" }, 400);
+  // 해상도는 사용자 선택(기본 720p). 허용집합 밖이면 기본값으로 폴백.
+  const resolution: Res = typeof body.resolution === "string" && (ALLOWED_RES as string[]).includes(body.resolution)
+    ? body.resolution as Res : DEFAULT_RES;
 
   // 기능 플래그 + 길이 상한
   const enabled = await getFlag(service, "VGEN_ENABLED", false);
@@ -86,7 +97,7 @@ Deno.serve(async (req) => {
   if ((count ?? 0) >= dailyLimit) return json({ error: `하루 ${dailyLimit}회까지만 생성할 수 있어요.` }, 429);
 
   const modelId = Deno.env.get("VGEN_MODEL_ID") ?? "bytedance/seedance-2.0/fast/text-to-video";
-  const promptHash = await sha256hex(`${promptText}|${modelId}|${duration}`);
+  const promptHash = await sha256hex(`${promptText}|${modelId}|${duration}|${resolution}`);
 
   // dedup: 같은 방 같은 프롬프트가 이미 완료면 재사용(무과금)
   const { data: hit } = await service.from("vgen_jobs")
@@ -106,7 +117,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  const cost = duration; // 1크레딧 = 1초
+  const cost = Math.ceil(duration * RES_CREDIT_WEIGHT[resolution]); // 해상도가중 크레딧(1크레딧=1초@720p)
   const bucket = Math.floor(Date.now() / 10000) * 10000;
   const idempotencyKey = await sha256hex(`${promptHash}|${userId}|${roomId}|${bucket}`);
 
@@ -121,7 +132,7 @@ Deno.serve(async (req) => {
     provider: "seedance",
     model_id: modelId,
     duration_sec: duration,
-    estimated_cost_usd: (cost * USD_PER_SEC).toFixed(4),
+    estimated_cost_usd: (duration * RES_USD_PER_SEC[resolution]).toFixed(4),
     visibility: "members_only",
     idempotency_key: idempotencyKey,
   }).select("id").single();
@@ -158,7 +169,7 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Key ${falKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: modelId,
-        input: { prompt: promptText, duration, resolution: "720p", generate_audio: true },
+        input: { prompt: promptText, duration, resolution, generate_audio: true },
         webhook_url: webhookUrl,
       }),
     });
