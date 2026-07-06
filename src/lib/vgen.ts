@@ -35,9 +35,23 @@ function mapJob(r: Record<string, unknown>): VgenJob {
 }
 
 // ── Edge Function 래퍼 ──────────────────────────────────────────────
-export const triggerVgen = (accessToken: string, roomId: string, promptText: string, durationSec: number, resolution: VgenResolution) =>
+export const triggerVgen = (
+  accessToken: string, roomId: string, promptText: string, durationSec: number, resolution: VgenResolution,
+  opts?: { imageUrls?: string[]; aspectRatio?: string },
+) =>
   callFn<{ job_id: string; status: VgenStatus; credit_cost: number; cached?: boolean }>(
-    'trigger-vgen', accessToken, { room_id: roomId, prompt_text: promptText, duration_sec: durationSec, resolution },
+    'trigger-vgen', accessToken,
+    {
+      room_id: roomId, prompt_text: promptText, duration_sec: durationSec, resolution,
+      ...(opts?.imageUrls?.length ? { image_urls: opts.imageUrls } : {}),
+      ...(opts?.aspectRatio ? { aspect_ratio: opts.aspectRatio } : {}),
+    },
+  )
+
+// reference-to-video 참조 이미지 업로드용 R2 presigned URL(호스트). PUT 으로 올리고 get_url 을 triggerVgen 에.
+export const createVgenReferenceUpload = (accessToken: string, roomId: string, contentType = 'image/png') =>
+  callFn<{ key: string; upload_url: string; get_url: string; content_type: string }>(
+    'create-vgen-reference-upload', accessToken, { room_id: roomId, content_type: contentType },
   )
 
 // 개떡 입력 → Seedance 최적 프롬프트 LLM 정제(무과금·미리보기용). 결과는 편집 가능.

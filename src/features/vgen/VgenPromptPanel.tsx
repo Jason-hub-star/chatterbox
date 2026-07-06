@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useVgenStore } from '@/stores/vgenStore'
 import { refineVgenPrompt } from '@/lib/vgen'
+import { uploadAvatarReference } from '@/lib/avatarReference'
+import { resolveAvatarUrl } from '@/lib/avatars'
 import { creditCost as costOf, estimateUsd, RESOLUTIONS, type VgenResolution } from '@/lib/fal'
 import CostConfirmDialog from '@/components/shared/CostConfirmDialog'
 
@@ -16,6 +18,7 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
   const { t } = useTranslation()
   const balance = useUserStore((s) => s.creditBalance)
   const session = useUserStore((s) => s.session)
+  const avatarProjectUrl = resolveAvatarUrl(useUserStore((s) => s.avatarUrl)) // 내 아바타 project.json (미설정=기본)
   const generate = useVgenStore((s) => s.generate)
   const isGenerating = useVgenStore((s) => s.isGenerating)
   const error = useVgenStore((s) => s.error)
@@ -25,6 +28,8 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
   const [confirm, setConfirm] = useState(false)
   const [refining, setRefining] = useState(false)
   const [refineErr, setRefineErr] = useState<string | null>(null)
+  const [useMyCharacter, setUseMyCharacter] = useState(true) // reference-to-video: 내 아바타 고정
+  const [preparing, setPreparing] = useState(false)
 
   const onRefine = async () => {
     const token = session?.access_token
@@ -42,11 +47,25 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
   }
 
   const cost = costOf(duration, resolution)
-  const canSubmit = prompt.trim().length > 0 && !isGenerating && balance >= cost
+  const canSubmit = prompt.trim().length > 0 && !isGenerating && !preparing && balance >= cost
 
   const onGenerate = async () => {
     setConfirm(false)
-    await generate(roomId, prompt.trim(), duration, resolution)
+    let imageUrls: string[] | undefined
+    // 내 캐릭터 고정(reference-to-video): 아바타를 참조 시트로 렌더→R2 업로드→fal image_urls.
+    if (useMyCharacter && avatarProjectUrl && session?.access_token) {
+      setPreparing(true)
+      setRefineErr(null)
+      try {
+        imageUrls = [await uploadAvatarReference(session.access_token, roomId, avatarProjectUrl)]
+      } catch {
+        setRefineErr(t('vgen.referenceFailed'))
+        setPreparing(false)
+        return
+      }
+      setPreparing(false)
+    }
+    await generate(roomId, prompt.trim(), duration, resolution, imageUrls)
   }
 
   return (
@@ -91,12 +110,19 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
         ))}
       </div>
 
+      {avatarProjectUrl && (
+        <label className="mt-2 flex items-center gap-2 text-xs text-stage-text-muted">
+          <input type="checkbox" checked={useMyCharacter} onChange={(e) => setUseMyCharacter(e.target.checked)} />
+          {t('vgen.myCharacter')}
+        </label>
+      )}
+
       {(error || refineErr) && <p className="mt-2 text-sm text-red-400">{error || refineErr}</p>}
       {balance < cost && <p className="mt-2 text-xs text-red-400">{t('vgen.insufficientCredits')}</p>}
 
       <button onClick={() => setConfirm(true)} disabled={!canSubmit}
         className="mt-3 w-full rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40">
-        {isGenerating ? t('vgen.generating') : t('vgen.generateButton')}
+        {preparing ? t('vgen.preparingReference') : isGenerating ? t('vgen.generating') : t('vgen.generateButton')}
       </button>
 
       <CostConfirmDialog open={confirm} creditCost={cost} balance={balance} onConfirm={onGenerate} onCancel={() => setConfirm(false)} />

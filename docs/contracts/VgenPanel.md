@@ -193,6 +193,8 @@ reference-to-video용 캐릭터 참조. **최대 9장**(fal `image_urls`).
 - ❌ 클라이언트가 R2 presign 직접 생성 → Edge Function 경유 (SecurityPolicies §4)
 - ❌ 10장 이상 업로드 허용 → 9장 상한 클라 검증
 
+> **구현 상태 (2026-07-06, 참조 업로드 MVP)**: **소스=선택 아바타 자동렌더**(사용자 업로드 대신 — 제품 차별화). 흐름: `VgenPromptPanel` "✨ 내 캐릭터로" 체크(기본 on) → 생성 시 `lib/avatarReference.uploadAvatarReference`가 아바타를 오프스크린 고해상 렌더(**`RigAvatar.extract()`**로 픽셀추출→PNG, WebGL toBlob 빈이미지 함정 회피) → Edge `create-vgen-reference-upload`(호스트·R2 presign PUT/GET) → PUT → `get_url`(1h TTL) → `trigger-vgen` `image_urls`. fal 이 get_url fetch. **무료 검증**: R2 왕복 PASS·유키 2048² 캡처 클린. R2_* 는 Edge 시크릿(성역). 사용자 파일 업로드 경로는 후속. 최종 유료 관통(생성) 미실행.
+
 ### § 해상도·화면비 선택 (slice1b)
 
 - **화면비**: 9:16(쇼츠·기본) · 16:9 · 1:1. 생성 시 `aspect_ratio` 네이티브 → 사후 변환 불필요. (기존 [세로형 변환]은 이미 만든 16:9 자산용 폴백으로만 유지 — VgenExport.md §6)
