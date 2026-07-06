@@ -44,6 +44,8 @@ tags: [hub, spec]
 | `POST /functions/v1/end-room` | `Host` | `{ room_id, reason?, idempotency_key }` | `{ ok: true, status: 'ended' }` | Soft-end only: set `rooms.status='ended'`, revoke tokens, audit. No room hard DELETE/R2 purge by host | [[DATA-SCHEMA]], [[Room]] |
 | `POST /functions/v1/kick-participant` | `Host` | `{ room_id, target_user_id, reason?, idempotency_key }` | `{ ok: true }` | Disable/left target participant, LiveKit removeParticipant, audit log | [[livekit-edge-fn]], [[HostConsole]] |
 | `POST /functions/v1/set-participant-safety` | `Host` | `{ room_id, target_user_id, action: 'warn'|'mute'|'kick', duration_sec?, reason?, idempotency_key }` | `{ ok: true, muted_until? }` | Warning system message, timed mute, or kick; audit log | [[HostConsole]], [[DATA-SCHEMA]] |
+| `POST /functions/v1/advance-script-cue` | `Host` | `{ room_id, scene_id, cue_index }` | `{ ok: true }` | Host 서버검증 후 `script-cue` 토픽으로 방 전체 broadcast(server relay). 클라 직접 publish 금지 — 수신측은 서버발(participant undefined)만 수락(진행권한 스푸핑 방어, SEC-5) | [[ScriptPanel]], [[SecurityPolicies]] |
+| `POST /functions/v1/join-room-with-password` | `Auth` | `{ room_id, password }` | `{ room_id, participant_id, slot_index, role, rejoined? }` | 잠금방 PBKDF2 상수시간 대조 + **브루트포스 레이트리밋**(user·room 5회/5분, 정답 시 리셋, SEC-1) | [[SecurityPolicies]], [[LobbyPage]] |
 
 ## VGEN & Credit APIs
 

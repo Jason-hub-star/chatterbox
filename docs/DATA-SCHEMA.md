@@ -211,6 +211,20 @@ CREATE TABLE room_secrets (
 -- Public room list MUST use public_rooms view that excludes this table.
 ```
 
+### 1.2.1.1 rate_limit_counters (범용 레이트리밋 · 보안 인프라)
+
+```sql
+-- 고정윈도 레이트리밋 카운터 (2026-07-06, SEC-1/SEC-4). Edge Function(service_role) 전용, deny-all RLS.
+-- bucket_key 로 용도 구분: 'pwjoin:<user>:<room>'(잠금방 비번 브루트포스), 'refine:<user>'·'transcribe:<user>' 등(비용 API 캡).
+CREATE TABLE rate_limit_counters (
+  bucket_key   TEXT PRIMARY KEY,
+  count        INT NOT NULL DEFAULT 0,
+  window_start TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+-- RLS enabled, no policy (deny-all).
+-- check_rate_limit(p_key, p_max, p_window_sec) SECURITY DEFINER RPC 로 원자 증가 + 만료 윈도 리셋 → boolean(허용) 반환.
+```
+
 ### 1.2.2 room_invites
 
 ```sql

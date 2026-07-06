@@ -9,7 +9,7 @@ tags: [contract]
 
 호스트가 대사를 진행하고, 모든 참가자가 보는 스크립트 UI.
 
-> **구현 상태 (2026-07-03, 기능 MVP — 2탭 실 LiveKit E2E 12/12):** 텔레프롬프터 코어 루프 구현. `features/script/{cues.ts(시드 대본),ScriptPanel.tsx}`·`useLiveKitRoom` `'script-cue'` **reliable DataChannel**(sendCue/onCue)·`RoomPage` 배선(cueIndex/myRole 로컬상태·`advanceCue`). 호스트가 cue 진행 → 전 참가자 동기·순서보존, **"내 차례"**=현재 cue 역할==내가 고른 역할. **as-built 차이(계약=forward 스펙):** DataChannel 토픽 `'script-cue'`(SSOT 정렬)·상태는 **로컬 state**(stageStore 아님)·호스트 판정 **클라 게이트 `mySlotIndex===0`**(서버 권한·`authority_epoch`/seq 순서 미적용)·cue 는 **코드 seed**(DB `scripts.cues_json`·`current_cue_index` 미저장)·단일 씬. **검증이 잡은 버그·수정:** reliable 채널 첫 publishData 유실(모든 세션 첫 진행 유실)→ 호스트가 연결/참가자입장 시 현재 cue **재브로드캐스트**(warm-up + 부분 sync-on-join). 수신측 방어: 다른 sceneId 무시 + cueIndex 범위 클램프. **defer(G-286):** 서버 권한(host-only UPDATE + Edge 검증)·DB 저장·대본 업로드/라이브러리(CNT-02/09)·씬 선택·역할 브로드캐스트·완전 sync-on-join. 아래 계약(stageStore·authority DataChannel·scripts 테이블·VersionHistory)은 Phase 2 forward 스펙.
+> **구현 상태 (2026-07-03, 기능 MVP — 2탭 실 LiveKit E2E 12/12):** 텔레프롬프터 코어 루프 구현. `features/script/{cues.ts(시드 대본),ScriptPanel.tsx}`·`useLiveKitRoom` `'script-cue'` **reliable DataChannel**(sendCue/onCue)·`RoomPage` 배선(cueIndex/myRole 로컬상태·`advanceCue`). 호스트가 cue 진행 → 전 참가자 동기·순서보존, **"내 차례"**=현재 cue 역할==내가 고른 역할. **as-built 차이(계약=forward 스펙):** DataChannel 토픽 `'script-cue'`(SSOT 정렬)·상태는 **로컬 state**(stageStore 아님)·호스트 판정 **클라 게이트 `mySlotIndex===0`**(서버 권한·`authority_epoch`/seq 순서 미적용)·cue 는 **코드 seed**(DB `scripts.cues_json`·`current_cue_index` 미저장)·단일 씬. **검증이 잡은 버그·수정:** reliable 채널 첫 publishData 유실(모든 세션 첫 진행 유실)→ 호스트가 연결/참가자입장 시 현재 cue **재브로드캐스트**(warm-up + 부분 sync-on-join). 수신측 방어: 다른 sceneId 무시 + cueIndex 범위 클램프. **(2026-07-06 SEC-5) 서버 릴레이 전환:** cue 진행은 이제 `advance-script-cue` Edge(host 서버검증 → LiveKit broadcast) 경유 — 클라 직접 `script-cue` publishData 폐기, 수신측은 **서버발(participant undefined)만 수락**(클라 직접발=진행권한 스푸핑 → 드롭). 호스트는 로컬 갱신 후 서버 echo 를 `handleCue`(`mySlotIndex===0`)로 무시. send-reaction 과 동형. G-286의 **'서버 권한'은 해소**. **여전히 defer(G-286):** DB 저장(seq/epoch)·대본 업로드/라이브러리(CNT-02/09)·씬 선택·역할 브로드캐스트·완전 sync-on-join. 아래 계약(stageStore·authority DataChannel·scripts 테이블·VersionHistory)은 Phase 2 forward 스펙.
 
 ## Props Interface
 
@@ -102,6 +102,7 @@ interface ScriptPanelProps {
 ## 금지 사항 (MUST NOT)
 
 - ❌ 비호스트가 **cue_index 직접 업데이트** (조회만 가능)
+- ❌ 클라가 `script-cue` 를 **직접 publishData** — 반드시 `advance-script-cue` Edge 경유(서버가 host 확정). 수신측은 **participant 가 존재하는(클라 직접발) script-cue 를 신뢰하지 않는다**(서버발=participant undefined 만 수락). *(SEC-5)*
 - ❌ **unreliable 채널(blendshape)로 script-cue 발행** (순서 보장 필수, reliable만 허용)
 - ❌ 개인 **스크롤 위치를 다른 참가자에게 강제** (각자 독립적 스크롤)
 - ❌ scripts 테이블 **직접 수정** 없이 UI만 조작 (모든 쓰기는 호스트 권한 검증 필요)
