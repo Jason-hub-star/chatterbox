@@ -86,7 +86,7 @@ tags: [guide]
 - [ ] CDN 비디오 동기 재생 (타임스탬프 기반, ±200ms 이내)
 - [ ] 배경 선택기 (미리 정의된 배경 5종 이상)
 - [x] Active-speaker 강조 (말하는 참가자 Z-order 앞) — 2026-07-03 실증: `StageSlot` 이 `isSpeaking` 참가자를 z↑·확대·amber glow 로 강조. **2탭 헤드리스 E2E**(합성음성으로 실발화 유발) — 발화 슬롯 `data-speaking=true`+glow, 비발화 빈슬롯 무강조 동일 프레임 확인(스크린샷). 개별 `isSpeaking` 바인딩.
-- [ ] 채팅 반응 버튼 (👍 😂 👏 😢) → 화면 부동 이모지
+- [x] 채팅 반응 → 화면 부동 이모지 — 2026-07-06 **라디얼 리액션 휠**(무대 우클릭 홀드-드래그, LoL 핑휠식·중앙서 떼면 sticky)로 구현. 원형 8슬롯 칩(❓ 핑 포함)·데이터주도 커스터마이즈(`reactionStore.slots`·localStorage·N가변)·sender 좌석 위 rise+fade 오버레이·`reaction` DataChannel reliable+rid 재전송+수신 dedupe. **prod 빌드 2탭 실UI E2E 실증**(self-echo·dedupe·identity·오버레이·양방향). 잔존: 입장 직후 첫 리액션 LiveKit 개설지연 유실(완화). SSOT `contracts/ReactionWheel.md`
 - [x] Staging 환경에서 6인 동시 접속 30분 안정 운영 확인 — 2026-07-06: `lk load-test`(LiveKit CLI, prod LiveKit·오디오발행6+스피커이벤트, 앱 미디어 프로필 일치) **30분 완주·에러/드롭/끊김/재연결 0**. (staging 앱 6실유저 대신 LiveKit 전송계층 부하런; 앱 전계층(아바타·데이터)은 6탭 실렌더 E2E가 별도 커버.)
 - [x] WebRTC 연결 실패율 < 5% (LiveKit Cloud Dashboard) — 2026-07-06: load-test 6/6 연결 유지·연결실패 0 = **0%**.
 

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
+import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
 import { joinRoom, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword } from '@/lib/rooms'
 import { getVgenUrl } from '@/lib/vgen'
@@ -11,6 +12,8 @@ import { fetchRoomMembers } from '@/lib/dub'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import Stage from '@/features/stage/Stage'
+import ReactionWheel from '@/features/reaction/ReactionWheel'
+import ReactionOverlay from '@/features/reaction/ReactionOverlay'
 import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import DubPanel from '@/features/dub/DubPanel'
 import VgenStatusTab from '@/features/vgen/VgenStatusTab'
@@ -123,7 +126,7 @@ export default function RoomPage() {
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
   }, [playSharedVgen])
 
-  const { toggleMic, sendChat, sendBlendshapes, sendCue, sendRoomAuthority, leave } = useLiveKitRoom(roomId, {
+  const { toggleMic, sendChat, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
     onCue: handleCue,
     onRoomAuthority: handleRoomAuthority,
@@ -181,6 +184,23 @@ export default function RoomPage() {
     [memberAvatars],
   )
   const slotOf = useCallback((identity: string) => memberSlots[identity], [memberSlots])
+
+  // 리액션 휠: 무대 우클릭(button 2)으로 커서 위치에 개화(홀드-드래그-릴리즈). origin=null=닫힘.
+  const [reactionOrigin, setReactionOrigin] = useState<{ x: number; y: number } | null>(null)
+  const openReactionWheel = useCallback((e: MouseEvent) => {
+    if (e.button !== 2) return
+    e.preventDefault()
+    setReactionOrigin({ x: e.clientX, y: e.clientY })
+  }, [])
+  const closeReactionWheel = useCallback(() => setReactionOrigin(null), [])
+
+  // dev 전용: 헤드리스 E2E 에서 리액션 DataChannel 왕복을 검증하는 주입 훅(SelfAvatar.__room 패턴과 동형).
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const w = window as unknown as { __reactionE2E?: { send: (e: string) => void; floats: () => unknown[] } }
+    w.__reactionE2E = { send: sendReaction, floats: () => useReactionStore.getState().floats }
+    return () => { delete w.__reactionE2E }
+  }, [sendReaction])
 
   // 대본 진행 권한 = 호스트(생성자=slot 0). ponytail: 정확한 host_id 판정(현재 public_rooms 뷰는 host_id 제외).
   const mySlotIndex = useRoomStore((s) => s.mySlotIndex)
@@ -426,8 +446,14 @@ export default function RoomPage() {
 
           {connected && (
             <section>
-              <h2 className="text-sm font-semibold text-stage-text-muted">{t('room.stage')}</h2>
-              <div className="mt-2 rounded-lg border border-stage-border p-4">
+              <h2 className="text-sm font-semibold text-stage-text-muted">
+                {t('room.stage')} <span className="text-xs font-normal text-stage-text-muted/70">· {t('reaction.hint')}</span>
+              </h2>
+              <div
+                className="relative mt-2 rounded-lg border border-stage-border p-4"
+                onContextMenu={(e) => e.preventDefault()}
+                onMouseDown={openReactionWheel}
+              >
                 <Stage
                   participants={participants}
                   selfProjectUrl={selfProjectUrl}
@@ -438,7 +464,9 @@ export default function RoomPage() {
                   isHost={isHost}
                   onStopShare={stopShareVgen}
                 />
+                <ReactionOverlay slotOf={slotOf} />
               </div>
+              {reactionOrigin && <ReactionWheel origin={reactionOrigin} onFire={sendReaction} onClose={closeReactionWheel} />}
             </section>
           )}
 
