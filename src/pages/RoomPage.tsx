@@ -154,6 +154,7 @@ export default function RoomPage() {
   // ponytail: 세션 중 아바타 변경 실시간 전파는 후속(현재는 멤버 변동 시 반영).
   const memberKey = participants.map((p) => p.identity).sort().join(',')
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string | null>>({})
+  const [memberSlots, setMemberSlots] = useState<Record<string, number>>({})
   useEffect(() => {
     if (joinPhase !== 'ready' || !session) return
     let cancelled = false
@@ -161,10 +162,15 @@ export default function RoomPage() {
       try {
         const members = await fetchRoomMembers(session.access_token, roomId)
         if (cancelled) return
-        const map: Record<string, string | null> = {}
-        for (const m of members) map[m.authId] = m.avatarUrl
-        setMemberAvatars(map)
-      } catch { /* 명단 조회 실패 → 기본 아바타 fallback */ }
+        const avatars: Record<string, string | null> = {}
+        const slots: Record<string, number> = {}
+        for (const m of members) {
+          avatars[m.authId] = m.avatarUrl
+          slots[m.authId] = m.slotIndex // 절대좌석용(identity=auth uid)
+        }
+        setMemberAvatars(avatars)
+        setMemberSlots(slots)
+      } catch { /* 명단 조회 실패 → 기본 아바타 fallback + slot 미상은 임시배치 */ }
     })()
     return () => { cancelled = true }
   }, [joinPhase, session, roomId, memberKey])
@@ -174,6 +180,7 @@ export default function RoomPage() {
     (identity: string) => resolveAvatarUrl(memberAvatars[identity]),
     [memberAvatars],
   )
+  const slotOf = useCallback((identity: string) => memberSlots[identity], [memberSlots])
 
   // 대본 진행 권한 = 호스트(생성자=slot 0). ponytail: 정확한 host_id 판정(현재 public_rooms 뷰는 host_id 제외).
   const mySlotIndex = useRoomStore((s) => s.mySlotIndex)
@@ -425,6 +432,7 @@ export default function RoomPage() {
                   participants={participants}
                   selfProjectUrl={selfProjectUrl}
                   remoteProjectUrl={remoteProjectUrl}
+                  slotOf={slotOf}
                   sendBlendshapes={sendBlendshapes}
                   remoteAvatars={remoteAvatars}
                   isHost={isHost}

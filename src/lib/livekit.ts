@@ -47,5 +47,7 @@ export function mapParticipant(p: Participant): RoomParticipant {
     name: p.name || p.identity,
     isLocal: p.isLocal,
     isSpeaking: p.isSpeaking,
+    // ConnectionQuality enum 런타임값이 그대로 우리 union 문자열(excellent/good/poor/lost/unknown).
+    connectionQuality: p.connectionQuality as RoomParticipant['connectionQuality'],
   }
 }

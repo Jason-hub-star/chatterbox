@@ -109,6 +109,7 @@ export function useLiveKitRoom(
     room.on(RoomEvent.ParticipantConnected, refreshParticipants)
     room.on(RoomEvent.ParticipantDisconnected, refreshParticipants)
     room.on(RoomEvent.ActiveSpeakersChanged, refreshParticipants)
+    room.on(RoomEvent.ConnectionQualityChanged, refreshParticipants) // 참가자별 열화 반영(6인 실증)
 
     // 호스트 강퇴: 서버 removeParticipant → PARTICIPANT_REMOVED(종단, 재연결 안 함). 다른 사유(내가 나감·
     // 네트워크)는 무시 — kick 만 통지한다.

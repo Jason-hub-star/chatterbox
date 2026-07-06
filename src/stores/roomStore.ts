@@ -17,6 +17,8 @@ export interface RoomParticipant {
   name: string
   isLocal: boolean
   isSpeaking: boolean
+  // LiveKit 연결 품질(6인 실증 — 참가자별 열화 감지). 값은 livekit-client ConnectionQuality 문자열.
+  connectionQuality?: 'excellent' | 'good' | 'poor' | 'lost' | 'unknown'
 }
 
 // DataChannel 'chat' 토픽 메시지 (WebRTC.md DataChannel Multiplexing).

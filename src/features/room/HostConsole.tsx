@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 
+// 연결품질 점(6인 실증 — 참가자별 열화 즉시 파악). UI 최소: 행당 이모지 1개.
+const qualityDot = (q?: RoomParticipant['connectionQuality']): string =>
+  q === 'excellent' ? '🟢' : q === 'good' ? '🟡' : q === 'poor' ? '🔴' : q === 'lost' ? '❌' : '⚪'
+
 // HostConsole — RightPanel 의 host-only 탭. 방 운영: 비밀번호(HOST-06)·음소거(HOST-08)·강퇴(HOST-01).
 // 호스트 판별은 RoomPage(mySlotIndex===0)에서 게이트 — 이 탭은 호스트에게만 마운트된다.
 // 서버(set-*/kick-*)가 rooms.host_id 로 진짜 권한을 재검증하므로 이 UI 게이트는 표시용.
@@ -149,6 +153,9 @@ export default function HostConsole({
                   key={p.identity}
                   className="flex items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm"
                 >
+                  <span title={p.connectionQuality ?? 'unknown'} aria-label={`connection ${p.connectionQuality ?? 'unknown'}`}>
+                    {qualityDot(p.connectionQuality)}
+                  </span>
                   <span className="flex-1 truncate">{p.name}</span>
                   <button
                     onClick={() => void doMute(p.identity, !isMuted)}
