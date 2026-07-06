@@ -59,3 +59,11 @@ export function isUuid(v: unknown): v is string {
   return typeof v === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
+
+// 스토리지 오브젝트 키 안전 검증(경로 조작 방지, SEC-2): `<roomId>/<subdir>/<파일명>` 정확히.
+// 여분 '/'·'..'·선행 '.' 금지 → 프리픽스만 맞추는 startsWith 의 traversal 우회를 차단한다.
+// roomId 는 isUuid 로 검증된 UUID, subdirs 는 서버 고정 리터럴만 넘긴다(정규식 주입 없음).
+export function isSafeObjectKey(key: unknown, roomId: string, subdirs: string[]): key is string {
+  if (typeof key !== "string" || key.includes("..")) return false;
+  return new RegExp(`^${roomId}/(?:${subdirs.join("|")})/[A-Za-z0-9][A-Za-z0-9._-]*$`).test(key);
+}

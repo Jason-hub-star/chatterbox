@@ -45,6 +45,10 @@ Deno.serve(async (req) => {
   if (room.host_id !== userId) return json({ error: "호스트만 음원분리를 할 수 있어요." }, 403);
   if (!sess.source_video_url) return json({ error: "소스가 없어요." }, 409);
 
+  // 비용 API 캡(SEC-4): 사용자별 20회/일. FAL Demucs(고비용) 무제한 호출로 인한 비용-DoS 차단.
+  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `separate:${userId}`, p_max: 20, p_window_sec: 86400 });
+  if (rlOk === false) return json({ error: "오늘 음원분리 한도를 초과했어요. 내일 다시 시도해주세요." }, 429);
+
   // 소스 presigned URL(fal 이 fetch). fal Demucs 는 mp4 도 직접 수용(실증).
   let sourceUrl: string;
   try {

@@ -47,6 +47,10 @@ Deno.serve(async (req) => {
   if (room.host_id !== userId) return json({ error: "호스트만 STT 를 시작할 수 있어요." }, 403);
   if (sess.status !== "uploaded") return json({ error: `현재 상태(${sess.status})에선 STT 불가` }, 409);
 
+  // 비용 API 캡(SEC-4): 사용자별 30회/일. Whisper 무제한 호출로 인한 비용-DoS 차단.
+  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `transcribe:${userId}`, p_max: 30, p_window_sec: 86400 });
+  if (rlOk === false) return json({ error: "오늘 STT 한도를 초과했어요. 내일 다시 시도해주세요." }, 429);
+
   // TRANSCRIBING 진입
   await service.from("dub_sessions").update({ status: "transcribing", error_message: null }).eq("id", sessionId);
 

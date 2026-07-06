@@ -11,6 +11,7 @@
 //  - 프레임 사후검사(FLAGGED)·협업 프롬프트는 slice2.
 
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { isOwnR2RefUrl } from "../_shared/r2.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const MAX_PROMPT = 2000;
@@ -74,9 +75,9 @@ Deno.serve(async (req) => {
   // 해상도는 사용자 선택(기본 720p). 허용집합 밖이면 기본값으로 폴백.
   const resolution: Res = typeof body.resolution === "string" && (ALLOWED_RES as string[]).includes(body.resolution)
     ? body.resolution as Res : DEFAULT_RES;
-  // 참조 이미지(reference-to-video, 캐릭터 고정) — 공개/서명 URL ≤9. 없으면 text-to-video 동작.
+  // 참조 이미지(reference-to-video, 캐릭터 고정) — 우리 R2 vgen-refs presigned URL 만(SSRF 방지, SEC-3). ≤9.
   const imageUrls = Array.isArray(body.image_urls)
-    ? body.image_urls.filter((u): u is string => typeof u === "string" && u.startsWith("http")).slice(0, 9)
+    ? body.image_urls.filter((u) => isOwnR2RefUrl(u, roomId)).slice(0, 9)
     : [];
   // 화면비(쇼츠 기본 9:16). 허용집합 밖이면 기본값.
   const ALLOWED_AR = ["9:16", "16:9", "1:1", "4:3", "3:4", "auto"];

@@ -62,6 +62,10 @@ Deno.serve(async (req) => {
   const { data: room } = await service.from("rooms").select("id").eq("id", body.room_id).eq("host_id", userId).maybeSingle();
   if (!room) return json({ error: "호스트만 프롬프트를 다듬을 수 있어요." }, 403);
 
+  // 비용 API 캡(SEC-4): 사용자별 50회/일(check_rate_limit RPC). 무제한 LLM 호출로 인한 비용-DoS 차단.
+  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `refine:${userId}`, p_max: 50, p_window_sec: 86400 });
+  if (rlOk === false) return json({ error: "오늘 프롬프트 정제 한도를 초과했어요. 내일 다시 시도해주세요." }, 429);
+
   const llmKey = Deno.env.get("REFINE_LLM_KEY") ?? Deno.env.get("OPENAI_API_KEY");
   if (!llmKey) return json({ error: "프롬프트 정제 미설정" }, 500);
   const baseUrl = Deno.env.get("REFINE_LLM_BASE_URL") ?? "https://api.openai.com/v1";

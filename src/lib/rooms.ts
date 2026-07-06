@@ -47,6 +47,10 @@ export const kickParticipant = (accessToken: string, roomId: string, targetIdent
 export const sendReactionRelay = (accessToken: string, roomId: string, emoji: string, idempotencyKey: string) =>
   callFn<{ ok: boolean }>('send-reaction', accessToken, { room_id: roomId, emoji, idempotency_key: idempotencyKey })
 
+// 대본 큐 진행 서버 릴레이(SEC-5). 서버가 host 검증 후 방 전체 broadcast — 클라 직접 publish 의 진행권한 스푸핑·유실 제거.
+export const advanceScriptCueRelay = (accessToken: string, roomId: string, sceneId: string, cueIndex: number) =>
+  callFn<{ ok: boolean }>('advance-script-cue', accessToken, { room_id: roomId, scene_id: sceneId, cue_index: cueIndex })
+
 export interface MuteResult { ok: boolean; muted: boolean; target_identity: string; display_name: string | null }
 
 // 호스트 음소거/해제 (HOST-08). 서버가 canPublish 를 토글 + muted_by_host 를 DB 에 기록.

@@ -11,7 +11,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
-import { sendReactionRelay } from '@/lib/rooms'
+import { sendReactionRelay, advanceScriptCueRelay } from '@/lib/rooms'
 import {
   encodeBlendshapeFrame,
   decodeBlendshapeFrame,
@@ -154,6 +154,9 @@ export function useLiveKitRoom(
         return
       }
       if (topic === 'script-cue') {
+        // 서버 릴레이(advance-script-cue Edge)만 수락: 서버발은 participant=undefined.
+        // 클라 직접 publish(participant 존재)는 진행권한 위조 가능 → 드롭(SEC-5, reaction 과 동형).
+        if (participant) return
         try {
           const data = JSON.parse(new TextDecoder().decode(payload))
           if (typeof data?.cueIndex === 'number' && typeof data?.sceneId === 'string') {
@@ -301,15 +304,14 @@ export function useLiveKitRoom(
       })
   }, [])
 
-  // 대본 cue 진행 송신(호스트): reliable·ordered 로 전 참가자에 cue_index 브로드캐스트.
+  // 대본 cue 진행 송신(호스트): 서버 릴레이(advance-script-cue Edge → LiveKit broadcast) 경유.
+  // 직접 publishData 대신 서버 경유(SEC-5): 서버가 host 를 auth 로 확정(진행권한 스푸핑 방어) + 안정연결(유실0).
+  // 호스트는 로컬에서 이미 cueIndex 를 갱신하므로 서버가 되돌려줄 echo 는 handleCue(RoomPage)가 무시.
   const sendCue = useCallback(async (sceneId: string, cueIndex: number) => {
-    const room = roomRef.current
-    if (!room) return
-    await room.localParticipant.publishData(
-      new TextEncoder().encode(JSON.stringify({ sceneId, cueIndex })),
-      { reliable: true, topic: 'script-cue' },
-    )
-  }, [])
+    const token = useUserStore.getState().session?.access_token
+    if (!token) return
+    await advanceScriptCueRelay(token, roomId, sceneId, cueIndex).catch(() => {})
+  }, [roomId])
 
   // room-authority 송신(reliable): VGEN 공유재생 등. publishData 는 자기 echo 없음 — 발신자는 로컬 반영 별도.
   const sendRoomAuthority = useCallback(async (payload: Record<string, unknown>) => {

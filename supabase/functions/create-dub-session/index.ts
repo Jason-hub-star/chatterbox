@@ -4,7 +4,7 @@
 //
 // ponytail: 소스 검열(프레임 샘플링 + STT 텍스트)은 후속 슬라이스 → MVP 는 uploaded 로 바로 진입.
 
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, isSafeObjectKey } from "../_shared/supa.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -23,7 +23,8 @@ Deno.serve(async (req) => {
   if (!isUuid(body.room_id)) return json({ error: "Invalid room_id" }, 400);
   const roomId = body.room_id;
   const sourcePath = typeof body.source_path === "string" ? body.source_path : "";
-  if (!sourcePath || !sourcePath.startsWith(`${roomId}/`)) {
+  // 경로 조작 방지(SEC-2): 업로드 소스(sources/) 또는 vgen 결과(vgen/)만, ../ 차단
+  if (!isSafeObjectKey(sourcePath, roomId, ["sources", "vgen"])) {
     return json({ error: "Invalid source_path" }, 400);
   }
   // MVP: mp4 만. vgen/youtube 는 후속.

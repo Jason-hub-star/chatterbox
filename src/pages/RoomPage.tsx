@@ -108,6 +108,8 @@ export default function RoomPage() {
   const [myRole, setMyRole] = useState<string | null>(null)
   // 수신 방어: 다른 씬 메시지 무시 + cueIndex 범위 클램프(변조·스테일·멀티씬 대비).
   const handleCue = useCallback((p: { sceneId: string; cueIndex: number }) => {
+    // 호스트는 자기 진행이 소스(로컬 갱신) — 서버 릴레이 self-echo 를 무시해 회귀 방지(SEC-5). 비호스트만 반영.
+    if (useRoomStore.getState().mySlotIndex === 0) return
     const sc = SEED_SCRIPTS[0]
     if (p.sceneId !== sc.id) return
     setCueIndex(Math.max(0, Math.min(sc.cues.length - 1, p.cueIndex)))
@@ -213,7 +215,7 @@ export default function RoomPage() {
     const next = Math.max(0, Math.min(script.cues.length - 1, cueIndex + delta))
     if (next === cueIndex) return
     setCueIndex(next)
-    void sendCue(script.id, next) // reliable 브로드캐스트 → 전 참가자 동기(자기 echo 없음, 로컬은 위에서 갱신)
+    void sendCue(script.id, next) // 서버 릴레이 → 전 참가자 동기(호스트는 로컬 갱신·서버 echo 무시, SEC-5)
   }, [cueIndex, sendCue, script])
 
   // 호스트: 연결 직후 + 참가자 변동 시 현재 cue 를 재브로드캐스트.

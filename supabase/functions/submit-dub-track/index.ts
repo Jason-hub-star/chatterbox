@@ -5,7 +5,7 @@
 // recording_url 은 R2/Storage object key 만 저장(공개 URL 금지) — 재생 시 signed URL 발급.
 // 호스트 확인 후 confirm-dub-track 으로 'synced' 승격.
 
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, isSafeObjectKey } from "../_shared/supa.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
   if (track.participant_id !== userId) return json({ error: "본인 트랙만 제출할 수 있어요." }, 403);
   const sess = track.dub_sessions as unknown as { room_id: string; status: string };
   if (sess.status !== "recording") return json({ error: `현재 상태(${sess.status})에선 제출 불가` }, 409);
-  // 경로 변조 방지: 이 방 recordings 프리픽스여야
-  if (!recordingPath.startsWith(`${sess.room_id}/recordings/`)) {
+  // 경로 조작 방지(SEC-2): 이 방 recordings/ 아래 안전한 키만(../·여분 슬래시 차단)
+  if (!isSafeObjectKey(recordingPath, sess.room_id, ["recordings"])) {
     return json({ error: "recording_path 프리픽스 불일치" }, 400);
   }
 

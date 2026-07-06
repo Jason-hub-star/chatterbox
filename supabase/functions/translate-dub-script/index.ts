@@ -73,6 +73,10 @@ Deno.serve(async (req) => {
     return json({ dub_session_id: sessionId, translated_count: 0, skipped_count: segments.length, skipped: true }, 200);
   }
 
+  // 비용 API 캡(SEC-4): 사용자별 30회/일. 무과금 ko-skip 이후에 계수(실제 OpenAI 호출만 카운트).
+  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `translate:${userId}`, p_max: 30, p_window_sec: 86400 });
+  if (rlOk === false) return json({ error: "오늘 번역 한도를 초과했어요. 내일 다시 시도해주세요." }, 429);
+
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) return json({ error: "번역 미설정(OPENAI_API_KEY)" }, 500);
 

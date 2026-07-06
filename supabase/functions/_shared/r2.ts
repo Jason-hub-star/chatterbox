@@ -111,3 +111,19 @@ export function presignGet(key: string, expiresSec = 3600): Promise<string> {
 export async function r2Get(key: string): Promise<Response> {
   return fetch(await presign("GET", key, 300));
 }
+
+// SSRF 방지(SEC-3): image_urls 는 create-vgen-reference-upload 가 발급한 우리 R2 presigned GET 만 허용.
+// host=우리 R2 계정, 경로=/<bucket>/vgen-refs/<roomId>/... 아니면 거부 → 사설IP·메타데이터·외부호스트·타방 참조 차단.
+// 검증 필터이므로 fail-closed(모든 예외=거부). roomId 는 호출부에서 isUuid 검증된 값.
+export function isOwnR2RefUrl(rawUrl: unknown, roomId: string): boolean {
+  if (typeof rawUrl !== "string") return false;
+  try {
+    const u = new URL(rawUrl);
+    if (u.protocol !== "https:") return false;
+    if (u.hostname !== `${env("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`) return false;
+    if (u.pathname.includes("..")) return false;
+    return u.pathname.startsWith(`/${env("R2_BUCKET")}/vgen-refs/${roomId}/`);
+  } catch {
+    return false;
+  }
+}

@@ -33,12 +33,22 @@ Deno.serve(async (req) => {
   if (room.status === "ended") return json({ error: "Room ended" }, 409);
 
   if (room.is_locked) {
+    // 브루트포스 방어(SEC-1): (user,room) 5회/5분 초과 시 429. check_rate_limit RPC(원자·고정윈도).
+    // fail-open: RPC 장애 시 통과(가용성 우선) — 상수시간 PBKDF2 대조가 2차 방어로 남는다.
+    const rlKey = `pwjoin:${userId}:${roomId}`;
+    const { data: allowed } = await service.rpc("check_rate_limit", { p_key: rlKey, p_max: 5, p_window_sec: 300 });
+    if (allowed === false) {
+      return json({ error: "시도가 너무 많아요. 잠시 후 다시 시도해주세요." }, 429);
+    }
+
     const { data: secret } = await service
       .from("room_secrets").select("password_hash").eq("room_id", roomId).maybeSingle();
     // 잠금인데 해시가 없으면(불일치 상태) 안전하게 거부.
     if (!secret?.password_hash) return json({ error: "Wrong password" }, 403);
     const okPw = await verifyPassword(password, secret.password_hash);
     if (!okPw) return json({ error: "Wrong password" }, 403);
+    // 정답이면 시도 카운터 리셋 — 정상 유저의 반복 입장이 스스로 잠기지 않게(오탐 제거). 실패만 누적.
+    await service.from("rate_limit_counters").delete().eq("bucket_key", rlKey);
   }
 
   return await joinAsParticipant(service, room.id, userId);

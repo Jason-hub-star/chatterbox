@@ -3,7 +3,7 @@
 // SSOT: docs/state-machines/DubSession.md (COMPOSITING→COMPLETED / →FAILED), DubCompositor.md
 // 입력: { output_id, output_path?, file_size_bytes?, duration_ms?, error_message? }  출력: { output_id, status }
 
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, isSafeObjectKey } from "../_shared/supa.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
   // 성공 경로: 경로 프리픽스 변조 방지
   const outputPath = typeof body.output_path === "string" ? body.output_path : "";
-  if (!outputPath.startsWith(`${sess.room_id}/outputs/`)) {
+  if (!isSafeObjectKey(outputPath, sess.room_id, ["outputs"])) {
     return json({ error: "output_path 프리픽스 불일치" }, 400);
   }
   const fileSize = Number.isInteger(body.file_size_bytes) ? (body.file_size_bytes as number) : null;
