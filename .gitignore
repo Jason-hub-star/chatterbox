@@ -13,3 +13,7 @@ dist/
 # public/aria-player 는 런타임 코드만 커밋. character.json/parts 는 빌드 산출물이라 재생성 시에도 제외.
 public/aria-player/project/
 public/aria-player/api/
+
+# PoC 산출물 바이너리(README만 추적)
+poc/**/*.mp4
+poc/**/*.png
