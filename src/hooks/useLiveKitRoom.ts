@@ -11,6 +11,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
+import { sendReactionRelay } from '@/lib/rooms'
 import {
   encodeBlendshapeFrame,
   decodeBlendshapeFrame,
@@ -170,12 +171,17 @@ export function useLiveKitRoom(
         return
       }
       if (topic === 'reaction') {
+        // 서버 릴레이만 수락: 서버발 데이터는 participant=undefined 로 도착. 클라 직접 publish(participant 존재)는
+        // sender 위조가 가능하므로 스푸핑으로 간주해 드롭(send-reaction Edge 만이 sender 를 auth 로 확정).
+        if (participant) return
         try {
           const data = JSON.parse(new TextDecoder().decode(payload))
-          // 이모지는 표시전용(고정 allowlist 아님 — 커스터마이즈 세트라 문자열 그대로 렌더, React 이스케이프).
-          // 길이만 방어(스팸/비정상 페이로드 차단). sender identity 는 LiveKit participant 에서만 취득.
-          if (typeof data?.emoji === 'string' && data.emoji.length > 0 && data.emoji.length <= 20 && participant) {
-            // 재전송 dedupe: 송신측이 채널 개설 레이스를 이기려 rid 로 N회 재전송 → 같은 rid 는 1회만 렌더.
+          // 이모지·sender 는 표시/좌석용. sender 는 서버가 확정했으므로 신뢰. 이모지 길이만 방어(React 이스케이프).
+          if (
+            typeof data?.emoji === 'string' && data.emoji.length > 0 && data.emoji.length <= 20 &&
+            typeof data?.sender === 'string' && data.sender.length > 0
+          ) {
+            // rid dedupe: 발신자 self-echo(서버가 본인에게도 broadcast)·혹시 모를 중복을 1회로.
             const rid = typeof data.rid === 'string' ? data.rid : null
             if (rid) {
               if (seenReactionsRef.current.has(rid)) return
@@ -185,7 +191,7 @@ export function useLiveKitRoom(
                 if (oldest !== undefined) seenReactionsRef.current.delete(oldest)
               }
             }
-            useReactionStore.getState().addFloat(participant.identity, data.emoji)
+            useReactionStore.getState().addFloat(data.sender, data.emoji)
           }
         } catch { /* 잘못된 페이로드 무시 */ }
         return
@@ -315,26 +321,22 @@ export function useLiveKitRoom(
     )
   }, [])
 
-  // 리액션 송신: 이모지를 'reaction' 토픽으로 방송. 5/s 쓰로틀(사용자 발사 기준). publishData 는 자기 echo 없음 → 로컬 float 직접 추가.
-  // reliable + rid 재전송: LiveKit 은 datachannel 개설 완료 전 publish 를 드롭한다(warm-up 으로 못 이김 — 2탭 E2E 실측).
-  // 같은 rid 로 ~1.5s 에 걸쳐 여러 번 쏘면 최소 1발은 개설 후 도달하고, 수신측이 rid 로 dedupe → float 은 1개(TCP-over-lossy).
+  // 리액션 송신: 서버 릴레이 경유(send-reaction Edge → LiveKit broadcast). 5/s 쓰로틀(사용자 발사 기준).
+  // 직접 publishData 대신 서버 경유인 이유: LiveKit datachannel 개설지연으로 클라 직접 첫 방송은 유실됨(2탭 prod E2E ~30%).
+  // 서버는 안정연결이라 유실0 + sender 를 auth 로 확정(스푸핑 방어). self-echo 는 로컬 즉시 + 서버가 되돌려줄 echo 는 rid dedupe.
   const sendReaction = useCallback((emoji: string) => {
     const room = roomRef.current
     if (!room || room.state !== ConnectionState.Connected) return
+    const token = useUserStore.getState().session?.access_token
+    if (!token) return
     const now = Date.now()
     if (now - lastReactionRef.current < 200) return
     lastReactionRef.current = now
     const rid = crypto.randomUUID()
-    const bytes = new TextEncoder().encode(JSON.stringify({ emoji, rid }))
-    const publish = () => {
-      const r = roomRef.current
-      if (!r || r.state !== ConnectionState.Connected) return
-      void r.localParticipant.publishData(bytes, { reliable: true, topic: 'reaction' }).catch(() => {})
-    }
-    publish()
-    for (const d of [400, 1200, 2500, 4000]) setTimeout(publish, d) // 개설 레이스 대비 재전송(수신측 rid dedupe). 초기 세션 datachannel 개설 지연 커버.
-    useReactionStore.getState().addFloat(room.localParticipant.identity, emoji)
-  }, [])
+    seenReactionsRef.current.add(rid) // 서버가 본인에게도 broadcast → 내 self-echo 를 dedupe
+    useReactionStore.getState().addFloat(room.localParticipant.identity, emoji) // 즉시 self-echo(왕복 지연 체감 제거)
+    void sendReactionRelay(token, roomId, emoji, rid).catch(() => { /* 실패해도 로컬 float 은 이미 표시(fire-and-forget) */ })
+  }, [roomId])
 
   const leave = useCallback(async () => {
     await roomRef.current?.disconnect()

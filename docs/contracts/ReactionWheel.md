@@ -41,16 +41,20 @@ interface ReactionOverlayProps {
 - `setSlots(slots)` → localStorage(`chatterbox.reactionSlots`) 영속. 상한 `MAX_SLOTS=12`.
 - **피커 UI 는 후속 슬라이스** — 현재는 기본 세트 + 아키텍처(데이터 주도·영속)만.
 
-## DataChannel
+## DataChannel + 서버 릴레이
 
-| 토픽 | 방향 | 페이로드 | 신뢰성 | 용도 |
-|---|---|---|---|---|
-| `reaction` | publish(`sendReaction`) / subscribe(`RoomEvent.DataReceived`) | `{ emoji: string, rid: string }` | **reliable + rid 재전송** | 이모지 방송 → 수신측 `addFloat(senderIdentity, emoji)` |
+리액션은 **클라가 직접 방송하지 않는다.** `send-reaction` Edge Function 이 멤버십 검증 후 LiveKit `RoomServiceClient.sendData` 로 방 전체에 broadcast 한다.
 
-- **첫 메시지 유실 대응(핵심)**: LiveKit 은 datachannel **개설 완료 전 publish 를 드롭**한다(reliable·warm-up 으로도 못 이김 — 2탭 E2E 로 첫 크로스-참가자 리액션 유실 실측). 그래서 같은 `rid` 로 `0·250·700·1500ms` 4회 재전송 → 최소 1발은 개설 후 도달. 수신측은 `rid` 를 256개 LRU 로 **dedupe** → float 은 1개(TCP-over-lossy).
-- **reliable**: ≤5/s·소형이라 HOL 무해하고 핑은 유실되면 안 됨(blendshape 20Hz 만 lossy).
-- sender identity 는 LiveKit participant 에서만 취득(payload 불신). 수신측 emoji 길이 방어(1~20), 표시는 React 이스케이프.
-- 송신 5/s 쓰로틀(사용자 발사 기준, 재전송은 별개). `publishData` 는 자기 echo 없음 → 발신자는 로컬 `addFloat` 직접.
+| 경로 | 내용 |
+|---|---|
+| 송신 | `sendReaction`(hook) → `sendReactionRelay`(lib) → `POST /functions/v1/send-reaction` `{room_id, emoji, idempotency_key(=rid)}`. 5/s 쓰로틀·즉시 로컬 self-echo |
+| broadcast | Edge → `broadcastData(room_id, {emoji, rid, sender}, 'reaction')` = `sendData(reliable, topic:'reaction')`. **sender=서버가 auth 로 확정** |
+| 수신 | `RoomEvent.DataReceived` topic=`reaction` → **participant=undefined(서버발)만 수락** → `addFloat(data.sender, emoji)`, rid 256-LRU dedupe |
+
+- **왜 서버 경유**: LiveKit datachannel **개설지연으로 클라 직접 첫 방송은 유실**(2탭 prod E2E ~30% 실측). 서버는 이미 안정연결이라 유실0(직접 publish + rid 재전송/warm-up 은 개설레이스를 못 이겨 폐기).
+- **스푸핑 방어**: 클라가 `reaction` 을 직접 publish 하면(participant 존재) 수신측이 **드롭** — sender 를 auth 로 확정하는 건 서버뿐. payload sender 는 **서버발일 때만** 신뢰.
+- **self-echo**: 발신자도 서버 broadcast 를 되받음 → 로컬 즉시 `addFloat` + `rid` dedupe 로 중복 방지. emoji 길이 방어(1~20), 표시는 React 이스케이프.
+- **비용/한계**: 왕복 1홉 추가(수십 ms·cold start 시 더). 뷰어(`canPublishData=false`)도 이 경로면 리액션 가능(멤버십만 통과하면 됨).
 
 ## 좌석 앵커
 
@@ -64,14 +68,15 @@ interface ReactionOverlayProps {
 ## 보안 / defer
 
 - MVP: actor/host(`canPublishData=true`)는 클라 직접 publish(채팅 MVP 와 동형). 이모지는 고정 세트라 sanitize 불필요·rate-limit 만.
-- **모바일 뷰어**(`canPublishData=false`)의 리액션은 `send-viewer-reaction` Edge 릴레이 경유(API-SURFACE) — **후속**.
-- **알려진 한계(측정)**: 입장 직후(수초 내) 첫 리액션은 LiveKit datachannel 개설 지연으로 가끔 유실됨(prod 2탭 E2E ~30%). retry+dedupe 로 완화·self-echo 로 발신자 화면은 즉시 반영. **보장 전달이 필요하면** `send-viewer-reaction` 식 **서버 릴레이**로 승급(actor 리액션도 서버 broadcast) — 후속.
+- **첫 리액션 유실 해소(prod E2E 실증)**: 예전 클라 직접 방송의 **송신측** datachannel 개설레이스 유실(~30%)은 **서버 릴레이(`send-reaction`)로 제거** — 배포 후 2탭 prod E2E 로 A→B(과거 취약 방향) **3/3 PASS**·양방향 확인. **잔여**는 *수신측* 신규참가자 datachannel 개설지연(입장 직후 수초간 broadcast 를 놓칠 수 있음) — 3.5s 후 발사 시 관측, **9s 후엔 안정**. 실유저는 입장 직후 몇 초 안에 리액션 안 쏘므로 무영향. cold start 시 원격 왕복 지연은 유실 아님(self-echo 로 발신자는 즉시).
+- **모바일 뷰어**(`canPublishData=false`) 리액션: 서버 릴레이가 actor/host 와 동일 경로라 멤버십만 통과하면 뷰어도 가능 — 뷰어 role 게이트·전용 UI 만 **후속**.
+- **서버 rate-limit**(토큰버킷/KV)·검열 allowlist 는 후속(현재 클라 5/s 쓰로틀).
 - ponytail: 모바일 롱프레스 트리거·키보드 핫키·2중링(12+)·전용 핑 사운드·화면끝 클램프.
 
 ## MUST NOT (금지 사항)
 
-- payload 의 sender 를 신뢰하지 않는다 — sender identity 는 **LiveKit participant.identity 만** 사용.
-- 모바일 뷰어(`canPublishData=false`)의 클라 직접 publish 금지 — `send-viewer-reaction` Edge 릴레이 경유(후속).
+- 클라가 `reaction` 토픽을 **직접 publishData 하지 않는다** — 반드시 `send-reaction` Edge 경유(sender auth 확정·유실0).
+- 수신측은 **participant 가 존재하는(=클라 직접발) reaction 을 신뢰하지 않는다** — 서버발(participant undefined)만 수락. payload sender 는 서버발일 때만 신뢰.
 - `floats` 를 DB 에 영속하지 않는다(휘발성). 히스토리·집계가 필요하면 별도 설계.
-- 송신 rate-limit(5/s 쓰로틀) 우회 금지. blendshape(20Hz)와 달리 reaction 은 저빈도라 reliable 이 정당(고빈도 토픽을 reliable 로 올리지 말 것).
+- 서버 rate-limit(토큰버킷) 후속 — 현재 클라 5/s 쓰로틀. 클라 쓰로틀 우회 금지.
 - 이모지 문자열을 `dangerouslySetInnerHTML` 로 렌더 금지(React 이스케이프 유지).

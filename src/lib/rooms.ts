@@ -43,6 +43,10 @@ export interface KickResult { ok: boolean; kicked_identity: string; display_name
 export const kickParticipant = (accessToken: string, roomId: string, targetIdentity: string) =>
   callFn<KickResult>('kick-participant', accessToken, { room_id: roomId, target_identity: targetIdentity })
 
+// 리액션 서버 릴레이(ROOM-19). 서버가 멤버십 검증 후 방 전체 broadcast — 클라 직접 방송보다 유실0·스푸핑 불가.
+export const sendReactionRelay = (accessToken: string, roomId: string, emoji: string, idempotencyKey: string) =>
+  callFn<{ ok: boolean }>('send-reaction', accessToken, { room_id: roomId, emoji, idempotency_key: idempotencyKey })
+
 export interface MuteResult { ok: boolean; muted: boolean; target_identity: string; display_name: string | null }
 
 // 호스트 음소거/해제 (HOST-08). 서버가 canPublish 를 토글 + muted_by_host 를 DB 에 기록.
