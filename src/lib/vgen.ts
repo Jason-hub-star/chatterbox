@@ -40,6 +40,12 @@ export const triggerVgen = (accessToken: string, roomId: string, promptText: str
     'trigger-vgen', accessToken, { room_id: roomId, prompt_text: promptText, duration_sec: durationSec, resolution },
   )
 
+// 개떡 입력 → Seedance 최적 프롬프트 LLM 정제(무과금·미리보기용). 결과는 편집 가능.
+export const refineVgenPrompt = (accessToken: string, roomId: string, roughPrompt: string) =>
+  callFn<{ refined_prompt: string }>(
+    'refine-vgen-prompt', accessToken, { room_id: roomId, rough_prompt: roughPrompt },
+  )
+
 export const getVgenUrl = (accessToken: string, jobId: string) =>
   callFn<{ url: string }>('get-vgen-url', accessToken, { job_id: jobId }).then((r) => r.url)
 

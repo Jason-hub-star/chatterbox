@@ -176,6 +176,8 @@ if (creditBalance < selectedOption.credit) {
 - 정제 결과는 **편집 가능**(그대로 쓰거나 손봄). 카메라시트 5~10컷을 프롬프트에 담아도 단일 생성은 "하나의 자연스러운 클립"으로 나옴(Seedance는 연속 한 샷)을 안내한다.
 - ponytail: 정제 1패스로 시작. few-shot 예시·모델 튜닝은 후속.
 
+> **구현 상태 (2026-07-06, refine-vgen-prompt MVP)**: Edge `refine-vgen-prompt`(신규) 구현. 입력 `{room_id, rough_prompt, reference_asset_ids?, target_duration_sec?}` → `{refined_prompt}`, 호스트 게이트·무과금·무DB(trigger-vgen 패턴). 시스템프롬프트에 **Seedance 2.0 공식 규칙**(fal.ai/ByteDance 웹조사) 인코딩 — Subject→Action→Camera→Scene→Style·50~150단어·동사우선·표준 카메라용어·"fast" 금지·negative 미지원→인라인 "no X"·대사 큰따옴표. **조건부**: refs>0이면 `@Image1..` 주입, target_duration 있으면 "Shot N:/cut to" 멀티샷 힌트. LLM=gpt-4o-mini(OpenAI 호환, `REFINE_LLM_BASE_URL/MODEL/KEY` env로 NIM 교체 가능·키 서버보관 성역). **실 LLM 검증**: 개떡 한글 3케이스 → 영어 Seedance 구조 프롬프트·@Image 조건부·큰따옴표 대사 실동작. UI는 **버튼 1개**("✨ 다듬기" → textarea 교체, 사용자 지시로 최소화 — 미리보기패널/스피너 없음). 모더레이션은 refine단 생략(trigger-vgen이 생성 직전 enforcement). 참조 업로드 UI·@Image 실사용은 reference-to-video 슬라이스에서.
+
 **MUST NOT:**
 - ❌ LLM 키를 클라이언트 노출(`VITE_*`) → 반드시 `refine-vgen-prompt` Edge 경유 (성역, SecurityPolicies §4)
 - ❌ 정제 결과를 사용자 확인 없이 바로 생성 (비용·의도 확인)
