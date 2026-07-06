@@ -25,6 +25,7 @@
 
 | Skill | Use When |
 |---|---|
+| `dogfood-audit` | 라이브 플랫폼을 여러 유저 페르소나로 "써보며" 보안+UX+기능갭을 한 번에 감사(3단: 정찰→Opus 페르소나 워커→종합)하고 UX 개선을 문서화할 때. `gap-find`(렌즈 기반 설계/코드 갭)의 페르소나·UX판 자매 스킬 |
 | `gap-find` | 취약점/기능갭/운영리스크를 다역할 병렬 감사 + 반영까지 닫을 때 |
 | `doc-health-audit` | 문서 인덱싱성/토큰/폴더정리 건강성 체크 (ChatterBox 문서망 전용, 정본) |
 | `doc-health-check` | Vtube 이식본, doc-health-audit과 목적 중복 — 정리 필요 (§ 아래 참고) |
