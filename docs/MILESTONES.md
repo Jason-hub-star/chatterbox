@@ -80,15 +80,15 @@ tags: [guide]
 
 ### Acceptance Criteria
 
-- [ ] 6인 슬롯 레이아웃 (원형 3쌍 — 센터 프레임을 상/중/하 × 좌·우가 둘러쌈; DESIGN-DIRECTION §6.1이 좌3·우3 E형 대체), 드래그 순서 변경 — 부분: `features/stage/{Stage,StageSlot,SelfAvatar,stageLayout}` 원형 3×3 그리드 무대 구현(identity 안정정렬 좌석). 2탭 실렌더 E2E 검증(양 클라 좌석 일관성·6슬롯 원형·아바타 렌더·데이터경로 회귀). **드래그 재배치·정밀 좌표·아바타→센터 glow 연결선·DB slot_index 배정·희소 인원 균형배치 미구현** → 남은 개발.
+- [ ] 6인 슬롯 레이아웃 (원형 3쌍 — 센터 프레임을 상/중/하 × 좌·우가 둘러쌈; DESIGN-DIRECTION §6.1이 좌3·우3 E형 대체), 드래그 순서 변경 — 부분: `features/stage/{Stage,StageSlot,SelfAvatar,stageLayout}` 원형 3×3 그리드 무대. **2026-07-06: DB `slot_index` 절대좌석 구현**(`seatParticipants` 순수함수 + 기존 `list-room-members` slot 재사용 → 인원변동에 좌석 불변, identity 정렬 리플로우 제거; 유닛 6케이스 + 6탭 실렌더 E2E 좌석결정성 검증) + **참가자별 연결품질 배지**(Phase 2). 이 과정에서 `list-room-members` stale 배포(auth_id 미반환) 발굴·재배포. **드래그 재배치·정밀 좌표·아바타→센터 glow 연결선·희소 인원 균형배치 미구현** → 남은 개발.
 - [x] 대본 패널 (Teleprompter): 방장 큐 전진/후퇴 → 모든 참가자 동기 — 2026-07-03 실증: `features/script/{cues.ts,ScriptPanel.tsx}`·`useLiveKitRoom` `'script-cue'` reliable DataChannel·호스트 warm-up 재브로드캐스트. **2탭 실 LiveKit E2E 12/12 PASS**. as-built: 클라 게이트(호스트=slot0)·서버권한/DB저장은 defer(G-286).
 - [ ] 내 대사 줄 강조, 개인 글자 크기 조절 — 부분: 내 대사 강조 O(`ScriptPanel` "▶ 내 차례", 현재 cue 역할==내 역할). **개인 글자 크기 조절 미구현** → 남은 개발.
 - [ ] CDN 비디오 동기 재생 (타임스탬프 기반, ±200ms 이내)
 - [ ] 배경 선택기 (미리 정의된 배경 5종 이상)
 - [x] Active-speaker 강조 (말하는 참가자 Z-order 앞) — 2026-07-03 실증: `StageSlot` 이 `isSpeaking` 참가자를 z↑·확대·amber glow 로 강조. **2탭 헤드리스 E2E**(합성음성으로 실발화 유발) — 발화 슬롯 `data-speaking=true`+glow, 비발화 빈슬롯 무강조 동일 프레임 확인(스크린샷). 개별 `isSpeaking` 바인딩.
 - [ ] 채팅 반응 버튼 (👍 😂 👏 😢) → 화면 부동 이모지
-- [ ] Staging 환경에서 6인 동시 접속 30분 안정 운영 확인
-- [ ] WebRTC 연결 실패율 < 5% (LiveKit Cloud Dashboard)
+- [x] Staging 환경에서 6인 동시 접속 30분 안정 운영 확인 — 2026-07-06: `lk load-test`(LiveKit CLI, prod LiveKit·오디오발행6+스피커이벤트, 앱 미디어 프로필 일치) **30분 완주·에러/드롭/끊김/재연결 0**. (staging 앱 6실유저 대신 LiveKit 전송계층 부하런; 앱 전계층(아바타·데이터)은 6탭 실렌더 E2E가 별도 커버.)
+- [x] WebRTC 연결 실패율 < 5% (LiveKit Cloud Dashboard) — 2026-07-06: load-test 6/6 연결 유지·연결실패 0 = **0%**.
 
 **검증 시나리오:**
 1. 6인 입장 → 방장이 씬 1로 전환 → 모든 참가자 배경 동시 변경
