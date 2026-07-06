@@ -304,25 +304,25 @@ workflow.step("submit-to-fal", async (step: WorkflowStep) => {
   const falApiKey = step.env.FAL_KEY;
   const webhookUrl = `https://your-domain.com/api/vgen/webhook`;
 
-  const response = await fetch("https://queue.fal.ai/run/async", {
+  // ⚠️ 정정 (2026-07-06 무과금 free-check): 아래 queue.fal.ai 형식은 **깨져 있었다** —
+  //   ① `queue.fal.ai` 는 런타임(Supabase Edge·로컬)에서 DNS 미해결 ② `run/async`+`{model,input,webhook_url}`
+  //   래핑은 미검증. 올바른 형식 = `POST https://fal.run/{model}?fal_webhook=<url>` + **body 는 input 직접**.
+  //   모델 = reference-to-video(캐릭터 고정). 실 구현은 Edge `trigger-vgen`(이 Workflows 예시는 stale — SSOT는 Edge+webhook+pg_cron).
+  const model = "bytedance/seedance-2.0/fast/reference-to-video";
+  const response = await fetch(`https://fal.run/${model}?fal_webhook=${encodeURIComponent(webhookUrl)}`, {
     method: "POST",
     headers: {
       "Authorization": `Key ${falApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "bytedance/seedance-2.0/fast/text-to-video",
-      input: {
-        prompt: prompt_text,
-        duration: duration_seconds,
-        resolution: "720p",
-        generate_audio: true,
-      },
-      webhook_url: webhookUrl,  // ← webhook 등록
-      headers: {
-        "X-Request-ID": job_id,  // 추적용
-      },
-    }),
+      prompt: prompt_text,
+      duration: duration_seconds,
+      resolution: "720p",
+      aspect_ratio: "9:16",
+      // image_urls: [...],  // reference-to-video 캐릭터 참조 URL(@Image), ≤9
+      generate_audio: true,
+    }),  // ← input 직접(model/webhook_url 래핑 없음). 완료는 fal_webhook 이 vgen-webhook 호출.
   });
 
   const data = await response.json();
@@ -358,6 +358,8 @@ workflow.step("wait-for-completion", async (step: WorkflowStep) => {
   while (attempt < maxAttempts) {
     attempt++;
 
+    // ⚠️ 정정: fal_webhook 방식은 완료를 webhook 이 통지하므로 이 폴링은 불요.
+    //   폴백이 필요해도 queue.fal.ai 는 미해결이라 이 URL 은 못 씀. 실 구현은 pg_cron 스위퍼가 stuck 정산.
     const statusResponse = await fetch(
       `https://queue.fal.ai/requests/${request_id}`,
       {

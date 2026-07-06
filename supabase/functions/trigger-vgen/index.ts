@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 
-  let body: { room_id?: unknown; prompt_text?: unknown; duration_sec?: unknown; resolution?: unknown };
+  let body: { room_id?: unknown; prompt_text?: unknown; duration_sec?: unknown; resolution?: unknown; image_urls?: unknown; aspect_ratio?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -74,6 +74,14 @@ Deno.serve(async (req) => {
   // 해상도는 사용자 선택(기본 720p). 허용집합 밖이면 기본값으로 폴백.
   const resolution: Res = typeof body.resolution === "string" && (ALLOWED_RES as string[]).includes(body.resolution)
     ? body.resolution as Res : DEFAULT_RES;
+  // 참조 이미지(reference-to-video, 캐릭터 고정) — 공개/서명 URL ≤9. 없으면 text-to-video 동작.
+  const imageUrls = Array.isArray(body.image_urls)
+    ? body.image_urls.filter((u): u is string => typeof u === "string" && u.startsWith("http")).slice(0, 9)
+    : [];
+  // 화면비(쇼츠 기본 9:16). 허용집합 밖이면 기본값.
+  const ALLOWED_AR = ["9:16", "16:9", "1:1", "4:3", "3:4", "auto"];
+  const aspectRatio = typeof body.aspect_ratio === "string" && ALLOWED_AR.includes(body.aspect_ratio)
+    ? body.aspect_ratio : "9:16";
 
   // 기능 플래그 + 길이 상한
   const enabled = await getFlag(service, "VGEN_ENABLED", false);
@@ -96,8 +104,8 @@ Deno.serve(async (req) => {
     .eq("triggered_by", userId).gte("created_at", since);
   if ((count ?? 0) >= dailyLimit) return json({ error: `하루 ${dailyLimit}회까지만 생성할 수 있어요.` }, 429);
 
-  const modelId = Deno.env.get("VGEN_MODEL_ID") ?? "bytedance/seedance-2.0/fast/text-to-video";
-  const promptHash = await sha256hex(`${promptText}|${modelId}|${duration}|${resolution}`);
+  const modelId = Deno.env.get("VGEN_MODEL_ID") ?? "bytedance/seedance-2.0/fast/reference-to-video";
+  const promptHash = await sha256hex(`${promptText}|${modelId}|${duration}|${resolution}|${aspectRatio}|${imageUrls.join(",")}`);
 
   // dedup: 같은 방 같은 프롬프트가 이미 완료면 재사용(무과금)
   const { data: hit } = await service.from("vgen_jobs")
@@ -164,14 +172,17 @@ Deno.serve(async (req) => {
   }
   const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/vgen-webhook?job_id=${job.id}`;
   try {
-    const resp = await fetch("https://queue.fal.ai/run/async", {
+    const input: Record<string, unknown> = {
+      prompt: promptText, duration, resolution, aspect_ratio: aspectRatio, generate_audio: true,
+    };
+    if (imageUrls.length) input.image_urls = imageUrls; // reference-to-video 캐릭터 참조(@Image)
+    // fal 호출: queue.fal.ai 는 런타임(로컬·Edge)에서 DNS 미해결(2026-07-06 free-check 확인) →
+    //   fal.run(reachable) + ?fal_webhook=<url> 로 비동기 제출(webhook 이 완료 통지). body=input 직접
+    //   (과거 queue.fal.ai/run/async + {model,input,webhook_url} 는 미검증·미해결이라 폐기).
+    const resp = await fetch(`https://fal.run/${modelId}?fal_webhook=${encodeURIComponent(webhookUrl)}`, {
       method: "POST",
       headers: { Authorization: `Key ${falKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: modelId,
-        input: { prompt: promptText, duration, resolution, generate_audio: true },
-        webhook_url: webhookUrl,
-      }),
+      body: JSON.stringify(input),
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(JSON.stringify(data).slice(0, 200));
