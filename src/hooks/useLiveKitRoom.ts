@@ -229,8 +229,16 @@ export function useLiveKitRoom(
         await room.connect(server_url, token)
         if (cancelled) return
         // 마이크 발행 (join은 버튼 클릭이므로 autoplay 정책 통과).
-        await room.localParticipant.setMicrophoneEnabled(true)
-        setMicEnabled(true)
+        // 뷰어(canPublish=false)는 시도 자체를 안 하고, 발행 실패(권한 거부·장치 없음)는
+        // 연결 실패가 아니다 — 그린룸 약속("마이크 없어도 입장") 준수. 연결은 유지, mic off.
+        if (useRoomStore.getState().myRole !== 'viewer') {
+          try {
+            await room.localParticipant.setMicrophoneEnabled(true)
+            setMicEnabled(true)
+          } catch {
+            setMicEnabled(false)
+          }
+        }
         refreshParticipants()
       } catch (err) {
         if (cancelled) return
