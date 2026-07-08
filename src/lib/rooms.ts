@@ -97,6 +97,27 @@ export const listRecentRooms = (accessToken: string) =>
 export const listRecentPeople = (accessToken: string, excludeRoomId?: string) =>
   callFn<{ people: RecentPerson[] }>('list-recent-people', accessToken, excludeRoomId ? { exclude_room_id: excludeRoomId } : {})
 
+export interface Reservation { id: string; title: string; scheduled_at: string }
+
+// 예약 공연(LOB-06 MVP): 생성은 Edge(대상자 알림 발송 겸), 내 예약 조회는 RLS 직접 SELECT.
+export const createReservation = (accessToken: string, title: string, scheduledAtIso: string, inviteeIds: string[]) =>
+  callFn<{ reservation_id: string; scheduled_at: string; notified: number }>('create-reservation', accessToken, {
+    title,
+    scheduled_at: scheduledAtIso,
+    invitee_ids: inviteeIds,
+  })
+
+export async function fetchMyReservations(): Promise<Reservation[]> {
+  const { data, error } = await supabase
+    .from('room_reservations')
+    .select('id, title, scheduled_at')
+    .gte('scheduled_at', new Date().toISOString())
+    .order('scheduled_at', { ascending: true })
+    .limit(10)
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Reservation[]
+}
+
 // read-only 검증(사용횟수 무변화) — 수락 확인 UI 용.
 export const verifyInviteCode = (accessToken: string, code: string) =>
   callFn<VerifyInviteResult>('verify-invite-code', accessToken, { invite_code: code })

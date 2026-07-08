@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/useToast'
-import { acceptInvite, createRoom, fetchPublicRooms, listRecentRooms, verifyInviteCode, ROOM_GENRES, type LobbyRoom, type RecentRoom } from '@/lib/rooms'
+import { acceptInvite, createReservation, createRoom, fetchMyReservations, fetchPublicRooms, listRecentPeople, listRecentRooms, verifyInviteCode, ROOM_GENRES, type LobbyRoom, type RecentPerson, type RecentRoom, type Reservation } from '@/lib/rooms'
 import NotificationBell from '@/components/shared/NotificationBell'
 import { SCENES, resolveScene } from '@/scenes/manifest'
 
@@ -259,6 +259,8 @@ export default function LobbyPage() {
         </p>
       )}
 
+      {session && <ReservationSection accessToken={session.access_token} />}
+
       {recent.length > 0 && (
         <section className="mt-8">
           <h2 className="text-sm font-semibold text-stage-text-muted">{t('lobby.recentRooms')}</h2>
@@ -383,5 +385,125 @@ export default function LobbyPage() {
       </section>
       </div>
     </main>
+  )
+}
+
+// 예약 공연(LOB-06 MVP): 제목+시각+대상(최근 함께한 사람) → 예약 행 + 대상 인앱 알림.
+// 리마인더는 서버 pg_cron(30분 전). 로비 전용이라 이 파일에 상주(§12.1 — 폴더 신설 없음).
+function ReservationSection({ accessToken }: { accessToken: string }) {
+  const { t, i18n } = useTranslation()
+  const [mine, setMine] = useState<Reservation[]>([])
+  const [people, setPeople] = useState<RecentPerson[]>([])
+  const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [title, setTitle] = useState('')
+  const [when, setWhen] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [res, ppl] = await Promise.all([
+          fetchMyReservations(),
+          listRecentPeople(accessToken).then((r) => r.people).catch(() => []),
+        ])
+        if (!cancelled) {
+          setMine(res)
+          setPeople(ppl)
+        }
+      } catch {
+        /* 섹션은 폼만으로도 성립 */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [accessToken])
+
+  const togglePerson = (id: string) => {
+    setChecked((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function onReserve(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = title.trim()
+    if (!trimmed || !when) return
+    setBusy(true)
+    try {
+      const r = await createReservation(accessToken, trimmed, new Date(when).toISOString(), [...checked])
+      toast.success(t('lobby.reserveDone', { count: r.notified }))
+      setMine((prev) =>
+        [...prev, { id: r.reservation_id, title: trimmed, scheduled_at: r.scheduled_at }].sort(
+          (a, b) => a.scheduled_at.localeCompare(b.scheduled_at),
+        ),
+      )
+      setTitle('')
+      setWhen('')
+      setChecked(new Set())
+    } catch {
+      toast.error(t('lobby.reserveFailed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-sm font-semibold text-stage-text-muted">{t('lobby.reservations')}</h2>
+      {mine.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {mine.map((r) => (
+            <li key={r.id} className="flex items-center justify-between gap-4 rounded-lg border border-stage-border px-4 py-2.5">
+              <p className="min-w-0 truncate text-sm font-semibold">{r.title}</p>
+              <p className="shrink-0 text-xs text-stage-text-muted">
+                {new Date(r.scheduled_at).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' })}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={onReserve} className="mt-3 flex max-w-sm flex-col gap-2">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          aria-label={t('lobby.roomTitleInput')}
+          placeholder={t('lobby.roomTitlePlaceholder')}
+          maxLength={80}
+          className="rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm"
+        />
+        <input
+          type="datetime-local"
+          value={when}
+          onChange={(e) => setWhen(e.target.value)}
+          aria-label={t('lobby.reserveWhenLabel')}
+          className="rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm text-stage-text-muted"
+        />
+        {people.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-stage-text-muted">{t('lobby.reserveInvitees')}</p>
+            <div className="flex flex-wrap gap-2">
+              {people.map((p) => (
+                <label key={p.user_id} className="flex items-center gap-1.5 rounded border border-stage-border px-2 py-1 text-xs">
+                  <input type="checkbox" checked={checked.has(p.user_id)} onChange={() => togglePerson(p.user_id)} />
+                  {p.display_name ?? '?'}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={busy || !title.trim() || !when}
+          className="self-start rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+        >
+          {busy ? t('lobby.reserving') : t('lobby.reserveMake')}
+        </button>
+      </form>
+    </section>
   )
 }
