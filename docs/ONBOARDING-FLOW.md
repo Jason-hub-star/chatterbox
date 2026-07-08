@@ -64,6 +64,8 @@ tags: [guide]
                          🎭 룸(무대) 입장
 ```
 
+> **구현됨 (2026-07-08)** — 분장실 = `/rooms/:roomId/ready`(`GreenRoomPage`) 라이브: 아바타 프리뷰+마이크 미터 as-built, **소프트 게이트**(통과 필수 아님 — 지인 도그푸딩 마찰 최소화, 필수 전환은 외부 공개 직전 플래그)·`cb.greenroomSkip` 직행·배경 선택 제외. 상세 편차는 `contracts/GreenRoom.md` 구현 상태 블록. 관전 초대(viewer)는 분장실을 스치지 않고 `?watch=1` 직행.
+
 ---
 
 ## 2. 트랙별 상세

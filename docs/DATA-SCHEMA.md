@@ -118,6 +118,8 @@ CREATE TABLE account_restrictions (
 
 ### 1.2 rooms
 
+> **as-built 추가 컬럼 (2026-07-08, 마이그 `20260708160000`)** — `is_practice boolean not null default false`(LOB-10 연습 방: 시스템 호스트 시드·비어도 ended 안 함·참가자 전원 대본 진행). `public_rooms` 뷰 끝에 `is_practice` 노출. `genre` 는 create-room 화이트리스트(comedy·drama·romance·fantasy·horror·free)로 배선됨.
+
 ```sql
 CREATE TABLE rooms (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -227,6 +229,8 @@ CREATE TABLE rate_limit_counters (
 
 ### 1.2.2 room_invites
 
+> **구현됨 (2026-07-08, 마이그 `20260708120000`)** — as-built: RLS 는 deny-all(발급·검증·수락 전부 Edge 경유라 클라 직접 읽기 없음 — 호스트 초대목록 UI 생기면 SELECT 정책 추가) + `consume_room_invite(p_code_hash, p_user_id)` RPC(행 잠금 원자 소비, service_role 전용). 코드 = 128-bit hex, 해시 = 무염 SHA-256(코드 자체가 난수라 충분·해시 컬럼 직조회용). 지명 초대(invited_user_id)는 max_uses=1 강제 + re_invite 알림.
+
 ```sql
 CREATE TABLE room_invites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -249,6 +253,8 @@ CREATE TABLE room_invites (
 ```
 
 ### 1.3 room_participants
+
+> **as-built 갱신 (2026-07-08, 마이그 `20260708130000`·`20260708170000`)** — 유니크는 **활성 행 한정 부분 인덱스**: `(room_id,user_id) where state<>'left'` + `(room_id,slot_index) where state<>'left' and slot_index is not null`. 전행 유니크는 제거 — left 행이 좌석·재입장을 영구 점유하던 잠복 버그 2건의 정수정(재입장 = 세션당 새 행, 이력 보존). 뷰어는 slot_index null·정원 비점유(`join_room_as_viewer` RPC).
 
 ```sql
 CREATE TABLE room_participants (
@@ -1055,6 +1061,8 @@ CREATE TABLE user_room_history (
 -- RLS Policy: users can read their own history. Host can use same-room history to suggest "recently played with" re-invites.
 ```
 
+> **as-built (2026-07-08): 테이블 미생성 — YAGNI 편차.** "최근 방/함께한 사람"은 `room_participants` 행(세션당 1행, left 이력 보존)에서 파생 — Edge `list-recent-rooms`·`list-recent-people` 이 service_role 로 조회(타인 display_name 은 클라 RLS 로 못 읽음). 전용 원장이 필요해지는 시점(집계 성능·invite_again_count)에 승격.
+
 ### 1.24 room_reservations and notifications
 
 ```sql
@@ -1086,6 +1094,10 @@ CREATE TABLE notifications (
 -- RLS Policy: users can read/update(read_at) own notifications. Edge Functions insert/send only.
 -- MVP: in_app is required; email/push can be enabled after provider config.
 ```
+
+> **구현됨 (2026-07-08, 마이그 `20260708140000`·`20260708150000`) — 축소 as-built:**
+> - `notifications`: 컬럼 축소(payload/room_id/read_at — reservation_id 는 payload 로, delivery_channel/status/sent_at 은 email/push provider 후속). read_at 만 클라 UPDATE(컬럼 그랜트로 나머지 변조 차단), realtime publication 등재. 지명 초대 payload 의 원문 invite_code 는 invited_user_id 고정이라 bearer 자격 아님(consume 의 not_invited 게이트).
+> - `room_reservations`: 컬럼 축소(host_id/title/scheduled_at/reminded_at — **room_id·invite_code_hash·status 연결은 후속**: 예약=약속+알림, 방은 시작 때 생성). 대상자 원장 = reservation_invite 알림 행. 리마인더 = `send_reservation_reminders()`(30분 전·멱등) + pg_cron 10분 주기(프로드 cron.job 등재 실측).
 
 ---
 

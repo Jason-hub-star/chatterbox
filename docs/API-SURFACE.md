@@ -4,8 +4,14 @@ tags: [hub, spec]
 
 # API Surface — Edge Functions, RPC, Client Reads
 
-> SSOT for server boundaries. Updated: 2026-07-01.
+> SSOT for server boundaries. Updated: 2026-07-08.
 > Goal: implementation can start without hunting across contracts for endpoint shape, auth, inputs, outputs, and side effects.
+
+> **구현 현황 (2026-07-08, 로비 수직기능 페이즈루프)** — 아래 표는 풀비전 스펙이고, 이번에 배포된 as-built 는 축소형(상세 편차는 contracts/LobbyPage·ViewerGate·GreenRoom as-built + GAP-MATRIX Phase 1~7 행):
+> - **초대(LOB-05)**: `create-room-invite`(Host — role actor/viewer·max_uses·expires_h·**invited_user_id**=지명 1회권+re_invite 알림) / `verify-invite-code`(Auth·read-only, `{ room_id, title, host_display_name, role }` 축소 응답, user당 5회/5분) / `accept-invite`(`consume_room_invite` RPC 원자 소비 → join RPC 멱등. **편차: 유효 초대는 잠금방 비번 생략**, device_type·Quick Ready 미구현).
+> - **뷰어**: `join-as-viewer`(Auth — 좌석·정원 비점유, 잠금방 403) + `join_room_as_viewer`/`join_room_as_participant` v2 RPC(뷰어 제외 정원·실 role 반환). 표의 join-public-room viewer 형태와 달리 **join-public-room 은 actor 전용 유지**, 뷰어는 전용 함수.
+> - **소셜/예약**: `list-recent-rooms`·`list-recent-people`(Auth — room_participants 파생, user_room_history 테이블 미생성) / `create-reservation`(Auth — 예약+reservation_invite 알림, 방·초대코드 연결은 후속) / notifications 는 Edge 없이 RLS 직접 SELECT + realtime.
+> - 미구현 유지: refresh-livekit-token·end-room·set-participant-safety(kick/mute 는 별도 함수 기구현)·signed-asset-url(자산별 개별 함수로 대체 중)·idempotency_key/audit_logs 일반화.
 
 ## Rules
 
