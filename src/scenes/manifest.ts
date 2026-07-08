@@ -22,11 +22,20 @@ export interface HubBlock {
   shops: HubShop[]
 }
 
+// 내부 씬(로비 v3 — 가게 클릭 시 풀스크린 전환, 주인님 확정 스펙). anchor 는 원화 속
+// 오브젝트에 UI 를 정박하는 % 박스("살아있는 앵커" — 관당 1개 하이브리드).
+export interface InteriorScene {
+  hero: string
+  // 관별 앵커: theater=포스터 액자 3 / workshop=작업대(폼)+현판 / teahouse=테이블 칩 자리 / atelier=거울
+  anchors: Record<string, { l: number; t: number; w: number; h: number }>
+}
+
 export interface SceneVariant {
   hero: string // public/ 기준 경로
   video?: string // 입장 영상 등 (없으면 해당 연출 스킵)
   accent: string // --scene-accent 주입값 (DESIGN-DIRECTION §4.3)
   hub?: { blocks: HubBlock[] } // 로비 v2 광장 허브(데스크톱 히어로) — 없으면 정적 배경만
+  interiors?: Partial<Record<HubDest, InteriorScene>> // 로비 v3 내부 4관
 }
 
 export interface Scene {
@@ -77,6 +86,36 @@ export const SCENES = {
               ],
             },
           ],
+        },
+        // 내부 4관(로비 v3) — 앵커 = 원화 속 오브젝트에 UI 정박(% 좌표, 실렌더 캘리브레이션).
+        interiors: {
+          rooms: {
+            hero: '/scenes/lobby-interiors/theater.webp',
+            anchors: {
+              posterBoard: { l: 2.5, t: 14, w: 27, h: 33 }, // 좌측 금박 액자 게시판
+              ticketBooth: { l: 64, t: 16, w: 33, h: 64 }, // 우측 매표소 창구
+            },
+          },
+          create: {
+            hero: '/scenes/lobby-interiors/workshop.webp',
+            anchors: {
+              bench: { l: 26, t: 55, w: 46, h: 38 }, // 중앙 작업대(폼 정박)
+              model: { l: 50, t: 22, w: 32, h: 30 }, // 미니어처 무대(현판 실시간 반영)
+            },
+          },
+          social: {
+            hero: '/scenes/lobby-interiors/teahouse.webp',
+            anchors: {
+              tableA: { l: 5, t: 70, w: 32, h: 26 }, // 전경 좌 테이블
+              tableB: { l: 50, t: 74, w: 26, h: 22 }, // 중앙 우 테이블
+            },
+          },
+          profile: {
+            hero: '/scenes/lobby-interiors/atelier.webp',
+            anchors: {
+              mirror: { l: 49, t: 27, w: 19, h: 53 }, // 중앙 대형 거울(아바타 프리뷰)
+            },
+          },
         },
       },
     },

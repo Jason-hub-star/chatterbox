@@ -1,64 +1,77 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/useToast'
-import { acceptInvite, createReservation, createRoom, fetchMyReservations, fetchPublicRooms, listRecentPeople, listRecentRooms, verifyInviteCode, ROOM_GENRES, type LobbyRoom, type RecentPerson, type RecentRoom, type Reservation } from '@/lib/rooms'
+import { acceptInvite, fetchPublicRooms, verifyInviteCode, type LobbyRoom } from '@/lib/rooms'
 import NotificationBell from '@/components/shared/NotificationBell'
 import HubMap from '@/components/shared/HubMap'
 import { SCENES, resolveScene, type HubDest } from '@/scenes/manifest'
 
-// LOB-01/03: 공개 방 목록(public_rooms 뷰) + 방 생성 + 검색 + Realtime 자동갱신.
-// Realtime: rooms 변경 시 트리거가 public 'lobby' 채널로 nudge broadcast(민감컬럼 노출 0·
-//   RLS 무변경) → 여기서 debounce 후 뷰 재조회. 마이그 20260705130000_lobby_realtime_broadcast.
-// 비번방 입장은 클릭 → join-public-room 403 "Room is locked" → RoomPage 비번단계(기구현).
-// ponytail: 장르 필터·초대링크는 후속(genre 컬럼은 있으나 create-room 미배선).
+// 로비 v3(주인님 확정 스펙): 광장 허브가 화면의 전부 — 레거시 섹션(목록·생성·예약·최근)은
+// 내부 4관(/lobby/theater·workshop·teahouse·atelier)으로 전가·삭제. 로비 본체 = 헤더(벨·로그아웃)
+// + 초대 배너(LOB-05) + 광장(데스크톱) / 모바일 = 배너 + 하단 네비 4탭(같은 라우트).
+// rooms 는 대극장 뱃지·연습 무대 라우팅용 최소 유지(Realtime nudge 포함).
 export default function LobbyPage() {
   const { t } = useTranslation()
-  // 접속 시각은 마운트 1회 판정(레이지 초기화) — 로그인(AuthShell)과 같은 시간축.
   const [scene] = useState(() => resolveScene(SCENES.lobbyStreet, new Date().getHours()))
-  const email = useUserStore((s) => s.user?.email)
   const session = useUserStore((s) => s.session)
   const logout = useUserStore((s) => s.logout)
   const navigate = useNavigate()
 
   const [rooms, setRooms] = useState<LobbyRoom[]>([])
-  const [loading, setLoading] = useState(true)
-  const [title, setTitle] = useState('')
-  const [genre, setGenre] = useState('') // ''=장르 없음(옵션, LOB-03)
-  const [creating, setCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
 
-  // 허브 목적지 앵커(로비 v2): 대극장→방 목록, 찻집→최근 함께한, 공방→생성 폼, 게시판성 기능은 예약 섹션.
-  const roomsSectionRef = useRef<HTMLElement>(null)
-  const recentSectionRef = useRef<HTMLElement>(null)
-  const reservationWrapRef = useRef<HTMLDivElement>(null)
-  const createInputRef = useRef<HTMLInputElement>(null)
-
-  const focusCreate = useCallback(() => {
-    createInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    createInputRef.current?.focus({ preventScroll: true })
+  const applyRooms = useCallback(async () => {
+    try {
+      setRooms(await fetchPublicRooms())
+    } catch {
+      /* transient — 뱃지·연습 라우팅용이라 조용히 유지 */
+    }
   }, [])
-  const scrollToRooms = useCallback(() => roomsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }), [])
-  const scrollToReserve = useCallback(() => reservationWrapRef.current?.scrollIntoView({ behavior: 'smooth' }), [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await fetchPublicRooms()
+        if (!cancelled) setRooms(data)
+      } catch {
+        /* 뱃지·연습 라우팅용 — 조용히 */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const nudge = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => void applyRooms(), 400)
+    }
+    const ch = supabase.channel('lobby').on('broadcast', { event: 'lobby_change' }, nudge).subscribe()
+    return () => {
+      if (timer) clearTimeout(timer)
+      void supabase.removeChannel(ch)
+    }
+  }, [applyRooms])
 
   const handleDest = useCallback(
     (dest: HubDest) => {
       switch (dest) {
         case 'rooms':
-          roomsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          navigate('/lobby/theater')
           break
         case 'create':
-          focusCreate()
+          navigate('/lobby/workshop')
           break
         case 'social':
-          if (recentSectionRef.current) recentSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          else toast.info(t('hub.socialEmpty'))
+          navigate('/lobby/teahouse')
           break
         case 'profile':
-          navigate('/settings')
+          navigate('/lobby/atelier')
           break
         case 'practice': {
           const practice = rooms.find((r) => r.isPractice)
@@ -74,32 +87,14 @@ export default function LobbyPage() {
           break
       }
     },
-    [rooms, navigate, focusCreate, t],
+    [rooms, navigate, t],
   )
 
-  // 초대링크 수락(LOB-05): ?invite=<code> → read-only 검증 → 확인 배너 → 수락 시 서버가 소비+참가.
+  // 초대링크 수락(LOB-05): ?invite=<code> → read-only 검증 → 배너 → 수락 → 분장실/관전.
   const [searchParams, setSearchParams] = useSearchParams()
   const inviteCode = searchParams.get('invite')
   const [invite, setInvite] = useState<{ code: string; title: string; host: string | null } | null>(null)
   const [inviteBusy, setInviteBusy] = useState(false)
-
-  // 최근 함께한 방(LOB-08) — 재방문 루프. 실패는 조용히(섹션 미표시).
-  const [recent, setRecent] = useState<RecentRoom[]>([])
-  useEffect(() => {
-    if (!session) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const r = await listRecentRooms(session.access_token)
-        if (!cancelled) setRecent(r.rooms)
-      } catch {
-        /* 섹션 없음으로 강등 */
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [session])
 
   useEffect(() => {
     if (!inviteCode || !session) return
@@ -126,10 +121,8 @@ export default function LobbyPage() {
     setInviteBusy(true)
     try {
       const r = await acceptInvite(session.access_token, invite.code)
-      // 관전 초대는 분장실(카메라 점검) 불요 — 바로 관전 모드로. 배우 초대만 /ready 경유.
       navigate(r.role === 'viewer' ? `/rooms/${r.room_id}?watch=1` : `/rooms/${r.room_id}/ready`)
     } catch {
-      // 상세 사유(used_up 등)는 서버 코드라 사용자 문구는 하나로 — 만료/소진/폐기 동일 처리.
       toast.error(t('lobby.inviteInvalid'))
       setInvite(null)
       setSearchParams({}, { replace: true })
@@ -137,456 +130,89 @@ export default function LobbyPage() {
     }
   }
 
-  // 버튼용 새로고침(이벤트 핸들러 — 여기서 setState 는 규칙 위반 아님).
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    try {
-      setRooms(await fetchPublicRooms())
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('lobby.fetchError'))
-    } finally {
-      setLoading(false)
-    }
-  }, [t])
-
-  // Realtime nudge 용 조용한 갱신(로딩 스피너 없이 목록만 교체, 일시 오류는 기존 목록 유지).
-  const applyRooms = useCallback(async () => {
-    try {
-      setRooms(await fetchPublicRooms())
-    } catch {
-      /* transient — 기존 목록 유지 */
-    }
-  }, [])
-
-  // 최초 로드: setState 는 async IIFE 안(await 이후)에서만 — set-state-in-effect 회피.
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const data = await fetchPublicRooms()
-        if (!cancelled) {
-          setRooms(data)
-          setError(null)
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : t('lobby.fetchError'))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [t])
-
-  // 로비 Realtime: rooms 트리거의 'lobby' broadcast nudge → debounce 후 뷰 재조회.
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const nudge = () => {
-      if (timer) clearTimeout(timer)
-      timer = setTimeout(() => void applyRooms(), 400)
-    }
-    const ch = supabase
-      .channel('lobby')
-      .on('broadcast', { event: 'lobby_change' }, nudge)
-      .subscribe()
-    return () => {
-      if (timer) clearTimeout(timer)
-      void supabase.removeChannel(ch)
-    }
-  }, [applyRooms])
-
   async function onLogout() {
     await logout()
     navigate('/', { replace: true })
   }
 
-  async function onCreate(e: React.FormEvent) {
-    e.preventDefault()
-    const trimmedTitle = title.trim()
-    if (!trimmedTitle || !session) return
-    setCreating(true)
-    setError(null)
-    try {
-      const { room_id } = await createRoom(session.access_token, trimmedTitle, genre || undefined)
-      navigate(`/rooms/${room_id}/ready`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('lobby.createError'))
-      setCreating(false)
-    }
-  }
-
-  const q = query.trim().toLowerCase()
-  const filtered = q
-    ? rooms.filter(
-        (r) =>
-          r.title.toLowerCase().includes(q) ||
-          (r.hostDisplayName ?? '').toLowerCase().includes(q),
-      )
-    : rooms
+  const roomsCount = rooms.filter((r) => !r.isPractice).length
 
   return (
     <main
       className="relative min-h-screen bg-stage-base text-stage-text"
       style={scene ? ({ '--scene-accent': scene.accent } as React.CSSProperties) : undefined}
     >
-      {/* 로비 v1 = 배경 + 가독 스크림만(기능 UI·계약 무변경 — scene-prompts.md §신규 씬).
-          입장 영상이 도착하는 그 거리 — 시간축 variant 는 로그인과 공유(manifest). */}
-      {/* 정적 배경+스크림은 모바일 전용 — 데스크톱(md+)은 허브 맵 히어로가 그림 담당(중복 회피). */}
+      {/* 모바일 배경(정적 거리+스크림) — 데스크톱은 광장이 그림 담당. */}
       {scene && (
-        <div aria-hidden className={`fixed inset-0 ${scene.hub ? 'md:hidden' : ''}`}>
+        <div aria-hidden className="fixed inset-0 md:hidden">
           <img src={scene.hero} alt="" draggable={false} className="h-full w-full select-none object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-stage-base/90 via-stage-base/75 to-stage-base/50" />
         </div>
       )}
-      <div className="relative p-4 pb-24 sm:p-8 md:pb-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">{t('lobby.title')}</h1>
-        <div className="flex items-center gap-2">
-          <NotificationBell />
-          <button
-            onClick={onLogout}
-            className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-          >
-            {t('lobby.logout')}
-          </button>
-        </div>
-      </div>
-      {email && <p className="mt-2 text-stage-text-muted">{t('lobby.welcome', { email })}</p>}
 
-      {/* 광장 허브(로비 v2, 데스크톱) — 가게 = 기능 입구. 모바일은 하단 네비가 같은 목적지 담당. */}
-      {scene?.hub && (
-        <div className="mt-6 hidden max-w-5xl md:block">
-          <HubMap
-            blocks={scene.hub.blocks}
-            roomsCount={rooms.filter((r) => !r.isPractice).length}
-            onDest={handleDest}
-          />
-        </div>
-      )}
-
-      {invite && (
-        <section className="mt-6 max-w-sm rounded-lg border border-fire-amber/40 bg-fire-amber/10 px-4 py-3">
-          <p className="text-sm font-semibold">{t('lobby.inviteFrom', { host: invite.host ?? t('lobby.host') })}</p>
-          <p className="mt-0.5 truncate text-sm text-stage-text-muted">{invite.title}</p>
-          <button
-            onClick={() => void onAcceptInvite()}
-            disabled={inviteBusy}
-            className="mt-2 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-          >
-            {inviteBusy ? t('lobby.inviteJoining') : t('lobby.inviteJoin')}
-          </button>
-        </section>
-      )}
-
-      {/* flex-wrap: 360px 에서 select·버튼이 다음 줄로 — 버튼 세로 깨짐 방지(실렌더 발견). */}
-      <form onSubmit={onCreate} className="mt-6 flex flex-wrap gap-2">
-        <input
-          ref={createInputRef}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          aria-label={t('lobby.roomTitleInput')}
-          placeholder={t('lobby.roomTitlePlaceholder')}
-          maxLength={80}
-          className="flex-1 max-w-sm rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm"
-        />
-        <select
-          value={genre}
-          onChange={(e) => setGenre(e.target.value)}
-          aria-label={t('lobby.genreLabel')}
-          className="rounded-lg border border-stage-border bg-stage-base px-2 py-2 text-sm text-stage-text-muted"
-        >
-          <option value="">{t('lobby.genreNone')}</option>
-          {ROOM_GENRES.map((g) => (
-            <option key={g} value={g}>
-              {t(`lobby.genre.${g}`)}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          disabled={creating || !title.trim()}
-          className="shrink-0 whitespace-nowrap rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-        >
-          {creating ? t('lobby.creating') : t('lobby.createRoom')}
-        </button>
-      </form>
-
-      {error && (
-        <p className="mt-4 rounded-lg bg-fire-hot/10 px-4 py-2 text-sm text-fire-hot" role="alert">
-          {error}
-        </p>
-      )}
-
-      <div ref={reservationWrapRef}>
-        {session && <ReservationSection accessToken={session.access_token} />}
-      </div>
-
-      {recent.length > 0 && (
-        <section ref={recentSectionRef} className="mt-8">
-          <h2 className="text-sm font-semibold text-stage-text-muted">{t('lobby.recentRooms')}</h2>
-          <ul className="mt-3 space-y-2">
-            {recent.map((r) => (
-              <li
-                key={r.room_id}
-                className="flex items-center justify-between gap-4 rounded-lg border border-stage-border px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{r.title}</p>
-                  {r.fellows.length > 0 && (
-                    <p className="truncate text-xs text-stage-text-muted">
-                      {t('lobby.recentWith', { names: r.fellows.map((f) => f.display_name ?? '?').join(', ') })}
-                    </p>
-                  )}
-                </div>
-                {r.status !== 'ended' && (
-                  <button
-                    onClick={() => navigate(`/rooms/${r.room_id}/ready`)}
-                    className="shrink-0 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-                  >
-                    {t('lobby.join')}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section ref={roomsSectionRef} className="mt-8">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-sm font-semibold text-stage-text-muted">
-            {t('lobby.publicRooms')} ({filtered.length})
-          </h2>
-          <div className="flex items-center gap-3">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label={t('lobby.searchLabel')}
-              placeholder={t('lobby.searchPlaceholder')}
-              maxLength={40}
-              className="w-28 rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-xs sm:w-40"
-            />
+      <div className="relative flex min-h-screen flex-col p-4 pb-24 md:p-6 md:pb-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">{t('lobby.title')}</h1>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
             <button
-              onClick={() => void refresh()}
-              className="shrink-0 text-xs text-stage-text-muted hover:text-stage-text"
+              onClick={onLogout}
+              className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
             >
-              {t('lobby.refresh')}
+              {t('lobby.logout')}
             </button>
           </div>
         </div>
 
-        {loading ? (
-          <p className="mt-3 text-sm text-stage-text-muted">{t('common.loading')}</p>
-        ) : rooms.length === 0 ? (
-          <p className="mt-3 text-sm text-stage-text-muted">
-            {t('lobby.noRooms')}
-          </p>
-        ) : filtered.length === 0 ? (
-          <p className="mt-3 text-sm text-stage-text-muted">{t('lobby.noMatch')}</p>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {filtered.map((r) => {
-              const full = r.currentParticipants >= r.maxParticipants
-              return (
-                <li
-                  key={r.id}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-stage-border px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">
-                      {/* 상태 점(LOB-01): ● live / ○ waiting — 색은 fire-hot(라이브 시맨틱)·muted. */}
-                      <span
-                        aria-label={r.status === 'live' ? t('lobby.statusLive') : t('lobby.statusWaiting')}
-                        title={r.status === 'live' ? t('lobby.statusLive') : t('lobby.statusWaiting')}
-                        className={r.status === 'live' ? 'text-fire-hot' : 'text-stage-text-muted'}
-                      >
-                        {r.status === 'live' ? '●' : '○'}
-                      </span>{' '}
-                      {r.isLocked && <span aria-label={t('lobby.locked')} title={t('lobby.locked')}>🔒 </span>}
-                      {r.title}
-                    </p>
-                    {/* 장르 배지는 truncate 되는 제목 줄 밖에 — 긴 제목이 배지를 잘라먹지 않게(실렌더 발견). */}
-                    <p className="text-xs text-stage-text-muted">
-                      {r.hostDisplayName ?? t('lobby.host')} · {t('lobby.participantCount', { currentParticipants: r.currentParticipants, maxParticipants: r.maxParticipants })}
-                      {r.genre && (
-                        <span className="ml-2 inline-block whitespace-nowrap rounded bg-stage-elevated px-1.5 py-0.5 text-[10px]">
-                          {t(`lobby.genre.${r.genre}`)}
-                        </span>
-                      )}
-                      {r.isDemo && (
-                        <span className="ml-2 inline-block whitespace-nowrap rounded bg-fire-amber/20 px-1.5 py-0.5 text-[10px] text-fire-amber">
-                          {t('lobby.demoBadge')}
-                        </span>
-                      )}
-                      {r.isPractice && (
-                        <span className="ml-2 inline-block whitespace-nowrap rounded bg-spring-green/15 px-1.5 py-0.5 text-[10px] text-spring-green">
-                          {t('lobby.practiceBadge')}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  {full && !r.isLocked ? (
-                    // 마감(배우석) 폴백 = 관전(LOB-07) — 좌석 비점유라 언제나 가능. 잠금방 관전은 뷰어 초대로만.
-                    <button
-                      onClick={() => navigate(`/rooms/${r.id}?watch=1`)}
-                      className="shrink-0 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-                    >
-                      {t('lobby.watch')}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => navigate(`/rooms/${r.id}/ready`)}
-                      disabled={full}
-                      className="shrink-0 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-                    >
-                      {full ? t('lobby.full') : t('lobby.join')}
-                    </button>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
+        {invite && (
+          <section className="mt-4 max-w-sm rounded-lg border border-fire-amber/40 bg-fire-amber/10 px-4 py-3">
+            <p className="text-sm font-semibold">{t('lobby.inviteFrom', { host: invite.host ?? t('lobby.host') })}</p>
+            <p className="mt-0.5 truncate text-sm text-stage-text-muted">{invite.title}</p>
+            <button
+              onClick={() => void onAcceptInvite()}
+              disabled={inviteBusy}
+              className="mt-2 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+            >
+              {inviteBusy ? t('lobby.inviteJoining') : t('lobby.inviteJoin')}
+            </button>
+          </section>
         )}
-      </section>
+
+        {/* 광장(데스크톱) — 뷰포트를 채우는 얼굴. 가게 클릭 = 내부 씬 전환. */}
+        {scene?.hub && (
+          <div className="mt-4 hidden min-h-0 flex-1 items-center justify-center md:flex">
+            <div className="w-full" style={{ maxWidth: 'calc((100vh - 140px) * 1.5)' }}>
+              <HubMap blocks={scene.hub.blocks} roomsCount={roomsCount} onDest={handleDest} />
+            </div>
+          </div>
+        )}
+
+        {/* 모바일: 광장은 배너로만 — 기능 접근은 하단 네비(주인님 콜). */}
+        {scene?.hub && (
+          <img
+            src={scene.hub.blocks[0]?.hero}
+            alt=""
+            draggable={false}
+            className="mt-4 w-full select-none rounded-xl md:hidden"
+          />
+        )}
       </div>
 
-      {/* 모바일 하단 네비(주인님 콜: 모바일만) — 허브 맵이 없는 화면폭에서 같은 목적지 보장. */}
+      {/* 모바일 하단 네비 — 내부 4관 라우트 직행. */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-stage-border bg-stage-panel/95 backdrop-blur md:hidden">
-        <button onClick={scrollToRooms} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+        <button onClick={() => navigate('/lobby/theater')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navRooms')}
         </button>
-        <button onClick={focusCreate} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+        <button onClick={() => navigate('/lobby/workshop')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navCreate')}
         </button>
-        <button onClick={scrollToReserve} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+        <button onClick={() => navigate('/lobby/theater?tab=ticket')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navReserve')}
         </button>
-        <button onClick={() => navigate('/settings')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+        <button onClick={() => navigate('/lobby/atelier')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navSettings')}
         </button>
       </nav>
     </main>
-  )
-}
-
-// 예약 공연(LOB-06 MVP): 제목+시각+대상(최근 함께한 사람) → 예약 행 + 대상 인앱 알림.
-// 리마인더는 서버 pg_cron(30분 전). 로비 전용이라 이 파일에 상주(§12.1 — 폴더 신설 없음).
-function ReservationSection({ accessToken }: { accessToken: string }) {
-  const { t, i18n } = useTranslation()
-  const [mine, setMine] = useState<Reservation[]>([])
-  const [people, setPeople] = useState<RecentPerson[]>([])
-  const [checked, setChecked] = useState<Set<string>>(new Set())
-  const [title, setTitle] = useState('')
-  const [when, setWhen] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const [res, ppl] = await Promise.all([
-          fetchMyReservations(),
-          listRecentPeople(accessToken).then((r) => r.people).catch(() => []),
-        ])
-        if (!cancelled) {
-          setMine(res)
-          setPeople(ppl)
-        }
-      } catch {
-        /* 섹션은 폼만으로도 성립 */
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [accessToken])
-
-  const togglePerson = (id: string) => {
-    setChecked((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  async function onReserve(e: React.FormEvent) {
-    e.preventDefault()
-    const trimmed = title.trim()
-    if (!trimmed || !when) return
-    setBusy(true)
-    try {
-      const r = await createReservation(accessToken, trimmed, new Date(when).toISOString(), [...checked])
-      toast.success(t('lobby.reserveDone', { count: r.notified }))
-      setMine((prev) =>
-        [...prev, { id: r.reservation_id, title: trimmed, scheduled_at: r.scheduled_at }].sort(
-          (a, b) => a.scheduled_at.localeCompare(b.scheduled_at),
-        ),
-      )
-      setTitle('')
-      setWhen('')
-      setChecked(new Set())
-    } catch {
-      toast.error(t('lobby.reserveFailed'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <section className="mt-8">
-      <h2 className="text-sm font-semibold text-stage-text-muted">{t('lobby.reservations')}</h2>
-      {mine.length > 0 && (
-        <ul className="mt-3 space-y-2">
-          {mine.map((r) => (
-            <li key={r.id} className="flex items-center justify-between gap-4 rounded-lg border border-stage-border px-4 py-2.5">
-              <p className="min-w-0 truncate text-sm font-semibold">{r.title}</p>
-              <p className="shrink-0 text-xs text-stage-text-muted">
-                {new Date(r.scheduled_at).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' })}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form onSubmit={onReserve} className="mt-3 flex max-w-sm flex-col gap-2">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          aria-label={t('lobby.roomTitleInput')}
-          placeholder={t('lobby.roomTitlePlaceholder')}
-          maxLength={80}
-          className="rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm"
-        />
-        <input
-          type="datetime-local"
-          value={when}
-          onChange={(e) => setWhen(e.target.value)}
-          aria-label={t('lobby.reserveWhenLabel')}
-          className="rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm text-stage-text-muted"
-        />
-        {people.length > 0 && (
-          <div>
-            <p className="mb-1 text-xs text-stage-text-muted">{t('lobby.reserveInvitees')}</p>
-            <div className="flex flex-wrap gap-2">
-              {people.map((p) => (
-                <label key={p.user_id} className="flex items-center gap-1.5 rounded border border-stage-border px-2 py-1 text-xs">
-                  <input type="checkbox" checked={checked.has(p.user_id)} onChange={() => togglePerson(p.user_id)} />
-                  {p.display_name ?? '?'}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-        <button
-          type="submit"
-          disabled={busy || !title.trim() || !when}
-          className="self-start rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text disabled:opacity-40"
-        >
-          {busy ? t('lobby.reserving') : t('lobby.reserveMake')}
-        </button>
-      </form>
-    </section>
   )
 }

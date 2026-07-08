@@ -1,101 +1,144 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GlowMotes from '@/components/shared/GlowMotes'
 import type { HubBlock, HubDest } from '@/scenes/manifest'
 
-// 광장 허브 맵(로비 v2, scene-prompts.md §로비 v2) — 가게 = 기능 입구.
-// 유도 3단(PoC 확정): ①입장 웨이브 1회 ②휴지 숨쉬기(--rest .34) ③호버 강점등+주변 포커스 딤(--dim .30).
-// 함정 이식: blend 레이어(winoff)는 씬 레벨 형제(버튼 안이면 원화와 안 섞여 스티커화),
-//   off/휴지 전환 시 flicker 애니메이션이 opacity 를 덮지 않게 CSS 에서 animation:none 처리.
-// 블록 스트리트: blocks 가 2개 이상이면 좌우 팬(스냅) — 신기능 구역은 manifest 에 블록 append 만.
+// 광장 허브 맵(로비 v3 — A+B 확정: 컬러 스포트라이트 + 카메라 푸시, 호버 연구소 검수 채택).
+// 호버 = 주변 색을 빼고(멀티플라이+탈채) 그 건물만 원화로 남김 + 씬이 건물 쪽으로 3.5% 다가감.
+// 클릭 = 푸시 심화(1.16) 후 onDest — 내부 씬 크로스페이드로 이어짐. 웨이브 = 스포트라이트 순차 점멸.
+// troupe/reserved 는 소등(셔터) 상태 — 스포트라이트 대상 아님, 클릭은 안내 토스트(부모 처리).
 interface Props {
   blocks: HubBlock[]
-  roomsCount: number // 열린 방 수 — 대극장(rooms) 점등 강도
+  roomsCount: number // 열린 방 수 — 대극장 간판 뱃지
   onDest: (dest: HubDest) => void
 }
 
-// 목적지별 표현(색·휴지 강도). troupe(준비 중)·reserved(예비)는 소등 계열.
-const DEST_STYLE: Record<HubDest, { hue: string; glow: number; off?: boolean }> = {
-  rooms: { hue: '255,170,90', glow: 1.0 },
-  social: { hue: '255,185,110', glow: 0.85 },
-  create: { hue: '255,170,90', glow: 0.8 },
-  profile: { hue: '235,190,140', glow: 0.7 },
-  practice: { hue: '170,240,190', glow: 0.75 },
-  troupe: { hue: '200,190,255', glow: 0.25, off: true },
-  reserved: { hue: '140,170,255', glow: 0, off: true },
-}
+const OFF_DESTS: ReadonlySet<HubDest> = new Set(['troupe', 'reserved'])
+// 전환 연출 대상(내부 씬/라우트로 이어지는 목적지)
+const TRANSITION_DESTS: ReadonlySet<HubDest> = new Set(['rooms', 'create', 'social', 'profile', 'practice'])
 
 export default function HubMap({ blocks, roomsCount, onDest }: Props) {
   const { t } = useTranslation()
-  const sceneRef = useRef<HTMLDivElement>(null)
+  const camRef = useRef<HTMLDivElement>(null)
+  const spotRef = useRef<HTMLDivElement>(null)
+  const desatRef = useRef<HTMLDivElement>(null)
   const [blockIdx, setBlockIdx] = useState(0)
-  // 입장 웨이브: 마운트 1회, 목적지 순서대로 반짝 — reduced-motion 은 생략.
-  const [waved, setWaved] = useState<Set<HubDest>>(new Set())
+  const [leaving, setLeaving] = useState(false)
+  const block = blocks[blockIdx]
+
+  const setSpot = useCallback((s: { box: { l: number; t: number; w: number; h: number } } | null) => {
+    const spot = spotRef.current
+    const desat = desatRef.current
+    if (!spot || !desat) return
+    if (!s) {
+      spot.style.opacity = '0'
+      desat.style.opacity = '0'
+      return
+    }
+    const { l, t: top, w, h } = s.box
+    const hole = `radial-gradient(ellipse ${w * 0.72}% ${h * 0.62}% at ${l + w / 2}% ${top + h / 2}%, transparent 52%, black 78%)`
+    for (const el of [spot, desat]) {
+      el.style.webkitMaskImage = hole
+      el.style.maskImage = hole
+      el.style.opacity = '1'
+    }
+  }, [])
+
+  const setPush = useCallback((s: { box: { l: number; t: number; w: number; h: number } } | null, deep = false) => {
+    const cam = camRef.current
+    if (!cam) return
+    if (!s) {
+      cam.style.transform = ''
+      return
+    }
+    cam.style.transformOrigin = `${s.box.l + s.box.w / 2}% ${s.box.t + s.box.h / 2}%`
+    cam.style.transform = `scale(${deep ? 1.16 : 1.035})`
+  }, [])
+
+  // 입장 웨이브: 스포트라이트가 기능 가게를 순차 점멸(0.45s) — reduced-motion 생략.
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const shops = blocks[0]?.shops.filter((s) => !DEST_STYLE[s.dest].off) ?? []
+    const shops = blocks[0]?.shops.filter((s) => !OFF_DESTS.has(s.dest)) ?? []
     const timers: ReturnType<typeof setTimeout>[] = []
     shops.forEach((s, i) => {
-      timers.push(setTimeout(() => setWaved((p) => new Set(p).add(s.dest)), 600 + i * 380))
-      timers.push(setTimeout(() => setWaved((p) => { const n = new Set(p); n.delete(s.dest); return n }), 600 + i * 380 + 780))
+      timers.push(setTimeout(() => setSpot(s), 700 + i * 480))
     })
-    return () => timers.forEach(clearTimeout)
-  }, [blocks])
+    timers.push(setTimeout(() => setSpot(null), 700 + shops.length * 480))
+    return () => {
+      timers.forEach(clearTimeout)
+      setSpot(null)
+    }
+  }, [blocks, setSpot])
 
-  const setDim = (v: number) => sceneRef.current?.style.setProperty('--dim', String(v))
+  const enter = (s: (typeof block.shops)[number]) => {
+    if (!TRANSITION_DESTS.has(s.dest)) {
+      onDest(s.dest)
+      return
+    }
+    // 클릭 전환: 푸시 심화 + 페이드 → 내비게이션(부모).
+    setPush(s, true)
+    setLeaving(true)
+    setTimeout(() => onDest(s.dest), 280)
+  }
 
-  const label = (d: HubDest) => t(`hub.${d}.title`)
-  const hint = (d: HubDest) => t(`hub.${d}.hint`)
-  const cta = (d: HubDest) => t(`hub.${d}.cta`)
-
-  const block = blocks[blockIdx]
   if (!block) return null
 
   return (
     <div className="relative">
-      <div ref={sceneRef} className="hub-scene relative overflow-hidden rounded-xl" style={{ aspectRatio: '3 / 2' }}>
-        <img src={block.hero} alt="" draggable={false} className="hub-bg absolute inset-0 h-full w-full select-none object-cover" />
-        <div className="hub-grade absolute inset-0" aria-hidden />
-        <GlowMotes count={14} />
-        {block.shops.map((s) => {
-          const st = DEST_STYLE[s.dest]
-          const boxStyle = {
-            left: `${s.box.l}%`,
-            top: `${s.box.t}%`,
-            width: `${s.box.w}%`,
-            height: `${s.box.h}%`,
-          } as React.CSSProperties
-          return (
-            // 소등 레이어는 씬 직속(원화와 multiply — 함정) → 버튼과 좌표만 공유.
-            <div key={s.dest} className="contents">
-              {st.off && <span className="hub-winoff absolute" style={boxStyle} aria-hidden />}
+      <div
+        className={`hub-scene relative overflow-hidden rounded-xl transition-opacity duration-300 ${leaving ? 'opacity-0' : ''}`}
+        style={{ aspectRatio: '3 / 2' }}
+      >
+        <div ref={camRef} className="hub-cam absolute inset-0">
+          <img src={block.hero} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" />
+          <GlowMotes count={14} />
+          {block.shops.map(
+            (s) =>
+              OFF_DESTS.has(s.dest) && (
+                <span
+                  key={`off-${s.dest}`}
+                  className="hub-winoff absolute"
+                  style={{ left: `${s.box.l}%`, top: `${s.box.t}%`, width: `${s.box.w}%`, height: `${s.box.h}%` }}
+                  aria-hidden
+                />
+              ),
+          )}
+          <div ref={spotRef} className="hub-spot absolute inset-0" aria-hidden />
+          <div ref={desatRef} className="hub-desat absolute inset-0" aria-hidden />
+          {block.shops.map((s) => {
+            const off = OFF_DESTS.has(s.dest)
+            return (
               <button
-                onClick={() => onDest(s.dest)}
-                onMouseEnter={() => !st.off && setDim(0.3)}
-                onMouseLeave={() => setDim(0)}
-                onFocus={() => !st.off && setDim(0.3)}
-                onBlur={() => setDim(0)}
-                aria-label={label(s.dest)}
-                className={`hub-shop absolute ${waved.has(s.dest) ? 'hub-wave' : ''} ${st.off ? 'hub-off' : ''}`}
-                style={{ ...boxStyle, '--hue': st.hue, '--g': s.dest === 'rooms' ? Math.min(1.3, st.glow + roomsCount * 0.12) : st.glow } as React.CSSProperties}
+                key={s.dest}
+                onClick={() => enter(s)}
+                onMouseEnter={() => {
+                  if (!off) {
+                    setSpot(s)
+                    setPush(s)
+                  }
+                }}
+                onMouseLeave={() => {
+                  setSpot(null)
+                  setPush(null)
+                }}
+                onFocus={() => !off && setSpot(s)}
+                onBlur={() => setSpot(null)}
+                aria-label={t(`hub.${s.dest}.title`)}
+                className={`hub-shop absolute ${off ? 'hub-off' : ''}`}
+                style={{ left: `${s.box.l}%`, top: `${s.box.t}%`, width: `${s.box.w}%`, height: `${s.box.h}%` }}
               >
-                <span className="hub-winglow" aria-hidden>
-                  {s.cores.map((c, i) => (
-                    <span key={i} className="hub-core" style={{ left: `${c.x}%`, top: `${c.y}%` }} />
-                  ))}
-                </span>
                 <span className={`hub-sign ${s.box.l + s.box.w > 88 ? 'hub-sign-right' : ''}`}>
                   <span className="hub-sign-title">
-                    {label(s.dest)}
+                    {t(`hub.${s.dest}.title`)}
                     {s.dest === 'rooms' && roomsCount > 0 && <span className="hub-badge">{roomsCount}</span>}
                   </span>
-                  <span className="hub-sign-hint">{hint(s.dest)}</span>
-                  <span className={`hub-sign-cta ${st.off ? 'hub-sign-cta-ghost' : ''}`}>{cta(s.dest)}</span>
+                  <span className="hub-sign-hint">{t(`hub.${s.dest}.hint`)}</span>
+                  <span className={`hub-sign-cta ${off ? 'hub-sign-cta-ghost' : ''}`}>{t(`hub.${s.dest}.cta`)}</span>
                 </span>
               </button>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
       {blocks.length > 1 && (
         <div className="mt-2 flex items-center justify-center gap-2">

@@ -77,26 +77,29 @@ body {
   box-shadow: 0 0 8px 2px color-mix(in srgb, var(--scene-accent, var(--color-fire-amber)) 70%, transparent);
 }
 
-/* ── 광장 허브 맵 (로비 v2 — scene-prompts.md §로비 v2, PoC v5 검수 채택) ─────────
-   유도 3단: 웨이브(HubMap 이 .hub-wave 부여)·휴지 --rest .34·호버 --rest 1 + 씬 --dim .30.
-   함정: winoff 는 씬 직속(multiply 가 원화와 섞이려면 버튼 밖)·소등/휴지 전환은 animation 제어. */
-.hub-scene { --dim: 0; isolation: isolate; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45); }
-.hub-bg {
-  filter: brightness(calc(1 - 0.3 * var(--dim))) saturate(calc(1 - 0.28 * var(--dim)));
-  transition: filter 0.35s ease;
-}
-.hub-grade {
-  z-index: 1;
+/* ── 광장 허브 맵 (로비 v3 — A+B: 컬러 스포트라이트 + 카메라 푸시, 연구소 검수 채택) ──
+   호버 = 주변 색을 빼고(멀티플라이+탈채) 그 건물만 원화로 남김 + 씬 3.5% 푸시.
+   함정: 스포트라이트(멀티플라이)는 씬 직속 형제(버튼 안이면 원화와 안 섞임). */
+.hub-scene { isolation: isolate; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45); }
+.hub-cam { transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1); will-change: transform; }
+.hub-spot {
+  z-index: 2;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse 120% 90% at 50% 40%, transparent 40%, rgba(10, 16, 34, 0.55) 100%),
-    linear-gradient(rgba(52, 64, 96, 0.55), rgba(38, 48, 76, 0.6));
+  opacity: 0;
+  background: rgba(14, 18, 32, 0.62);
   mix-blend-mode: multiply;
-  opacity: calc(0.95 * var(--dim));
-  transition: opacity 0.35s ease;
+  transition: opacity 0.3s ease;
+}
+.hub-desat {
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  backdrop-filter: saturate(0.3) brightness(0.8);
+  -webkit-backdrop-filter: saturate(0.3) brightness(0.8);
+  transition: opacity 0.3s ease;
 }
 .hub-winoff {
-  z-index: 2;
+  z-index: 1;
   pointer-events: none;
   border-radius: 46% 46% 10% 10% / 30% 30% 6% 6%;
   background: radial-gradient(ellipse 80% 72% at 50% 47%,
@@ -104,42 +107,9 @@ body {
   mix-blend-mode: multiply;
   filter: blur(3px);
 }
-.hub-shop { z-index: 3; background: none; border: 0; padding: 0; cursor: pointer; --rest: 0.34; }
-.hub-shop:hover, .hub-shop:focus-visible, .hub-shop.hub-wave { --rest: 1; }
+.hub-shop { z-index: 3; background: none; border: 0; padding: 0; cursor: pointer; }
 .hub-shop:focus-visible { outline: 2px solid #ffd98a; outline-offset: 3px; border-radius: 12px; }
-.hub-shop.hub-off { --rest: 0.5; cursor: help; }
-.hub-winglow {
-  position: absolute;
-  inset: 0;
-  border-radius: 46% 46% 10% 10% / 30% 30% 6% 6%;
-  background: radial-gradient(ellipse 75% 62% at 50% 46%,
-    rgba(var(--hue), calc(0.5 * var(--g) * var(--rest))) 0%,
-    rgba(var(--hue), calc(0.26 * var(--g) * var(--rest))) 46%, transparent 72%);
-  mix-blend-mode: screen;
-  filter: blur(4px);
-  animation: hub-flicker 4.6s ease-in-out infinite alternate;
-  transition: transform 0.35s ease, filter 0.35s ease;
-}
-.hub-shop:hover .hub-winglow, .hub-shop:focus-visible .hub-winglow, .hub-shop.hub-wave .hub-winglow {
-  transform: scale(1.08);
-  filter: blur(6px) brightness(1.8);
-}
-.hub-off .hub-winglow { animation: none; }
-.hub-core {
-  position: absolute;
-  width: 34%;
-  height: 34%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(circle,
-    rgba(255, 236, 190, calc(0.85 * var(--g) * var(--rest))) 0%,
-    rgba(var(--hue), calc(0.35 * var(--g) * var(--rest))) 55%, transparent 75%);
-  mix-blend-mode: screen;
-  filter: blur(2px);
-}
-@keyframes hub-flicker {
-  0% { opacity: 0.92; } 38% { opacity: 1; } 55% { opacity: 0.95; } 100% { opacity: 0.9; }
-}
+.hub-shop.hub-off { cursor: help; }
 .hub-sign {
   position: absolute;
   left: 50%;
@@ -190,5 +160,71 @@ body {
 }
 .hub-sign-cta-ghost { background: none; border: 1px solid #6b4a2b; color: #c8b394; }
 @media (prefers-reduced-motion: reduce) {
-  .hub-winglow { animation: none; }
+  .hub-cam { transition: none; }
+}
+
+/* ── 내부 씬 셸 (로비 v3 — 무대 프레임 + 앵커 정박) ──────────────────────────
+   데스크톱: aspect 3/2 프레임 중앙 배치(레터박스) — 앵커 % 좌표가 크롭 없이 원화와 정합.
+   모바일: 배너 + 세로 흐름(.interior-anchor 가 정적 카드로 쌓임). */
+.interior-stage { width: 100%; }
+.interior-bg { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; display: block; }
+.interior-body { padding: 16px 16px 96px; display: flex; flex-direction: column; gap: 14px; }
+.interior-anchor { position: static; }
+@media (min-width: 768px) {
+  .interior-stage {
+    width: min(100vw, calc(100vh * 1.5));
+    aspect-ratio: 3 / 2;
+    animation: interior-in 0.45s ease-out;
+  }
+  .interior-bg { position: absolute; inset: 0; height: 100%; }
+  .interior-body { position: absolute; inset: 0; padding: 0; display: block; }
+  .interior-anchor {
+    position: absolute;
+    left: var(--al);
+    top: var(--at);
+    width: var(--aw);
+  }
+}
+@keyframes interior-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+/* 앵커 위 가독 패널(원화 위 반투명) */
+.interior-panel {
+  background: rgba(11, 11, 13, 0.68);
+  border: 1px solid rgba(255, 217, 138, 0.25);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 14px;
+}
+/* 공방 현판: 미니어처 무대 상단에 실시간 제목 */
+.workshop-plaque {
+  display: inline-block;
+  background: #2a1c10;
+  border: 2px solid #8a6a3a;
+  border-radius: 8px;
+  padding: 4px 14px;
+  color: #ffe9c4;
+  font-weight: 700;
+  font-size: clamp(10px, 1.1vw, 15px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 220, 160, 0.25);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 찻집 칩 */
+.tea-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(36, 24, 17, 0.9);
+  border: 1px solid #6b4a2b;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  color: #ffe9c4;
+  cursor: pointer;
+}
+.tea-chip:hover { border-color: #ffd98a; }
+@media (prefers-reduced-motion: reduce) {
+  .interior-stage { animation: none; }
 }

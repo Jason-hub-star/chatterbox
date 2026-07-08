@@ -57,6 +57,7 @@ deep contrast between warm gold and deep blue, inspired by Makoto Shinkai films
 > **블록 스트리트 확장 규격**: 로비 맵은 가로 팬 스트립의 블록 배열(`manifest hub.blocks`) — 신기능 구역은 **새 블록을 별도 생성해 오른쪽에 append**(기존 블록 픽셀·핫스팟 좌표 불변). 이음 = **새 블록의 좌단 석조 아치**가 경계 담당(신규 블록 프롬프트에 "left edge framed by a stone archway" 필수). edits 로 기존 그림 연장은 전역 재생성 함정으로 금지.
 > **유도 3단(PoC 확정)**: ①입장 웨이브 1회(reduced-motion 생략) ②휴지 숨쉬기 글로우(~34%) ③호버 강점등+주변 포커스 딤(`--dim` 0→0.30, 상시 그레이드 금지 — 원화 보존). 함정 2: blend 레이어는 씬 레벨 형제(버튼 안이면 스티커화)·off 상태는 `animation:none`(flicker 가 opacity 덮음).
 > 구 로비 v1(배경+스크림, day.webp)은 모바일 배경으로 유지. 거리-맵 인터랙션 P2 항목은 이 v2 로 승급 구현(UX-GAPS §3).
+> **로비 v3(2026-07-08 주인님 확정 — 레거시 걷어내기)**: 광장이 로비 화면의 전부(뷰포트 채움), 레거시 섹션은 **내부 4관으로 전가·삭제**: `/lobby/theater`(방 목록·검색·예약 매표소) · `/lobby/workshop`(생성 — 현판 실시간 반영) · `/lobby/teahouse`(최근 함께한 — 테이블 칩→매표소 예약 연계) · `/lobby/atelier`(아바타·언어 — 거울 프리뷰, `/settings` 리다이렉트). 내부 원화 4장 = 화풍 고정 병렬 생성(`{theater,workshop,teahouse,atelier}_interior_v1`). **호버 = A+B**(컬러 스포트라이트+카메라 푸시 — 연구소 6모드 검수 채택, 글로우 폐기), 클릭 = 푸시 심화→내부 크로스페이드. **기본 UI 즉시 오픈 원칙**(진입 후 추가 클릭 0 — 공방 autofocus), **살아있는 앵커 관당 1**(액자 포스터·현판·테이블 칩·거울 — "그림이 상태를 안다"). 내부는 aspect 3/2 무대 프레임(앵커 % 정합)·모바일은 배너+세로 폴백. 밤 확장 = variant 등재만(interiors 부분 등재 시 morning 폴백 — useInterior). 다음: 앰비언트 페이즈(고래 매팅+PixiJS 메시 유영·구름 드리프트 — 승인됨, 본 공사 후).
 > **로비는 영상 루프 금지 판정**: i2v 클립은 루프 이음새 점프컷 + 체류 화면 상시재생 비용 — 정적 원화 + 앰비언트 레이어(부품 모션·GlowMotes)로.
 
 #### 생성 대기 프롬프트 초안 (실행 전 원문 재확인 → 콜)

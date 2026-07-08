@@ -9,9 +9,12 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import LobbyPage from '@/pages/LobbyPage'
+import TheaterPage from '@/pages/lobby/TheaterPage'
+import WorkshopPage from '@/pages/lobby/WorkshopPage'
+import TeahousePage from '@/pages/lobby/TeahousePage'
+import AtelierPage from '@/pages/lobby/AtelierPage'
 import GreenRoomPage from '@/pages/GreenRoomPage'
 import RoomPage from '@/pages/RoomPage'
-import SettingsPage from '@/pages/SettingsPage'
 import AriaPocPage from '@/pages/AriaPocPage'
 import AvatarInspectorPage from '@/pages/AvatarInspectorPage'
 import AriaSelfPage from '@/pages/AriaSelfPage'
@@ -42,6 +45,11 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  // 로비 v3 내부 4관 — 광장 가게 클릭/모바일 하단 네비의 목적지(레거시 섹션 전가).
+  { path: '/lobby/theater', element: <ProtectedRoute><TheaterPage /></ProtectedRoute> },
+  { path: '/lobby/workshop', element: <ProtectedRoute><WorkshopPage /></ProtectedRoute> },
+  { path: '/lobby/teahouse', element: <ProtectedRoute><TeahousePage /></ProtectedRoute> },
+  { path: '/lobby/atelier', element: <ProtectedRoute><AtelierPage /></ProtectedRoute> },
   {
     // 분장실(MOD-05) — 입장 전 로컬 점검. cb.greenroomSkip 이면 페이지가 스스로 직행 리다이렉트.
     path: '/rooms/:roomId/ready',
@@ -59,14 +67,8 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  {
-    path: '/settings',
-    element: (
-      <ProtectedRoute>
-        <SettingsPage />
-      </ProtectedRoute>
-    ),
-  },
+  // 설정은 의상실로 전가(로비 v3) — 기존 링크 호환용 리다이렉트만 유지.
+  { path: '/settings', element: <Navigate to="/lobby/atelier" replace /> },
 ])
 
 export default function App() {
