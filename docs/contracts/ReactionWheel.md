@@ -71,7 +71,8 @@ interface ReactionOverlayProps {
 - **첫 리액션 유실 해소(prod E2E 실증)**: 예전 클라 직접 방송의 **송신측** datachannel 개설레이스 유실(~30%)은 **서버 릴레이(`send-reaction`)로 제거** — 배포 후 2탭 prod E2E 로 A→B(과거 취약 방향) **3/3 PASS**·양방향 확인. **잔여**는 *수신측* 신규참가자 datachannel 개설지연(입장 직후 수초간 broadcast 를 놓칠 수 있음) — 3.5s 후 발사 시 관측, **9s 후엔 안정**. 실유저는 입장 직후 몇 초 안에 리액션 안 쏘므로 무영향. cold start 시 원격 왕복 지연은 유실 아님(self-echo 로 발신자는 즉시).
 - **모바일 뷰어**(`canPublishData=false`) 리액션: 서버 릴레이가 actor/host 와 동일 경로라 멤버십만 통과하면 뷰어도 가능 — 뷰어 role 게이트·전용 UI 만 **후속**.
 - **서버 rate-limit**(토큰버킷/KV)·검열 allowlist 는 후속(현재 클라 5/s 쓰로틀).
-- ponytail: 모바일 롱프레스 트리거·키보드 핫키·2중링(12+)·전용 핑 사운드·화면끝 클램프.
+- ~~모바일 롱프레스 트리거·키보드 핫키~~ **구현됨(P-5, 2026-07-08)**: 무대 터치 롱프레스 ≥500ms → 휠 `initialSticky` 개화(탭 선택; 개화 직후 touchend `preventDefault` 로 합성 mousedown 의 백드롭 닫힘 차단, 10px 이동=스크롤 의도로 취소) · 숫자키 1~N 즉발(입력 필드 포커스·수식키 조합 제외). 트리거는 RoomPage, 휠은 `initialSticky` prop 만 추가. 헤드리스 실측 9/9(touch dispatch→개화→sticky→탭 발사·핫키 발사·입력중 미발사).
+- ponytail: 2중링(12+)·전용 핑 사운드·화면끝 클램프.
 
 ## MUST NOT (금지 사항)
 

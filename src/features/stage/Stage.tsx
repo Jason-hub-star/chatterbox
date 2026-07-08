@@ -1,4 +1,4 @@
-import { type RefObject } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
@@ -21,6 +21,20 @@ interface Props {
   onStopShare: () => void
 }
 
+// 반응형 슬롯 크기(P-5): <480px 뷰포트는 88px — 3열(88×3+gap+패딩)이 360px 에 들어가 압착이 사라진다.
+// 브레이크포인트 교차 시 아바타 캔버스가 재생성되지만(size 가 양쪽 이펙트 deps) 교차는 드묾 — 허용.
+const SLOT_PX_COMPACT = 88
+function useSlotPx(): number {
+  const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 479px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 479px)')
+    const onChange = (e: MediaQueryListEvent) => setCompact(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return compact ? SLOT_PX_COMPACT : SLOT_PX
+}
+
 export default function Stage({
   participants,
   selfProjectUrl,
@@ -32,6 +46,7 @@ export default function Stage({
   onStopShare,
 }: Props) {
   const { t } = useTranslation()
+  const slotPx = useSlotPx()
   // 최대 6석(§6.4; 8인 배치는 defer). slot_index 절대좌석 — key=identity 라 재배치돼도 캔버스 보존.
   const seats = seatParticipants(participants, slotOf, SLOTS.length)
 
@@ -44,20 +59,20 @@ export default function Stage({
         <StageSlot key={p ? p.identity : `empty-${i}`} col={SLOTS[i].col} row={SLOTS[i].row} speaking={p?.isSpeaking}>
           {p ? (
             p.isLocal ? (
-              <SelfAvatar projectUrl={selfProjectUrl} sendBlendshapes={sendBlendshapes} size={SLOT_PX} />
+              <SelfAvatar projectUrl={selfProjectUrl} sendBlendshapes={sendBlendshapes} size={slotPx} />
             ) : (
               <RemoteAvatar
                 identity={p.identity}
                 name={p.name}
                 projectUrl={remoteProjectUrl(p.identity)}
                 registry={remoteAvatars}
-                size={SLOT_PX}
+                size={slotPx}
               />
             )
           ) : (
             <span
               className="grid place-items-center rounded-lg border border-dashed border-stage-border bg-stage-panel/40 text-[11px] text-stage-text-muted"
-              style={{ width: SLOT_PX, height: SLOT_PX }}
+              style={{ width: slotPx, height: slotPx }}
             >
               {t('stage.emptySlot')}
             </span>

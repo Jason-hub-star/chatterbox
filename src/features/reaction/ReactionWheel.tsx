@@ -4,9 +4,9 @@ import { useReactionStore } from '@/stores/reactionStore'
 import { slotOffset, nearestSlot } from './reactionSlots'
 
 // 라디얼 리액션 휠. RoomPage 가 무대 우클릭(mousedown button 2)으로 origin 을 세팅해 마운트한다(열 때마다 새 마운트 = 상태 초기화).
-// 상호작용: 홀드-드래그-릴리즈(파이메뉴 방식) — 조준 슬롯 위에서 떼면 발사, 중앙서 떼면 sticky(열린 채 → 클릭 선택).
+// 상호작용: 홀드-드래그-릴리즈(파이메뉴 방식) — 조준 슬롯 위에서 떼면 발사, 중앙서 뗌/터치 롱프레스는 sticky(열린 채 → 탭·클릭 선택).
 // 슬롯 세트는 reactionStore(커스터마이즈·N 가변)에서 읽는다. SSOT: docs/contracts/ReactionWheel.md
-// ponytail: 모바일 롱프레스·키보드 1~N 핫키·화면끝 클램프·2중링(12+)은 후속.
+// P-5(2026-07-08): 터치 롱프레스(initialSticky)·숫자키 1~N 핫키는 RoomPage 쪽 배선. ponytail 잔여: 화면끝 클램프·2중링(12+).
 
 const RADIUS = 92
 const CHIP = 52
@@ -14,16 +14,17 @@ const DEADZONE = 34
 
 interface Props {
   origin: { x: number; y: number } // RoomPage 가 열릴 때만 렌더 → 항상 유효
+  initialSticky?: boolean // 터치 롱프레스 개화 — 릴리즈 발사 없이 처음부터 탭 선택 모드
   onFire: (emoji: string) => void
   onClose: () => void
 }
 
-export default function ReactionWheel({ origin, onFire, onClose }: Props) {
+export default function ReactionWheel({ origin, initialSticky, onFire, onClose }: Props) {
   const { t } = useTranslation()
   const slots = useReactionStore((s) => s.slots)
   const [active, setActive] = useState<number | null>(null)
-  const [sticky, setSticky] = useState(false)
-  const stickyRef = useRef(false) // 이벤트 핸들러에서만 쓰기 — sticky 진입 후 mouseup 중복 발사 차단
+  const [sticky, setSticky] = useState(initialSticky ?? false)
+  const stickyRef = useRef(initialSticky ?? false) // 이벤트 핸들러에서만 쓰기 — sticky 진입 후 mouseup 중복 발사 차단
 
   useEffect(() => {
     const count = slots.length

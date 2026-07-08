@@ -162,7 +162,7 @@ export default function LobbyPage() {
               aria-label={t('lobby.searchLabel')}
               placeholder={t('lobby.searchPlaceholder')}
               maxLength={40}
-              className="w-40 rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-xs"
+              className="w-28 rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-xs sm:w-40"
             />
             <button
               onClick={() => void refresh()}
