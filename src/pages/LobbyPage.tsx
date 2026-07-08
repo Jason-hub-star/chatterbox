@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/useToast'
-import { acceptInvite, createRoom, fetchPublicRooms, verifyInviteCode, ROOM_GENRES, type LobbyRoom } from '@/lib/rooms'
+import { acceptInvite, createRoom, fetchPublicRooms, listRecentRooms, verifyInviteCode, ROOM_GENRES, type LobbyRoom, type RecentRoom } from '@/lib/rooms'
+import NotificationBell from '@/components/shared/NotificationBell'
 import { SCENES, resolveScene } from '@/scenes/manifest'
 
 // LOB-01/03: 공개 방 목록(public_rooms 뷰) + 방 생성 + 검색 + Realtime 자동갱신.
@@ -34,6 +35,24 @@ export default function LobbyPage() {
   const inviteCode = searchParams.get('invite')
   const [invite, setInvite] = useState<{ code: string; title: string; host: string | null } | null>(null)
   const [inviteBusy, setInviteBusy] = useState(false)
+
+  // 최근 함께한 방(LOB-08) — 재방문 루프. 실패는 조용히(섹션 미표시).
+  const [recent, setRecent] = useState<RecentRoom[]>([])
+  useEffect(() => {
+    if (!session) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await listRecentRooms(session.access_token)
+        if (!cancelled) setRecent(r.rooms)
+      } catch {
+        /* 섹션 없음으로 강등 */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [session])
 
   useEffect(() => {
     if (!inviteCode || !session) return
@@ -176,12 +195,15 @@ export default function LobbyPage() {
       <div className="relative p-4 sm:p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t('lobby.title')}</h1>
-        <button
-          onClick={onLogout}
-          className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-        >
-          {t('lobby.logout')}
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button
+            onClick={onLogout}
+            className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+          >
+            {t('lobby.logout')}
+          </button>
+        </div>
       </div>
       {email && <p className="mt-2 text-stage-text-muted">{t('lobby.welcome', { email })}</p>}
 
@@ -235,6 +257,37 @@ export default function LobbyPage() {
         <p className="mt-4 rounded-lg bg-fire-hot/10 px-4 py-2 text-sm text-fire-hot" role="alert">
           {error}
         </p>
+      )}
+
+      {recent.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold text-stage-text-muted">{t('lobby.recentRooms')}</h2>
+          <ul className="mt-3 space-y-2">
+            {recent.map((r) => (
+              <li
+                key={r.room_id}
+                className="flex items-center justify-between gap-4 rounded-lg border border-stage-border px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{r.title}</p>
+                  {r.fellows.length > 0 && (
+                    <p className="truncate text-xs text-stage-text-muted">
+                      {t('lobby.recentWith', { names: r.fellows.map((f) => f.display_name ?? '?').join(', ') })}
+                    </p>
+                  )}
+                </div>
+                {r.status !== 'ended' && (
+                  <button
+                    onClick={() => navigate(`/rooms/${r.room_id}/ready`)}
+                    className="shrink-0 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+                  >
+                    {t('lobby.join')}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="mt-8">

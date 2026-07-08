@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
+import type { RecentPerson } from '@/lib/rooms'
 import Modal from '@/components/shared/Modal'
 import { toast } from '@/hooks/useToast'
 
@@ -18,6 +19,8 @@ export default function HostConsole({
   onSetMute,
   onSetPassword,
   onCreateInvite,
+  loadRecentPeople,
+  onDirectInvite,
   initialLocked,
   initialMuted,
 }: {
@@ -27,6 +30,8 @@ export default function HostConsole({
   onSetMute: (identity: string, muted: boolean) => Promise<void>
   onSetPassword: (password: string) => Promise<boolean>
   onCreateInvite: (role: 'actor' | 'viewer') => Promise<string> // 원문 invite_code 반환 — URL 조립·복사는 여기서
+  loadRecentPeople: () => Promise<RecentPerson[]> // 최근 함께한 사람(LOB-08, 현재 방 참가자 제외)
+  onDirectInvite: (userId: string) => Promise<void> // 지명 초대 = 1회권 + 상대 인앱 알림
   initialLocked: boolean
   initialMuted?: Set<string>
 }) {
@@ -52,6 +57,37 @@ export default function HostConsole({
   const [invUrl, setInvUrl] = useState<string | null>(null)
   const [invBusy, setInvBusy] = useState(false)
   const [invErr, setInvErr] = useState<string | null>(null)
+
+  // 최근 함께한 사람(LOB-08) — 지명 초대 후보. 보낸 사람은 목록에서 제거(중복 발송 방지).
+  const [people, setPeople] = useState<RecentPerson[]>([])
+  const [sending, setSending] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const list = await loadRecentPeople()
+        if (!cancelled) setPeople(list)
+      } catch {
+        /* 목록 없음으로 강등 */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [loadRecentPeople])
+
+  const sendDirectInvite = async (userId: string) => {
+    setSending(userId)
+    try {
+      await onDirectInvite(userId)
+      toast.success(t('host.inviteSent'))
+      setPeople((prev) => prev.filter((p) => p.user_id !== userId))
+    } catch {
+      toast.error(t('host.inviteFailed'))
+    } finally {
+      setSending(null)
+    }
+  }
 
   const createInvite = async (role: 'actor' | 'viewer') => {
     setInvErr(null)
@@ -160,6 +196,25 @@ export default function HostConsole({
           />
         )}
         {invErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{invErr}</p>}
+        {people.length > 0 && (
+          <div className="mt-3">
+            <p className="mb-1.5 text-xs text-stage-text-muted">{t('host.recentPeople')}</p>
+            <ul className="space-y-1.5">
+              {people.map((p) => (
+                <li key={p.user_id} className="flex items-center gap-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate">{p.display_name ?? '?'}</span>
+                  <button
+                    onClick={() => void sendDirectInvite(p.user_id)}
+                    disabled={sending === p.user_id}
+                    className="shrink-0 rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+                  >
+                    {sending === p.user_id ? t('host.sendingInvite') : t('host.sendInvite')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       {/* 방 비밀번호 */}

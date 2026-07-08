@@ -69,8 +69,33 @@ export interface VerifyInviteResult { room_id: string; title: string; host_displ
 
 // 초대링크 (LOB-05). 원문 코드는 발급 응답에 1회만 — URL 조립(`/lobby?invite=<code>`)은 호출부.
 // role='viewer' 는 관전 초대(Phase 4) — 잠금방도 이 문으로만 관전 가능.
-export const createRoomInvite = (accessToken: string, roomId: string, role: 'actor' | 'viewer' = 'actor') =>
-  callFn<CreateInviteResult>('create-room-invite', accessToken, { room_id: roomId, role })
+// invitedUserId(LOB-08 지명 재초대): 그 사용자 전용 1회권 + 상대 인앱 알림(re_invite) 발송.
+export const createRoomInvite = (
+  accessToken: string,
+  roomId: string,
+  role: 'actor' | 'viewer' = 'actor',
+  invitedUserId?: string,
+) =>
+  callFn<CreateInviteResult>('create-room-invite', accessToken, {
+    room_id: roomId,
+    role,
+    ...(invitedUserId ? { invited_user_id: invitedUserId } : {}),
+  })
+
+export interface RecentRoom {
+  room_id: string
+  title: string
+  status: string
+  last_joined_at: string
+  fellows: { user_id: string; display_name: string | null }[]
+}
+export interface RecentPerson { user_id: string; display_name: string | null }
+
+// 최근 함께한 방/사람(LOB-08) — 타인 display_name 은 서버(service_role)만 읽는다.
+export const listRecentRooms = (accessToken: string) =>
+  callFn<{ rooms: RecentRoom[] }>('list-recent-rooms', accessToken, {})
+export const listRecentPeople = (accessToken: string, excludeRoomId?: string) =>
+  callFn<{ people: RecentPerson[] }>('list-recent-people', accessToken, excludeRoomId ? { exclude_room_id: excludeRoomId } : {})
 
 // read-only 검증(사용횟수 무변화) — 수락 확인 UI 용.
 export const verifyInviteCode = (accessToken: string, code: string) =>

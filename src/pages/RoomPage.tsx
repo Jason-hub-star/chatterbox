@@ -5,7 +5,7 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, createRoomInvite } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, createRoomInvite, listRecentPeople } from '@/lib/rooms'
 import { getVgenUrl } from '@/lib/vgen'
 import { useStageStore } from '@/stores/stageStore'
 import { fetchRoomMembers, fetchRoomHostId } from '@/lib/dub'
@@ -339,6 +339,15 @@ export default function RoomPage() {
     if (!session) throw new Error('no session')
     return (await createRoomInvite(session.access_token, roomId, role)).invite_code
   }, [session, roomId])
+  // 최근 함께한 사람(LOB-08) — 현재 방 참가자 제외 후보 + 지명 초대(상대 인앱 알림).
+  const loadRecentPeople = useCallback(async () => {
+    if (!session) return []
+    return (await listRecentPeople(session.access_token, roomId)).people
+  }, [session, roomId])
+  const directInvite = useCallback(async (userId: string) => {
+    if (!session) throw new Error('no session')
+    await createRoomInvite(session.access_token, roomId, 'actor', userId)
+  }, [session, roomId])
   // VGEN 공유: jobId 방송 + 자기 화면 로컬 반영(publishData self-echo 없음). 중지도 방송+로컬.
   const shareVgen = useCallback(
     async (jobId: string) => {
@@ -369,6 +378,8 @@ export default function RoomPage() {
           onSetMute={mute}
           onSetPassword={changePassword}
           onCreateInvite={createInvite}
+          loadRecentPeople={loadRecentPeople}
+          onDirectInvite={directInvite}
           initialLocked={roomLocked}
           initialMuted={mutedIdentities}
         />
