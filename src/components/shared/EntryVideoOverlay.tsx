@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 // 입장 영상 오버레이(아트 피벗 Phase 3 = ONBOARDING-01 시네마틱 인트로).
@@ -20,9 +21,19 @@ export default function EntryVideoOverlay({ hero, video, onDone }: { hero: strin
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- finish 는 ref 가드로 멱등
   }, [])
-  return (
+  // 포털: AuthShell 모바일 패널의 backdrop-blur 가 fixed 의 기준점을 카드로 바꿔
+  // 오버레이가 카드 크기로 갇히는 함정 → body 직결로 뷰포트 전체를 확보.
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-stage-base" onClick={finish} role="presentation" data-entry-overlay>
-      <img src={hero} alt="" draggable={false} className="entry-zoom h-full w-full select-none object-cover" />
+      {/* 크롭 정렬: AuthShell 모바일 배경과 동일한 30% — 세로 화면에서 열리는 순간 그림 조각이 튀지 않고
+          인물이 보이는 슬라이스에서 시작(16:9→세로 커버 크롭의 이음새). */}
+      <img
+        src={hero}
+        alt=""
+        draggable={false}
+        className="entry-zoom h-full w-full select-none object-cover"
+        style={{ objectPosition: '30% center' }}
+      />
       <video
         src={video}
         autoPlay
@@ -32,8 +43,10 @@ export default function EntryVideoOverlay({ hero, video, onDone }: { hero: strin
         onEnded={finish}
         onError={finish}
         className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${videoReady ? 'opacity-100' : 'opacity-0'}`}
+        style={{ objectPosition: '30% center' }}
       />
       <p className="absolute bottom-4 right-5 text-xs text-stage-text-muted/80">{t('entry.skipHint')}</p>
-    </div>
+    </div>,
+    document.body,
   )
 }
