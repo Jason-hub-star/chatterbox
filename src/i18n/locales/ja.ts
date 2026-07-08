@@ -147,6 +147,8 @@ export const ja: Record<string, string> = {
   'host.consoleTitle': '参加者の管理',
   'host.noOthers': '管理できる他の参加者がいません。',
   'host.kick': 'キック',
+  'host.kickConfirmTitle': 'キックの確認',
+  'host.kickConfirmBody': '{{name}} さんをルームから退出させますか？再入室は可能です。',
   'host.kickConfirm': 'キック確定',
   'host.kicking': 'キック中…',
   'host.kickFailed': 'キックに失敗しました。',

@@ -147,6 +147,8 @@ export const ko: Record<string, string> = {
   "host.consoleTitle": "참가자 관리",
   "host.noOthers": "관리할 다른 참가자가 없어요.",
   "host.kick": "강퇴",
+  "host.kickConfirmTitle": "강퇴 확인",
+  "host.kickConfirmBody": "{{name}} 님을 방에서 내보낼까요? 다시 입장할 수 있어요.",
   "host.kickConfirm": "강퇴 확정",
   "host.kicking": "강퇴 중…",
   "host.kickFailed": "강퇴에 실패했어요.",

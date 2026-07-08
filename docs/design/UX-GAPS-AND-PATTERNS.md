@@ -25,7 +25,7 @@ tags: [design]
 | P-1 | ~~**Toast/피드백 시스템**~~ **B 완료**(2026-07-08) — `components/shared/ToastHost.tsx` 전역 마운트(하단 중앙·의미색 전역 고정·role=alert/status·4s 소멸·체크 드로우/쉐이크 0-dep 모션·360px 안전). emit 배선 = cue(기존)+리액션 릴레이 실패. 실렌더 5/5. | 잔여: emit 사이트 확장(채팅 전송표시·아바타 저장·방 생성 성공) — 아래 §2 각 행 | 채널·렌더 닫힘 | #20 #21 #19 | — |
 | P-2 | ~~**Progress + ETA 컴포넌트**~~ **B 완료**(2026-07-08) — `components/shared/ProgressBar.tsx`(확정=`--scene-accent` 채움+불씨 선단 / null=불확정 흐름) + VGEN `VgenProgress`(1s 틱·95% 캡·남은초·`etaProgress` 테스트 3) + DUB 합성 단계 바. 실렌더 4/4. | 잔여: DUB 업로드/STT 진행도(§2 DUB 행) | VGEN·DUB합성 닫힘 | #20 | — |
 | P-3 | **Realtime 상태 훅** | `useRealtimeRow(table, id, onChange)`. `vgenStore.ts:47-54`(job 구독)·로비 broadcast가 이미 인프라 사용 → 동형 확장. | DUB 수동 새로고침(`DubPanel.tsx:98`)·DUB 트랙 상태 미실시간·로비 조용한 갱신 | #33 | S~M |
-| P-4 | **Modal 프리미티브** | `<Modal role="dialog" aria-modal>` + 포커스 트랩 + Esc + 복귀 포커스. | 비번 오버레이 포커스 트랩 없음(`RoomPage.tsx:355-389`), 강퇴 확인이 버튼 토글(`HostConsole.tsx:167-186`), 위험액션 확인 없음 | #34 a11y | M |
+| P-4 | ~~**Modal 프리미티브**~~ **B 완료**(2026-07-08) — `components/shared/Modal.tsx`(dialog·트랩·Esc·복귀·백드롭) + 강퇴 확인 모달(2단 토글 폐지)·CostConfirmDialog 전환. 2탭 E2E 7/7. 비번 "오버레이"는 오진(전체 페이지 렌더 — 트랩 불요·autoFocus 존재). | 잔여: 강퇴 사유 필드(서버 reason 미수용 — 서버 슬라이스) | 닫힘 | #34 a11y | — |
 | P-5 | ~~**반응형 규약**~~ **B 완료(코어, 2026-07-08)** — 무대 `useSlotPx`(<480px→88px)·룸 `p-4 sm:p-8`·로비 검색 `w-28 sm:w-40`·터치 롱프레스+숫자키 핫키(아래 무대/리액션 행). 실측 9/9(88px·scrollWidth 360·데스크톱 120 불변). | 잔여: 화면 전수 반응형 감사(모바일 뷰어와 함께) | 압착 3종 닫힘 | #38 | — |
 | P-6 | **다크 elevation 그림자(폴리시·P2)** | 다크용 그림자 elevation 스케일 신설(현 DESIGN-TOKENS 그림자는 랜딩 그린틴트 → 플랫폼 `index.css` 미배선, 깊이는 전부 border). ⚠️ **대비 교정은 취소** — WCAG 실측 muted #9c9ca3 vs base=7.21:1·panel=6.49·elevated=5.80 전부 AA 통과(정찰 3.2:1은 오산). 그림자는 결함 아닌 폴리시라 P2. | 깊이감(카드/모달) — 폴리시 | #11 | S |
 
@@ -52,12 +52,12 @@ tags: [design]
 | **DUB** | ~~수동 새로고침·미실시간~~ **A 완료**(`useRealtimeRow` 2구독·새로고침 버튼 제거) | 잔여: 로딩 스켈레톤/전환 표현만 | #33 | S |
 | | 업로드/STT 진행도·ETA 없음 (~~합성~~ 은 **B 완료** — P-2 단계 바, 믹싱 실측 %) | P-2 재사용(ProgressBar) | #20 | S |
 | **VGEN** | ~~"generating"만·ETA 없음~~ **A+B 완료**(P-2 바+남은시간, 2026-07-08 실렌더: aria-valuenow·"남은 시간 약 85초") | 닫힘 | #20 | — |
-| **호스트 콘솔** | 강퇴 2단 토글 불명확·사유 미저장(`HostConsole.tsx:167-186`; 계약서는 모달+사유 규정) | P-4 모달 + 사유 필드 | #34 | M |
+| **호스트 콘솔** | ~~강퇴 2단 토글~~ **B 완료**(P-4 확인 모달 — 이름+재입장 안내, 2탭 E2E 실강퇴 왕복) | 잔여: 사유 필드(서버 reason 미수용 — 서버 슬라이스) | #34 | S |
 | | 연결품질 이모지만(`HostConsole.tsx:156`) | 가시 텍스트 라벨 + RTT/loss(색맹·모바일 안전) | #8 #39 | S~M |
 | | ~~mute 낙관적 desync~~ **A 완료**(`muted_by_host` 서버진실 로드, `HostConsole.tsx:33`) | 닫힘 | #33 | — |
 | | 호스트 이양 미배선(leave-room은 `new_host_id` 반환하나 UI 무시) | 호스트 변경 감지 + 컨트롤 토글 | — | M |
 | **뷰어/모바일** | **ViewerGate·MobileViewer 구현 0**(계약서만 존재) | 라우트 가드 + 모바일 뷰 배선 | #38 | L |
-| **a11y** | 비번 오버레이 포커스 트랩 없음(`RoomPage.tsx:355-389`) | P-4 | a11y | S |
+| **a11y** | ~~비번 오버레이 포커스 트랩 없음~~ **오진 정정**(2026-07-08): 비번 입장은 오버레이가 아닌 전체 페이지 렌더 — 배경 포커서블이 없어 트랩 불요, autoFocus 존재 | 닫힘(오진) | a11y | — |
 | **다국어** | ~~en/ja 각 33키 vs ko 228키(≈14%)~~ **B 완료**(2026-07-08 — en/ja 232키 전량 완역, coverage missing 0·orphan 0, 실렌더 EN/JA 확인) | 닫힘 — 신규 ko 키 추가 시 en/ja 동시 채움이 새 규약 | #26 | — |
 | **설정·Reset** | 감사 2회전에서 설정 갭 미발견 — 트랙 B 항목 없음(§4 회귀 금지만). ~~랜딩~~ 은 인앱 폐지(2026-07-08, snack-web 담당) | Reset은 위 온보딩/Auth "잔여" 행 참조(AuthShell 적용됨) | — | — |
 

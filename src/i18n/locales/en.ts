@@ -147,6 +147,8 @@ export const en: Record<string, string> = {
   'host.consoleTitle': 'Manage participants',
   'host.noOthers': 'No other participants to manage.',
   'host.kick': 'Kick',
+  'host.kickConfirmTitle': 'Confirm kick',
+  'host.kickConfirmBody': 'Remove {{name}} from the room? They can rejoin.',
   'host.kickConfirm': 'Confirm kick',
   'host.kicking': 'Kicking…',
   'host.kickFailed': 'Kick failed.',

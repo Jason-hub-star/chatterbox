@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
+import Modal from '@/components/shared/Modal'
 
 // 연결품질 점(6인 실증 — 참가자별 열화 즉시 파악). UI 최소: 행당 이모지 1개.
 const qualityDot = (q?: RoomParticipant['connectionQuality']): string =>
@@ -27,7 +28,8 @@ export default function HostConsole({
   initialMuted?: Set<string>
 }) {
   const { t } = useTranslation()
-  const [confirming, setConfirming] = useState<string | null>(null)
+  // 강퇴 확인: 2단 토글(계약 위반·오클릭 위험) → Modal 프리미티브(P-4, 포커스트랩·Esc·복귀).
+  const [confirming, setConfirming] = useState<{ identity: string; name: string } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   // 음소거 배지 = 서버 진실(initialMuted, muted_by_host)에 이 세션 낙관적 오버라이드(호스트 클릭)를 얹어
@@ -163,33 +165,36 @@ export default function HostConsole({
                   >
                     {muting === p.identity ? t('host.muting') : isMuted ? t('host.unmute') : t('host.mute')}
                   </button>
-                  {confirming === p.identity ? (
-                    <>
-                      <button
-                        onClick={() => void doKick(p.identity)}
-                        disabled={busy === p.identity}
-                        className="rounded bg-fire-hot px-2 py-1 text-xs font-semibold text-stage-base disabled:opacity-40"
-                      >
-                        {busy === p.identity ? t('host.kicking') : t('host.kickConfirm')}
-                      </button>
-                      <button onClick={() => setConfirming(null)} className="text-xs text-stage-text-muted">
-                        {t('common.cancel')}
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setConfirming(p.identity)}
-                      className="rounded border border-fire-hot/50 px-2 py-1 text-xs text-fire-hot hover:bg-fire-hot/10"
-                    >
-                      {t('host.kick')}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setConfirming({ identity: p.identity, name: p.name })}
+                    className="rounded border border-fire-hot/50 px-2 py-1 text-xs text-fire-hot hover:bg-fire-hot/10"
+                  >
+                    {t('host.kick')}
+                  </button>
                 </li>
               )
             })}
           </ul>
         )}
       </section>
+
+      {confirming && (
+        <Modal title={t('host.kickConfirmTitle')} onClose={() => setConfirming(null)}>
+          <p className="mt-2 text-sm text-stage-text-muted">{t('host.kickConfirmBody', { name: confirming.name })}</p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => void doKick(confirming.identity)}
+              disabled={busy === confirming.identity}
+              className="flex-1 rounded-lg bg-fire-hot px-3 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+            >
+              {busy === confirming.identity ? t('host.kicking') : t('host.kickConfirm')}
+            </button>
+            <button onClick={() => setConfirming(null)} className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted">
+              {t('common.cancel')}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
