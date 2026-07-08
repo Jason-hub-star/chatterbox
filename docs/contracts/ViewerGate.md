@@ -10,6 +10,11 @@ tags: [contract]
 `/rooms/:id` 진입 시 role·디바이스를 판정해 올바른 뷰로 분기하는 라우트 가드 로직.
 시각적 컴포넌트가 아닌 **판정 + 리다이렉트 레이어**. (ONBOARDING-FLOW.md §뷰어게이트 연계, G-158)
 
+> **구현 상태 (2026-07-08, 뷰어 경로 MVP — Phase 4)** — 이 계약은 풀비전이고 as-built 는:
+> - **서버**: 마이그 `20260708130000_viewer_role` — `join_room_as_viewer` RPC(좌석·정원·current_participants 비점유, 멱등) + `join_room_as_participant` v2(정원·슬롯 계산에서 뷰어 제외 — 뷰어 NULL slot 의 NOT IN 오염 수정, 실제 role 반환) + 활성 참가자 부분 유니크. Edge `join-as-viewer`(잠금방 403 — 관전은 뷰어 초대로만) + `leave-room` 뷰어 인지(뷰어 퇴장 무영향·호스트 승계는 배우만·배우 0 → ended) + 초대 role='viewer' 개방(`create-room-invite`·`accept-invite`).
+> - **클라**: 별도 가드 레이어 대신 RoomPage 가 `?watch=1` 로 `join-as-viewer` 호출, `roomStore.myRole`(서버 진실)로 관전 렌더 — 무대에서 내 좌석·SelfAvatar(웹캠 요청) 미마운트, 마이크 버튼 대신 "관전 중" 뱃지. canPublish=false 는 livekit-token 이 role 로 강제(기존). 채팅·리액션은 로그인 뷰어에게 허용(LOB-09 정합).
+> - **후속**: 모바일 UA 자동 다운그레이드·MobileViewer 전용 뷰·익명(guest_demo — Supabase 대시보드 anonymous sign-in 활성화 필요)·정원 매트릭스 세분.
+
 ## 진입 조건 매트릭스
 
 | 조건 | 판정 | 이동 경로 |

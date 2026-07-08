@@ -5,7 +5,7 @@
 //   조인이 full 로 지면 사용 1회 낭비 가능(ponytail: 환불 없음 — 재발급이 싸다).
 import { cors, json, getAppUser } from "../_shared/supa.ts";
 import { isInviteCode, inviteCodeHash } from "../_shared/inviteCode.ts";
-import { joinAsParticipant } from "../_shared/roomJoin.ts";
+import { joinAsParticipant, joinAsViewer } from "../_shared/roomJoin.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -59,5 +59,8 @@ Deno.serve(async (req) => {
   // 정상 수락이면 시도 카운터 리셋(pwjoin 과 동일 — 정상 유저의 연속 초대 사용이 스스로 잠기지 않게).
   await service.from("rate_limit_counters").delete().eq("bucket_key", rlKey);
 
-  return await joinAsParticipant(service, row.room_id, userId);
+  // 초대 role 에 따라 배우석/관전으로 분기(Phase 4) — 뷰어는 좌석·정원 비점유.
+  return row.invite_role === "viewer"
+    ? await joinAsViewer(service, row.room_id, userId)
+    : await joinAsParticipant(service, row.room_id, userId);
 });

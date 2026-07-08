@@ -5,7 +5,7 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, createRoomInvite } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, createRoomInvite } from '@/lib/rooms'
 import { getVgenUrl } from '@/lib/vgen'
 import { useStageStore } from '@/stores/stageStore'
 import { fetchRoomMembers, fetchRoomHostId } from '@/lib/dub'
@@ -76,7 +76,12 @@ export default function RoomPage() {
     ;(async () => {
       setJoinPhase('joining')
       try {
-        const r = await joinRoom(session.access_token, roomId, ac.signal)
+        // ?watch=1 → 관전 입장(ViewerGate MVP): 좌석 비점유·발행권 없음. 이미 뷰어로 조인된 상태라면
+        // 어느 경로든 rejoined 가 실제 role 을 돌려주므로(마이그 v2) myRole 은 항상 서버 진실.
+        const watch = new URLSearchParams(window.location.search).has('watch')
+        const r = watch
+          ? await joinRoomAsViewer(session.access_token, roomId, ac.signal)
+          : await joinRoom(session.access_token, roomId, ac.signal)
         if (cancelled) return
         useRoomStore.getState().setRoomContext({
           currentRoomId: roomId,
@@ -148,6 +153,8 @@ export default function RoomPage() {
 
   const connectionState = useRoomStore((s) => s.connectionState)
   const participants = useRoomStore((s) => s.participants)
+  // 관전 모드(서버 진실): 무대에서 내 좌석·카메라·마이크가 없다 — SelfAvatar 미마운트로 웹캠 요청 자체가 없음.
+  const isViewer = useRoomStore((s) => s.myRole) === 'viewer'
   const micEnabled = useRoomStore((s) => s.micEnabled)
   const mutedByHost = useRoomStore((s) => s.mutedByHost)
   const error = useRoomStore((s) => s.error)
@@ -327,10 +334,10 @@ export default function RoomPage() {
     },
     [session, roomId, roomLocked],
   )
-  // 초대링크 발급(LOB-05) — 원문 코드 반환, URL 조립·복사는 HostConsole.
-  const createInvite = useCallback(async (): Promise<string> => {
+  // 초대링크 발급(LOB-05, role: actor/viewer) — 원문 코드 반환, URL 조립·복사는 HostConsole.
+  const createInvite = useCallback(async (role: 'actor' | 'viewer'): Promise<string> => {
     if (!session) throw new Error('no session')
-    return (await createRoomInvite(session.access_token, roomId)).invite_code
+    return (await createRoomInvite(session.access_token, roomId, role)).invite_code
   }, [session, roomId])
   // VGEN 공유: jobId 방송 + 자기 화면 로컬 반영(publishData self-echo 없음). 중지도 방송+로컬.
   const shareVgen = useCallback(
@@ -553,7 +560,7 @@ export default function RoomPage() {
                 onTouchCancel={cancelStageTouch}
               >
                 <Stage
-                  participants={participants}
+                  participants={isViewer ? participants.filter((p) => !p.isLocal) : participants}
                   selfProjectUrl={selfProjectUrl}
                   remoteProjectUrl={remoteProjectUrl}
                   slotOf={slotOf}
@@ -582,14 +589,20 @@ export default function RoomPage() {
           )}
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={toggleMic}
-              disabled={!connected || mutedByHost}
-              className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-            >
-              {micEnabled ? t('room.micOff') : t('room.micOn')}
-            </button>
-            {mutedByHost && (
+            {isViewer ? (
+              <span className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted" role="status">
+                {t('room.watching')}
+              </span>
+            ) : (
+              <button
+                onClick={toggleMic}
+                disabled={!connected || mutedByHost}
+                className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+              >
+                {micEnabled ? t('room.micOff') : t('room.micOn')}
+              </button>
+            )}
+            {mutedByHost && !isViewer && (
               <span className="text-xs text-fire-hot" role="status">{t('room.mutedByHost')}</span>
             )}
             <button

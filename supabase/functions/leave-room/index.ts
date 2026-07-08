@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
   const { data: mine } = await service
     .from("room_participants")
-    .select("id, token_version")
+    .select("id, token_version, role")
     .eq("room_id", roomId)
     .eq("user_id", userId)
     .neq("state", "left")
@@ -46,18 +46,22 @@ Deno.serve(async (req) => {
     .update({ state: "left", left_at: new Date().toISOString(), token_version: mine.token_version + 1 })
     .eq("id", mine.id);
 
-  // 남은 활성 참가자 수
+  // 뷰어 퇴장(Phase 4): 좌석·정원 비점유라 방 상태에 아무 영향 없음 — 기록만 하고 끝.
+  if (mine.role === "viewer") return json({ ok: true, new_host_id: null }, 200);
+
+  // 남은 활성 배우 수 — 정원·승계·종료 판정은 배우 기준(뷰어는 무대를 유지할 수 없다).
   const { count } = await service
     .from("room_participants")
     .select("id", { count: "exact", head: true })
     .eq("room_id", roomId)
-    .neq("state", "left");
+    .neq("state", "left")
+    .neq("role", "viewer");
   const remaining = count ?? 0;
 
   let newHostId: string | null = null;
 
   if (remaining === 0) {
-    // 마지막 참가자 → 방 종료
+    // 마지막 배우 → 방 종료(남은 뷰어의 토큰은 room ended 게이트가 무효화).
     await service
       .from("rooms")
       .update({ status: "ended", ended_at: new Date().toISOString(), current_participants: 0 })
@@ -66,12 +70,13 @@ Deno.serve(async (req) => {
   }
 
   if (room.host_id === userId) {
-    // 호스트 승계: 남은 참가자 중 가장 먼저 들어온 사람
+    // 호스트 승계: 남은 배우 중 가장 먼저 들어온 사람(뷰어는 호스트가 될 수 없음).
     const { data: next } = await service
       .from("room_participants")
       .select("user_id")
       .eq("room_id", roomId)
       .neq("state", "left")
+      .neq("role", "viewer")
       .order("joined_at", { ascending: true })
       .limit(1)
       .single();

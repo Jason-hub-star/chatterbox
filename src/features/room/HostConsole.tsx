@@ -26,7 +26,7 @@ export default function HostConsole({
   onKick: (identity: string) => Promise<void>
   onSetMute: (identity: string, muted: boolean) => Promise<void>
   onSetPassword: (password: string) => Promise<boolean>
-  onCreateInvite: () => Promise<string> // 원문 invite_code 반환 — URL 조립·복사는 여기서
+  onCreateInvite: (role: 'actor' | 'viewer') => Promise<string> // 원문 invite_code 반환 — URL 조립·복사는 여기서
   initialLocked: boolean
   initialMuted?: Set<string>
 }) {
@@ -53,11 +53,11 @@ export default function HostConsole({
   const [invBusy, setInvBusy] = useState(false)
   const [invErr, setInvErr] = useState<string | null>(null)
 
-  const createInvite = async () => {
+  const createInvite = async (role: 'actor' | 'viewer') => {
     setInvErr(null)
     setInvBusy(true)
     try {
-      const code = await onCreateInvite()
+      const code = await onCreateInvite(role)
       const url = `${location.origin}/lobby?invite=${code}`
       setInvUrl(url)
       try {
@@ -133,13 +133,23 @@ export default function HostConsole({
       {/* 초대링크 — 친구 부르기(LOB-05). 72시간·5회 기본, 원문 코드는 이 세션 응답에만 존재. */}
       <section>
         <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.inviteTitle')}</h3>
-        <button
-          onClick={() => void createInvite()}
-          disabled={invBusy}
-          className="rounded bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40"
-        >
-          {invBusy ? t('host.creatingInvite') : t('host.createInvite')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => void createInvite('actor')}
+            disabled={invBusy}
+            className="rounded bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40"
+          >
+            {invBusy ? t('host.creatingInvite') : t('host.createInvite')}
+          </button>
+          {/* 관전 초대(Phase 4): 좌석 비점유·발행권 없음 — 잠금방도 이 링크로만 관전 가능. */}
+          <button
+            onClick={() => void createInvite('viewer')}
+            disabled={invBusy}
+            className="rounded border border-stage-border px-3 py-1.5 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+          >
+            {t('host.createViewerInvite')}
+          </button>
+        </div>
         {invUrl && (
           <input
             readOnly

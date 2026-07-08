@@ -27,6 +27,10 @@ export const createRoom = (accessToken: string, title: string, genre?: string) =
 export const joinRoom = (accessToken: string, roomId: string, signal?: AbortSignal) =>
   callFn<JoinRoomResult>('join-public-room', accessToken, { room_id: roomId }, { signal })
 
+// 관전 입장(LOB-07·ViewerGate) — 좌석·정원 비점유, 잠금방은 403(뷰어 초대로만).
+export const joinRoomAsViewer = (accessToken: string, roomId: string, signal?: AbortSignal) =>
+  callFn<JoinRoomResult>('join-as-viewer', accessToken, { room_id: roomId }, { signal })
+
 export const leaveRoom = (accessToken: string, roomId: string) =>
   callFn<LeaveRoomResult>('leave-room', accessToken, { room_id: roomId })
 
@@ -64,8 +68,9 @@ export interface CreateInviteResult { invite_code: string; room_id: string; max_
 export interface VerifyInviteResult { room_id: string; title: string; host_display_name: string | null; role: string }
 
 // 초대링크 (LOB-05). 원문 코드는 발급 응답에 1회만 — URL 조립(`/lobby?invite=<code>`)은 호출부.
-export const createRoomInvite = (accessToken: string, roomId: string) =>
-  callFn<CreateInviteResult>('create-room-invite', accessToken, { room_id: roomId })
+// role='viewer' 는 관전 초대(Phase 4) — 잠금방도 이 문으로만 관전 가능.
+export const createRoomInvite = (accessToken: string, roomId: string, role: 'actor' | 'viewer' = 'actor') =>
+  callFn<CreateInviteResult>('create-room-invite', accessToken, { room_id: roomId, role })
 
 // read-only 검증(사용횟수 무변화) — 수락 확인 UI 용.
 export const verifyInviteCode = (accessToken: string, code: string) =>
@@ -85,13 +90,14 @@ export interface LobbyRoom {
   maxParticipants: number
   hostDisplayName: string | null
   isLocked: boolean
+  isDemo: boolean
 }
 
 export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
   // LOB-01: 진행 중(live)인 방도 목록에 — 카드의 ●/○ 상태 점이 구분(ended 만 제외).
   const { data, error } = await supabase
     .from('public_rooms')
-    .select('id, title, genre, status, current_participants, max_participants, host_display_name, is_locked, created_at')
+    .select('id, title, genre, status, current_participants, max_participants, host_display_name, is_locked, is_demo, created_at')
     .in('status', ['waiting', 'live'])
     .order('created_at', { ascending: false })
     .limit(50)
@@ -105,5 +111,6 @@ export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
     maxParticipants: (r.max_participants as number) ?? 6,
     hostDisplayName: (r.host_display_name as string | null) ?? null,
     isLocked: (r.is_locked as boolean) ?? false,
+    isDemo: (r.is_demo as boolean) ?? false,
   }))
 }

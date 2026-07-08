@@ -60,7 +60,8 @@ export default function LobbyPage() {
     setInviteBusy(true)
     try {
       const r = await acceptInvite(session.access_token, invite.code)
-      navigate(`/rooms/${r.room_id}/ready`)
+      // 관전 초대는 분장실(카메라 점검) 불요 — 바로 관전 모드로. 배우 초대만 /ready 경유.
+      navigate(r.role === 'viewer' ? `/rooms/${r.room_id}?watch=1` : `/rooms/${r.room_id}/ready`)
     } catch {
       // 상세 사유(used_up 등)는 서버 코드라 사용자 문구는 하나로 — 만료/소진/폐기 동일 처리.
       toast.error(t('lobby.inviteInvalid'))
@@ -297,15 +298,30 @@ export default function LobbyPage() {
                           {t(`lobby.genre.${r.genre}`)}
                         </span>
                       )}
+                      {r.isDemo && (
+                        <span className="ml-2 inline-block whitespace-nowrap rounded bg-fire-amber/20 px-1.5 py-0.5 text-[10px] text-fire-amber">
+                          {t('lobby.demoBadge')}
+                        </span>
+                      )}
                     </p>
                   </div>
-                  <button
-                    onClick={() => navigate(`/rooms/${r.id}/ready`)}
-                    disabled={full}
-                    className="shrink-0 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-                  >
-                    {full ? t('lobby.full') : t('lobby.join')}
-                  </button>
+                  {full && !r.isLocked ? (
+                    // 마감(배우석) 폴백 = 관전(LOB-07) — 좌석 비점유라 언제나 가능. 잠금방 관전은 뷰어 초대로만.
+                    <button
+                      onClick={() => navigate(`/rooms/${r.id}?watch=1`)}
+                      className="shrink-0 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+                    >
+                      {t('lobby.watch')}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => navigate(`/rooms/${r.id}/ready`)}
+                      disabled={full}
+                      className="shrink-0 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+                    >
+                      {full ? t('lobby.full') : t('lobby.join')}
+                    </button>
+                  )}
                 </li>
               )
             })}
