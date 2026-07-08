@@ -6,18 +6,7 @@ import type { VgenResolution } from '@/lib/fal'
 // 와이어는 snake_case(DB/API), React 안은 camelCase.
 // SSOT: docs/API-SURFACE.md, docs/reference/patterns/falai-vgen-pipeline.md
 
-const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
-
-async function callFn<T>(name: string, accessToken: string, body: unknown): Promise<T> {
-  const res = await fetch(`${FN_BASE}/${name}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify(body),
-  })
-  const json = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(json?.error ? String(json.error) : `${name} 실패 (${res.status})`)
-  return json as T
-}
+import { callFn } from '@/lib/edgeFn'
 
 function mapJob(r: Record<string, unknown>): VgenJob {
   return {

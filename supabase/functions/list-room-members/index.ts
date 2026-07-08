@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
   const { data: rows, error } = await service
     .from("room_participants")
-    .select("slot_index, role, users(id, auth_id, display_name, avatar_url)")
+    .select("slot_index, role, muted_by_host, users(id, auth_id, display_name, avatar_url)")
     .eq("room_id", roomId)
     .neq("state", "left")
     .order("slot_index", { ascending: true });
@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       avatar_url: u.avatar_url,
       slot_index: r.slot_index,
       role: r.role,
+      muted_by_host: r.muted_by_host,   // mute 마운트 로드(A-FUNC-3): 새로고침 후 desync 방지
     };
   });
   return json({ members }, 200);

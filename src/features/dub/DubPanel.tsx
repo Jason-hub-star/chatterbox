@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
+import { useRealtimeRow } from '@/hooks/useRealtimeRow'
 import DubRecorder from '@/features/dub/DubRecorder'
 import DubCompositor from '@/features/dub/DubCompositor'
 import {
@@ -66,6 +67,11 @@ export default function DubPanel({ roomId }: { roomId: string }) {
     return () => { cancelled = true }
   }, [roomId, refresh])
 
+  // 수동 새로고침 제거(A-SEAM-3): 세션 생명주기(uploaded→…→completed)·트랙 상태(assigned→synced)를
+  // Realtime 으로 구독 → 변경 시 신뢰 소스 재조회. dub_* 는 supabase_realtime publication 에 등록됨.
+  useRealtimeRow('dub_sessions', 'room_id', roomId, refresh)
+  useRealtimeRow('dub_tracks', 'dub_session_id', session?.id, refresh)
+
   // 역할 배정: 명시 선택이 없으면 세그먼트 순서대로 자동 교대(호스트가 override 가능).
   // effect 로 prefill 하지 않고 렌더 시 파생 → set-state-in-effect 회피.
   const assignedTo = (segId: number): string => {
@@ -95,9 +101,6 @@ export default function DubPanel({ roomId }: { roomId: string }) {
         <h2 className="text-sm font-semibold text-stage-text-muted">
           {t('dub.header')} {status && <span className="ml-2 rounded bg-stage-border px-2 py-0.5 text-xs">{status}</span>}
         </h2>
-        <button onClick={() => void refresh()} className="text-xs text-stage-text-muted hover:text-stage-text">
-          {t('dub.refresh')}
-        </button>
       </div>
 
       {error && <p className="mt-3 rounded bg-fire-hot/10 px-3 py-2 text-sm text-fire-hot" role="alert">{error}</p>}

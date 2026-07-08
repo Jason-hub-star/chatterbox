@@ -34,12 +34,16 @@ export interface ChatMessage {
 
 // 현재 이 사용자가 속한 방의 DB 컨텍스트 (Phase 2). LiveKit 연결 상태와 별개.
 export type RoomStatus = 'waiting' | 'live' | 'ended'
+// room_participants.role. 호스트는 rooms.host_id 로 별도 판정(이 필드는 참가자 역할만).
+export type ParticipantRole = 'actor' | 'viewer'
 export interface RoomContext {
   currentRoomId: string | null
   roomStatus: RoomStatus | null
   hostId: string | null           // rooms.host_id (users.id) — room-authority 발신자 판별(후속)
   myParticipantId: string | null  // 내 room_participants.id
   mySlotIndex: number | null
+  // 내 역할(ViewerGate.md §Store 의존성 roomStore.role). 뷰어 권한 게이트(A-SEAM-4)·MobileViewer(B)가 읽는다.
+  myRole: ParticipantRole | null
 }
 
 interface RoomStore {
@@ -56,6 +60,7 @@ interface RoomStore {
   hostId: string | null
   myParticipantId: string | null
   mySlotIndex: number | null
+  myRole: ParticipantRole | null
   // 액션
   setConnectionState: (state: ConnectionState) => void
   setParticipants: (participants: RoomParticipant[]) => void
@@ -79,6 +84,7 @@ const INITIAL = {
   hostId: null as string | null,
   myParticipantId: null as string | null,
   mySlotIndex: null as number | null,
+  myRole: null as ParticipantRole | null,
 }
 
 export const useRoomStore = create<RoomStore>((set) => ({

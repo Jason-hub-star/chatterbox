@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { VgenJob } from '@/types/vgen'
 import type { VgenResolution } from '@/lib/fal'
 import { triggerVgen, subscribeToVgenJob, fetchRecentJobs } from '@/lib/vgen'
+import { estimateVgenSeconds } from '@/lib/vgenEta'
 import { useUserStore } from '@/stores/userStore'
 
 // VGEN 생성 상태 슬라이스(slice1: 호스트 단일작성). 협업 LWW·히스토리 갤러리는 slice2.
@@ -11,6 +12,9 @@ import { useUserStore } from '@/stores/userStore'
 interface VgenStore {
   isGenerating: boolean
   currentJob: VgenJob | null
+  // 진행/ETA 데이터 seam(A-SEAM-2): 생성 시작 시 추정 총 소요초. 바·남은시간 표현은 트랙 B.
+  // 경과시간은 currentJob.createdAt 로 트랙 B 가 계산(별도 필드 불필요).
+  currentJobEtaSec: number | null
   recentJobs: VgenJob[]
   error: string | null
   loadRecent: (roomId: string) => Promise<void>
@@ -24,6 +28,7 @@ let unsub: (() => void) | null = null
 export const useVgenStore = create<VgenStore>((set, get) => ({
   isGenerating: false,
   currentJob: null,
+  currentJobEtaSec: null,
   recentJobs: [],
   error: null,
 
@@ -35,11 +40,11 @@ export const useVgenStore = create<VgenStore>((set, get) => ({
   generate: async (roomId, prompt, durationSec, resolution, imageUrls) => {
     const token = useUserStore.getState().session?.access_token
     if (!token) { set({ error: '로그인이 필요해요.' }); return }
-    set({ isGenerating: true, error: null })
+    set({ isGenerating: true, error: null, currentJobEtaSec: estimateVgenSeconds(durationSec) })
     try {
       const res = await triggerVgen(token, roomId, prompt, durationSec, resolution, { imageUrls })
       if (res.status === 'done') { // dedup 캐시 히트: 즉시 완료
-        set({ isGenerating: false })
+        set({ isGenerating: false, currentJobEtaSec: null })
         await get().loadRecent(roomId)
         return
       }
@@ -47,18 +52,18 @@ export const useVgenStore = create<VgenStore>((set, get) => ({
       unsub = subscribeToVgenJob(res.job_id, (job) => {
         set({ currentJob: job })
         if (job.status === 'done' || job.status === 'failed') {
-          set({ isGenerating: false, error: job.status === 'failed' ? '영상 생성에 실패했어요. 크레딧은 환불됐어요.' : null })
+          set({ isGenerating: false, currentJobEtaSec: null, error: job.status === 'failed' ? '영상 생성에 실패했어요. 크레딧은 환불됐어요.' : null })
           void get().loadRecent(roomId)
           if (unsub) { unsub(); unsub = null }
         }
       })
     } catch (e) {
-      set({ isGenerating: false, error: e instanceof Error ? e.message : '생성 요청 실패' })
+      set({ isGenerating: false, currentJobEtaSec: null, error: e instanceof Error ? e.message : '생성 요청 실패' })
     }
   },
 
   reset: () => {
     if (unsub) { unsub(); unsub = null }
-    set({ isGenerating: false, currentJob: null, error: null })
+    set({ isGenerating: false, currentJob: null, currentJobEtaSec: null, error: null })
   },
 }))

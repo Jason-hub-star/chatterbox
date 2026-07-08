@@ -1,21 +1,9 @@
 import { supabase } from '@/lib/supabase'
+import { callFn } from '@/lib/edgeFn'
 
 // 더빙(DUB) Edge Function 경계 래퍼. rooms.ts 와 동일 패턴(callFn + 타입드 래퍼).
 // 와이어는 snake_case(DB/API), React 안은 camelCase.
 // SSOT: docs/API-SURFACE.md, docs/state-machines/DubSession.md
-
-const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
-
-async function callFn<T>(name: string, accessToken: string, body: unknown): Promise<T> {
-  const res = await fetch(`${FN_BASE}/${name}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify(body),
-  })
-  const json = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(json?.error ? String(json.error) : `${name} 실패 (${res.status})`)
-  return json as T
-}
 
 // presigned PUT(R2)로 blob 직접 업로드. Supabase Storage uploadToSignedUrl 대체(R2 egress $0).
 async function putToR2(uploadUrl: string, body: Blob, contentType: string): Promise<void> {
@@ -38,7 +26,7 @@ export interface DubTrack {
   translatedText: string | null
   status: 'assigned' | 'recording' | 'submitted' | 'synced'
 }
-export interface RoomMember { userId: string; authId: string; displayName: string | null; avatarUrl: string | null; slotIndex: number; role: string }
+export interface RoomMember { userId: string; authId: string; displayName: string | null; avatarUrl: string | null; slotIndex: number; role: string; mutedByHost: boolean }
 export interface RoleAssignment { segment_id: number; participant_id: string }
 
 // ── 업로드(create-dub-upload → storage signed upload) ────────────────
@@ -171,12 +159,13 @@ export async function fetchRoomMembers(accessToken: string, roomId: string): Pro
   const { members } = await callFn<{
     members: Array<{
       user_id: string; auth_id: string; display_name: string | null
-      avatar_url: string | null; slot_index: number; role: string
+      avatar_url: string | null; slot_index: number; role: string; muted_by_host?: boolean
     }>
   }>('list-room-members', accessToken, { room_id: roomId })
   return members.map((m) => ({
     userId: m.user_id, authId: m.auth_id, displayName: m.display_name,
     avatarUrl: m.avatar_url, slotIndex: m.slot_index, role: m.role,
+    mutedByHost: m.muted_by_host ?? false, // 배포 지연 대비 옵셔널(구 배포본은 미반환)
   }))
 }
 

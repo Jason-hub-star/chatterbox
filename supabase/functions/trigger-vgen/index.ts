@@ -98,13 +98,6 @@ Deno.serve(async (req) => {
   const { data: me } = await service.from("users").select("age_band").eq("id", userId).maybeSingle();
   if (me?.age_band !== "18_plus") return json({ error: "성인 인증이 필요한 기능이에요." }, 403);
 
-  // 일일 한도
-  const dailyLimit = await getFlag(service, "VGEN_DAILY_LIMIT", 3);
-  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const { count } = await service.from("vgen_jobs").select("id", { count: "exact", head: true })
-    .eq("triggered_by", userId).gte("created_at", since);
-  if ((count ?? 0) >= dailyLimit) return json({ error: `하루 ${dailyLimit}회까지만 생성할 수 있어요.` }, 429);
-
   const modelId = Deno.env.get("VGEN_MODEL_ID") ?? "bytedance/seedance-2.0/fast/reference-to-video";
   const promptHash = await sha256hex(`${promptText}|${modelId}|${duration}|${resolution}|${aspectRatio}|${imageUrls.join(",")}`);
 
@@ -114,6 +107,13 @@ Deno.serve(async (req) => {
     .eq("room_id", roomId).eq("prompt_hash", promptHash)
     .eq("status", "done").eq("validation_status", "passed").maybeSingle();
   if (hit) return json({ job_id: hit.id, status: "done", credit_cost: 0, cached: true }, 200);
+
+  // 일일 한도(원자적 · TOCTOU 방지, SEC-6): 기존 count→insert 비원자 갭을 check_rate_limit RPC 로 대체
+  // (SEC-1/SEC-4 프리미티브 재사용, 원자 증가). 캐시 히트(무과금)는 위에서 이미 반환 → 실제 생성 시도만 계수.
+  // 리셋 없음 = (user,일) 누적 캡. 고정 24h 윈도(SEC-4 비용 캡과 동일 정책).
+  const dailyLimit = await getFlag(service, "VGEN_DAILY_LIMIT", 3);
+  const { data: underLimit } = await service.rpc("check_rate_limit", { p_key: `vgen:${userId}`, p_max: dailyLimit, p_window_sec: 86400 });
+  if (underLimit === false) return json({ error: `하루 ${dailyLimit}회까지만 생성할 수 있어요.` }, 429);
 
   // 모더레이션(차감 前)
   const openaiKey = Deno.env.get("OPENAI_API_KEY");

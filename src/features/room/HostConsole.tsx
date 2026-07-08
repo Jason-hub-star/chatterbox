@@ -7,7 +7,7 @@ const qualityDot = (q?: RoomParticipant['connectionQuality']): string =>
   q === 'excellent' ? '🟢' : q === 'good' ? '🟡' : q === 'poor' ? '🔴' : q === 'lost' ? '❌' : '⚪'
 
 // HostConsole — RightPanel 의 host-only 탭. 방 운영: 비밀번호(HOST-06)·음소거(HOST-08)·강퇴(HOST-01).
-// 호스트 판별은 RoomPage(mySlotIndex===0)에서 게이트 — 이 탭은 호스트에게만 마운트된다.
+// 호스트 판별은 RoomPage(rooms.host_id===내 users.id, 이양 반영)에서 게이트 — 이 탭은 호스트에게만 마운트된다.
 // 서버(set-*/kick-*)가 rooms.host_id 로 진짜 권한을 재검증하므로 이 UI 게이트는 표시용.
 export default function HostConsole({
   participants,
@@ -16,6 +16,7 @@ export default function HostConsole({
   onSetMute,
   onSetPassword,
   initialLocked,
+  initialMuted,
 }: {
   participants: RoomParticipant[]
   myIdentity: string
@@ -23,14 +24,17 @@ export default function HostConsole({
   onSetMute: (identity: string, muted: boolean) => Promise<void>
   onSetPassword: (password: string) => Promise<boolean>
   initialLocked: boolean
+  initialMuted?: Set<string>
 }) {
   const { t } = useTranslation()
   const [confirming, setConfirming] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  // 음소거 상태는 낙관적 로컬 집합(호스트가 유일한 음소거 주체). ponytail: 호스트 새로고침 시
-  // 배지 표시는 초기화되지만 실제 음소거는 DB(muted_by_host)+LiveKit 로 유지되고 재음소거는 멱등.
-  const [muted, setMuted] = useState<Set<string>>(new Set())
+  // 음소거 배지 = 서버 진실(initialMuted, muted_by_host)에 이 세션 낙관적 오버라이드(호스트 클릭)를 얹어
+  // 렌더 시 파생(A-FUNC-3) — 새로고침 후 배지 desync 제거. prop→state 동기화 effect 불필요(항상 최신 prop 반영).
+  const [mutedOverrides, setMutedOverrides] = useState<Map<string, boolean>>(new Map())
+  const isMutedNow = (identity: string): boolean =>
+    mutedOverrides.has(identity) ? mutedOverrides.get(identity)! : (initialMuted?.has(identity) ?? false)
   const [muting, setMuting] = useState<string | null>(null)
 
   // 방 비밀번호
@@ -59,12 +63,7 @@ export default function HostConsole({
     setMuting(identity)
     try {
       await onSetMute(identity, next)
-      setMuted((prev) => {
-        const s = new Set(prev)
-        if (next) s.add(identity)
-        else s.delete(identity)
-        return s
-      })
+      setMutedOverrides((prev) => new Map(prev).set(identity, next))
     } catch {
       setErr(t('host.muteFailed'))
     } finally {
@@ -147,7 +146,7 @@ export default function HostConsole({
         ) : (
           <ul className="space-y-2">
             {others.map((p) => {
-              const isMuted = muted.has(p.identity)
+              const isMuted = isMutedNow(p.identity)
               return (
                 <li
                   key={p.identity}
