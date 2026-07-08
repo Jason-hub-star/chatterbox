@@ -13,6 +13,8 @@ interface Notif {
   read_at: string | null
 }
 
+// 반응형 단일 인스턴스: 모바일=텍스트 버튼 / 데스크톱=원형 유리 칩(종 아이콘 — 헤더 바 없는
+// 광장 위, 그림 가림 최소). 두 인스턴스 동시 마운트 금지 — 같은 채널 토픽 재구독으로 크래시.
 export default function NotificationBell() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -89,7 +91,22 @@ export default function NotificationBell() {
       <button
         onClick={() => void toggle()}
         aria-label={t('lobby.notifications')}
-        className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+        className="relative hidden h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-stage-base/40 text-stage-text-muted backdrop-blur-sm transition hover:bg-stage-base/60 hover:text-stage-text md:flex"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden>
+          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M10.3 20a2 2 0 0 0 3.4 0" strokeLinecap="round" />
+        </svg>
+        {unread > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-fire-amber px-1 text-center text-xs font-semibold text-stage-base">
+            {unread}
+          </span>
+        )}
+      </button>
+      <button
+        onClick={() => void toggle()}
+        aria-label={t('lobby.notifications')}
+        className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted hover:text-stage-text md:hidden"
       >
         {t('lobby.notifications')}
         {unread > 0 && (

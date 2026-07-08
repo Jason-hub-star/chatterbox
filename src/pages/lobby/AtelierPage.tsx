@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { fetchAvatarPresets, resolveAvatarUrl, type AvatarPreset } from '@/lib/avatars'
@@ -8,7 +9,8 @@ import LanguageToggle from '@/components/shared/LanguageToggle'
 import InteriorShell from '@/pages/lobby/InteriorShell'
 import { useInterior } from '@/pages/lobby/useInterior'
 
-// 의상실(로비 v3) — 레거시 전가: /settings 전체(아바타 선택·언어). 살아있는 앵커: 중앙 거울에
+// 의상실(로비 v3) — 레거시 전가: /settings 전체(아바타 선택·언어) + 로그아웃(로비 헤더 제거로
+// 이전 — 설정의 집). 살아있는 앵커: 중앙 거울에
 // 고른 아바타가 비침(기본 정적 프리뷰) — [비춰보기]로 웹캠 트래킹 승급(권한은 의도적 행동 뒤).
 const vars = (a: { l: number; t: number; w: number; h: number }) =>
   ({ '--al': `${a.l}%`, '--at': `${a.t}%`, '--aw': `${a.w}%` }) as React.CSSProperties
@@ -17,8 +19,10 @@ const noop = () => {}
 
 export default function AtelierPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const interior = useInterior('profile')
   const avatarUrl = useUserStore((s) => s.avatarUrl)
+  const logout = useUserStore((s) => s.logout)
   const setMyAvatar = useUserStore((s) => s.setMyAvatar)
   const [savingUrl, setSavingUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
@@ -114,6 +118,16 @@ export default function AtelierPage() {
             <div className="mt-1.5">
               <LanguageToggle />
             </div>
+          </div>
+          <div className="border-t border-stage-border/60 pt-3">
+            <button
+              onClick={() => {
+                void logout().then(() => navigate('/', { replace: true }))
+              }}
+              className="rounded-lg border border-stage-border px-3 py-1.5 text-xs text-stage-text-muted hover:text-stage-text"
+            >
+              {t('lobby.logout')}
+            </button>
           </div>
         </div>
       </div>

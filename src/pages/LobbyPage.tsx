@@ -10,14 +10,14 @@ import HubMap from '@/components/shared/HubMap'
 import { SCENES, resolveScene, type HubDest } from '@/scenes/manifest'
 
 // 로비 v3(주인님 확정 스펙): 광장 허브가 화면의 전부 — 레거시 섹션(목록·생성·예약·최근)은
-// 내부 4관(/lobby/theater·workshop·teahouse·atelier)으로 전가·삭제. 로비 본체 = 헤더(벨·로그아웃)
-// + 초대 배너(LOB-05) + 광장(데스크톱) / 모바일 = 배너 + 하단 네비 4탭(같은 라우트).
+// 내부 4관(/lobby/theater·workshop·teahouse·atelier)으로 전가·삭제. 데스크톱은 헤더 바 없음
+// (광장 가림·분위기 — 주인님 콜): 벨 칩만 우상단, 로그아웃은 의상실로. 초대 배너(LOB-05)는
+// 조건부 유지 / 모바일 = 제목+벨 헤더 + 배너 + 하단 네비 4탭(같은 라우트).
 // rooms 는 대극장 뱃지·연습 무대 라우팅용 최소 유지(Realtime nudge 포함).
 export default function LobbyPage() {
   const { t } = useTranslation()
   const [scene] = useState(() => resolveScene(SCENES.lobbyStreet, new Date().getHours()))
   const session = useUserStore((s) => s.session)
-  const logout = useUserStore((s) => s.logout)
   const navigate = useNavigate()
 
   const [rooms, setRooms] = useState<LobbyRoom[]>([])
@@ -130,11 +130,6 @@ export default function LobbyPage() {
     }
   }
 
-  async function onLogout() {
-    await logout()
-    navigate('/', { replace: true })
-  }
-
   const roomsCount = rooms.filter((r) => !r.isPractice).length
 
   return (
@@ -163,17 +158,11 @@ export default function LobbyPage() {
       )}
 
       <div className="relative flex min-h-screen flex-col p-4 pb-24 md:pointer-events-none md:p-6 md:pb-6">
-        <div className="pointer-events-auto flex items-center justify-between md:rounded-xl md:bg-stage-base/45 md:px-4 md:py-2 md:backdrop-blur-sm">
-          <h1 className="text-2xl font-bold">{t('lobby.title')}</h1>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-            <button
-              onClick={onLogout}
-              className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-            >
-              {t('lobby.logout')}
-            </button>
-          </div>
+        {/* 모바일=제목+벨 / 데스크톱=벨 칩만 우측(광장이 화면의 전부). 벨은 단일 인스턴스 —
+            반응형 렌더는 컴포넌트 내부(중복 마운트 = Realtime 채널 재구독 크래시). */}
+        <div className="pointer-events-auto flex items-center justify-end">
+          <h1 className="mr-auto text-2xl font-bold md:hidden">{t('lobby.title')}</h1>
+          <NotificationBell />
         </div>
 
         {invite && (
