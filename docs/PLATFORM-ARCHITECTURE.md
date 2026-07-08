@@ -1175,6 +1175,9 @@ ChatterBox/
 │   │   ├── vgenStore.ts
 │   │   └── configStore.ts   # Feature Flags (FeatureFlags.md)
 │   │
+│   ├── scenes/          # 씬 매니페스트(아트 피벗 Phase 4) — 페이지 배경·입장영상·액센트 SSOT
+│   │   └── manifest.ts  #   시간축 variant(morning/night) 로그인·로비 공유 (design/scene-prompts.md)
+│   │
 │   ├── lib/             # 외부 SDK 래퍼
 │   │   ├── supabase.ts
 │   │   ├── livekit.ts
