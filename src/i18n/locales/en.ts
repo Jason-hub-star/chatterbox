@@ -192,6 +192,16 @@ export const en: Record<string, string> = {
   'settings.futureFeatures': 'Audio · performance · credits (coming in Phase 4)',
   'settings.home': '← Home',
 
+  // --- script (teleprompter) ---
+  'script.header': 'Script — {{title}}',
+  'script.myRole': 'My role',
+  'script.spectate': 'Spectate',
+  'script.end': 'End of script',
+  'script.myTurn': '▶ Your turn',
+  'script.prev': '← Back',
+  'script.next': 'Next line →',
+  'script.hostAdvances': 'The host advances the lines.',
+
   // --- stage/avatar ---
   'stage.mainView': 'Main view',
   'stage.sharedVideo': 'Shared video',

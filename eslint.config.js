@@ -27,6 +27,20 @@ export default tseslint.config(
     },
   },
   {
+    // 다국어 강제(DoD 게이트): 제품 UI 의 JSX 에 하드코딩 한글 금지 — 문자열은 t() 키로.
+    // i18nCoverage 테스트(en/ja 완역 유지)와 한 쌍: 이 룰이 "키 추출"을, 테스트가 "번역 채움"을 강제한다.
+    // PoC/데브 페이지(아리아 경로 B 게이트)는 제품 화면이 아니라 제외.
+    files: ['src/pages/**/*.tsx', 'src/components/**/*.tsx', 'src/features/**/*.tsx'],
+    ignores: ['src/pages/AriaSelfPage.tsx', 'src/pages/AriaPocPage.tsx', 'src/pages/AvatarInspectorPage.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        { selector: 'JSXText[value=/[\\uAC00-\\uD7AF]/]', message: '하드코딩 한글 JSX 텍스트 — t() 키로 추출하고 ko/en/ja 를 채우세요(DoD 다국어 게이트).' },
+        { selector: 'JSXAttribute Literal[value=/[\\uAC00-\\uD7AF]/]', message: '하드코딩 한글 JSX 속성 — t() 키로 추출하고 ko/en/ja 를 채우세요(DoD 다국어 게이트).' },
+      ],
+    },
+  },
+  {
     // 테스트·설정 파일은 Node 전역 허용.
     files: ['tests/**/*.{ts,tsx}', '*.config.{ts,js}'],
     languageOptions: { globals: { ...globals.node } },

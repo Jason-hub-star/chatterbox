@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { Script } from './cues'
 
 // 실시간 연기 텔레프롬프터(기능 MVP) — 호스트가 대사를 진행하고 전 참가자가 같은 위치를 본다.
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function ScriptPanel({ script, cueIndex, isHost, myRole, onPickRole, onAdvance }: Props) {
+  const { t } = useTranslation()
   const current = script.cues[cueIndex]
   const myTurn = !!current && current.role === myRole
   const atStart = cueIndex <= 0
@@ -21,15 +23,15 @@ export default function ScriptPanel({ script, cueIndex, isHost, myRole, onPickRo
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-stage-text-muted">대본 — {script.title}</h2>
+        <h2 className="text-sm font-semibold text-stage-text-muted">{t('script.header', { title: script.title })}</h2>
         <label className="text-xs text-stage-text-muted">
-          내 역할{' '}
+          {t('script.myRole')}{' '}
           <select
             value={myRole ?? ''}
             onChange={(e) => onPickRole(e.target.value || null)}
             className="rounded border border-stage-border bg-stage-base px-2 py-1 text-stage-text"
           >
-            <option value="">관전</option>
+            <option value="">{t('script.spectate')}</option>
             {script.roles.map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
@@ -45,8 +47,8 @@ export default function ScriptPanel({ script, cueIndex, isHost, myRole, onPickRo
         aria-live="polite"
       >
         <div className="text-xs text-stage-text-muted">
-          {current ? `${current.role} · ${cueIndex + 1}/${script.cues.length}` : '대본 끝'}
-          {myTurn && <span className="ml-2 font-bold text-fire-amber">▶ 내 차례</span>}
+          {current ? `${current.role} · ${cueIndex + 1}/${script.cues.length}` : t('script.end')}
+          {myTurn && <span className="ml-2 font-bold text-fire-amber">{t('script.myTurn')}</span>}
         </div>
         <p className="mt-1 text-lg text-stage-text">{current?.text ?? '—'}</p>
       </div>
@@ -60,7 +62,7 @@ export default function ScriptPanel({ script, cueIndex, isHost, myRole, onPickRo
             disabled={atStart}
             className="rounded-lg border border-stage-border px-3 py-1 text-sm text-stage-text disabled:opacity-40"
           >
-            ← 이전
+            {t('script.prev')}
           </button>
           <button
             type="button"
@@ -68,11 +70,11 @@ export default function ScriptPanel({ script, cueIndex, isHost, myRole, onPickRo
             disabled={atEnd}
             className="rounded-lg bg-fire-amber px-4 py-1 text-sm font-semibold text-stage-base disabled:opacity-40"
           >
-            다음 대사 →
+            {t('script.next')}
           </button>
         </div>
       ) : (
-        <p className="mt-2 text-xs text-stage-text-muted">호스트가 대사를 진행해요.</p>
+        <p className="mt-2 text-xs text-stage-text-muted">{t('script.hostAdvances')}</p>
       )}
 
       {/* 전체 대본(현재 줄 하이라이트) */}

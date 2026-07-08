@@ -192,6 +192,16 @@ export const ja: Record<string, string> = {
   'settings.futureFeatures': 'オーディオ・パフォーマンス・クレジット（Phase 4 で実装）',
   'settings.home': '← ホーム',
 
+  // --- script(台本テレプロンプター) ---
+  'script.header': '台本 — {{title}}',
+  'script.myRole': '自分の役',
+  'script.spectate': '観戦',
+  'script.end': '台本終了',
+  'script.myTurn': '▶ 自分の番',
+  'script.prev': '← 前へ',
+  'script.next': '次のセリフ →',
+  'script.hostAdvances': 'ホストがセリフを進めます。',
+
   // --- stage/avatar ---
   'stage.mainView': 'メインビュー',
   'stage.sharedVideo': '共有動画',

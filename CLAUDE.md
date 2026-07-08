@@ -46,7 +46,10 @@ npm run docs:check       # 계약서-코드 정합성
 npm run docs:check:strict
 npm run docs:health      # GAP 상태 카운트 + 건강도
 npm run docs:overview    # platform-overview.html 갱신
+npm run check:responsive # 반응형 DoD 게이트(360/768/1440 오버플로) — playwright-core 임시설치·dev 서버 필요
 ```
+
+**DoD 자동 게이트(CODING-CONVENTIONS §6.1):** 다국어(lint 가 JSX 하드코딩 한글 차단 + i18nCoverage 테스트가 en/ja 완역 강제)·반응형(위 명령 + 새 화면 360px 실렌더)은 게이트가 막는다 — "나중에 모바일/번역" 부채 금지.
 
 ## 관련 문서
 

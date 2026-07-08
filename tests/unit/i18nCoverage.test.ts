@@ -12,9 +12,12 @@ describe('i18n 키 구조(A-SEAM-5)', () => {
   it('ja 는 ko 의 부분집합(오펀 키 0)', () => {
     expect(orphanKeys(ko, ja)).toEqual([])
   })
-  it('번역 대기 목록(빠진 키)을 산출한다 — 트랙 B가 채울 slot', () => {
-    // 현재 미완은 정상(fallback:ko). 목록이 계산되는 구조만 확정한다.
-    expect(Array.isArray(missingKeys(ko, en))).toBe(true)
-    expect(Array.isArray(missingKeys(ko, ja))).toBe(true)
+  // 2026-07-08 전량 완역 후 게이트 승격: 이제 미번역 키는 "대기 목록"이 아니라 test FAIL.
+  // 새 ko 키를 추가하면 en/ja 도 같은 PR 에서 채워야 통과 — "나중에 다국어" 부채를 구조적으로 차단(DoD).
+  it('en 완역 유지 — ko 신규 키는 en 동시 번역 필수', () => {
+    expect(missingKeys(ko, en)).toEqual([])
+  })
+  it('ja 완역 유지 — ko 신규 키는 ja 동시 번역 필수', () => {
+    expect(missingKeys(ko, ja)).toEqual([])
   })
 })

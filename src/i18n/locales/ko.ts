@@ -192,6 +192,16 @@ export const ko: Record<string, string> = {
   "settings.futureFeatures": "오디오·성능·크레딧 (Phase 4에서 구현)",
   "settings.home": "← 홈",
 
+  // --- script(대본 텔레프롬프터) ---
+  "script.header": "대본 — {{title}}",
+  "script.myRole": "내 역할",
+  "script.spectate": "관전",
+  "script.end": "대본 끝",
+  "script.myTurn": "▶ 내 차례",
+  "script.prev": "← 이전",
+  "script.next": "다음 대사 →",
+  "script.hostAdvances": "호스트가 대사를 진행해요.",
+
   // --- stage/avatar(무대·아바타) ---
   "stage.mainView": "메인 뷰",
   "stage.sharedVideo": "공유 영상",

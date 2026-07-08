@@ -237,6 +237,20 @@ PR에서 컴포넌트를 추가할 때 아래 순서로 구현한다.
 - [ ] **키보드 접근성** — Tab 순서, Enter/Space 인터랙션
 - [ ] **단위 테스트** — 주요 상태 3가지 이상 (기본/로딩/에러)
 
+### 6.1 자동 게이트 (2026-07-08 — "나중에 반응형/다국어" 부채의 구조적 차단)
+
+위 체크리스트 중 다국어·반응형은 **게이트가 기계적으로 강제**한다. 게이트를 통과하지 못하면 그 작업은 미완이다:
+
+| 게이트 | 강제 수단 | 실패 조건 |
+|---|---|---|
+| 다국어 ① 키 추출 | `eslint.config.js` no-restricted-syntax — 제품 UI(`pages/components/features`) JSX 의 하드코딩 한글 = lint 에러 | `npm run lint` FAIL |
+| 다국어 ② 번역 채움 | `tests/unit/i18nCoverage.test.ts` — en/ja 는 ko 완역 유지(`missingKeys === []`) | `npm run test` FAIL (새 ko 키만 넣으면 en/ja 채울 때까지 빨간불) |
+| 반응형 | `npm run check:responsive`(360/768/1440 가로 오버플로 판정) + 새/수정 화면은 360px 실렌더 스크린샷 | scrollWidth > viewport → FAIL |
+
+- 데스크톱 먼저 만들고 "모바일은 나중에"가 불가능한 구조: 화면을 완성하는 순간 3뷰포트 판정과 3언어 채움이 완료 조건에 포함된다.
+- 인증 뒤 라우트(로비·룸)는 기능 검증 스크립트(join 후 `scrollWidth <= viewport` 동일 판정식)로 커버 — `scripts/check-responsive.mjs` 머리주석 참조.
+- PoC/데브 페이지(아리아 게이트 등)는 다국어 lint 제외 목록에 명시.
+
 ---
 
 ## 7. import 순서
