@@ -5,7 +5,7 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword } from '@/lib/rooms'
+import { joinRoom, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, createRoomInvite } from '@/lib/rooms'
 import { getVgenUrl } from '@/lib/vgen'
 import { useStageStore } from '@/stores/stageStore'
 import { fetchRoomMembers, fetchRoomHostId } from '@/lib/dub'
@@ -327,6 +327,11 @@ export default function RoomPage() {
     },
     [session, roomId, roomLocked],
   )
+  // 초대링크 발급(LOB-05) — 원문 코드 반환, URL 조립·복사는 HostConsole.
+  const createInvite = useCallback(async (): Promise<string> => {
+    if (!session) throw new Error('no session')
+    return (await createRoomInvite(session.access_token, roomId)).invite_code
+  }, [session, roomId])
   // VGEN 공유: jobId 방송 + 자기 화면 로컬 반영(publishData self-echo 없음). 중지도 방송+로컬.
   const shareVgen = useCallback(
     async (jobId: string) => {
@@ -356,6 +361,7 @@ export default function RoomPage() {
           onKick={kick}
           onSetMute={mute}
           onSetPassword={changePassword}
+          onCreateInvite={createInvite}
           initialLocked={roomLocked}
           initialMuted={mutedIdentities}
         />

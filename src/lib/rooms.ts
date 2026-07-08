@@ -57,6 +57,21 @@ export const setRoomPassword = (accessToken: string, roomId: string, password: s
 export const joinRoomWithPassword = (accessToken: string, roomId: string, password: string) =>
   callFn<JoinRoomResult>('join-room-with-password', accessToken, { room_id: roomId, password })
 
+export interface CreateInviteResult { invite_code: string; room_id: string; max_uses: number; expires_at: string }
+export interface VerifyInviteResult { room_id: string; title: string; host_display_name: string | null; role: string }
+
+// 초대링크 (LOB-05). 원문 코드는 발급 응답에 1회만 — URL 조립(`/lobby?invite=<code>`)은 호출부.
+export const createRoomInvite = (accessToken: string, roomId: string) =>
+  callFn<CreateInviteResult>('create-room-invite', accessToken, { room_id: roomId })
+
+// read-only 검증(사용횟수 무변화) — 수락 확인 UI 용.
+export const verifyInviteCode = (accessToken: string, code: string) =>
+  callFn<VerifyInviteResult>('verify-invite-code', accessToken, { invite_code: code })
+
+// 수락 = 서버가 원자 소비 + 참가자 등록(멱등). 유효 초대는 잠금방도 비번 없이 입장(as-built 편차).
+export const acceptInvite = (accessToken: string, code: string) =>
+  callFn<JoinRoomResult>('accept-invite', accessToken, { invite_code: code })
+
 // 로비 목록 행 (public_rooms 뷰, boundary 매핑으로 camelCase).
 export interface LobbyRoom {
   id: string

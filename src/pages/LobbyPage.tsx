@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { supabase } from '@/lib/supabase'
-import { createRoom, fetchPublicRooms, type LobbyRoom } from '@/lib/rooms'
+import { toast } from '@/hooks/useToast'
+import { acceptInvite, createRoom, fetchPublicRooms, verifyInviteCode, type LobbyRoom } from '@/lib/rooms'
 import { SCENES, resolveScene } from '@/scenes/manifest'
 
 // LOB-01/03: 공개 방 목록(public_rooms 뷰) + 방 생성 + 검색 + Realtime 자동갱신.
@@ -26,6 +27,47 @@ export default function LobbyPage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+
+  // 초대링크 수락(LOB-05): ?invite=<code> → read-only 검증 → 확인 배너 → 수락 시 서버가 소비+참가.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const inviteCode = searchParams.get('invite')
+  const [invite, setInvite] = useState<{ code: string; title: string; host: string | null } | null>(null)
+  const [inviteBusy, setInviteBusy] = useState(false)
+
+  useEffect(() => {
+    if (!inviteCode || !session) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await verifyInviteCode(session.access_token, inviteCode)
+        if (!cancelled) setInvite({ code: inviteCode, title: r.title, host: r.host_display_name })
+      } catch {
+        if (!cancelled) {
+          toast.error(t('lobby.inviteInvalid'))
+          setInvite(null)
+          setSearchParams({}, { replace: true })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [inviteCode, session, t, setSearchParams])
+
+  async function onAcceptInvite() {
+    if (!invite || !session) return
+    setInviteBusy(true)
+    try {
+      const r = await acceptInvite(session.access_token, invite.code)
+      navigate(`/rooms/${r.room_id}`)
+    } catch {
+      // 상세 사유(used_up 등)는 서버 코드라 사용자 문구는 하나로 — 만료/소진/폐기 동일 처리.
+      toast.error(t('lobby.inviteInvalid'))
+      setInvite(null)
+      setSearchParams({}, { replace: true })
+      setInviteBusy(false)
+    }
+  }
 
   // 버튼용 새로고침(이벤트 핸들러 — 여기서 setState 는 규칙 위반 아님).
   const refresh = useCallback(async () => {
@@ -140,6 +182,20 @@ export default function LobbyPage() {
         </button>
       </div>
       {email && <p className="mt-2 text-stage-text-muted">{t('lobby.welcome', { email })}</p>}
+
+      {invite && (
+        <section className="mt-6 max-w-sm rounded-lg border border-fire-amber/40 bg-fire-amber/10 px-4 py-3">
+          <p className="text-sm font-semibold">{t('lobby.inviteFrom', { host: invite.host ?? t('lobby.host') })}</p>
+          <p className="mt-0.5 truncate text-sm text-stage-text-muted">{invite.title}</p>
+          <button
+            onClick={() => void onAcceptInvite()}
+            disabled={inviteBusy}
+            className="mt-2 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+          >
+            {inviteBusy ? t('lobby.inviteJoining') : t('lobby.inviteJoin')}
+          </button>
+        </section>
+      )}
 
       <form onSubmit={onCreate} className="mt-6 flex gap-2">
         <input

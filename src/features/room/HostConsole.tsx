@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 import Modal from '@/components/shared/Modal'
+import { toast } from '@/hooks/useToast'
 
 // 연결품질 점(6인 실증 — 참가자별 열화 즉시 파악). UI 최소: 행당 이모지 1개.
 const qualityDot = (q?: RoomParticipant['connectionQuality']): string =>
@@ -16,6 +17,7 @@ export default function HostConsole({
   onKick,
   onSetMute,
   onSetPassword,
+  onCreateInvite,
   initialLocked,
   initialMuted,
 }: {
@@ -24,6 +26,7 @@ export default function HostConsole({
   onKick: (identity: string) => Promise<void>
   onSetMute: (identity: string, muted: boolean) => Promise<void>
   onSetPassword: (password: string) => Promise<boolean>
+  onCreateInvite: () => Promise<string> // 원문 invite_code 반환 — URL 조립·복사는 여기서
   initialLocked: boolean
   initialMuted?: Set<string>
 }) {
@@ -44,6 +47,31 @@ export default function HostConsole({
   const [pwInput, setPwInput] = useState('')
   const [pwBusy, setPwBusy] = useState(false)
   const [pwErr, setPwErr] = useState<string | null>(null)
+
+  // 초대링크 (LOB-05). URL 을 상태로 유지 — 클립보드 API 거부 환경에서도 readonly 입력으로 수동 복사 가능.
+  const [invUrl, setInvUrl] = useState<string | null>(null)
+  const [invBusy, setInvBusy] = useState(false)
+  const [invErr, setInvErr] = useState<string | null>(null)
+
+  const createInvite = async () => {
+    setInvErr(null)
+    setInvBusy(true)
+    try {
+      const code = await onCreateInvite()
+      const url = `${location.origin}/lobby?invite=${code}`
+      setInvUrl(url)
+      try {
+        await navigator.clipboard.writeText(url)
+        toast.success(t('host.inviteCopied'))
+      } catch {
+        /* 클립보드 거부 — 아래 readonly 입력에서 수동 복사 */
+      }
+    } catch {
+      setInvErr(t('host.inviteFailed'))
+    } finally {
+      setInvBusy(false)
+    }
+  }
 
   const others = participants.filter((p) => p.identity !== myIdentity)
 
@@ -102,6 +130,28 @@ export default function HostConsole({
 
   return (
     <div className="flex h-full flex-col gap-4">
+      {/* 초대링크 — 친구 부르기(LOB-05). 72시간·5회 기본, 원문 코드는 이 세션 응답에만 존재. */}
+      <section>
+        <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.inviteTitle')}</h3>
+        <button
+          onClick={() => void createInvite()}
+          disabled={invBusy}
+          className="rounded bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40"
+        >
+          {invBusy ? t('host.creatingInvite') : t('host.createInvite')}
+        </button>
+        {invUrl && (
+          <input
+            readOnly
+            value={invUrl}
+            aria-label={t('host.inviteUrlLabel')}
+            onFocus={(e) => e.currentTarget.select()}
+            className="mt-2 w-full rounded border border-stage-border bg-transparent px-3 py-1.5 text-xs text-stage-text-muted"
+          />
+        )}
+        {invErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{invErr}</p>}
+      </section>
+
       {/* 방 비밀번호 */}
       <section>
         <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.roomPassword')}</h3>
