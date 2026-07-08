@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GlowMotes from '@/components/shared/GlowMotes'
+import PlazaAmbient from '@/components/shared/PlazaAmbient'
 import type { HubBlock, HubDest } from '@/scenes/manifest'
 
 // 광장 허브 맵(로비 v3 — A+B 확정: 컬러 스포트라이트 + 카메라 푸시, 호버 연구소 검수 채택).
@@ -11,13 +12,14 @@ interface Props {
   blocks: HubBlock[]
   roomsCount: number // 열린 방 수 — 대극장 간판 뱃지
   onDest: (dest: HubDest) => void
+  fullscreen?: boolean // 로비 전체화면 모드(라운드·그림자 없이 뷰포트 cover)
 }
 
 const OFF_DESTS: ReadonlySet<HubDest> = new Set(['troupe', 'reserved'])
 // 전환 연출 대상(내부 씬/라우트로 이어지는 목적지)
 const TRANSITION_DESTS: ReadonlySet<HubDest> = new Set(['rooms', 'create', 'social', 'profile', 'practice'])
 
-export default function HubMap({ blocks, roomsCount, onDest }: Props) {
+export default function HubMap({ blocks, roomsCount, onDest, fullscreen = false }: Props) {
   const { t } = useTranslation()
   const camRef = useRef<HTMLDivElement>(null)
   const spotRef = useRef<HTMLDivElement>(null)
@@ -55,15 +57,22 @@ export default function HubMap({ blocks, roomsCount, onDest }: Props) {
     cam.style.transform = `scale(${deep ? 1.16 : 1.035})`
   }, [])
 
-  // 입장 웨이브: 스포트라이트가 기능 가게를 순차 점멸(0.45s) — reduced-motion 생략.
+  // 입장 웨이브: 스포트라이트가 기능 가게를 순차 점멸 — 평생 1회(학습용, 주인님 콜)·reduced-motion 생략.
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (localStorage.getItem('cb.hubWaveSeen') === '1') return
     const shops = blocks[0]?.shops.filter((s) => !OFF_DESTS.has(s.dest)) ?? []
     const timers: ReturnType<typeof setTimeout>[] = []
     shops.forEach((s, i) => {
       timers.push(setTimeout(() => setSpot(s), 700 + i * 480))
     })
-    timers.push(setTimeout(() => setSpot(null), 700 + shops.length * 480))
+    // 플래그는 완주 시점에 — StrictMode 이중 마운트가 첫 웨이브를 삼키지 않게(시작 시 세팅 금지).
+    timers.push(
+      setTimeout(() => {
+        setSpot(null)
+        localStorage.setItem('cb.hubWaveSeen', '1')
+      }, 700 + shops.length * 480),
+    )
     return () => {
       timers.forEach(clearTimeout)
       setSpot(null)
@@ -84,13 +93,16 @@ export default function HubMap({ blocks, roomsCount, onDest }: Props) {
   if (!block) return null
 
   return (
-    <div className="relative">
+    <div className={`relative ${fullscreen ? 'h-full' : ''}`}>
       <div
-        className={`hub-scene relative overflow-hidden rounded-xl transition-opacity duration-300 ${leaving ? 'opacity-0' : ''}`}
-        style={{ aspectRatio: '3 / 2' }}
+        className={`hub-scene relative overflow-hidden transition-opacity duration-300 ${fullscreen ? 'h-full w-full' : 'rounded-xl'} ${leaving ? 'opacity-0' : ''}`}
+        style={fullscreen ? undefined : { aspectRatio: '3 / 2' }}
       >
         <div ref={camRef} className="hub-cam absolute inset-0">
           <img src={block.hero} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" />
+          {block.ambient && !window.matchMedia('(prefers-reduced-motion: reduce)').matches && (
+            <PlazaAmbient whales={block.ambient.whales} />
+          )}
           <GlowMotes count={14} />
           {block.shops.map(
             (s) =>

@@ -150,8 +150,20 @@ export default function LobbyPage() {
         </div>
       )}
 
-      <div className="relative flex min-h-screen flex-col p-4 pb-24 md:p-6 md:pb-6">
-        <div className="flex items-center justify-between">
+      {/* 광장 전체화면(데스크톱): 3/2 씬이 뷰포트를 cover — % 핫스팟은 씬 기준이라 크롭돼도 정합. */}
+      {scene?.hub && (
+        <div className="fixed inset-0 hidden overflow-hidden md:block">
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            style={{ width: 'max(100vw, 150vh)', height: 'max(100vh, 66.7vw)' }}
+          >
+            <HubMap blocks={scene.hub.blocks} roomsCount={roomsCount} onDest={handleDest} fullscreen />
+          </div>
+        </div>
+      )}
+
+      <div className="relative flex min-h-screen flex-col p-4 pb-24 md:pointer-events-none md:p-6 md:pb-6">
+        <div className="pointer-events-auto flex items-center justify-between md:rounded-xl md:bg-stage-base/45 md:px-4 md:py-2 md:backdrop-blur-sm">
           <h1 className="text-2xl font-bold">{t('lobby.title')}</h1>
           <div className="flex items-center gap-2">
             <NotificationBell />
@@ -165,7 +177,7 @@ export default function LobbyPage() {
         </div>
 
         {invite && (
-          <section className="mt-4 max-w-sm rounded-lg border border-fire-amber/40 bg-fire-amber/10 px-4 py-3">
+          <section className="pointer-events-auto mt-4 max-w-sm rounded-lg border border-fire-amber/40 bg-stage-base/80 px-4 py-3 backdrop-blur">
             <p className="text-sm font-semibold">{t('lobby.inviteFrom', { host: invite.host ?? t('lobby.host') })}</p>
             <p className="mt-0.5 truncate text-sm text-stage-text-muted">{invite.title}</p>
             <button
@@ -176,15 +188,6 @@ export default function LobbyPage() {
               {inviteBusy ? t('lobby.inviteJoining') : t('lobby.inviteJoin')}
             </button>
           </section>
-        )}
-
-        {/* 광장(데스크톱) — 뷰포트를 채우는 얼굴. 가게 클릭 = 내부 씬 전환. */}
-        {scene?.hub && (
-          <div className="mt-4 hidden min-h-0 flex-1 items-center justify-center md:flex">
-            <div className="w-full" style={{ maxWidth: 'calc((100vh - 140px) * 1.5)' }}>
-              <HubMap blocks={scene.hub.blocks} roomsCount={roomsCount} onDest={handleDest} />
-            </div>
-          </div>
         )}
 
         {/* 모바일: 광장은 배너로만 — 기능 접근은 하단 네비(주인님 콜). */}

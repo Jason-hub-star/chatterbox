@@ -15,11 +15,19 @@ export interface HubShop {
   cores: { x: number; y: number }[] // 창/입구 점등 코어(box 내부 %)
 }
 
+// 앰비언트(로비 v3.1): 원화에서 매팅한 스프라이트가 PixiJS 메시로 유영 — 그림이 숨 쉰다.
+// 드리프트는 작게(±2%대) — inpaint 로 복원한 하늘의 지운 자국을 스프라이트가 늘 덮도록.
+export interface AmbientSprite {
+  src: string
+  box: { l: number; t: number; w: number; h: number } // 원위치(% — 매팅 bbox)
+}
+
 // 블록 스트리트(확장 규격): 신기능 구역은 새 블록을 append — 기존 블록 픽셀·좌표 불변.
 // 이음 = 새 블록의 좌단 석조 아치(프롬프트 필수). edits 연장은 전역 재생성 함정으로 금지.
 export interface HubBlock {
   hero: string
   shops: HubShop[]
+  ambient?: { whales: AmbientSprite[] } // 있으면 hero 는 고래 제거(sky)판이어야 함
 }
 
 // 내부 씬(로비 v3 — 가게 클릭 시 풀스크린 전환, 주인님 확정 스펙). anchor 는 원화 속
@@ -74,7 +82,15 @@ export const SCENES = {
         hub: {
           blocks: [
             {
-              hero: '/scenes/lobby-plaza/plaza-1.webp',
+              hero: '/scenes/lobby-plaza/plaza-1-sky.webp', // 고래 제거판 — 고래는 앰비언트 스프라이트로 유영
+              ambient: {
+                whales: [
+                  { src: '/scenes/lobby-plaza/whale-big.webp', box: { l: 31.32, t: 3.32, w: 24.67, h: 19.43 } },
+                  { src: '/scenes/lobby-plaza/whale-mid.webp', box: { l: 53.65, t: 6.64, w: 12.43, h: 8.3 } },
+                  { src: '/scenes/lobby-plaza/whale-small-r.webp', box: { l: 66.15, t: 12.11, w: 6.97, h: 8.3 } },
+                  { src: '/scenes/lobby-plaza/whale-small-l.webp', box: { l: 24.48, t: 16.41, w: 8.66, h: 7.32 } },
+                ],
+              },
               shops: [
                 { dest: 'rooms', box: { l: 3.5, t: 24, w: 25, h: 48 }, cores: [{ x: 48, y: 72 }, { x: 20, y: 40 }] }, // 대극장
                 { dest: 'profile', box: { l: 29, t: 37, w: 13, h: 29 }, cores: [{ x: 50, y: 52 }] }, // 의상실

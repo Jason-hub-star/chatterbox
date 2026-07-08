@@ -55,11 +55,13 @@ export default function AtelierPage() {
       {interior && (
         <div className="interior-anchor text-center" style={vars(interior.anchors.mirror)}>
           <div className="inline-flex flex-col items-center gap-2">
-            {live ? (
-              <SelfAvatar key={current} projectUrl={current} sendBlendshapes={noop} size={190} />
-            ) : (
-              <AvatarPreview key={current} projectUrl={current} size={190} />
-            )}
+            <div className="mirror-frame">
+              {live ? (
+                <SelfAvatar key={current} projectUrl={current} sendBlendshapes={noop} size={190} />
+              ) : (
+                <AvatarPreview key={current} projectUrl={current} size={190} />
+              )}
+            </div>
             <button
               onClick={() => setLive((v) => !v)}
               className="rounded-lg border border-stage-border bg-stage-base/70 px-3 py-1.5 text-xs text-stage-text-muted backdrop-blur hover:text-stage-text"
