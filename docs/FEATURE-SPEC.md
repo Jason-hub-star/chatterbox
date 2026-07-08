@@ -25,8 +25,8 @@ tags: [hub]
 | ID | 기능 | 우선 | 의존 |
 |---|---|---|---|
 | AUTH-01 | 이메일/비밀번호 회원가입·로그인 | P0 | Supabase |
-| AUTH-02 | 소셜 로그인(Google OAuth) | P0 | Supabase |
-| AUTH-03 | 세션 인증 가드(랜딩/로그인 외 보호) | P0 | Supabase |
+| AUTH-02 | 소셜 로그인(Kakao·Google OAuth) — **코드 배선 완료(소셜 우선 `OAuthButtons`·`loginWithOAuth`), 프로바이더 대시보드 설정 대기**(트리거: 외부 초대 2~3주 전 — 카카오 비즈앱 검수 리드타임) | P0 | Supabase |
+| AUTH-03 | 세션 인증 가드(로그인/가입/리셋 외 보호 — `/`=HomeRedirect 세션 리다이렉트, 인앱 랜딩 폐지 2026-07-08) | P0 | Supabase |
 | ★ AUTH-04 | **이메일/비밀번호 변경 UI**(로그인 후 — Settings Security 탭) | P0 | Supabase `updateUser` |
 | ★ AUTH-05 | **앱 내 계정 삭제 흐름**(삭제 결과 미리보기·30일 유예·되돌리기 불가 경고) | P0 | Supabase `deleteUser` |
 | ★ AUTH-06 | **앱 내 데이터 내보내기 요청 UI**(개인정보보호법·GDPR 이행 진입점) | P0 | Supabase / 이메일 |

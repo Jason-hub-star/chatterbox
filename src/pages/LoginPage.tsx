@@ -2,11 +2,14 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useUserStore } from '@/stores/userStore'
+import AuthShell from '@/components/shared/AuthShell'
+import OAuthButtons from '@/components/shared/OAuthButtons'
 
-// SSOT: contracts/AuthPage.md — LoginPage. 이메일/비밀번호 로그인만 (Phase 0).
+// SSOT: contracts/AuthPage.md — LoginPage. LoL식 셸(AuthShell), 소셜 우선(OAuthButtons) + 이메일 보조.
 export default function LoginPage() {
   const { t } = useTranslation()
   const login = useUserStore((s) => s.login)
+  const requestPasswordReset = useUserStore((s) => s.requestPasswordReset)
   const error = useUserStore((s) => s.error)
   const authState = useUserStore((s) => s.authState)
   const navigate = useNavigate()
@@ -16,6 +19,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [notice, setNotice] = useState<string | null>(null)
   const submitting = authState === 'AUTHENTICATING'
 
   async function onSubmit(e: FormEvent) {
@@ -23,10 +27,19 @@ export default function LoginPage() {
     if (await login(email, password)) navigate(from, { replace: true })
   }
 
+  async function onForgotPassword() {
+    if (!email) { setNotice(t('login.resetNeedEmail')); return }
+    await requestPasswordReset(email)
+    // enumeration 방지: 계정 존재 여부와 무관하게 동일 안내.
+    setNotice(t('login.resetSent'))
+  }
+
   return (
-    <main className="min-h-screen bg-stage-base text-stage-text flex items-center justify-center p-6">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-2xl bg-stage-panel p-8">
+    <AuthShell>
+      <form onSubmit={onSubmit} className="space-y-4">
         <h1 className="text-2xl font-bold">{t('login.title')}</h1>
+
+        <OAuthButtons />
 
         <label className="block space-y-1">
           <span className="text-sm text-stage-text-muted">{t('login.email')}</span>
@@ -57,13 +70,27 @@ export default function LoginPage() {
             {error}
           </p>
         )}
+        {notice && (
+          <p role="status" className="text-sm text-stage-text-muted">
+            {notice}
+          </p>
+        )}
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-fire-amber py-2 font-medium text-stage-base disabled:opacity-50"
+          className="w-full rounded-lg py-2 font-semibold text-[#241605] transition hover:brightness-110 disabled:opacity-50"
+          style={{ background: 'var(--scene-accent)' }}
         >
           {submitting ? t('login.submitting') : t('login.submit')}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void onForgotPassword()}
+          className="w-full text-center text-sm text-stage-text-muted hover:text-stage-text"
+        >
+          {t('login.forgotPassword')}
         </button>
 
         <p className="text-center text-sm text-stage-text-muted">
@@ -73,6 +100,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </form>
-    </main>
+    </AuthShell>
   )
 }

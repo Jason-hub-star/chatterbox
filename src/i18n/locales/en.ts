@@ -10,9 +10,6 @@ export const en: Record<string, string> = {
   'common.back': 'Back',
   'common.delete': 'Delete',
   // landing
-  'landing.tagline': 'PNG→VTuber · Live acting platform',
-  'landing.login': 'Log in',
-  'landing.signup': 'Sign up',
   // login
   'login.title': 'Log in',
   'login.email': 'Email',
@@ -21,6 +18,9 @@ export const en: Record<string, string> = {
   'login.submit': 'Log in',
   'login.noAccount': "Don't have an account?",
   'login.signupLink': 'Sign up',
+  'login.or': 'or',
+  'login.withGoogle': 'Continue with Google',
+  'login.withKakao': 'Continue with Kakao',
   // register
   'register.title': 'Sign up',
   'register.email': 'Email',

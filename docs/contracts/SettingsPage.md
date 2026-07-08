@@ -628,7 +628,7 @@ Push-To-Talk (PTT):
 
 - 삭제 Flow: `Supabase.auth.signInWithPassword(reauth)` → `Supabase.rpc('soft_delete_user')` → `Supabase.auth.signOut()`
 - `users.deleted_at = now()` 설정 (소프트 삭제) — 30일 후 pg_cron이 영구 삭제
-- 삭제 완료 후 랜딩 페이지 리다이렉트 + "계정이 삭제 예약되었습니다" 토스트
+- 삭제 완료 후 `/` 리다이렉트(HomeRedirect → 로그아웃 상태라 로그인 화면) + "계정이 삭제 예약되었습니다" 토스트
 - **DATA-SCHEMA**: `users.deleted_at TIMESTAMPTZ` 반영됨. RLS는 `deleted_at IS NULL` 조건 필수.
 
 ### 탭 8: Notifications — SET-14 / PROFILE-03 (G-156, G-266)

@@ -10,9 +10,6 @@ export const ja: Record<string, string> = {
   'common.back': '戻る',
   'common.delete': '削除',
   // 진입(landing)
-  'landing.tagline': 'PNG→VTuber · リアルタイム演技プラットフォーム',
-  'landing.login': 'ログイン',
-  'landing.signup': '新規登録',
   // 로그인
   'login.title': 'ログイン',
   'login.email': 'メールアドレス',
@@ -21,6 +18,9 @@ export const ja: Record<string, string> = {
   'login.submit': 'ログイン',
   'login.noAccount': 'アカウントをお持ちでないですか？',
   'login.signupLink': '新規登録',
+  'login.or': 'または',
+  'login.withGoogle': 'Googleで続行',
+  'login.withKakao': 'カカオで続行',
   // 회원가입
   'register.title': '新規登録',
   'register.email': 'メールアドレス',

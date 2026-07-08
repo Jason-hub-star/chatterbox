@@ -7,7 +7,9 @@ tags: [contract]
 
 # 1. AuthPage
 
-로그인/회원가입 페이지 orchestrator. 이메일·Google OAuth 인증 플로우, 세션 토큰 관리, 로그인 실패 처리, 페이지 리다이렉트 담당.
+로그인/회원가입 페이지 orchestrator. 이메일·OAuth(Google·Kakao) 인증 플로우, 세션 토큰 관리, 로그인 실패 처리, 페이지 리다이렉트 담당.
+
+> **2026-07-08 구현 현황**: ① 인앱 랜딩 폐지 — `/` 는 `HomeRedirect`(ready 게이트 후 세션 있으면 `/lobby`, 없으면 `/login`), 마케팅 랜딩은 외부 snack-web. ② Login/Register/Reset 은 **LoL식 `AuthShell`**(좌 400px 패널 + 우 스플래시 **별도 컬럼** — 겹침 배치는 16:9 에서 인물이 패널에 가려 폐기) 공유. ③ **소셜 우선 패턴**(`OAuthButtons`: 카카오 주버튼→Google→"또는"→이메일 보조 — 이메일은 폐기하지 않음: 자동화 검증·복구 경로). ④ OAuth 연결 타이밍 결정: 외부 초대 시작 2~3주 전(카카오 이메일 필수동의=비즈앱 검수 리드타임·도메인 확정 선행), 그때까지 `VITE_OAUTH_PROVIDERS` 미설정으로 버튼 숨김.
 
 ## Props Interface
 
@@ -135,25 +137,19 @@ interface EmailVerificationPendingProps {
    - 기타 에러 → userStore.error 설정 + UI 표시
 ```
 
-### Google OAuth 흐름 (LoginPage)
+### OAuth 흐름 (Google·Kakao — `OAuthButtons`, 로그인·가입 공용)
 
 ```
-1. 사용자 "Google로 계속하기" 버튼 클릭
-2. userStore.signInWithGoogle() 호출
-3. Supabase Auth API: signInWithOAuth({provider: 'google'})
-4. Supabase redirects to: https://owfcrolbvikkqrotmleq.supabase.co/auth/v1/callback
-   (설정된 redirectTo: window.location.origin/auth/callback)
-5. /auth/callback 페이지에서:
-   - URL 쿼리 파라미터 (#access_token, #refresh_token) 파싱
-   - Supabase Auth SDK: getSession() 호출
-   - userStore.session + user 갱신
-   - users.age_band이 없으면 `/onboarding/age`로 먼저 이동
-   - userStore.auth_state = 'AUTHENTICATED'
-   - useNavigate().push('/lobby' or redirectPath)
-6. 실패 시:
-   - OAuth 취소 (사용자 거절)
-   - 계정 이미 존재 (다른 provider로 이미 가입)
-   - 메시지: "OAuth 연결 실패. 직접 로그인을 시도하세요."
+1. 사용자 "카카오로 계속하기" / "Google로 계속하기" 클릭 (VITE_OAUTH_PROVIDERS 로 노출 게이트)
+2. userStore.loginWithOAuth(provider) 호출
+3. Supabase Auth API: signInWithOAuth({ provider, options: { redirectTo: origin + '/lobby' } })
+4. 프로바이더 인증 후 앱으로 복귀(전체 페이지 로드) → 전용 /auth/callback 페이지 없음:
+   - supabase-js detectSessionInUrl 이 URL 토큰을 자동 파싱해 세션 확립
+   - userStore.init() 의 getSession/onAuthStateChange 가 세션 흡수 → AUTHENTICATED
+   - /lobby 는 ProtectedRoute — ready 게이트가 파싱 완료까지 리다이렉트 판단을 보류
+5. 실패 시: loginWithOAuth 가 false 반환 + userStore.error 설정(시작 실패 안내)
+6. ⚠️ 카카오는 이메일 동의항목을 "필수"로(비즈앱 검수 필요) — 아니면 이메일 가입 계정과
+   자동 연결이 안 돼 동일인 계정 분열. Google 은 검수 불요.
 ```
 
 ### 비밀번호 재설정 흐름 (G-54 ForgotPasswordForm → ResetPasswordForm)

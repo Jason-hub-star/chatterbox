@@ -1,15 +1,23 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { useUserStore } from '@/stores/userStore'
+import { passwordIssue } from '@/lib/authValidation'
+import AuthShell from '@/components/shared/AuthShell'
+import OAuthButtons from '@/components/shared/OAuthButtons'
 
 // SSOT: contracts/AuthPage.md — RegisterPage. 이메일/비밀번호 가입만 (Phase 0).
-// 비밀번호 강도: 최소 8자 + 대문자 1 + 숫자 1 (AuthPage.md 회원가입 흐름 §검증).
+// 비밀번호 강도 규칙은 lib/authValidation(가입·재설정 공유)에서 단일 정의.
+const ISSUE_KEY = {
+  tooShort: 'register.errors.passwordTooShort',
+  noUppercase: 'register.errors.passwordNoUppercase',
+  noNumber: 'register.errors.passwordNoNumber',
+} as const
+
 function validate(email: string, password: string, confirm: string, t: (key: string) => string): string | null {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return t('register.errors.invalidEmail')
-  if (password.length < 8) return t('register.errors.passwordTooShort')
-  if (!/[A-Z]/.test(password)) return t('register.errors.passwordNoUppercase')
-  if (!/[0-9]/.test(password)) return t('register.errors.passwordNoNumber')
+  const issue = passwordIssue(password)
+  if (issue) return t(ISSUE_KEY[issue])
   if (password !== confirm) return t('register.errors.passwordMismatch')
   return null
 }
@@ -17,6 +25,7 @@ function validate(email: string, password: string, confirm: string, t: (key: str
 export default function RegisterPage() {
   const { t } = useTranslation()
   const signUp = useUserStore((s) => s.signUpWithEmail)
+  const resendVerification = useUserStore((s) => s.resendVerification)
   const storeError = useUserStore((s) => s.error)
   const authState = useUserStore((s) => s.authState)
   const navigate = useNavigate()
@@ -25,8 +34,20 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   const submitting = authState === 'AUTHENTICATING'
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const id = setTimeout(() => setResendCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(id)
+  }, [resendCooldown])
+
+  async function onResend() {
+    await resendVerification(email)
+    setResendCooldown(60) // 남용/스팸 방지 쿨다운
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -46,24 +67,36 @@ export default function RegisterPage() {
 
   if (authState === 'PENDING_VERIFICATION') {
     return (
-      <main className="min-h-screen bg-stage-base text-stage-text flex items-center justify-center p-6">
-        <div className="w-full max-w-sm space-y-4 rounded-2xl bg-stage-panel p-8 text-center">
+      <AuthShell>
+        <div className="space-y-4 text-center">
           <h1 className="text-2xl font-bold">{t('register.verification.title')}</h1>
           <p className="text-sm text-stage-text-muted">
             <span className="text-stage-text">{email}</span> {t('register.verification.message')}
           </p>
-          <Link to="/login" className="inline-block text-fire-amber">
+          <button
+            type="button"
+            onClick={() => void onResend()}
+            disabled={resendCooldown > 0}
+            className="text-sm text-fire-amber disabled:text-stage-text-muted"
+          >
+            {resendCooldown > 0
+              ? t('register.verification.resendCooldown', { sec: resendCooldown })
+              : t('register.verification.resend')}
+          </button>
+          <Link to="/login" className="block text-fire-amber">
             {t('register.verification.backLink')}
           </Link>
         </div>
-      </main>
+      </AuthShell>
     )
   }
 
   return (
-    <main className="min-h-screen bg-stage-base text-stage-text flex items-center justify-center p-6">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-2xl bg-stage-panel p-8">
+    <AuthShell>
+      <form onSubmit={onSubmit} className="space-y-4">
         <h1 className="text-2xl font-bold">{t('register.title')}</h1>
+
+        <OAuthButtons />
 
         <label className="block space-y-1">
           <span className="text-sm text-stage-text-muted">{t('register.email')}</span>
@@ -111,7 +144,8 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-fire-amber py-2 font-medium text-stage-base disabled:opacity-50"
+          className="w-full rounded-lg py-2 font-semibold text-[#241605] transition hover:brightness-110 disabled:opacity-50"
+          style={{ background: 'var(--scene-accent)' }}
         >
           {submitting ? t('register.submitting') : t('register.submit')}
         </button>
@@ -123,6 +157,6 @@ export default function RegisterPage() {
           </Link>
         </p>
       </form>
-    </main>
+    </AuthShell>
   )
 }

@@ -5,7 +5,9 @@ import { isValidAvatarUrl } from '@/lib/avatars'
 
 // SSOT: contracts/AuthPage.md · state-machines/Auth.md
 // Phase 0 범위: 이메일 로그인/회원가입 + 세션유지.
-// ponytail: OAuth(AUTH-02)·비밀번호 재설정(G-54)·이메일 인증 UI(G-55)는 Phase 2에서 추가.
+// 인증 복구(A-FUNC-2): 비밀번호 재설정 요청(G-54)·인증메일 재전송(G-55)·재설정 완료 추가.
+// OAuth(AUTH-02): loginWithOAuth 배선됨 — Supabase 대시보드 프로바이더(google/kakao) 설정 후
+// VITE_OAUTH_PROVIDERS 로 버튼 노출(LoginPage). 리다이렉트 복귀 세션은 init 의 onAuthStateChange 가 흡수.
 type AuthState =
   | 'UNAUTHENTICATED'
   | 'AUTHENTICATING'
@@ -28,7 +30,14 @@ interface UserStore {
   // init: 저장된 세션 복원 + auth 변경 구독. supabase-js 가 localStorage 에 세션을 보존하므로 새로고침 후에도 유지.
   init: () => () => void
   login: (email: string, password: string) => Promise<boolean>
+  // OAuth 간편로그인 — 성공 시 프로바이더로 리다이렉트되므로 반환값은 "시작 성공" 여부.
+  loginWithOAuth: (provider: 'google' | 'kakao') => Promise<boolean>
   signUpWithEmail: (email: string, password: string) => Promise<boolean>
+  // 인증 복구(A-FUNC-2). enumeration 방지: 요청/재전송은 성공 여부와 무관하게 동일 안내를 보이게 boolean 만 반환.
+  requestPasswordReset: (email: string) => Promise<boolean>
+  resendVerification: (email: string) => Promise<boolean>
+  // 재설정 링크로 진입한 복구 세션에서 새 비번 확정(/reset).
+  updatePassword: (newPassword: string) => Promise<boolean>
   // setMyAvatar: 내 users.avatar_url 갱신(RLS users_update_own 로 본인 행 직접 update).
   setMyAvatar: (url: string) => Promise<boolean>
   logout: () => Promise<void>
@@ -107,6 +116,18 @@ export const useUserStore = create<UserStore>((set, get) => ({
     return true
   },
 
+  loginWithOAuth: async (provider) => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/lobby` },
+    })
+    if (error) {
+      set({ error: '간편로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.' })
+      return false
+    }
+    return true // 브라우저가 프로바이더로 이동
+  },
+
   signUpWithEmail: async (email, password) => {
     set({ authState: 'AUTHENTICATING', error: null })
     const { data, error } = await supabase.auth.signUp({ email, password })
@@ -122,6 +143,23 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }
     set({ user: data.user, authState: 'PENDING_VERIFICATION', error: null })
     return true
+  },
+
+  requestPasswordReset: async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset`,
+    })
+    return !error
+  },
+
+  resendVerification: async (email) => {
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    return !error
+  },
+
+  updatePassword: async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    return !error
   },
 
   setMyAvatar: async (url) => {

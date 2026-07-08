@@ -468,9 +468,11 @@ CREATE TABLE scenes (
 --   "name": "하늘",                       -- 표시용 이름
 --   "image_url": "scenes/system/campfire-forest/layers/sky.png",
 --   "z_order": 0,                         -- 레이어 깊이 (0 = 가장 뒤)
+--   "transform": { "x": 0, "y": 360, "scale_x": 1.0, "scale_y": 1.0 },
+--                                         -- 선택. 없으면 (0,0) 풀프레임. 1536×1024 기준 (contracts/SceneBackground.md LayerTransform)
 --   "interaction_type": ["idle_anim"],    -- ["idle_anim"] | ["click"] | ["click", "idle_anim"]
 --   "idle_animation": {                   -- NULL이면 정적 이미지
---     "type": "float" | "flicker",
+--     "type": "float" | "flicker" | "sway" | "pulse",
 --     "amplitude": 2,                     -- 픽셀 단위
 --     "period_ms": 6000
 --   },
@@ -1274,9 +1276,8 @@ The following features are transmitted via LiveKit but **not persisted to databa
 
 ```
 /scenes/system/
-  fantasy_001.jpg
-  sci-fi_002.jpg
-  ...
+  {slug}/layers/{layer_id}.png   -- 레이어 분해 PNG (§1.7 layers_json · design/scene-prompts.md)
+  _shared/glow_dust.png          -- 공용 파티클 텍스처
 /scenes/rooms/{room_id}/
   custom_scene_001.jpg
   custom_scene_002.jpg

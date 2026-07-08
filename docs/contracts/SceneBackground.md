@@ -46,11 +46,21 @@ type HoverEvent = {
   duration_ms: number;
 };
 
+// 2026-07-07 추가: 요소 레이어(부유섬·랜턴 등 비풀프레임)의 배치·스케일.
+// 실합성 검증에서 필요 확인 — 초기값은 design/scene-prompts.md "생성·검증 실측" 참조.
+type LayerTransform = {
+  x: number;                           // px, 1536×1024 기준 캔버스 좌표 (음수 = 프레임 밖 크롭)
+  y: number;
+  scale_x?: number;                    // 기본 1.0
+  scale_y?: number;                    // 기본 1.0 (비균등 허용 — 예: waves_mid (1.15, 0.5))
+};
+
 type SceneLayer = {
   id: string;                          // 레이어 식별자 (e.g., "fire_layer")
   name: string;                        // 사람이 읽는 이름 (e.g., "Campfire")
   image_url: string;                   // Supabase Storage PNG URL (투명 배경 필수)
   z_order: number;                     // 렌더 순서 (낮을수록 뒤, 0~1000)
+  transform?: LayerTransform;          // 없으면 (0,0) 풀프레임
   interaction_type: InteractionType[]; // 복수 가능 (e.g., ['idle_anim', 'click'])
   idle_animation?: IdleAnimation;      // interaction_type에 'idle_anim' 포함 시 필수
   click_event?: ClickEvent;            // interaction_type에 'click' 포함 시 필수

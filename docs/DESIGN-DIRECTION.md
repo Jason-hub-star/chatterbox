@@ -59,7 +59,7 @@ snack-web 룸이 바로 그 모닥불이다.
 ### AI 슬롭 회피 원칙
 
 **금지:** 보라→파랑 그라디언트 히어로, Heroicons 기본 세트 그대로, shadcn 무보정 테마, scroll-reveal 단일 패턴 애니메이션(AI 기본값)
-**사용:** GPT Image 2 페인팅 배경, diffusionstudio/lottie 커스텀 아이콘, `--scene-accent` 어댑테이션, motion 12.4 spring transition 우선(룸 UI) — 랜딩 스크롤 스토리텔링 단계에서 GSAP 추가 검토
+**사용:** GPT Image 2 페인팅 배경, diffusionstudio/lottie 커스텀 아이콘, `--scene-accent` 어댑테이션, motion 12.4 spring transition 우선(룸 UI) — 스크롤 스토리텔링은 외부 snack-web 랜딩 몫(인앱 랜딩 폐지 2026-07-08)
 **레퍼런스:** cluster.mu (게임 UI 에너지), 마비노기 모닥불 (따뜻한 커뮤니티 구심점)
 
 ---
@@ -458,7 +458,7 @@ Seedance 2.0 생성 영상 (mp4)
 ```
 
 - 성능: 하드웨어 디코딩, z0 단독 레이어 → PixiJS 파티클(z1)과 충돌 없음
-- 적용 위치: **플랫폼 룸 배경(`/rooms/:roomId`) 우선** — 랜딩 히어로는 추후
+- 적용 위치: **플랫폼 룸 배경(`/rooms/:roomId`) 우선** + 로그인 입장 영상(아트 피벗 Phase 3) — 인앱 랜딩은 폐지됨(snack-web 담당)
 - 제약: 영상 용량 관리(씬별 1파일), Seedance 저작권 리스크(→ `STACK-COMPARE-VIDEOGEN.md §6 L12`)
 - Seedance 공급사 API·비용: `STACK-COMPARE-VIDEOGEN.md §2` 참조
 
@@ -476,14 +476,14 @@ Seedance 2.0 생성 영상 (mp4)
 ```
 
 - 스펙: `contracts/SceneBackground.md` (SceneLayer 타입, PixiJS 구조, 이벤트 흐름)
-- 프롬프트: `design/scene-prompts.md` (씬 3종 × 레이어 17개, 투명 배경 필수)
+- 프롬프트: `design/scene-prompts.md` (씬 5종 × 레이어 25개 + 공용 파티클 1 — 2026-07-07 개편: cyber-rooftop·fantasy-stage 폐기, landing-meadow·ocean-cove·pirate-ship·twilight-castle 신규. z≥1만 투명 배경)
 - DB: `DATA-SCHEMA.md §1.7` (scenes.layers_json JSONB)
 
 구현 옵션:
 - **CSS-only**: `transform: translate3d` per layer — 간단, 영상 배경과 호환
 - **Three.js plane**: displacement map 적용 → 씬 3D 카메라 미세 이동
 
-적용 위치: `/rooms/:roomId` 대기 화면 — 랜딩은 추후.
+적용 위치: `/rooms/:roomId` 대기 화면. (인앱 랜딩은 폐지 — snack-web 담당, 2026-07-08)
 
 ---
 

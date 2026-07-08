@@ -89,6 +89,7 @@ tags: [hub]
 | 파일 | 역할 | 상태 |
 |---|---|---|
 | `design/DESIGN-TOKENS.md` | 색·타이포·여백·radius·shadow·모션 토큰 | **SSOT (디자인)** |
+| `design/scene-prompts.md` | 씬 레이어 PNG 프롬프트 원본(5씬×25레이어+공용FX)·생성/검증 실측·layers_json 초기 배치값·WebP 정책 | **SSOT (씬 에셋)** |
 | `design/uiux-distilled.md` | 전문가 영상 증류 UI/UX 원칙 48개 + ChatterBox 적용 Top10 | 조사/설계 (UX 원칙 SSOT) |
 | `design/UX-GAPS-AND-PATTERNS.md` | 도그푸딩 감사(dogfood-audit) 반영 UX 갭→수정 + 재사용 프리미티브 선설계 | **설계 (UX 구현 입력)** |
 | `design/README.md` | 토큰 폴더 구조·연결점 | SSOT |
@@ -99,7 +100,8 @@ tags: [hub]
 | 경로 | 역할 | 상태 |
 |---|---|---|
 | `research/BUILD-STACK-CVE-RESEARCH.md` | 빌드스택 6종 CVE 원시 조사 (Haiku) → **SECURITY-RISKS-B에 흡수됨** | 조사 (보존) |
-| `status/SCOUT.md` | 랜딩 리팩토링 배턴 (`SCOUT_READY`) — 다음 세션 진입점 | 스크래치 (gitignore) |
+| `status/HANDOFF-TRACK-B.md` | **트랙 B(UIUX) 인계 — Fable 담당.** seam→표현 매핑·백로그·제약. 트랙 A(로직·보안·seam) 완료 후 진입점 | **인계 (트랙 B 진입점)** |
+| `status/SCOUT.md` | 세션 배턴 — 다음 세션 진입점(`latest:` 최신 상태) | 스크래치 (gitignore) |
 | `meeting/index.html` | 기능 배치 회의 보드(자유 캔버스, localStorage) | 도구 (회의 스냅샷 → JSON로 SPEC 역반영) |
 | `meeting/ux-layout-picker.html` | UX 레이아웃 피커 — Settings·Stage·VGen·DUB·예약·게스트 템플릿 + 아이콘 디렉션 | 도구 (선택 후 계약서 작성 착수) |
 | `overview/chatterbox-system-designer.html` | PM용 시스템 설계 뷰(용어 툴팁·도메인 상태 토글·JSON export). **SSOT 아님 — SPEC/ARCHITECTURE에서 파생한 사람용 뷰** | 도구 (뷰, 에이전트 온보딩 대상 아님) |
