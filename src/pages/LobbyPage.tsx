@@ -60,7 +60,7 @@ export default function LobbyPage() {
     setInviteBusy(true)
     try {
       const r = await acceptInvite(session.access_token, invite.code)
-      navigate(`/rooms/${r.room_id}`)
+      navigate(`/rooms/${r.room_id}/ready`)
     } catch {
       // 상세 사유(used_up 등)는 서버 코드라 사용자 문구는 하나로 — 만료/소진/폐기 동일 처리.
       toast.error(t('lobby.inviteInvalid'))
@@ -143,7 +143,7 @@ export default function LobbyPage() {
     setError(null)
     try {
       const { room_id } = await createRoom(session.access_token, trimmedTitle, genre || undefined)
-      navigate(`/rooms/${room_id}`)
+      navigate(`/rooms/${room_id}/ready`)
     } catch (e) {
       setError(e instanceof Error ? e.message : t('lobby.createError'))
       setCreating(false)
@@ -300,7 +300,7 @@ export default function LobbyPage() {
                     </p>
                   </div>
                   <button
-                    onClick={() => navigate(`/rooms/${r.id}`)}
+                    onClick={() => navigate(`/rooms/${r.id}/ready`)}
                     disabled={full}
                     className="shrink-0 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
                   >

@@ -9,6 +9,12 @@ tags: [contract]
 
 입장 전 아바타·소리·배경 미리보기 및 디바이스 트러블슈팅 페이지. 웹캠(MediaPipe 추적), 마이크(LiveKit 테스트), 배경 선택 시뮬레이션을 순차적으로 검증한 후 방 입장을 허용.
 
+> **구현 상태 (2026-07-08, MOD-05/06 MVP = `src/pages/GreenRoomPage.tsx`, 라우트 `/rooms/:roomId/ready`)** — 이 계약은 풀비전이고 as-built 는:
+> - 아바타 프리뷰 = `SelfAvatar` 재사용(무대와 동일 파이프라인, 송신 no-op) · 마이크 = getUserMedia+AnalyserNode 피크 미터(100ms, `ProgressBar` 재사용) · 배경 선택은 v1 제외(방 배경은 호스트 영역).
+> - **소프트 게이트(주인님 콜)**: 트래킹/권한 실패여도 [무대로 입장] 가능 — 8동작 필수 검증(CalibrationWizard)·"검증 후 입장 허용"은 외부 공개 직전에 조이는 후속(플래그 1개). CALIBRATING 상태는 trackingStore 에 없음(INITIALIZING→TRACKING).
+> - `cb.greenroomSkip`(localStorage) 체크 시 이후 입장은 분장실을 스치지 않고 직행. 로비의 입장·생성·초대 수락 전부 `/ready` 경유.
+> - 분장실은 순수 로컬 단계 — 조인·비번·정원 게이트는 RoomPage 가 담당(순서: 로비 → ready → 조인).
+
 ## Props Interface
 
 ```typescript

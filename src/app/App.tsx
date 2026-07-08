@@ -9,6 +9,7 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import LobbyPage from '@/pages/LobbyPage'
+import GreenRoomPage from '@/pages/GreenRoomPage'
 import RoomPage from '@/pages/RoomPage'
 import SettingsPage from '@/pages/SettingsPage'
 import AriaPocPage from '@/pages/AriaPocPage'
@@ -38,6 +39,15 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <LobbyPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    // 분장실(MOD-05) — 입장 전 로컬 점검. cb.greenroomSkip 이면 페이지가 스스로 직행 리다이렉트.
+    path: '/rooms/:roomId/ready',
+    element: (
+      <ProtectedRoute>
+        <GreenRoomPage />
       </ProtectedRoute>
     ),
   },
