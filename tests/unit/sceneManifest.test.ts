@@ -27,7 +27,8 @@ describe('scenes/manifest (시간축 variant)', () => {
     expect(resolveScene(scene, 9)?.hero).toBe('/m.webp')
   })
 
-  it('variant 전무면 null(소비자가 배경 생략 — 로비 lobbyStreet 현재 상태)', () => {
-    expect(resolveScene(SCENES.lobbyStreet, 9)).toBeNull()
+  it('variant 전무면 null(소비자가 배경 생략)', () => {
+    const empty: Scene = { variants: {} }
+    expect(resolveScene(empty, 9)).toBeNull()
   })
 })

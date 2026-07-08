@@ -43,7 +43,7 @@ deep contrast between warm gold and deep blue, inspired by Makoto Shinkai films
 |---|---|---|---|
 | `login-splash` | 로그인/가입/리셋 (LoL식 우측 스플래시 + 입장 영상 원판) | morning | 생성·적용 완료(2026-07-08) |
 | `login-splash` (night) | 〃 밤 버전 — **여자 주인공 + 중국풍 + 동양 용(확정 스펙)**: 긴 검정 묶은머리(포니테일), 빨간 유지우산(꽃문양)을 어깨에 걸침, 동일 구도(뒷모습·고지 조망), 붉은 랜턴의 중화풍 판타지 도시, 밤하늘을 헤엄치는 발광 동양 용. 프롬프트 초안 §아래 | night | **초안 등재·생성 대기(콜 게이트)** |
-| `lobby-street-day` | 로비 — 입장 영상이 도착하는 판타지 상점가(아이레벨·무인물), 하늘바다에 **고래·물고기**(로그인 오전과 동물 연속·용은 밤 로그인 전용) | morning | 초안 등재·생성 대기(콜 게이트) |
+| `lobby-street-day` | 로비 — 입장 영상이 도착하는 판타지 상점가(아이레벨·무인물), 하늘바다에 **고래·물고기**(로그인 오전과 동물 연속·용은 밤 로그인 전용) | morning | **생성·적용 완료(2026-07-08)** — gpt-image-2·WebP 522KB `public/scenes/lobby-street/day.webp`·로비 v1 배선(배경+그라디언트 스크림)·실렌더 1440/360 |
 | `lobby-street-night` | 〃 같은 거리의 밤(랜턴·야광 고래/물고기) | night | 초안 등재·생성 대기(콜 게이트) |
 | `world-panorama` | ~~인앱 랜딩~~ → **인앱 랜딩 폐지**(마케팅은 외부 snack-web 담당). 생성본은 snack-web 랜딩 히어로 이관 후보(`~/Documents/채터박스/v2/world_panorama.png`) | — | 생성 완료·미사용 |
 | ~~`lobby-lantern-night`~~ | → `lobby-street-*` 로 대체(입장 영상 도착 지점과 서사 연속) | — | 폐기 |

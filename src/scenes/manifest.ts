@@ -31,8 +31,11 @@ export const SCENES = {
       morning: { hero: '/scenes/login-splash/splash.webp', accent: '#FFD98A' },
     },
   },
-  // 로비 배경(입장 영상이 도착하는 판타지 상점가 — 하늘바다 고래·물고기). 생성 콜 후 등재.
+  // 로비 배경(입장 영상이 도착하는 판타지 상점가 — 하늘바다 고래·물고기).
+  // night(랜턴·야광 어군)는 생성 콜 후 등재 — 그 전까지 밤 접속도 day 폴백.
   lobbyStreet: {
-    variants: {},
+    variants: {
+      morning: { hero: '/scenes/lobby-street/day.webp', accent: '#FFD98A' },
+    },
   },
 } satisfies Record<string, Scene>

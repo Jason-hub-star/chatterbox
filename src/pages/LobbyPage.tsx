@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { supabase } from '@/lib/supabase'
 import { createRoom, fetchPublicRooms, type LobbyRoom } from '@/lib/rooms'
+import { SCENES, resolveScene } from '@/scenes/manifest'
 
 // LOB-01/03: 공개 방 목록(public_rooms 뷰) + 방 생성 + 검색 + Realtime 자동갱신.
 // Realtime: rooms 변경 시 트리거가 public 'lobby' 채널로 nudge broadcast(민감컬럼 노출 0·
@@ -12,6 +13,8 @@ import { createRoom, fetchPublicRooms, type LobbyRoom } from '@/lib/rooms'
 // ponytail: 장르 필터·초대링크는 후속(genre 컬럼은 있으나 create-room 미배선).
 export default function LobbyPage() {
   const { t } = useTranslation()
+  // 접속 시각은 마운트 1회 판정(레이지 초기화) — 로그인(AuthShell)과 같은 시간축.
+  const [scene] = useState(() => resolveScene(SCENES.lobbyStreet, new Date().getHours()))
   const email = useUserStore((s) => s.user?.email)
   const session = useUserStore((s) => s.session)
   const logout = useUserStore((s) => s.logout)
@@ -114,7 +117,19 @@ export default function LobbyPage() {
     : rooms
 
   return (
-    <main className="min-h-screen bg-stage-base text-stage-text p-8">
+    <main
+      className="relative min-h-screen bg-stage-base text-stage-text"
+      style={scene ? ({ '--scene-accent': scene.accent } as React.CSSProperties) : undefined}
+    >
+      {/* 로비 v1 = 배경 + 가독 스크림만(기능 UI·계약 무변경 — scene-prompts.md §신규 씬).
+          입장 영상이 도착하는 그 거리 — 시간축 variant 는 로그인과 공유(manifest). */}
+      {scene && (
+        <div aria-hidden className="fixed inset-0">
+          <img src={scene.hero} alt="" draggable={false} className="h-full w-full select-none object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-stage-base/90 via-stage-base/75 to-stage-base/50" />
+        </div>
+      )}
+      <div className="relative p-4 sm:p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t('lobby.title')}</h1>
         <button
@@ -212,6 +227,7 @@ export default function LobbyPage() {
           </ul>
         )}
       </section>
+      </div>
     </main>
   )
 }
