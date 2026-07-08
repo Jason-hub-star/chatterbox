@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/useToast'
-import { acceptInvite, createRoom, fetchPublicRooms, verifyInviteCode, type LobbyRoom } from '@/lib/rooms'
+import { acceptInvite, createRoom, fetchPublicRooms, verifyInviteCode, ROOM_GENRES, type LobbyRoom } from '@/lib/rooms'
 import { SCENES, resolveScene } from '@/scenes/manifest'
 
 // LOB-01/03: 공개 방 목록(public_rooms 뷰) + 방 생성 + 검색 + Realtime 자동갱신.
@@ -24,6 +24,7 @@ export default function LobbyPage() {
   const [rooms, setRooms] = useState<LobbyRoom[]>([])
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
+  const [genre, setGenre] = useState('') // ''=장르 없음(옵션, LOB-03)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -141,7 +142,7 @@ export default function LobbyPage() {
     setCreating(true)
     setError(null)
     try {
-      const { room_id } = await createRoom(session.access_token, trimmedTitle)
+      const { room_id } = await createRoom(session.access_token, trimmedTitle, genre || undefined)
       navigate(`/rooms/${room_id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : t('lobby.createError'))
@@ -206,6 +207,19 @@ export default function LobbyPage() {
           maxLength={80}
           className="flex-1 max-w-sm rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm"
         />
+        <select
+          value={genre}
+          onChange={(e) => setGenre(e.target.value)}
+          aria-label={t('lobby.genreLabel')}
+          className="rounded-lg border border-stage-border bg-stage-base px-2 py-2 text-sm text-stage-text-muted"
+        >
+          <option value="">{t('lobby.genreNone')}</option>
+          {ROOM_GENRES.map((g) => (
+            <option key={g} value={g}>
+              {t(`lobby.genre.${g}`)}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           disabled={creating || !title.trim()}
@@ -263,8 +277,21 @@ export default function LobbyPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate font-semibold">
+                      {/* 상태 점(LOB-01): ● live / ○ waiting — 색은 fire-hot(라이브 시맨틱)·muted. */}
+                      <span
+                        aria-label={r.status === 'live' ? t('lobby.statusLive') : t('lobby.statusWaiting')}
+                        title={r.status === 'live' ? t('lobby.statusLive') : t('lobby.statusWaiting')}
+                        className={r.status === 'live' ? 'text-fire-hot' : 'text-stage-text-muted'}
+                      >
+                        {r.status === 'live' ? '●' : '○'}
+                      </span>{' '}
                       {r.isLocked && <span aria-label={t('lobby.locked')} title={t('lobby.locked')}>🔒 </span>}
                       {r.title}
+                      {r.genre && (
+                        <span className="ml-2 rounded bg-stage-elevated px-1.5 py-0.5 align-middle text-[10px] font-normal text-stage-text-muted">
+                          {t(`lobby.genre.${r.genre}`)}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-stage-text-muted">
                       {r.hostDisplayName ?? t('lobby.host')} · {t('lobby.participantCount', { currentParticipants: r.currentParticipants, maxParticipants: r.maxParticipants })}

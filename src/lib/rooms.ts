@@ -17,8 +17,11 @@ export interface JoinRoomResult {
 }
 export interface LeaveRoomResult { ok: boolean; new_host_id: string | null }
 
-export const createRoom = (accessToken: string, title: string) =>
-  callFn<CreateRoomResult>('create-room', accessToken, { title })
+// 장르(LOB-03)는 옵션 — 서버 화이트리스트(create-room GENRES)와 i18n lobby.genre.* 가 어휘 SSOT.
+export const ROOM_GENRES = ['comedy', 'drama', 'romance', 'fantasy', 'horror', 'free'] as const
+
+export const createRoom = (accessToken: string, title: string, genre?: string) =>
+  callFn<CreateRoomResult>('create-room', accessToken, genre ? { title, genre } : { title })
 
 // signal: 입장 취소 버튼(트랙 B) — 취소 시 AbortError 전파(edgeFn 계약: 호출부가 조용히 처리).
 export const joinRoom = (accessToken: string, roomId: string, signal?: AbortSignal) =>
@@ -85,10 +88,11 @@ export interface LobbyRoom {
 }
 
 export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
+  // LOB-01: 진행 중(live)인 방도 목록에 — 카드의 ●/○ 상태 점이 구분(ended 만 제외).
   const { data, error } = await supabase
     .from('public_rooms')
     .select('id, title, genre, status, current_participants, max_participants, host_display_name, is_locked, created_at')
-    .eq('status', 'waiting')
+    .in('status', ['waiting', 'live'])
     .order('created_at', { ascending: false })
     .limit(50)
   if (error) throw new Error(error.message)

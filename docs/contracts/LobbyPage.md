@@ -11,7 +11,7 @@ tags: [contract]
 방(room) 탐색·생성 페이지 orchestrator. 방 목록 조회, 방 생성 폼, 페이셜 게이트(얼굴 인식 검증), 초대링크 생성·공유 담당.
 
 > **구현 상태 (2026-07-05, LOB-01 로비 마감 MVP)** — 이 계약은 풀비전(초대링크·페이셜게이트·대기열·아카이브)이고 아래는 as-built:
-> - **방 목록·생성**: `public_rooms` 뷰 조회 + `create-room` (제목만). 페이셜게이트·모드선택·설명·장르는 미배선(forward-spec 유지).
+> - **방 목록·생성(2026-07-08 확장)**: `public_rooms` 뷰 조회(**waiting+live** — ended 만 제외) + `create-room`(제목 + **장르 옵션** — 서버 화이트리스트 comedy·drama·romance·fantasy·horror·free, 외 값은 null). 카드 = **상태 점(● live=fire-hot / ○ waiting)** + 🔒 + 장르 배지(i18n `lobby.genre.*`) + 호스트·인원. §RoomCard 스펙 중 아바타 도트·씬명·언어 뱃지(G-61)·G-58/59 는 후속, 모드선택(VOD/VGEN)·설명은 미배선(forward-spec 유지 — VGEN 은 룸 내 탭으로 대체 중).
 > - **검색(LOB-02)**: 클라이언트측 필터(제목·호스트명 `includes`). 서버 `.ilike`/다중필터(G-60)는 후속.
 > - **비번방 입장(Phase 2 검증②)**: LobbyPage 클릭 → `join-public-room`이 잠금방에 403 `"Room is locked"` → RoomPage가 `password` 단계로 전환 → `join-room-with-password`(PBKDF2 상수시간). **이미 완결·보안검증됨**(`join-public-room/index.ts:35`).
 > - **초대링크(LOB-05, 2026-07-08)**: 마이그 `20260708120000_room_invites` + Edge 3종 `create-room-invite`(호스트 전용, 128-bit hex 원문은 응답 1회만·DB엔 SHA-256 해시)·`verify-invite-code`(read-only, user당 5회/5분 rate limit)·`accept-invite`(`consume_room_invite` RPC 원자 소비 → `join_room_as_participant` 멱등 재사용). UI = HostConsole [초대링크 만들기](URL 클립보드) + 로비 `?invite=` 확인 배너 → 수락. **계약과의 편차(as-built)**: ①유효 초대는 잠금방(is_locked)도 비번 없이 입장 — 128-bit 코드가 4자+ 비번보다 강한 자격이고 호스트가 명시 발급(§초대링크 5의 비번 단계 생략) ②v1 role='actor' 고정 — viewer 초대·역할 선택 UI·Quick Ready 는 뷰어 입장 경로와 함께 ③verify 응답은 { room_id, title, host_display_name, role } 축소형 ④G-166 초대 메시지 템플릿·QR·알림(G-266)은 후속.
