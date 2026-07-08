@@ -293,7 +293,7 @@ export default function LobbyPage() {
                     <p className="text-xs text-stage-text-muted">
                       {r.hostDisplayName ?? t('lobby.host')} · {t('lobby.participantCount', { currentParticipants: r.currentParticipants, maxParticipants: r.maxParticipants })}
                       {r.genre && (
-                        <span className="ml-2 rounded bg-stage-elevated px-1.5 py-0.5 text-[10px]">
+                        <span className="ml-2 inline-block whitespace-nowrap rounded bg-stage-elevated px-1.5 py-0.5 text-[10px]">
                           {t(`lobby.genre.${r.genre}`)}
                         </span>
                       )}
