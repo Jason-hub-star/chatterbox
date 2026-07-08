@@ -6,6 +6,7 @@ import {
   fetchDubRecordings, getDubSourceUrl, separateDubAudio, type DubTrack,
 } from '@/lib/dub'
 import { mixAndMux, type DubCue } from '@/lib/ffmpeg'
+import ProgressBar from '@/components/shared/ProgressBar'
 
 // Phase 3B 슬라이스 3a/3b: 더빙 완성본 합성(DUB-05, 원본 재더빙 + 음원분리 배경합류).
 // 계약(DubCompositor.md) 준수: allSynced+호스트 게이트·브라우저 ffmpeg.wasm·미리보기·다운로드.
@@ -115,8 +116,12 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
       )}
       {isCompleted && !outputUrl && <p className="mt-2 text-sm text-stage-text-muted">{t('dub.loadingOutput')}</p>}
 
-      {/* 진행 중(호스트 로컬 실행) */}
-      {busy && <p className="mt-2 text-sm text-stage-text-muted">{phaseLabel}</p>}
+      {/* 진행 중(호스트 로컬 실행) — 믹싱만 실측 %, 나머지 단계는 불확정 바(트랙 B P-2) */}
+      {busy && (
+        <div className="mt-2">
+          <ProgressBar value={phase === 'mixing' ? progress : null} label={phaseLabel} />
+        </div>
+      )}
 
       {/* 합성 시작 / 재시도 */}
       {!isCompleted && !busy && (

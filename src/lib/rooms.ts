@@ -5,18 +5,7 @@ import { supabase } from '@/lib/supabase'
 // - 읽기(로비 목록)는 public_rooms 뷰 직접 SELECT (host_id/비밀번호 제외, host_display_name만).
 // SSOT: docs/API-SURFACE.md · docs/DATA-SCHEMA.md §1.2.0
 
-const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
-
-async function callFn<T>(name: string, accessToken: string, body: unknown): Promise<T> {
-  const res = await fetch(`${FN_BASE}/${name}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify(body),
-  })
-  const json = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(json?.error ? String(json.error) : `${name} 실패 (${res.status})`)
-  return json as T
-}
+import { callFn } from '@/lib/edgeFn'
 
 export interface CreateRoomResult { room_id: string; participant_id: string; status: string }
 export interface JoinRoomResult {
@@ -31,8 +20,9 @@ export interface LeaveRoomResult { ok: boolean; new_host_id: string | null }
 export const createRoom = (accessToken: string, title: string) =>
   callFn<CreateRoomResult>('create-room', accessToken, { title })
 
-export const joinRoom = (accessToken: string, roomId: string) =>
-  callFn<JoinRoomResult>('join-public-room', accessToken, { room_id: roomId })
+// signal: 입장 취소 버튼(트랙 B) — 취소 시 AbortError 전파(edgeFn 계약: 호출부가 조용히 처리).
+export const joinRoom = (accessToken: string, roomId: string, signal?: AbortSignal) =>
+  callFn<JoinRoomResult>('join-public-room', accessToken, { room_id: roomId }, { signal })
 
 export const leaveRoom = (accessToken: string, roomId: string) =>
   callFn<LeaveRoomResult>('leave-room', accessToken, { room_id: roomId })

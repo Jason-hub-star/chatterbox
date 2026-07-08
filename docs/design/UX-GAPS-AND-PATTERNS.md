@@ -6,6 +6,8 @@ tags: [design]
   dogfood-audit(2026-07-06) 산출물 — 6 페르소나 서브에이전트가 실코드를 걸어보고 발굴한 UX 갭을
   uiux-distilled.md 원칙으로 "만들 수 있는 스펙"으로 정리. 원칙(uiux-distilled) = 왜/무엇, 이 문서 = 어디를/어떻게.
   구현 착수 시 이 문서의 §1 프리미티브를 먼저 만들면 §2 갭 다수가 한 번에 닫힌다.
+  2026-07-07 정합 갱신: 트랙 A(로직·seam) 완료분을 §2에 반영 — 닫힌 행은 취소선+"A 완료", 반쯤 닫힌 행은
+  "잔여:"로 남은 표현 작업만 명시. 설정 무갭도 명시(랜딩은 2026-07-08 인앱 폐지 — snack-web 담당) → 페이지별 잔여 작업은 이 표 하나로 파악 가능.
 -->
 
 # UX 갭 & 패턴 — 도그푸딩 감사 반영 (착수 전 선설계)
@@ -20,8 +22,8 @@ tags: [design]
 
 | # | 프리미티브 | 무엇 | 닫는 갭 | uiux 원칙 | 노력 |
 |---|---|---|---|---|---|
-| P-1 | **Toast/피드백 시스템** | 성공/실패/정보 1초 내 표시(자동 소멸 + `role="status"`/`alert`). 전역 `useToast()` + `<ToastHost/>` 1개. | 채팅 전송·아바타 저장·방 생성·리액션·큐/공유 브로드캐스트 "먹혔는지" 무피드백 전부 | #20 #21 #19 | S |
-| P-2 | **Progress + ETA 컴포넌트** | 3초↑ 작업에 진행바 + 남은시간. DubCompositor(`DubCompositor.tsx:91-94`)가 이미 phase+progress 패턴 보유 → 추출해 재사용. | VGEN "generating"만 표시·ETA없음(`VgenStatusTab.tsx:52-56`), DUB 업로드/STT/합성 진행도 없음 | #20 | S |
+| P-1 | ~~**Toast/피드백 시스템**~~ **B 완료**(2026-07-08) — `components/shared/ToastHost.tsx` 전역 마운트(하단 중앙·의미색 전역 고정·role=alert/status·4s 소멸·체크 드로우/쉐이크 0-dep 모션·360px 안전). emit 배선 = cue(기존)+리액션 릴레이 실패. 실렌더 5/5. | 잔여: emit 사이트 확장(채팅 전송표시·아바타 저장·방 생성 성공) — 아래 §2 각 행 | 채널·렌더 닫힘 | #20 #21 #19 | — |
+| P-2 | ~~**Progress + ETA 컴포넌트**~~ **B 완료**(2026-07-08) — `components/shared/ProgressBar.tsx`(확정=`--scene-accent` 채움+불씨 선단 / null=불확정 흐름) + VGEN `VgenProgress`(1s 틱·95% 캡·남은초·`etaProgress` 테스트 3) + DUB 합성 단계 바. 실렌더 4/4. | 잔여: DUB 업로드/STT 진행도(§2 DUB 행) | VGEN·DUB합성 닫힘 | #20 | — |
 | P-3 | **Realtime 상태 훅** | `useRealtimeRow(table, id, onChange)`. `vgenStore.ts:47-54`(job 구독)·로비 broadcast가 이미 인프라 사용 → 동형 확장. | DUB 수동 새로고침(`DubPanel.tsx:98`)·DUB 트랙 상태 미실시간·로비 조용한 갱신 | #33 | S~M |
 | P-4 | **Modal 프리미티브** | `<Modal role="dialog" aria-modal>` + 포커스 트랩 + Esc + 복귀 포커스. | 비번 오버레이 포커스 트랩 없음(`RoomPage.tsx:355-389`), 강퇴 확인이 버튼 토글(`HostConsole.tsx:167-186`), 위험액션 확인 없음 | #34 a11y | M |
 | P-5 | **반응형 규약** | 앱 전체 `sm:`/`xl:` 사용 **0회**(현재 `lg:`5·`md:`1). 브레이크포인트 규약 + 무대 slot 동적 크기(`stageLayout.ts` SLOT_PX 고정 120px). | 모바일 레이아웃 깨짐·무대 3×3 압착·검색창 고정폭 | #38 | M |
@@ -35,34 +37,35 @@ tags: [design]
 
 | 화면 | 갭 (file:line) | 수정 | uiux | 노력 |
 |---|---|---|---|---|
-| **온보딩/Auth** | 비밀번호 찾기 경로 전무(`LoginPage.tsx`) | Supabase `resetPasswordForEmail()` + `/reset` 라우트 | #17 #36 | S |
-| | 이메일 인증 재전송 버튼 없음(`RegisterPage.tsx:47-60` PENDING 화면) | resend 버튼 + 쿨다운 | #36 | S |
+| **온보딩/Auth** | ~~비밀번호 찾기 경로 전무~~ **A 완료**(LoginPage 재설정 발송 + `/reset` 라우트, A-FUNC-2) | 잔여: `ResetPasswordPage` 표현(현재 최소 폼) | #17 #36 | S |
+| | ~~이메일 인증 재전송 버튼 없음~~ **A 완료**(resend + 60s 쿨다운, `RegisterPage.tsx:45-48`) | 닫힘 | #36 | — |
 | | 실시간 검증/강도 미터 없음(제출 시에만) | 입력 중 인라인 검증 체크 | #36 #21 | M |
 | | 가입 → 즉시 로비, 아바타 미선택 | 가입 직후 아바타 픽(활성화 시점에 "VTuber 됨" 경험) | #28 | M |
 | **로비** | 조인 시 로딩 스피너 없음·목록 0→N 깜빡임 | P-1 + 스켈레톤 | #20 | S |
 | | 초대링크 복사 없음(ponytail) | 클립보드 복사 버튼 | #30 | S |
-| **룸 진입** | "Joining…" **타임아웃/취소 없음** → 무한대기(`RoomPage.tsx:66-93`) | `callFn`에 15s 타임아웃 + 취소 버튼 | #36 #20 | M |
+| **룸 진입** | ~~"Joining…" 무한대기~~ **A+B 완료** — 15s 타임아웃(A) + 취소 버튼·모닥불 글리프·"모닥불에 다가가는 중…"(B, 2026-07-08 실렌더 4/4: route 홀드→취소→로비·에러 미출현) | 닫힘 | #36 #20 | — |
 | | 에러 상태 재시도 버튼 없음(로비로 가야 함) | 인라인 Retry | #36 | S |
 | | 강퇴 후 재진입 안내 없음·사유 없음 | 사유 표시 + 재입장 링크 | #17 | S |
 | **무대/리액션** | **리액션 우클릭 전용 → 터치 불가**(`RoomPage.tsx:455`, `ReactionWheel.tsx:44-45`) | touch 롱프레스(≥500ms) + 키보드 1~N 핫키 | #38 P-5 | M |
 | | 무대 고정 120px·`max-w-3xl` 모바일 압착(`stageLayout.ts:4`, `Stage.tsx:39`) | 동적 SLOT_PX + 반응형 그리드 | P-5 | M |
 | **채팅** | 타임스탬프·전송확인·타이핑·프레즌스 없음 | 타임스탬프 + P-1 전송 표시 | #19 | S~M |
-| **DUB** | **수동 새로고침**(`DubPanel.tsx:98`)·트랙 상태 미실시간 | P-3 구독(`dub_sessions`·`dub_tracks`) | #33 | S |
-| | 업로드/STT/합성 진행도·ETA 없음 | P-2 | #20 | S |
-| **VGEN** | "generating"만·ETA 없음(`VgenStatusTab.tsx:52-56`) | P-2 + `estimated_duration_sec` | #20 | S |
+| **DUB** | ~~수동 새로고침·미실시간~~ **A 완료**(`useRealtimeRow` 2구독·새로고침 버튼 제거) | 잔여: 로딩 스켈레톤/전환 표현만 | #33 | S |
+| | 업로드/STT 진행도·ETA 없음 (~~합성~~ 은 **B 완료** — P-2 단계 바, 믹싱 실측 %) | P-2 재사용(ProgressBar) | #20 | S |
+| **VGEN** | ~~"generating"만·ETA 없음~~ **A+B 완료**(P-2 바+남은시간, 2026-07-08 실렌더: aria-valuenow·"남은 시간 약 85초") | 닫힘 | #20 | — |
 | **호스트 콘솔** | 강퇴 2단 토글 불명확·사유 미저장(`HostConsole.tsx:167-186`; 계약서는 모달+사유 규정) | P-4 모달 + 사유 필드 | #34 | M |
 | | 연결품질 이모지만(`HostConsole.tsx:156`) | 가시 텍스트 라벨 + RTT/loss(색맹·모바일 안전) | #8 #39 | S~M |
-| | mute 낙관적 → 새로고침 시 desync(`HostConsole.tsx:31-33`) | 마운트 시 `muted_by_host` 로드 | #33 | S |
+| | ~~mute 낙관적 desync~~ **A 완료**(`muted_by_host` 서버진실 로드, `HostConsole.tsx:33`) | 닫힘 | #33 | — |
 | | 호스트 이양 미배선(leave-room은 `new_host_id` 반환하나 UI 무시) | 호스트 변경 감지 + 컨트롤 토글 | — | M |
 | **뷰어/모바일** | **ViewerGate·MobileViewer 구현 0**(계약서만 존재) | 라우트 가드 + 모바일 뷰 배선 | #38 | L |
 | **a11y** | 비번 오버레이 포커스 트랩 없음(`RoomPage.tsx:355-389`) | P-4 | a11y | S |
-| **다국어** | en/ja **각 33키 vs ko 216키(≈15%)** → 대부분 한국어 폴백 | 나머지 183키 번역 | #26 | L |
+| **다국어** | en/ja **각 33키 vs ko 228키(≈14%, 2026-07-07 실측)** → 대부분 한국어 폴백 | `i18n/coverage.missingKeys(ko, target)`로 대기목록 뽑아 번역(A-SEAM-5 구조 위) | #26 | L |
+| **설정·Reset** | 감사 2회전에서 설정 갭 미발견 — 트랙 B 항목 없음(§4 회귀 금지만). ~~랜딩~~ 은 인앱 폐지(2026-07-08, snack-web 담당) | Reset은 위 온보딩/Auth "잔여" 행 참조(AuthShell 적용됨) | — | — |
 
 ---
 
 ## §3. 우선순위 사다리
 
-- **P0 (체감 결손 — 착수 즉시):** P-1 피드백 · P-2 진행/ETA · 룸 조인 타임아웃/취소. → "동작은 하는데 안 되는 것 같은" 인상을 없앤다. (P-6 대비교정은 WCAG 실측 7.2:1로 취소, 그림자는 P2.)
+- ~~**P0 (체감 결손):** P-1 피드백 · P-2 진행/ETA · 룸 조인 타임아웃/취소~~ — **전부 완료(2026-07-08, 실렌더 13/13).** (P-6 대비교정은 WCAG 실측 7.2:1로 취소, 그림자는 P2.)
 - **P1 (도달범위 — 성장 전제):** P-3 Realtime(DUB/VGEN) · P-5 반응형 + 터치 리액션 · 뷰어/모바일 경로 배선 · 다국어 완성.
 - **P2 (프리미엄 폴리시):** P-4 모달 일원화 · 8px 그리드 정리 · 타입 스케일 1.25× · 그림자 elevation 전면 적용 · 라이트모드.
 

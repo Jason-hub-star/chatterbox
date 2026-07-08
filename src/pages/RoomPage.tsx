@@ -8,7 +8,7 @@ import { useUserStore } from '@/stores/userStore'
 import { joinRoom, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword } from '@/lib/rooms'
 import { getVgenUrl } from '@/lib/vgen'
 import { useStageStore } from '@/stores/stageStore'
-import { fetchRoomMembers } from '@/lib/dub'
+import { fetchRoomMembers, fetchRoomHostId } from '@/lib/dub'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import Stage from '@/features/stage/Stage'
@@ -21,6 +21,7 @@ import ScriptPanel from '@/features/script/ScriptPanel'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import HostConsole from '@/features/room/HostConsole'
+import CampfireGlyph from '@/components/shared/CampfireGlyph'
 import { SEED_SCRIPTS } from '@/features/script/cues'
 
 // Phase 1B PoC → 우측 패널 셸 도입: 채팅·DUB·VGen 을 RightPanel 탭 블록으로 통합(contracts/RightPanel.md).
@@ -50,6 +51,8 @@ export default function RoomPage() {
   const navigate = useNavigate()
   const session = useUserStore((s) => s.session)
   const myAvatarUrl = useUserStore((s) => s.avatarUrl)
+  const appUserId = useUserStore((s) => s.appUserId)
+  const hostId = useRoomStore((s) => s.hostId)
   const myIdentity = session?.user?.id ?? '' // LiveKit identity = auth uid
 
   // 입장 단계: LiveKit 연결 전에 반드시 room_participants 행을 만든다(멱등).
@@ -63,22 +66,28 @@ export default function RoomPage() {
   const [pwPhaseBusy, setPwPhaseBusy] = useState(false)
   const [pwPhaseErr, setPwPhaseErr] = useState<string | null>(null)
 
+  // 취소 버튼(트랙 B)이 진행 중 join fetch 를 끊을 수 있게 컨트롤러를 ref 로 노출.
+  const joinAbortRef = useRef<AbortController | null>(null)
   useEffect(() => {
     if (!session || !roomId) return
     let cancelled = false
+    const ac = new AbortController()
+    joinAbortRef.current = ac
     ;(async () => {
       setJoinPhase('joining')
       try {
-        const r = await joinRoom(session.access_token, roomId)
+        const r = await joinRoom(session.access_token, roomId, ac.signal)
         if (cancelled) return
         useRoomStore.getState().setRoomContext({
           currentRoomId: roomId,
           myParticipantId: r.participant_id,
           mySlotIndex: r.slot_index,
+          myRole: r.role === 'viewer' ? 'viewer' : 'actor',
         })
         setJoinPhase('ready')
       } catch (e) {
         if (cancelled) return
+        if (e instanceof DOMException && e.name === 'AbortError') return // 사용자 취소 — 내비게이션이 처리(에러 화면 금지)
         const msg = e instanceof Error ? e.message : ''
         if (msg === 'Room is locked') { setJoinPhase('password'); return } // 비번 입력 단계로
         setJoinError(msg || t('room.joinError'))
@@ -87,6 +96,7 @@ export default function RoomPage() {
     })()
     return () => {
       cancelled = true
+      ac.abort() // 언마운트/재조인 시 고아 fetch 정리
       useStageStore.getState().clearMainVideo() // 방 이탈/전환 시 공유 영상 초기화
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t 는 안정적, 언어 변경 시 재조인 방지 위해 제외
@@ -160,21 +170,33 @@ export default function RoomPage() {
   const memberKey = participants.map((p) => p.identity).sort().join(',')
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string | null>>({})
   const [memberSlots, setMemberSlots] = useState<Record<string, number>>({})
+  const [mutedIdentities, setMutedIdentities] = useState<Set<string>>(new Set())
   useEffect(() => {
     if (joinPhase !== 'ready' || !session) return
     let cancelled = false
     ;(async () => {
       try {
-        const members = await fetchRoomMembers(session.access_token, roomId)
+        // 참가자 변동(memberKey)마다 재실행 — 호스트 퇴장도 참가자 변동이므로 hostId 가 새 호스트로 갱신된다(A-FUNC-3 이양).
+        const [members, newHostId] = await Promise.all([
+          fetchRoomMembers(session.access_token, roomId),
+          fetchRoomHostId(roomId),
+        ])
         if (cancelled) return
         const avatars: Record<string, string | null> = {}
         const slots: Record<string, number> = {}
+        const muted = new Set<string>()
         for (const m of members) {
           avatars[m.authId] = m.avatarUrl
           slots[m.authId] = m.slotIndex // 절대좌석용(identity=auth uid)
+          if (m.mutedByHost) muted.add(m.authId)
         }
         setMemberAvatars(avatars)
         setMemberSlots(slots)
+        setMutedIdentities(muted)
+        useRoomStore.getState().setRoomContext({ hostId: newHostId })
+        // mute 마운트 로드(A-FUNC-3): 새로고침 후에도 내 muted_by_host 를 서버 진실로 재동기(desync 제거).
+        const myAuthId = useUserStore.getState().user?.id
+        if (myAuthId) useRoomStore.getState().setMutedByHost(muted.has(myAuthId))
       } catch { /* 명단 조회 실패 → 기본 아바타 fallback + slot 미상은 임시배치 */ }
     })()
     return () => { cancelled = true }
@@ -206,7 +228,9 @@ export default function RoomPage() {
 
   // 대본 진행 권한 = 호스트(생성자=slot 0). ponytail: 정확한 host_id 판정(현재 public_rooms 뷰는 host_id 제외).
   const mySlotIndex = useRoomStore((s) => s.mySlotIndex)
-  const isHost = mySlotIndex === 0
+  // 호스트 판정은 rooms.host_id(서버 진실) 우선 — 호스트 이양 시 이 값 갱신으로 새 호스트가 컨트롤을 얻는다.
+  // hostId 로드 전(초기)엔 기존 slot 프록시로 폴백(2인 경로 무변화). 서버는 host_id 로 권한 재검증.
+  const isHost = hostId != null && appUserId != null ? hostId === appUserId : mySlotIndex === 0
   const script = SEED_SCRIPTS[0]
   // ponytail: cue 진행 권한은 현재 **클라이언트 게이트만**(호스트에게만 버튼 노출) — 악의적 참가자가
   // 'script' 토픽을 직접 publish 하면 desync 가능. Phase 2 서버 권한(scripts 테이블 host-only UPDATE +
@@ -284,6 +308,7 @@ export default function RoomPage() {
           onSetMute={mute}
           onSetPassword={changePassword}
           initialLocked={roomLocked}
+          initialMuted={mutedIdentities}
         />
       ),
     })
@@ -301,6 +326,7 @@ export default function RoomPage() {
         currentRoomId: roomId,
         myParticipantId: r.participant_id,
         mySlotIndex: r.slot_index,
+        myRole: r.role === 'viewer' ? 'viewer' : 'actor',
       })
       setRoomLocked(true)
       setJoinPhase('ready')
@@ -326,6 +352,7 @@ export default function RoomPage() {
       hostId: null,
       myParticipantId: null,
       mySlotIndex: null,
+      myRole: null,
     })
     navigate('/lobby', { replace: true })
   }
@@ -333,7 +360,16 @@ export default function RoomPage() {
   if (joinPhase === 'joining') {
     return (
       <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text-muted">
-        <p role="status" aria-live="polite">{t('room.joining')}</p>
+        <div className="flex flex-col items-center gap-4">
+          <CampfireGlyph />
+          <p role="status" aria-live="polite">{t('room.joining')}</p>
+          <button
+            onClick={() => { joinAbortRef.current?.abort(); navigate('/lobby', { replace: true }) }}
+            className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+          >
+            {t('room.joinCancel')}
+          </button>
+        </div>
       </main>
     )
   }

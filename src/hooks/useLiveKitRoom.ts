@@ -12,6 +12,8 @@ import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
 import { sendReactionRelay, advanceScriptCueRelay } from '@/lib/rooms'
+import { toast } from '@/hooks/useToast'
+import i18n from '@/i18n'
 import {
   encodeBlendshapeFrame,
   decodeBlendshapeFrame,
@@ -310,7 +312,10 @@ export function useLiveKitRoom(
   const sendCue = useCallback(async (sceneId: string, cueIndex: number) => {
     const token = useUserStore.getState().session?.access_token
     if (!token) return
-    await advanceScriptCueRelay(token, roomId, sceneId, cueIndex).catch(() => {})
+    // 실패 시 호스트만 로컬로 진행되고 다른 참가자는 못 받는다(SEC-5 서버 릴레이). 침묵 대신 재시도 유도.
+    await advanceScriptCueRelay(token, roomId, sceneId, cueIndex).catch(() => {
+      toast.error(i18n.t('room.cueSyncFailed'))
+    })
   }, [roomId])
 
   // room-authority 송신(reliable): VGEN 공유재생 등. publishData 는 자기 echo 없음 — 발신자는 로컬 반영 별도.
@@ -337,7 +342,10 @@ export function useLiveKitRoom(
     const rid = crypto.randomUUID()
     seenReactionsRef.current.add(rid) // 서버가 본인에게도 broadcast → 내 self-echo 를 dedupe
     useReactionStore.getState().addFloat(room.localParticipant.identity, emoji) // 즉시 self-echo(왕복 지연 체감 제거)
-    void sendReactionRelay(token, roomId, emoji, rid).catch(() => { /* 실패해도 로컬 float 은 이미 표시(fire-and-forget) */ })
+    // 릴레이 실패 = 내 float 만 뜨고 남들에겐 안 감 → 침묵 대신 알림(cue 릴레이와 동일 패턴).
+    void sendReactionRelay(token, roomId, emoji, rid).catch(() => {
+      toast.error(i18n.t('room.reactionSyncFailed'))
+    })
   }, [roomId])
 
   const leave = useCallback(async () => {
