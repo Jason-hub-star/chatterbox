@@ -198,7 +198,8 @@ export default function LobbyPage() {
         </section>
       )}
 
-      <form onSubmit={onCreate} className="mt-6 flex gap-2">
+      {/* flex-wrap: 360px 에서 select·버튼이 다음 줄로 — 버튼 세로 깨짐 방지(실렌더 발견). */}
+      <form onSubmit={onCreate} className="mt-6 flex flex-wrap gap-2">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -223,7 +224,7 @@ export default function LobbyPage() {
         <button
           type="submit"
           disabled={creating || !title.trim()}
-          className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+          className="shrink-0 whitespace-nowrap rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
         >
           {creating ? t('lobby.creating') : t('lobby.createRoom')}
         </button>
@@ -287,14 +288,15 @@ export default function LobbyPage() {
                       </span>{' '}
                       {r.isLocked && <span aria-label={t('lobby.locked')} title={t('lobby.locked')}>🔒 </span>}
                       {r.title}
+                    </p>
+                    {/* 장르 배지는 truncate 되는 제목 줄 밖에 — 긴 제목이 배지를 잘라먹지 않게(실렌더 발견). */}
+                    <p className="text-xs text-stage-text-muted">
+                      {r.hostDisplayName ?? t('lobby.host')} · {t('lobby.participantCount', { currentParticipants: r.currentParticipants, maxParticipants: r.maxParticipants })}
                       {r.genre && (
-                        <span className="ml-2 rounded bg-stage-elevated px-1.5 py-0.5 align-middle text-[10px] font-normal text-stage-text-muted">
+                        <span className="ml-2 rounded bg-stage-elevated px-1.5 py-0.5 text-[10px]">
                           {t(`lobby.genre.${r.genre}`)}
                         </span>
                       )}
-                    </p>
-                    <p className="text-xs text-stage-text-muted">
-                      {r.hostDisplayName ?? t('lobby.host')} · {t('lobby.participantCount', { currentParticipants: r.currentParticipants, maxParticipants: r.maxParticipants })}
                     </p>
                   </div>
                   <button
