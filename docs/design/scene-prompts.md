@@ -39,11 +39,15 @@ deep contrast between warm gold and deep blue, inspired by Makoto Shinkai films
 
 **시간축 variant(2026-07-08 확정):** 로그인·로비는 접속 시각 기준 variant 를 공유한다(`pickTimeVariant`: 06~17시=`morning` / 18~05시=`night`) — 로그인만 시간을 알면 다음 씬과 어색해지므로 **시간은 세계 전체의 축**. 오전 세트부터 개발(주인님 결정), 밤 세트는 이미지만 선행.
 
+**시간축 = 문화축(2026-07-08 주인님 확정):** **오전 = 서양 판타지**(석조·목골 상점가·연철 가로등·스트링 라이트, 간판은 글자 없는 문양 — 한자·종이랜턴 금지) / **밤 = 중국풍**(홍등·처마·현판·동양 용). 동물은 양쪽 다 고래·물고기(용은 밤 로그인 전용).
+
+**화풍 고정 기법(2026-07-08 확립 — 파이프라인 규칙):** 신규 씬은 **`images/edits`에 `login_splash.png` 원본을 입력 이미지로 물리고** "exact same painting style/palette/lighting … a different scene from the same world" 프롬프트로 생성한다 — edits 의 "전역 재생성" 함정(매팅엔 독)을 화풍 복제에 역이용. lobby-street-day v1(한자 간판·문화축 위반, generations 단독)은 이 기법의 v2 로 교체됨. 이후 밤 세트·룸 씬도 동일 기법.
+
 | slug | 페이지 | variant | 상태 |
 |---|---|---|---|
 | `login-splash` | 로그인/가입/리셋 (LoL식 우측 스플래시 + 입장 영상 원판) | morning | 생성·적용 완료(2026-07-08) |
 | `login-splash` (night) | 〃 밤 버전 — **여자 주인공 + 중국풍 + 동양 용(확정 스펙)**: 긴 검정 묶은머리(포니테일), 빨간 유지우산(꽃문양)을 어깨에 걸침, 동일 구도(뒷모습·고지 조망), 붉은 랜턴의 중화풍 판타지 도시, 밤하늘을 헤엄치는 발광 동양 용. 프롬프트 초안 §아래 | night | **초안 등재·생성 대기(콜 게이트)** |
-| `lobby-street-day` | 로비 — 입장 영상이 도착하는 판타지 상점가(아이레벨·무인물), 하늘바다에 **고래·물고기**(로그인 오전과 동물 연속·용은 밤 로그인 전용) | morning | **생성·적용 완료(2026-07-08)** — gpt-image-2·WebP 522KB `public/scenes/lobby-street/day.webp`·로비 v1 배선(배경+그라디언트 스크림)·실렌더 1440/360 |
+| `lobby-street-day` | 로비 — 입장 영상이 도착하는 **서양 판타지** 상점가(아이레벨·무인물·문양 간판·고래/어군) | morning | **v2 생성·적용 완료(2026-07-08)** — edits+splash 레퍼런스(화풍 고정)·WebP 555KB `public/scenes/lobby-street/day.webp`·실렌더 확인. v1(한자 간판)은 폐기 |
 | `lobby-street-night` | 〃 같은 거리의 밤(랜턴·야광 고래/물고기) | night | 초안 등재·생성 대기(콜 게이트) |
 | `world-panorama` | ~~인앱 랜딩~~ → **인앱 랜딩 폐지**(마케팅은 외부 snack-web 담당). 생성본은 snack-web 랜딩 히어로 이관 후보(`~/Documents/채터박스/v2/world_panorama.png`) | — | 생성 완료·미사용 |
 | ~~`lobby-lantern-night`~~ | → `lobby-street-*` 로 대체(입장 영상 도착 지점과 서사 연속) | — | 폐기 |
@@ -55,8 +59,8 @@ deep contrast between warm gold and deep blue, inspired by Makoto Shinkai films
 #### 생성 대기 프롬프트 초안 (실행 전 원문 재확인 → 콜)
 
 - **login-splash night**: `A lone young woman seen from behind, her long black hair tied back in a ponytail, standing at the same high vantage point at night, a red silk oil-paper umbrella with painted blossoms resting against her shoulder, gazing out over a vast Chinese-fantasy city glowing with countless red lanterns, a colossal luminous eastern dragon with a long serpentine body swimming slowly through the starry night sky among moonlit clouds, deep blue-violet palette with warm red-gold lantern light` + ANCHOR v2
-- **lobby-street-day**: `A fantasy shopping street in warm morning light, seen at eye level down the street, no people, the sky above is a luminous ocean — whales and schools of small fish swimming among sunlit clouds, hanging signs and paper lanterns swaying, potted flowers and market stalls along the street, god rays falling between buildings, gold-and-deep-blue palette` + ANCHOR v2
-- **lobby-street-night**: `The same fantasy shopping street at night, no people, glowing red and gold lanterns lining the street, the sky-ocean above now dark and starry with faintly bioluminescent whales and fish drifting slowly, warm shop light spilling onto the stone road, deep blue-violet palette with lantern accents` + ANCHOR v2
+- **lobby-street-day v2(서양 판타지 — 재생성 대기)**: `A western European fantasy shopping street in warm morning light, seen at eye level down the street, no people, cobblestone road, timber-framed and stone storefronts with round glass windows, wooden signboards with simple painted symbols and no letters, flower boxes and market stalls with striped awnings, wrought-iron street lamps and hanging string lights, ivy on the walls, the sky above is a luminous ocean — whales and schools of small fish swimming among sunlit clouds, god rays falling between buildings, gold-and-deep-blue palette` + ANCHOR v2
+- **lobby-street-night v2(중국풍 — 밤 세트)**: `A Chinese-fantasy street at night, no people, glowing red and gold paper lanterns lining wooden shophouses with upturned eaves and hanging banners, the sky-ocean above dark and starry with faintly bioluminescent whales and small fish drifting slowly, warm shop light spilling onto the stone road, deep blue-violet palette with red-gold lantern accents` + ANCHOR v2
 
 아래 v1(지브리 수채) suffix·씬들은 **룸 씬 스타일 교체 전까지의 기존 자산 기록**으로 유지.
 
