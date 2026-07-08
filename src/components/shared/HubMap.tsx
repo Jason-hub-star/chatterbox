@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GlowMotes from '@/components/shared/GlowMotes'
-import PlazaAmbient from '@/components/shared/PlazaAmbient'
 import type { HubBlock, HubDest } from '@/scenes/manifest'
 
 // 광장 허브 맵(로비 v3 — A+B 확정: 컬러 스포트라이트 + 카메라 푸시, 호버 연구소 검수 채택).
@@ -100,9 +99,6 @@ export default function HubMap({ blocks, roomsCount, onDest, fullscreen = false 
       >
         <div ref={camRef} className="hub-cam absolute inset-0">
           <img src={block.hero} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" />
-          {block.ambient && !window.matchMedia('(prefers-reduced-motion: reduce)').matches && (
-            <PlazaAmbient whales={block.ambient.whales} />
-          )}
           <GlowMotes count={14} />
           {block.shops.map(
             (s) =>
