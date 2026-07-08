@@ -23,10 +23,11 @@ describe('i18n pipe', () => {
     expect(i18n.t('settings.language')).toBe('言語')
   })
 
-  it('미시드 키는 ko 로 fallback 한다(파이프는 열림, 값은 점진)', async () => {
+  it('미시드 키는 ko 로 fallback 한다(파이프 메커니즘 검증)', async () => {
+    // 2026-07-08 전량 번역 완료로 실키 픽스처가 사라짐 → 합성 프로브 키로 파이프 자체를 검증.
+    i18n.addResource('ko', 'translation', 'test.fallbackProbe', '프로브')
     await i18n.changeLanguage('en')
-    // dub.* 는 en 미시드 → 한국어로 fallback
-    expect(i18n.t('dub.header')).toBe('더빙')
+    expect(i18n.t('test.fallbackProbe')).toBe('프로브')
   })
 
   it('flat dotted 키를 중첩 없이 통째로 조회한다(keySeparator:false)', () => {

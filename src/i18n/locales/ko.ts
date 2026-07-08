@@ -201,7 +201,7 @@ export const ko: Record<string, string> = {
   "stage.selfLabel": "나",
   "stage.expressionSending": "표정 전송",
   "reaction.wheelLabel": "리액션 휠",
-  "reaction.hint": "우클릭으로 리액션",
+  "reaction.hint": "우클릭·길게 눌러 리액션 (숫자키 1~8)",
   "reaction.cancel": "취소",
   "avatar.trackingIdle": "대기",
   "avatar.trackingInitializing": "MediaPipe 로딩 중…",
