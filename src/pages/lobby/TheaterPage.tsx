@@ -5,7 +5,9 @@ import { useUserStore } from '@/stores/userStore'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/useToast'
 import {
+  ROOM_GENRES,
   createReservation,
+  createRoom,
   fetchMyReservations,
   fetchPublicRooms,
   listRecentPeople,
@@ -28,7 +30,10 @@ export default function TheaterPage() {
   const session = useUserStore((s) => s.session)
   const interior = useInterior('rooms')
   const [searchParams] = useSearchParams()
-  const [tab, setTab] = useState<'shows' | 'ticket'>(searchParams.get('tab') === 'ticket' ? 'ticket' : 'shows')
+  const initTab = searchParams.get('tab')
+  const [tab, setTab] = useState<'shows' | 'ticket' | 'create'>(
+    initTab === 'ticket' ? 'ticket' : initTab === 'create' ? 'create' : 'shows',
+  )
 
   const [rooms, setRooms] = useState<LobbyRoom[]>([])
   const [loading, setLoading] = useState(true)
@@ -134,6 +139,12 @@ export default function TheaterPage() {
               >
                 {t('theater.tabTicket')}
               </button>
+              <button
+                onClick={() => setTab('create')}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${tab === 'create' ? 'bg-fire-amber text-stage-base' : 'text-stage-text-muted hover:text-stage-text'}`}
+              >
+                {t('theater.tabCreate')}
+              </button>
             </div>
 
             {tab === 'shows' ? (
@@ -186,13 +197,73 @@ export default function TheaterPage() {
                   )}
                 </div>
               </>
-            ) : (
+            ) : tab === 'ticket' ? (
               session && <TicketOffice accessToken={session.access_token} presetInvitee={searchParams.get('invitee')} />
+            ) : (
+              session && <StageCreator accessToken={session.access_token} />
             )}
           </div>
         </div>
       )}
     </InteriorShell>
+  )
+}
+
+// 무대 열기 = 방 생성(LOB-03). 로비 IA 재편으로 공방(구 방생성)에서 대극장 탭으로 이관 —
+// 방 관련(목록·입장·예약·생성)이 한 건물에 모임. 생성 즉시 분장실(/ready)로.
+function StageCreator({ accessToken }: { accessToken: string }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [title, setTitle] = useState('')
+  const [genre, setGenre] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  async function onCreate(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = title.trim()
+    if (!trimmed) return
+    setCreating(true)
+    try {
+      const { room_id } = await createRoom(accessToken, trimmed, genre || undefined)
+      navigate(`/rooms/${room_id}/ready`)
+    } catch {
+      toast.error(t('lobby.createError'))
+      setCreating(false)
+    }
+  }
+
+  return (
+    <form onSubmit={onCreate} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+      <p className="text-xs text-stage-text-muted">{t('workshop.benchHint')}</p>
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        aria-label={t('lobby.roomTitleInput')}
+        placeholder={t('lobby.roomTitlePlaceholder')}
+        maxLength={80}
+        className="rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-xs"
+      />
+      <select
+        value={genre}
+        onChange={(e) => setGenre(e.target.value)}
+        aria-label={t('lobby.genreLabel')}
+        className="rounded-lg border border-stage-border bg-stage-base px-2 py-2 text-xs text-stage-text-muted"
+      >
+        <option value="">{t('lobby.genreNone')}</option>
+        {ROOM_GENRES.map((g) => (
+          <option key={g} value={g}>
+            {t(`lobby.genre.${g}`)}
+          </option>
+        ))}
+      </select>
+      <button
+        type="submit"
+        disabled={creating || !title.trim()}
+        className="rounded-lg bg-fire-amber px-4 py-2.5 text-xs font-bold text-stage-base disabled:opacity-40"
+      >
+        {creating ? t('lobby.creating') : t('workshop.raiseStage')}
+      </button>
+    </form>
   )
 }
 

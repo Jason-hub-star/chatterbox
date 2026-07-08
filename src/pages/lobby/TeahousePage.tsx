@@ -71,38 +71,14 @@ export default function TeahousePage() {
         </div>
       )}
 
-      {/* 하단 패널: 최근 방 재입장(레거시 이전). */}
-      <div className="interior-anchor md:!left-[4%] md:!top-[8%] md:!w-[34%]" style={{}}>
-        <div className="interior-panel space-y-1.5">
-          <p className="text-xs font-semibold text-stage-text-muted">{t('lobby.recentRooms')}</p>
-          {!loaded ? (
-            <p className="text-xs text-stage-text-muted">{t('common.loading')}</p>
-          ) : recent.length === 0 ? (
-            <p className="text-xs text-stage-text-muted">{t('teahouse.empty')}</p>
-          ) : (
-            recent.slice(0, 5).map((r) => (
-              <div key={r.room_id} className="flex items-center gap-2 rounded-lg border border-stage-border px-2.5 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold">{r.title}</p>
-                  {r.fellows.length > 0 && (
-                    <p className="truncate text-[11px] text-stage-text-muted">
-                      {t('lobby.recentWith', { names: r.fellows.map((f) => f.display_name ?? '?').join(', ') })}
-                    </p>
-                  )}
-                </div>
-                {r.status !== 'ended' && (
-                  <button
-                    onClick={() => navigate(`/rooms/${r.room_id}/ready`)}
-                    className="shrink-0 rounded-md border border-stage-border px-2.5 py-1.5 text-[11px] text-stage-text-muted hover:text-stage-text"
-                  >
-                    {t('lobby.join')}
-                  </button>
-                )}
-              </div>
-            ))
-          )}
+      {/* 찻집 = 사람 전용(로비 IA 재편): 방 재입장은 대극장 공개목록과 중복이라 이관/제거,
+          여기는 최근 함께한 사람(재초대)·친구(P1 FriendSystem) 축. 아직 사람이 없으면 빈 안내.
+          ponytail: 훗날 SNS형 커뮤니티(아바타 자랑 등) 확장 자리 — 건물 선점 유지. */}
+      {interior && loaded && people.length === 0 && (
+        <div className="interior-anchor" style={vars(interior.anchors.tableA)}>
+          <p className="interior-panel text-center text-xs text-stage-text-muted">{t('teahouse.empty')}</p>
         </div>
-      </div>
+      )}
     </InteriorShell>
   )
 }

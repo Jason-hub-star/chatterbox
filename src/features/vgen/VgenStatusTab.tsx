@@ -45,7 +45,7 @@ export default function VgenStatusTab({
 }: {
   roomId: string
   isHost: boolean
-  onShare: (jobId: string) => Promise<void>
+  onShare?: (jobId: string) => Promise<void> // 룸 공유(방에 게시). 쇼츠 제작소(스튜디오)는 공유 대상이 없어 미전달 → 버튼 숨김.
 }) {
   const { t } = useTranslation()
   const balance = useUserStore((s) => s.creditBalance)
@@ -103,7 +103,7 @@ export default function VgenStatusTab({
               {j.status === 'done' && (
                 <button onClick={() => play(j.id)} className="text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.playButton')}</button>
               )}
-              {j.status === 'done' && isHost && (
+              {j.status === 'done' && isHost && onShare && (
                 <button onClick={() => void onShare(j.id)} className="text-xs font-semibold text-fire-amber">{t('vgen.shareButton')}</button>
               )}
             </li>

@@ -23,6 +23,11 @@ export const ROOM_GENRES = ['comedy', 'drama', 'romance', 'fantasy', 'horror', '
 export const createRoom = (accessToken: string, title: string, genre?: string) =>
   callFn<CreateRoomResult>('create-room', accessToken, genre ? { title, genre } : { title })
 
+// 쇼츠 제작소(로비 IA 재편): VGEN 이 room 에 강결합(room_id·호스트검증·R2 경로)이라, 유저당
+// 숨겨진 1인 스튜디오 방을 get-or-create 로 재사용한다(vgen_jobs 히스토리 누적). 서버 멱등.
+export const ensureStudioRoom = (accessToken: string) =>
+  callFn<{ room_id: string }>('ensure-studio-room', accessToken, {})
+
 // signal: 입장 취소 버튼(트랙 B) — 취소 시 AbortError 전파(edgeFn 계약: 호출부가 조용히 처리).
 export const joinRoom = (accessToken: string, roomId: string, signal?: AbortSignal) =>
   callFn<JoinRoomResult>('join-public-room', accessToken, { room_id: roomId }, { signal })
