@@ -103,9 +103,18 @@ export default function LobbyPage() {
       try {
         const r = await verifyInviteCode(session.access_token, inviteCode)
         if (!cancelled) setInvite({ code: inviteCode, title: r.title, host: r.host_display_name })
-      } catch {
+      } catch (e) {
         if (!cancelled) {
-          toast.error(t('lobby.inviteInvalid'))
+          // verify-invite-code 는 revoked/expired/used_up/room_ended 를 error 문자열로 구분 응답
+          // (edgeFn 이 Error.message 로 보존) — 원인별 안내로 "왜 안 되는지"를 알린다.
+          const msg = e instanceof Error ? e.message : ''
+          const key =
+            msg === 'expired' ? 'lobby.inviteExpired'
+              : msg === 'revoked' ? 'lobby.inviteRevoked'
+                : msg === 'used_up' ? 'lobby.inviteUsedUp'
+                  : msg === 'room_ended' ? 'lobby.inviteRoomEnded'
+                    : 'lobby.inviteInvalid'
+          toast.error(t(key))
           setInvite(null)
           setSearchParams({}, { replace: true })
         }

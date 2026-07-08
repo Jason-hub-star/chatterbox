@@ -29,6 +29,11 @@ Deno.serve(async (req) => {
     return json({ error: "scheduled_at must be in the future (within 30 days)" }, 400);
   }
 
+  // 예약 생성 rate-limit(SEC-RES-1): 일일 캡 — 예약 행·알림 스팸 차단(check_rate_limit 프리미티브 재사용).
+  const { data: allowed } = await service
+    .rpc("check_rate_limit", { p_key: `reservation:${userId}`, p_max: 20, p_window_sec: 86_400 });
+  if (allowed === false) return json({ error: "예약을 너무 많이 만들었어요. 잠시 후 다시 시도해주세요." }, 429);
+
   const inviteeIds = Array.isArray(body.invitee_ids)
     ? [...new Set(body.invitee_ids.filter((v) => isUuid(v) && v !== userId))].slice(0, MAX_INVITEES)
     : [];
@@ -40,23 +45,41 @@ Deno.serve(async (req) => {
     .single();
   if (error || !reservation) return json({ error: "Create failed" }, 500);
 
+  let notified = 0;
   if (inviteeIds.length) {
-    const { data: host } = await service
-      .from("users").select("display_name").eq("id", userId).maybeSingle();
-    const { data: valid } = await service
-      .from("users").select("id").in("id", inviteeIds).is("deleted_at", null);
-    const rows = (valid ?? []).map((u) => ({
-      user_id: u.id,
-      type: "reservation_invite",
-      payload: {
-        reservation_id: reservation.id,
-        room_title: title,
-        host_name: host?.display_name ?? null,
-        scheduled_at: reservation.scheduled_at,
-      },
-    }));
-    if (rows.length) await service.from("notifications").insert(rows);
+    // 초대 대상은 "내가 최근 함께한 동료"로 제한(SEC-RES-1): 임의 유저 알림 주입 차단.
+    // 관계 근거 = 공유 room_participants 이력(list-recent-people 와 동일) → 미삭제 유저만.
+    const { data: myRooms } = await service
+      .from("room_participants").select("room_id").eq("user_id", userId);
+    const roomIds = [...new Set((myRooms ?? []).map((m) => m.room_id))];
+    let fellowIds: string[] = [];
+    if (roomIds.length) {
+      const { data: fellows } = await service
+        .from("room_participants").select("user_id").in("room_id", roomIds).in("user_id", inviteeIds);
+      const fellowSet = [...new Set((fellows ?? []).map((f) => f.user_id))];
+      if (fellowSet.length) {
+        const { data: valid } = await service
+          .from("users").select("id").in("id", fellowSet).is("deleted_at", null);
+        fellowIds = (valid ?? []).map((u) => u.id);
+      }
+    }
+    if (fellowIds.length) {
+      const { data: host } = await service
+        .from("users").select("display_name").eq("id", userId).maybeSingle();
+      const rows = fellowIds.map((id) => ({
+        user_id: id,
+        type: "reservation_invite",
+        payload: {
+          reservation_id: reservation.id,
+          room_title: title,
+          host_name: host?.display_name ?? null,
+          scheduled_at: reservation.scheduled_at,
+        },
+      }));
+      await service.from("notifications").insert(rows);
+      notified = fellowIds.length;
+    }
   }
 
-  return json({ reservation_id: reservation.id, scheduled_at: reservation.scheduled_at, notified: inviteeIds.length }, 201);
+  return json({ reservation_id: reservation.id, scheduled_at: reservation.scheduled_at, notified }, 201);
 });

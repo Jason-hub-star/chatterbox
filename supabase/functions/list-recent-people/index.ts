@@ -36,8 +36,10 @@ Deno.serve(async (req) => {
     .order("joined_at", { ascending: false })
     .limit(100);
 
+  // excludeRoomId 는 내가 참가한 방일 때만 신뢰(SEC-RES-2): 임의 방 참가자 추론(멤버십 미검증) 차단.
+  // 정상 사용 = "지금 있는 방 제외"라 그 방은 내 최근 참가 이력(roomIds)에 포함 → 무손상.
   let excluded = new Set<string>();
-  if (excludeRoomId) {
+  if (excludeRoomId && roomIds.includes(excludeRoomId)) {
     const { data: cur } = await service
       .from("room_participants")
       .select("user_id")
