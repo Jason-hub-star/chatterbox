@@ -208,6 +208,7 @@ export const ko: Record<string, string> = {
   "lobby.statusWaiting": "대기 중",
   "lobby.watch": "관전",
   "lobby.demoBadge": "데모",
+  "lobby.practiceBadge": "연습 방",
   "lobby.notifications": "알림",
   "lobby.notifEmpty": "새 알림이 없어요.",
   "lobby.recentRooms": "최근 함께한 방",

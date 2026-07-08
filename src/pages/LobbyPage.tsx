@@ -358,6 +358,11 @@ export default function LobbyPage() {
                           {t('lobby.demoBadge')}
                         </span>
                       )}
+                      {r.isPractice && (
+                        <span className="ml-2 inline-block whitespace-nowrap rounded bg-spring-green/15 px-1.5 py-0.5 text-[10px] text-spring-green">
+                          {t('lobby.practiceBadge')}
+                        </span>
+                      )}
                     </p>
                   </div>
                   {full && !r.isLocked ? (

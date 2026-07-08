@@ -208,6 +208,7 @@ export const en: Record<string, string> = {
   'lobby.statusWaiting': 'Waiting',
   'lobby.watch': 'Watch',
   'lobby.demoBadge': 'Demo',
+  'lobby.practiceBadge': 'Practice',
   'lobby.notifications': 'Alerts',
   'lobby.notifEmpty': 'No new notifications.',
   'lobby.recentRooms': 'Recent rooms',

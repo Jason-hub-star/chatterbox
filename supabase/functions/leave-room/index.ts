@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
   const { data: room, error: rErr } = await service
     .from("rooms")
-    .select("id, host_id, status, authority_epoch")
+    .select("id, host_id, status, authority_epoch, is_practice")
     .eq("id", roomId)
     .single();
   if (rErr || !room) return json({ error: "Room not found" }, 404);
@@ -61,6 +61,11 @@ Deno.serve(async (req) => {
   let newHostId: string | null = null;
 
   if (remaining === 0) {
+    // 연습 방(LOB-10)은 상시 유지 — 비어도 닫지 않는다(카운트만 0).
+    if (room.is_practice) {
+      await service.from("rooms").update({ current_participants: 0 }).eq("id", roomId);
+      return json({ ok: true, new_host_id: null }, 200);
+    }
     // 마지막 배우 → 방 종료(남은 뷰어의 토큰은 room ended 게이트가 무효화).
     await service
       .from("rooms")

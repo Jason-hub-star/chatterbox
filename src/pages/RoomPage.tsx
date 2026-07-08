@@ -18,6 +18,7 @@ import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import DubPanel from '@/features/dub/DubPanel'
 import VgenStatusTab from '@/features/vgen/VgenStatusTab'
 import ScriptPanel from '@/features/script/ScriptPanel'
+import { supabase } from '@/lib/supabase'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import HostConsole from '@/features/room/HostConsole'
@@ -118,13 +119,31 @@ export default function RoomPage() {
     remoteAvatars.current.get(identity)?.(frame)
   }, [])
 
+  // 연습 방(LOB-10): 시스템 호스트라 아무도 host 가 아님 — 대본 진행권을 참가자 전원에게(서버도 동일 예외).
+  const isPracticeRef = useRef(false)
+  const [isPractice, setIsPractice] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('public_rooms').select('is_practice').eq('id', roomId).maybeSingle()
+      if (!cancelled && data) {
+        setIsPractice(!!data.is_practice)
+        isPracticeRef.current = !!data.is_practice
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [roomId])
+
   // 대본 텔레프롬프터: 호스트가 진행한 cue_index 를 수신 → 전원이 같은 위치를 본다.
   const [cueIndex, setCueIndex] = useState(0)
   const [myRole, setMyRole] = useState<string | null>(null)
   // 수신 방어: 다른 씬 메시지 무시 + cueIndex 범위 클램프(변조·스테일·멀티씬 대비).
   const handleCue = useCallback((p: { sceneId: string; cueIndex: number }) => {
     // 호스트는 자기 진행이 소스(로컬 갱신) — 서버 릴레이 self-echo 를 무시해 회귀 방지(SEC-5). 비호스트만 반영.
-    if (useRoomStore.getState().mySlotIndex === 0) return
+    // 연습 방은 전원이 진행자라 스킵 없음(자기 echo 는 같은 값 → 멱등).
+    if (!isPracticeRef.current && useRoomStore.getState().mySlotIndex === 0) return
     const sc = SEED_SCRIPTS[0]
     if (p.sceneId !== sc.id) return
     setCueIndex(Math.max(0, Math.min(sc.cues.length - 1, p.cueIndex)))
@@ -287,6 +306,8 @@ export default function RoomPage() {
   // 호스트 판정은 rooms.host_id(서버 진실) 우선 — 호스트 이양 시 이 값 갱신으로 새 호스트가 컨트롤을 얻는다.
   // hostId 로드 전(초기)엔 기존 slot 프록시로 폴백(2인 경로 무변화). 서버는 host_id 로 권한 재검증.
   const isHost = hostId != null && appUserId != null ? hostId === appUserId : mySlotIndex === 0
+  // 대본 진행권: 호스트 또는 연습 방 참가자(서버 advance-script-cue 가 동일 규칙으로 재검증).
+  const canAdvanceCue = isHost || isPractice
   const script = SEED_SCRIPTS[0]
   // ponytail: cue 진행 권한은 현재 **클라이언트 게이트만**(호스트에게만 버튼 노출) — 악의적 참가자가
   // 'script' 토픽을 직접 publish 하면 desync 가능. Phase 2 서버 권한(scripts 테이블 host-only UPDATE +
@@ -592,7 +613,7 @@ export default function RoomPage() {
             <ScriptPanel
               script={script}
               cueIndex={cueIndex}
-              isHost={isHost}
+              isHost={canAdvanceCue}
               myRole={myRole}
               onPickRole={setMyRole}
               onAdvance={advanceCue}

@@ -208,6 +208,7 @@ export const ja: Record<string, string> = {
   'lobby.statusWaiting': '待機中',
   'lobby.watch': '観覧',
   'lobby.demoBadge': 'デモ',
+  'lobby.practiceBadge': '練習ルーム',
   'lobby.notifications': '通知',
   'lobby.notifEmpty': '新しい通知はありません。',
   'lobby.recentRooms': '最近のルーム',

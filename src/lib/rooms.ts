@@ -137,13 +137,14 @@ export interface LobbyRoom {
   hostDisplayName: string | null
   isLocked: boolean
   isDemo: boolean
+  isPractice: boolean
 }
 
 export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
   // LOB-01: 진행 중(live)인 방도 목록에 — 카드의 ●/○ 상태 점이 구분(ended 만 제외).
   const { data, error } = await supabase
     .from('public_rooms')
-    .select('id, title, genre, status, current_participants, max_participants, host_display_name, is_locked, is_demo, created_at')
+    .select('id, title, genre, status, current_participants, max_participants, host_display_name, is_locked, is_demo, is_practice, created_at')
     .in('status', ['waiting', 'live'])
     .order('created_at', { ascending: false })
     .limit(50)
@@ -158,5 +159,6 @@ export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
     hostDisplayName: (r.host_display_name as string | null) ?? null,
     isLocked: (r.is_locked as boolean) ?? false,
     isDemo: (r.is_demo as boolean) ?? false,
+    isPractice: (r.is_practice as boolean) ?? false,
   }))
 }
