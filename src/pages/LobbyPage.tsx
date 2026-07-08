@@ -146,11 +146,17 @@ export default function LobbyPage() {
       className="relative min-h-screen bg-stage-base text-stage-text"
       style={scene ? ({ '--scene-accent': scene.accent } as React.CSSProperties) : undefined}
     >
-      {/* 모바일 배경(정적 거리+스크림) — 데스크톱은 광장이 그림 담당. */}
+      {/* 모바일 배경 = 데스크톱과 동일 광장(plaza). 레거시 거리(scene.hero=lobby-street/day)가
+          아니라 hub hero 로 통일 — 광장 재편 후 모바일에 구 거리가 남던 잔재 제거. */}
       {scene && (
         <div aria-hidden className="fixed inset-0 md:hidden">
-          <img src={scene.hero} alt="" draggable={false} className="h-full w-full select-none object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-stage-base/90 via-stage-base/75 to-stage-base/50" />
+          <img
+            src={scene.hub?.blocks[0]?.hero ?? scene.hero}
+            alt=""
+            draggable={false}
+            className="h-full w-full select-none object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-stage-base/80 via-stage-base/60 to-stage-base/45" />
         </div>
       )}
 
@@ -188,15 +194,7 @@ export default function LobbyPage() {
           </section>
         )}
 
-        {/* 모바일: 광장은 배너로만 — 기능 접근은 하단 네비(주인님 콜). */}
-        {scene?.hub && (
-          <img
-            src={scene.hub.blocks[0]?.hero}
-            alt=""
-            draggable={false}
-            className="mt-4 w-full select-none rounded-xl md:hidden"
-          />
-        )}
+        {/* 모바일: 광장은 배경이 담당(위 fixed) — 중복 배너 제거. 기능 접근은 하단 네비. */}
       </div>
 
       {/* 모바일 하단 네비 — 내부 4관 라우트 직행. */}
