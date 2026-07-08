@@ -4,10 +4,29 @@
 
 export type TimeVariant = 'morning' | 'night'
 
+// 허브 목적지(로비 v2 — 가게 = 기능 입구, scene-prompts.md §로비 v2). 식별자는 기능명 —
+// 건물 은유는 주석: rooms=대극장 · social=찻집 · create=공방 · profile=의상실 ·
+// practice=야외 연습 무대 · troupe=극단 회관(COM-01 선점, UI 준비 중) · reserved=무간판 예비 점포.
+export type HubDest = 'rooms' | 'social' | 'create' | 'profile' | 'practice' | 'troupe' | 'reserved'
+
+export interface HubShop {
+  dest: HubDest
+  box: { l: number; t: number; w: number; h: number } // 블록 이미지 기준 % 좌표
+  cores: { x: number; y: number }[] // 창/입구 점등 코어(box 내부 %)
+}
+
+// 블록 스트리트(확장 규격): 신기능 구역은 새 블록을 append — 기존 블록 픽셀·좌표 불변.
+// 이음 = 새 블록의 좌단 석조 아치(프롬프트 필수). edits 연장은 전역 재생성 함정으로 금지.
+export interface HubBlock {
+  hero: string
+  shops: HubShop[]
+}
+
 export interface SceneVariant {
   hero: string // public/ 기준 경로
   video?: string // 입장 영상 등 (없으면 해당 연출 스킵)
   accent: string // --scene-accent 주입값 (DESIGN-DIRECTION §4.3)
+  hub?: { blocks: HubBlock[] } // 로비 v2 광장 허브(데스크톱 히어로) — 없으면 정적 배경만
 }
 
 export interface Scene {
@@ -37,9 +56,29 @@ export const SCENES = {
   },
   // 로비 배경(입장 영상이 도착하는 판타지 상점가 — 하늘바다 고래·물고기).
   // night(랜턴·야광 어군)는 생성 콜 후 등재 — 그 전까지 밤 접속도 day 폴백.
+  // hub = 로비 v2 광장(데스크톱 히어로) — 좌표는 plaza-1(1536×1024) 기준 %, 실렌더 캘리브레이션 완료본.
   lobbyStreet: {
     variants: {
-      morning: { hero: '/scenes/lobby-street/day.webp', accent: '#FFD98A' },
+      morning: {
+        hero: '/scenes/lobby-street/day.webp',
+        accent: '#FFD98A',
+        hub: {
+          blocks: [
+            {
+              hero: '/scenes/lobby-plaza/plaza-1.webp',
+              shops: [
+                { dest: 'rooms', box: { l: 3.5, t: 24, w: 25, h: 48 }, cores: [{ x: 48, y: 72 }, { x: 20, y: 40 }] }, // 대극장
+                { dest: 'profile', box: { l: 29, t: 37, w: 13, h: 29 }, cores: [{ x: 50, y: 52 }] }, // 의상실
+                { dest: 'reserved', box: { l: 43, t: 47, w: 10, h: 17 }, cores: [{ x: 50, y: 55 }] }, // 예비 점포
+                { dest: 'troupe', box: { l: 53.5, t: 21, w: 18.5, h: 40 }, cores: [{ x: 50, y: 68 }] }, // 극단 회관
+                { dest: 'create', box: { l: 71.5, t: 41, w: 11, h: 24 }, cores: [{ x: 45, y: 66 }] }, // 공방
+                { dest: 'social', box: { l: 83.5, t: 28, w: 14.5, h: 35 }, cores: [{ x: 45, y: 58 }] }, // 찻집
+                { dest: 'practice', box: { l: 78, t: 64, w: 21, h: 31 }, cores: [{ x: 55, y: 45 }] }, // 야외 연습 무대
+              ],
+            },
+          ],
+        },
+      },
     },
   },
 } satisfies Record<string, Scene>

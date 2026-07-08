@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
@@ -6,7 +6,8 @@ import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/useToast'
 import { acceptInvite, createReservation, createRoom, fetchMyReservations, fetchPublicRooms, listRecentPeople, listRecentRooms, verifyInviteCode, ROOM_GENRES, type LobbyRoom, type RecentPerson, type RecentRoom, type Reservation } from '@/lib/rooms'
 import NotificationBell from '@/components/shared/NotificationBell'
-import { SCENES, resolveScene } from '@/scenes/manifest'
+import HubMap from '@/components/shared/HubMap'
+import { SCENES, resolveScene, type HubDest } from '@/scenes/manifest'
 
 // LOB-01/03: 공개 방 목록(public_rooms 뷰) + 방 생성 + 검색 + Realtime 자동갱신.
 // Realtime: rooms 변경 시 트리거가 public 'lobby' 채널로 nudge broadcast(민감컬럼 노출 0·
@@ -29,6 +30,52 @@ export default function LobbyPage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+
+  // 허브 목적지 앵커(로비 v2): 대극장→방 목록, 찻집→최근 함께한, 공방→생성 폼, 게시판성 기능은 예약 섹션.
+  const roomsSectionRef = useRef<HTMLElement>(null)
+  const recentSectionRef = useRef<HTMLElement>(null)
+  const reservationWrapRef = useRef<HTMLDivElement>(null)
+  const createInputRef = useRef<HTMLInputElement>(null)
+
+  const focusCreate = useCallback(() => {
+    createInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    createInputRef.current?.focus({ preventScroll: true })
+  }, [])
+  const scrollToRooms = useCallback(() => roomsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }), [])
+  const scrollToReserve = useCallback(() => reservationWrapRef.current?.scrollIntoView({ behavior: 'smooth' }), [])
+
+  const handleDest = useCallback(
+    (dest: HubDest) => {
+      switch (dest) {
+        case 'rooms':
+          roomsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          break
+        case 'create':
+          focusCreate()
+          break
+        case 'social':
+          if (recentSectionRef.current) recentSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          else toast.info(t('hub.socialEmpty'))
+          break
+        case 'profile':
+          navigate('/settings')
+          break
+        case 'practice': {
+          const practice = rooms.find((r) => r.isPractice)
+          if (practice) navigate(`/rooms/${practice.id}/ready`)
+          else toast.info(t('hub.practiceClosed'))
+          break
+        }
+        case 'troupe':
+          toast.info(t('hub.troupeSoon'))
+          break
+        case 'reserved':
+          toast.info(t('hub.reservedHint'))
+          break
+      }
+    },
+    [rooms, navigate, focusCreate, t],
+  )
 
   // 초대링크 수락(LOB-05): ?invite=<code> → read-only 검증 → 확인 배너 → 수락 시 서버가 소비+참가.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -186,13 +233,14 @@ export default function LobbyPage() {
     >
       {/* 로비 v1 = 배경 + 가독 스크림만(기능 UI·계약 무변경 — scene-prompts.md §신규 씬).
           입장 영상이 도착하는 그 거리 — 시간축 variant 는 로그인과 공유(manifest). */}
+      {/* 정적 배경+스크림은 모바일 전용 — 데스크톱(md+)은 허브 맵 히어로가 그림 담당(중복 회피). */}
       {scene && (
-        <div aria-hidden className="fixed inset-0">
+        <div aria-hidden className={`fixed inset-0 ${scene.hub ? 'md:hidden' : ''}`}>
           <img src={scene.hero} alt="" draggable={false} className="h-full w-full select-none object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-stage-base/90 via-stage-base/75 to-stage-base/50" />
         </div>
       )}
-      <div className="relative p-4 sm:p-8">
+      <div className="relative p-4 pb-24 sm:p-8 md:pb-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t('lobby.title')}</h1>
         <div className="flex items-center gap-2">
@@ -206,6 +254,17 @@ export default function LobbyPage() {
         </div>
       </div>
       {email && <p className="mt-2 text-stage-text-muted">{t('lobby.welcome', { email })}</p>}
+
+      {/* 광장 허브(로비 v2, 데스크톱) — 가게 = 기능 입구. 모바일은 하단 네비가 같은 목적지 담당. */}
+      {scene?.hub && (
+        <div className="mt-6 hidden max-w-5xl md:block">
+          <HubMap
+            blocks={scene.hub.blocks}
+            roomsCount={rooms.filter((r) => !r.isPractice).length}
+            onDest={handleDest}
+          />
+        </div>
+      )}
 
       {invite && (
         <section className="mt-6 max-w-sm rounded-lg border border-fire-amber/40 bg-fire-amber/10 px-4 py-3">
@@ -224,6 +283,7 @@ export default function LobbyPage() {
       {/* flex-wrap: 360px 에서 select·버튼이 다음 줄로 — 버튼 세로 깨짐 방지(실렌더 발견). */}
       <form onSubmit={onCreate} className="mt-6 flex flex-wrap gap-2">
         <input
+          ref={createInputRef}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           aria-label={t('lobby.roomTitleInput')}
@@ -259,10 +319,12 @@ export default function LobbyPage() {
         </p>
       )}
 
-      {session && <ReservationSection accessToken={session.access_token} />}
+      <div ref={reservationWrapRef}>
+        {session && <ReservationSection accessToken={session.access_token} />}
+      </div>
 
       {recent.length > 0 && (
-        <section className="mt-8">
+        <section ref={recentSectionRef} className="mt-8">
           <h2 className="text-sm font-semibold text-stage-text-muted">{t('lobby.recentRooms')}</h2>
           <ul className="mt-3 space-y-2">
             {recent.map((r) => (
@@ -292,7 +354,7 @@ export default function LobbyPage() {
         </section>
       )}
 
-      <section className="mt-8">
+      <section ref={roomsSectionRef} className="mt-8">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-sm font-semibold text-stage-text-muted">
             {t('lobby.publicRooms')} ({filtered.length})
@@ -389,6 +451,22 @@ export default function LobbyPage() {
         )}
       </section>
       </div>
+
+      {/* 모바일 하단 네비(주인님 콜: 모바일만) — 허브 맵이 없는 화면폭에서 같은 목적지 보장. */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-stage-border bg-stage-panel/95 backdrop-blur md:hidden">
+        <button onClick={scrollToRooms} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+          {t('hub.navRooms')}
+        </button>
+        <button onClick={focusCreate} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+          {t('hub.navCreate')}
+        </button>
+        <button onClick={scrollToReserve} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+          {t('hub.navReserve')}
+        </button>
+        <button onClick={() => navigate('/settings')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+          {t('hub.navSettings')}
+        </button>
+      </nav>
     </main>
   )
 }
