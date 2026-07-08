@@ -81,6 +81,8 @@ export const ja: Record<string, string> = {
   'login.or': 'または',
   'login.withGoogle': 'Google で続ける',
   'login.withKakao': 'カカオで続ける',
+  'login.introReplay': 'イントロをもう一度見る',
+  'entry.skipHint': 'クリックまたは Esc でスキップ',
   'login.resetNeedEmail': 'まずメールアドレスを入力してください。',
   'login.resetSent': '再設定メールを送信しました。受信箱をご確認ください。',
   'register.title': '新規登録',

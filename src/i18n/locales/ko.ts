@@ -81,6 +81,8 @@ export const ko: Record<string, string> = {
   "login.or": "또는",
   "login.withGoogle": "Google로 계속하기",
   "login.withKakao": "카카오로 계속하기",
+  "login.introReplay": "인트로 다시 보기",
+  "entry.skipHint": "클릭 또는 Esc로 건너뛰기",
   "login.resetNeedEmail": "이메일을 먼저 입력해주세요.",
   "login.resetSent": "재설정 메일을 보냈어요. 메일함을 확인해주세요.",
   "register.title": "회원가입",

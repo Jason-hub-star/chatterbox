@@ -27,6 +27,8 @@ body {
    글리프·아이콘은 spritegen 교체 지점(ToastHost 아이콘·CampfireGlyph 내부)에만 존재 —
    여기 키프레임은 그 내부 구현. reduced-motion 이면 전부 정지. */
 @media (prefers-reduced-motion: no-preference) {
+  /* 입장 영상 이음새: 스틸에 슬로우 줌 — 영상 첫 모션(전진 돌리)과 방향 정렬(모션 벡터 일치) */
+  .entry-zoom { animation: entry-zoom 6s ease-in forwards; }
   .toast-in { animation: toast-in 0.2s ease-out; }
   .toast-in.toast-wobble { animation: toast-in 0.2s ease-out, toast-wobble 0.35s 0.2s ease-in-out; }
   .toast-check path { stroke-dasharray: 15; stroke-dashoffset: 15; animation: toast-check-draw 0.35s 0.1s ease-out forwards; }
@@ -43,6 +45,7 @@ body {
   .campfire-spark { opacity: 0; }
 }
 
+@keyframes entry-zoom { from { transform: scale(1); } to { transform: scale(1.06); } }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes toast-wobble { 0%, 100% { transform: none; } 25% { transform: translateX(-3px); } 55% { transform: translateX(3px); } 80% { transform: translateX(-1px); } }
 @keyframes toast-check-draw { to { stroke-dashoffset: 0; } }

@@ -45,7 +45,7 @@ deep contrast between warm gold and deep blue, inspired by Makoto Shinkai films
 
 | slug | 페이지 | variant | 상태 |
 |---|---|---|---|
-| `login-splash` | 로그인/가입/리셋 (LoL식 우측 스플래시 + 입장 영상 원판) | morning | 생성·적용 완료(2026-07-08) |
+| `login-splash` | 로그인/가입/리셋 (LoL식 우측 스플래시 + 입장 영상 원판) | morning | 생성·적용 완료(2026-07-08) + **입장 영상 완료**: Seedance 2.0 fast i2v(0번 프레임=원본·5.0s·720p·무음·주인님 토큰 미로테이트 승인) → VP9 WebM 950KB `enter.webm`. 훅=로그인 성공 1회(localStorage)·클릭/Esc 스킵·reduced-motion 생략·로드실패 즉시 내비·프리로드·'인트로 다시 보기'. E2E 11/11 |
 | `login-splash` (night) | 〃 밤 버전 — **여자 주인공 + 중국풍 + 동양 용(확정 스펙)**: 긴 검정 묶은머리(포니테일), 빨간 유지우산(꽃문양)을 어깨에 걸침, 동일 구도(뒷모습·고지 조망), 붉은 랜턴의 중화풍 판타지 도시, 밤하늘을 헤엄치는 발광 동양 용. 프롬프트 초안 §아래 | night | **초안 등재·생성 대기(콜 게이트)** |
 | `lobby-street-day` | 로비 — 입장 영상이 도착하는 **서양 판타지** 상점가(아이레벨·무인물·문양 간판·고래/어군) | morning | **v2 생성·적용 완료(2026-07-08)** — edits+splash 레퍼런스(화풍 고정)·WebP 555KB `public/scenes/lobby-street/day.webp`·실렌더 확인. v1(한자 간판)은 폐기 |
 | `lobby-street-night` | 〃 같은 거리의 밤(랜턴·야광 고래/물고기) | night | 초안 등재·생성 대기(콜 게이트) |

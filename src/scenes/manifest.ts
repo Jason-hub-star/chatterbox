@@ -28,7 +28,11 @@ export const SCENES = {
   // 로그인/가입/리셋 스플래시. night(여주·중국풍·동양 용·유지우산)는 생성 콜 후 등재(scene-prompts.md 초안).
   loginSplash: {
     variants: {
-      morning: { hero: '/scenes/login-splash/splash.webp', accent: '#FFD98A' },
+      morning: {
+        hero: '/scenes/login-splash/splash.webp',
+        video: '/scenes/login-splash/enter.webm', // 입장 영상(Seedance i2v, 0번 프레임=hero — 이음새 4중 설계)
+        accent: '#FFD98A',
+      },
     },
   },
   // 로비 배경(입장 영상이 도착하는 판타지 상점가 — 하늘바다 고래·물고기).

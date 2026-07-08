@@ -81,6 +81,8 @@ export const en: Record<string, string> = {
   'login.or': 'or',
   'login.withGoogle': 'Continue with Google',
   'login.withKakao': 'Continue with Kakao',
+  'login.introReplay': 'Replay intro',
+  'entry.skipHint': 'Click or press Esc to skip',
   'login.resetNeedEmail': 'Enter your email first.',
   'login.resetSent': 'Reset email sent. Please check your inbox.',
   'register.title': 'Sign up',
