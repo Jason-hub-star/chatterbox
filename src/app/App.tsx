@@ -18,6 +18,8 @@ import RoomPage from '@/pages/RoomPage'
 import AriaPocPage from '@/pages/AriaPocPage'
 import AvatarInspectorPage from '@/pages/AvatarInspectorPage'
 import AriaSelfPage from '@/pages/AriaSelfPage'
+import LegalDoc from '@/pages/legal/LegalDoc'
+import { PRIVACY, TERMS } from '@/pages/legal/content'
 
 // 앱 진입점 — 마케팅 랜딩은 외부 snack-web 이 담당(2026-07-08 인앱 랜딩 폐지).
 // 게임 런처식: 세션 있으면 바로 로비, 없으면 로그인. 로그아웃 navigate('/')·설정 홈 링크도 이 관문을 지난다.
@@ -33,6 +35,9 @@ const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/reset', element: <ResetPasswordPage /> }, // 비번 재설정 링크 착지점 (A-FUNC-2)
+  // 법률 문서(공개·인증 불필요) — Google OAuth 동의화면 게시용. /privacy·/terms.
+  { path: '/privacy', element: <LegalDoc doc={PRIVACY} /> },
+  { path: '/terms', element: <LegalDoc doc={TERMS} /> },
   // Phase 1 PoC: 표정 트래킹 (인증 불필요 — 데모/테스트용).
   { path: '/avatar-aria', element: <AriaPocPage /> }, // 실 rig(아리아) — iframe PoC
   { path: '/avatar-inspect', element: <AvatarInspectorPage /> }, // 실 rig 네이티브 이식 (경로 B, B1 게이트)
