@@ -50,11 +50,13 @@ export function crc16(bytes: Uint8Array): number {
   return crc & 0xffff
 }
 
+// 반환 타입은 Uint8Array<ArrayBuffer> 로 고정 — livekit-client 2.20.1+ publishData 가 SharedArrayBuffer 를
+// 배제한 정확한 제네릭을 요구(TS6 기본 Uint8Array<ArrayBufferLike> 와 불일치). buf 는 실제 ArrayBuffer.
 export function encodeBlendshapeFrame(
   blendshapes: Record<string, number>,
   seq: number,
   timestampMs: number,
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
   const buf = new ArrayBuffer(FRAME_BYTES)
   const view = new DataView(buf)
   for (let i = 0; i < BLENDSHAPE_COUNT; i++) {

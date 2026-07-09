@@ -145,11 +145,15 @@ export default function RoomPage() {
   }, [])
   // 대본 모드(ROOM-14): 서버 진실(rooms.script_mode) — 입장 시 로드 + room-authority 로 실시간 동기.
   const [scriptMode, setScriptModeLocal] = useState<'rehearsal' | 'performance'>('performance')
+  // handleCue 는 stable 콜백이라 ref 로 현재 모드를 읽는다(연습 방 ref 와 동형).
+  const scriptModeRef = useRef(scriptMode)
+  useEffect(() => { scriptModeRef.current = scriptMode }, [scriptMode])
   // 수신 방어: 다른 씬 메시지 무시 + cueIndex 범위 클램프(변조·스테일·멀티씬 대비).
   const handleCue = useCallback((p: { sceneId: string; cueIndex: number }) => {
-    // 호스트는 자기 진행이 소스(로컬 갱신) — 서버 릴레이 self-echo 를 무시해 회귀 방지(SEC-5). 비호스트만 반영.
-    // 연습 방은 전원이 진행자라 스킵 없음(자기 echo 는 같은 값 → 멱등).
-    if (!isPracticeRef.current && useRoomStore.getState().mySlotIndex === 0) return
+    // 본공연: 진행자는 호스트뿐 — 호스트는 자기 진행이 소스(로컬 갱신)라 서버 self-echo 를 무시해 회귀 방지(SEC-5).
+    // 연습 방·리허설: 전원이 진행자 — 호스트도 남의 진행을 받아야 하므로 스킵 없음(자기 echo 는 같은 값 → 멱등).
+    // (2026-07-09 프로드 2탭 E2E 가 잡은 버그: 리허설에서 배우 진행이 호스트에 영원히 미반영 → 모드 조건 추가.)
+    if (!isPracticeRef.current && scriptModeRef.current !== 'rehearsal' && useRoomStore.getState().mySlotIndex === 0) return
     const sc = SEED_SCRIPTS[0]
     if (p.sceneId !== sc.id) return
     setCueIndex(Math.max(0, Math.min(sc.cues.length - 1, p.cueIndex)))
@@ -437,13 +441,18 @@ export default function RoomPage() {
     void scriptRoleAction(session.access_token, roomId, { action: 'claim', role }).catch(() => { /* 다음 멤버 변동에 재시도 */ })
   }, [connected, memberKey, roomId, session])
 
-  // 역할 클레임/해제/배정·모드 전환 콜백(ROOM-14). 반영은 서버 echo 수신으로(전 클라 순서 일치), 모드만 낙관.
+  // 역할 클레임/해제/배정·모드 전환 콜백(ROOM-14). 본인 액션은 낙관 self-echo(리액션 동형) —
+  // 신규 참가자의 서버→클라 채널 첫 수신이 드롭될 수 있어(프로드 2탭 E2E 실측) 로컬 즉시 반영하고,
+  // 서버 echo 는 같은 값이라 멱등(경합은 서버 순서 LWW 로 수렴).
   const claimRole = useCallback((role: string) => {
     if (!session) return
+    const myName = useRoomStore.getState().participants.find((p) => p.isLocal)?.name ?? null
+    setRoleMap((m) => applyRoleEvent(m, { kind: 'set', role, authId: myIdentity, name: myName }))
     void scriptRoleAction(session.access_token, roomId, { action: 'claim', role }).catch(() => toast.error(t('script.roleSyncFailed')))
-  }, [session, roomId, t])
+  }, [session, roomId, t, myIdentity])
   const releaseRole = useCallback((role: string) => {
     if (!session) return
+    setRoleMap((m) => applyRoleEvent(m, { kind: 'clear', role }))
     void scriptRoleAction(session.access_token, roomId, { action: 'release', role }).catch(() => toast.error(t('script.roleSyncFailed')))
   }, [session, roomId, t])
   const assignRole = useCallback((role: string, targetAuthId: string | null) => {
