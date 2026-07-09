@@ -11,6 +11,8 @@ tags: [contract]
 
 **관련 문서**: DESIGN-DIRECTION.md §4, DATA-SCHEMA.md (scenes.layers_json), SoundSystem.md (click 이벤트 오디오)
 
+> **as-built (2026-07-09, 배포됨·`773738f`)** — 배경 **교체 MVP**만 구현(레이어 인터랙션 아님 = ROOM-26/G-207 그대로 defer). 구현분: Edge `set-room-background`(호스트검증 + `isSafeBackgroundUrl` allowlist=`/scenes/`·`..` 차단) → `rooms.background_url` UPDATE → `bg_change` `room-authority` broadcast → `stores/stageStore.backgroundUrl` → `features/stage/Stage.tsx` CSS 배경레이어(`bg-cover bg-center opacity-60`). 정적 목록 `lib/stageBackgrounds.ts`(none/theater/teahouse/workshop/plaza), HostConsole 썸네일 버튼(`host.background`). 렌더는 낙관적 로컬셋이 아니라 **서버 broadcast 왕복**이라 전 참가자 동기. 라이브검증: 호스트 극장 클릭→무대 배경 실렌더, 콘솔 무에러. **defer(트랙 B/ROOM-26)**: 아래 계약이 기술하는 레이어별 PNG PixiJS 스프라이트·클릭/호버 인터랙션·idle 애니·`sound_trigger`·씬 전환 fade — 전부 미구현(현재는 단일 배경 이미지 교체).
+
 ---
 
 ## Props Interface

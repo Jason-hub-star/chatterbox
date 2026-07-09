@@ -6,6 +6,8 @@ tags: [contract]
 
 실시간 네트워크 연결 품질을 우상단 고정 인디케이터로 시각화. 3단계 상태(좋음/보통/나쁨)를 표시하고, `specs/NetworkAdaptiveQuality.md`의 백엔드 적응 로직을 UI로 노출.
 
+> **as-built (2026-07-09, 배포됨·`773738f`)** — enum-MVP 구현. 아래 풀스펙과의 편차: LiveKit `connectionQuality` enum만 사용한다. `lib/roomQuality.ts:netTier(connectionState, connectionQuality)`가 `good/fair/poor/connecting/reconnecting/offline/unknown`을 파생하고, `features/room/NetworkStatusIndicator.tsx`는 `roomStore.participants`의 로컬 참가자 `connectionQuality` + `connectionState`를 읽어 **점 + 라벨(`room.net.*`)만** 렌더한다. 라이브검증: 정상 연결 초록 "좋음". **defer(트랙 B)**: 아래 Props의 `latencyMs`/`packetLoss`/`bandwidth`/`audioTrackHealth`·`networkStore`/`audioStore` 의존·moving-average(3초 윈도우)·hover tooltip(ms/%)·재연결 색상 깜박임 애니 — 전부 미배선. 즉 현 구현은 RTT/패킷손실 실측 없이 SFU가 주는 `ConnectionQuality` enum에 의존한다.
+
 ## Props Interface
 
 ```typescript
