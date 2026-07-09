@@ -4,7 +4,17 @@ import { useEffect, useRef, type ReactNode } from 'react'
 // 위험/확인 액션은 이걸 경유한다 — 소비처: 강퇴 확인(HostConsole)·비용 확인(CostConfirmDialog).
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
-export default function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export default function Modal({
+  title,
+  onClose,
+  children,
+  widthClass = 'max-w-sm',
+}: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+  widthClass?: string
+}) {
   const boxRef = useRef<HTMLDivElement>(null)
   const prevFocus = useRef<HTMLElement | null>(null)
   useEffect(() => {
@@ -36,7 +46,7 @@ export default function Modal({ title, onClose, children }: { title: string; onC
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="toast-in relative w-full max-w-sm rounded-lg border border-stage-border bg-stage-elevated p-5 shadow-lg"
+        className={`toast-in relative w-full ${widthClass} rounded-lg border border-stage-border bg-stage-elevated p-5 shadow-lg`}
       >
         <h3 className="text-sm font-semibold text-stage-text">{title}</h3>
         {children}

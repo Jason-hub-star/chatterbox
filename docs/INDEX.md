@@ -91,6 +91,7 @@ tags: [hub]
 |---|---|---|
 | `design/DESIGN-TOKENS.md` | 색·타이포·여백·radius·shadow·모션 토큰 | **SSOT (디자인)** |
 | `design/scene-prompts.md` | 씬 레이어 PNG 프롬프트 원본(5씬×25레이어+공용FX)·생성/검증 실측·layers_json 초기 배치값·WebP 정책 | **SSOT (씬 에셋)** |
+| `design/WORLD-SYSTEM.md` | 세계관(World) 시스템 — 씬 매니페스트 월드축 구조·worldStore 우선순위·월드 갤러리·무한 확장 규칙 | **SSOT (월드 아키텍처)** |
 | `design/uiux-distilled.md` | 전문가 영상 증류 UI/UX 원칙 48개 + ChatterBox 적용 Top10 | 조사/설계 (UX 원칙 SSOT) |
 | `design/UX-GAPS-AND-PATTERNS.md` | 도그푸딩 감사(dogfood-audit) 반영 UX 갭→수정 + 재사용 프리미티브 선설계 | **설계 (UX 구현 입력)** |
 | `design/README.md` | 토큰 폴더 구조·연결점 | SSOT |

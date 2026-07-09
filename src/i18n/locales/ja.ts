@@ -81,6 +81,7 @@ export const ja: Record<string, string> = {
   'login.or': 'または',
   'login.withGoogle': 'Google で続ける',
   'login.withKakao': 'カカオで続ける',
+  'login.useEmail': 'メールでログイン',
   'login.introReplay': 'イントロをもう一度見る',
   'entry.skipHint': 'クリックまたは Esc でスキップ',
   'login.resetNeedEmail': 'まずメールアドレスを入力してください。',
@@ -92,6 +93,7 @@ export const ja: Record<string, string> = {
   'register.passwordHint': '8文字以上、大文字・数字を各1文字以上',
   'register.submitting': '登録中…',
   'register.submit': '新規登録',
+  'register.useEmail': 'メールで登録',
   'register.hasAccount': 'すでにアカウントをお持ちですか？',
   'register.loginLink': 'ログイン',
   'register.errors.invalidEmail': 'メールアドレスの形式が正しくありません。',
@@ -356,4 +358,14 @@ export const ja: Record<string, string> = {
   'cost.currentBalance': '現在の残高',
   'cost.disclaimer': '生成リクエスト時にクレジットが差し引かれます。失敗した場合は自動で返金されます。',
   'cost.startButton': '生成開始',
+
+  // --- world(세계관 갤러리) ---
+  'world.western': '西洋ファンタジー',
+  'world.eastern': '東洋ファンタジー',
+  'world.category.fantasy': 'ファンタジー',
+  'world.category.oriental': '東洋',
+  'worldGallery.title': '世界観を選ぶ',
+  'worldGallery.all': 'すべて',
+  'worldGallery.wip': '準備中',
+  'worldGallery.change': '変更',
 }

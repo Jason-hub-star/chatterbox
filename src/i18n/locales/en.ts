@@ -81,6 +81,7 @@ export const en: Record<string, string> = {
   'login.or': 'or',
   'login.withGoogle': 'Continue with Google',
   'login.withKakao': 'Continue with Kakao',
+  'login.useEmail': 'Sign in with email',
   'login.introReplay': 'Replay intro',
   'entry.skipHint': 'Click or press Esc to skip',
   'login.resetNeedEmail': 'Enter your email first.',
@@ -92,6 +93,7 @@ export const en: Record<string, string> = {
   'register.passwordHint': 'At least 8 characters, incl. 1 uppercase and 1 number',
   'register.submitting': 'Signing up…',
   'register.submit': 'Sign up',
+  'register.useEmail': 'Sign up with email',
   'register.hasAccount': 'Already have an account?',
   'register.loginLink': 'Log in',
   'register.errors.invalidEmail': 'Invalid email format.',
@@ -356,4 +358,14 @@ export const en: Record<string, string> = {
   'cost.currentBalance': 'Current balance',
   'cost.disclaimer': 'Credits are deducted when you request generation. Failed runs are refunded automatically.',
   'cost.startButton': 'Start generating',
+
+  // --- world(세계관 갤러리) ---
+  'world.western': 'Western Fantasy',
+  'world.eastern': 'Eastern Fantasy',
+  'world.category.fantasy': 'Fantasy',
+  'world.category.oriental': 'Oriental',
+  'worldGallery.title': 'Choose your world',
+  'worldGallery.all': 'All',
+  'worldGallery.wip': 'Coming soon',
+  'worldGallery.change': 'Change',
 }

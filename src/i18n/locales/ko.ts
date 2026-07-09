@@ -81,6 +81,7 @@ export const ko: Record<string, string> = {
   "login.or": "또는",
   "login.withGoogle": "Google로 계속하기",
   "login.withKakao": "카카오로 계속하기",
+  "login.useEmail": "이메일로 로그인",
   "login.introReplay": "인트로 다시 보기",
   "entry.skipHint": "클릭 또는 Esc로 건너뛰기",
   "login.resetNeedEmail": "이메일을 먼저 입력해주세요.",
@@ -92,6 +93,7 @@ export const ko: Record<string, string> = {
   "register.passwordHint": "최소 8자, 대문자·숫자 각 1개 이상",
   "register.submitting": "가입 중…",
   "register.submit": "회원가입",
+  "register.useEmail": "이메일로 가입",
   "register.hasAccount": "이미 계정이 있으신가요?",
   "register.loginLink": "로그인",
   "register.errors.invalidEmail": "이메일 형식이 올바르지 않습니다.",
@@ -356,4 +358,14 @@ export const ko: Record<string, string> = {
   "cost.currentBalance": "현재 잔액",
   "cost.disclaimer": "생성 요청 시 크레딧이 차감돼요. 실패하면 자동 환불돼요.",
   "cost.startButton": "생성 시작",
+
+  // --- world(세계관 갤러리) ---
+  "world.western": "서양 판타지",
+  "world.eastern": "동양 판타지",
+  "world.category.fantasy": "판타지",
+  "world.category.oriental": "동양",
+  "worldGallery.title": "세계관 선택",
+  "worldGallery.all": "전체",
+  "worldGallery.wip": "준비 중",
+  "worldGallery.change": "바꾸기",
 }

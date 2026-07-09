@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
@@ -7,7 +7,8 @@ import { toast } from '@/hooks/useToast'
 import { acceptInvite, fetchPublicRooms, verifyInviteCode, type LobbyRoom } from '@/lib/rooms'
 import NotificationBell from '@/components/shared/NotificationBell'
 import HubMap from '@/components/shared/HubMap'
-import { SCENES, resolveScene, type HubDest } from '@/scenes/manifest'
+import { resolveWorld, type HubDest } from '@/scenes/manifest'
+import { useEffectiveWorld } from '@/stores/worldStore'
 
 // 로비 v3(주인님 확정 스펙): 광장 허브가 화면의 전부 — 레거시 섹션(목록·생성·예약·최근)은
 // 내부 4관(/lobby/theater·workshop·teahouse·atelier)으로 전가·삭제. 데스크톱은 헤더 바 없음
@@ -16,7 +17,9 @@ import { SCENES, resolveScene, type HubDest } from '@/scenes/manifest'
 // rooms 는 대극장 뱃지·연습 무대 라우팅용 최소 유지(Realtime nudge 포함).
 export default function LobbyPage() {
   const { t } = useTranslation()
-  const [scene] = useState(() => resolveScene(SCENES.lobbyStreet, new Date().getHours()))
+  // 광장 허브·액센트는 현재 세계관(worldStore)에서 — 로그인에서 이어진 그 월드.
+  const worldId = useEffectiveWorld()
+  const scene = useMemo(() => resolveWorld(worldId), [worldId])
   const session = useUserStore((s) => s.session)
   const navigate = useNavigate()
 
@@ -144,33 +147,28 @@ export default function LobbyPage() {
   return (
     <main
       className="relative min-h-screen bg-stage-base text-stage-text"
-      style={scene ? ({ '--scene-accent': scene.accent } as React.CSSProperties) : undefined}
+      style={{ '--scene-accent': scene.accent } as React.CSSProperties}
     >
-      {/* 모바일 배경 = 데스크톱과 동일 광장(plaza). 레거시 거리(scene.hero=lobby-street/day)가
-          아니라 hub hero 로 통일 — 광장 재편 후 모바일에 구 거리가 남던 잔재 제거. */}
-      {scene && (
-        <div aria-hidden className="fixed inset-0 md:hidden">
-          <img
-            src={scene.hub?.blocks[0]?.hero ?? scene.hero}
-            alt=""
-            draggable={false}
-            className="h-full w-full select-none object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-stage-base/80 via-stage-base/60 to-stage-base/45" />
-        </div>
-      )}
+      {/* 모바일 배경 = 데스크톱과 동일 광장(plaza hero, 현재 월드). */}
+      <div aria-hidden className="fixed inset-0 md:hidden">
+        <img
+          src={scene.plaza.blocks[0].hero}
+          alt=""
+          draggable={false}
+          className="h-full w-full select-none object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-stage-base/80 via-stage-base/60 to-stage-base/45" />
+      </div>
 
       {/* 광장 전체화면(데스크톱): 3/2 씬이 뷰포트를 cover — % 핫스팟은 씬 기준이라 크롭돼도 정합. */}
-      {scene?.hub && (
-        <div className="fixed inset-0 hidden overflow-hidden md:block">
-          <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-            style={{ width: 'max(100vw, 150vh)', height: 'max(100vh, 66.7vw)' }}
-          >
-            <HubMap blocks={scene.hub.blocks} roomsCount={roomsCount} onDest={handleDest} fullscreen />
-          </div>
+      <div className="fixed inset-0 hidden overflow-hidden md:block">
+        <div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+          style={{ width: 'max(100vw, 150vh)', height: 'max(100vh, 66.7vw)' }}
+        >
+          <HubMap blocks={scene.plaza.blocks} roomsCount={roomsCount} onDest={handleDest} fullscreen />
         </div>
-      )}
+      </div>
 
       <div className="relative flex min-h-screen flex-col p-4 pb-24 md:pointer-events-none md:p-6 md:pb-6">
         {/* 모바일=제목+벨 / 데스크톱=벨 칩만 우측(광장이 화면의 전부). 벨은 단일 인스턴스 —
