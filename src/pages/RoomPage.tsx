@@ -27,6 +27,7 @@ import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import ModeBanner from '@/features/room/ModeBanner'
 import FloatingSelfMonitor from '@/features/room/FloatingSelfMonitor'
 import AudioMixerPanel from '@/features/room/AudioMixerPanel'
+import { applyVodSync, readVodSyncState, setVodSyncPublisher } from '@/features/stage/vodSync'
 import HostConsole from '@/features/room/HostConsole'
 import CampfireGlyph from '@/components/shared/CampfireGlyph'
 import Modal from '@/components/shared/Modal'
@@ -206,7 +207,7 @@ export default function RoomPage() {
   const [handRaised, setHandRaised] = useState(false)
   const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
   const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string }) => {
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
@@ -215,6 +216,15 @@ export default function RoomPage() {
       if (msg.mode === 'rehearsal' || msg.mode === 'performance') setScriptModeLocal(msg.mode)
     }
     else if (msg.type === 'raise_hand') setRaiseHandRefetch((n) => n + 1) // 손든 관객 변동 → 큐 재조회(호스트 UI)
+    else if (msg.type === 'vod_sync') {
+      // ROOM-01 동기: 적용자(applier)는 비호스트 MainView 만 등록 → 호스트/미재생 화면엔 no-op. 형태 검증 후 적용.
+      if (
+        typeof msg.position_ms === 'number' && Number.isFinite(msg.position_ms) && msg.position_ms >= 0 &&
+        typeof msg.at_ms === 'number' && Number.isFinite(msg.at_ms)
+      ) {
+        applyVodSync({ positionMs: msg.position_ms, playing: msg.playing === true, atMs: msg.at_ms })
+      }
+    }
     else if (msg.type === 'mode_change') {
       // G-261: 서버(set-room-mode) broadcast. 배너 표출+탭 자동전환은 stageStore 구독측(ModeBanner·RightPanel).
       if (msg.new_mode === 'normal' || msg.new_mode === 'vgen' || msg.new_mode === 'dub') {
@@ -438,6 +448,23 @@ export default function RoomPage() {
     // 모드 전파는 best-effort — 실패해도 생성 흐름은 무손상(배너·탭 전환만 빠짐).
     void setRoomMode(session.access_token, roomId, vgenGenerating ? 'vgen' : 'normal').catch(() => {})
   }, [vgenGenerating, isHost, session, roomId, joinPhase])
+
+  // ROOM-01 동기: 호스트 = 타임라인 진실. MainView 이벤트를 LiveKit 으로 발행(publisher) +
+  // 5s 하트비트(늦은 입장 ≤5s 수렴·주기 드리프트 보정). 영상 없으면 reader 가 null → 무발행.
+  useEffect(() => {
+    if (!isHost) return
+    setVodSyncPublisher((s) => {
+      void sendRoomAuthority({ type: 'vod_sync', position_ms: s.positionMs, playing: s.playing, at_ms: s.atMs })
+    })
+    const id = setInterval(() => {
+      const s = readVodSyncState()
+      if (s) void sendRoomAuthority({ type: 'vod_sync', position_ms: s.positionMs, playing: s.playing, at_ms: s.atMs })
+    }, 5000)
+    return () => {
+      setVodSyncPublisher(null)
+      clearInterval(id)
+    }
+  }, [isHost, sendRoomAuthority])
   // 대본 진행권: 호스트 또는 연습 방/리허설 모드의 배우(서버 advance-script-cue 가 동일 규칙으로 재검증 — 관전자 403).
   const canAdvanceCue = !isViewer && (isHost || isPractice || scriptMode === 'rehearsal')
   const script = SEED_SCRIPTS[0]

@@ -1,13 +1,52 @@
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStageStore } from '@/stores/stageStore'
+import {
+  publishVodSync,
+  setVodSyncApplier,
+  setVodSyncReader,
+  vodNeedsSeek,
+  vodTargetMs,
+  type VodSyncState,
+} from '@/features/stage/vodSync'
 
 // 무대 센터 프레임(메인 뷰). 공유 영상이 있으면 재생, 없으면 placeholder.
 // VGEN 공유재생: 각 뷰어가 자기 서명 URL(get-vgen-url)로 재생 — onEnded 시 자기 화면만 정리(자동 해제).
-// 호스트만 "공유 중지"(전원 broadcast). SSOT: docs/contracts/MainViewComponent.md
+// 호스트만 "공유 중지"(전원 broadcast). 타임라인은 호스트가 진실(±200ms 동기 — vodSync.ts).
+// SSOT: docs/contracts/MainViewComponent.md
 export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: () => void }) {
   const { t } = useTranslation()
   const url = useStageStore((s) => s.mainVideoUrl)
   const clear = useStageStore((s) => s.clearMainVideo)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // 타임라인 동기(ROOM-01): 호스트=상태 리더+play/pause/seeked 발행 / 비호스트=수신 보정.
+  // 비호스트 controls 는 유지(스크럽해도 다음 호스트 이벤트·5s 하트비트에서 ±200ms 로 복귀 — 계약 §Scrubber 편차).
+  useEffect(() => {
+    const v = videoRef.current
+    if (!url || !v) return
+    if (isHost) {
+      const read = (): VodSyncState => ({ positionMs: v.currentTime * 1000, playing: !v.paused && !v.ended, atMs: Date.now() })
+      setVodSyncReader(read)
+      const emit = () => publishVodSync(read())
+      v.addEventListener('play', emit)
+      v.addEventListener('pause', emit)
+      v.addEventListener('seeked', emit)
+      return () => {
+        setVodSyncReader(null)
+        v.removeEventListener('play', emit)
+        v.removeEventListener('pause', emit)
+        v.removeEventListener('seeked', emit)
+      }
+    }
+    setVodSyncApplier((s) => {
+      const target = vodTargetMs(s, Date.now())
+      if (vodNeedsSeek(v.currentTime * 1000, target)) v.currentTime = target / 1000
+      if (s.playing && v.paused) void v.play().catch(() => {}) // 자동재생 차단 시 다음 보정에서 재시도
+      else if (!s.playing && !v.paused) v.pause()
+    })
+    return () => setVodSyncApplier(null)
+  }, [url, isHost])
 
   if (!url) {
     return (
@@ -26,7 +65,7 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
       aria-label={t('stage.sharedVideo')}
     >
       {/* 각 클라가 종료 시 자기 화면만 정리 → 15s 타이머 없이 자동 해제(짧은 클립이라 뷰어 간 편차 무시) */}
-      <video src={url} autoPlay controls onEnded={clear} className="h-full w-full object-contain">
+      <video ref={videoRef} src={url} autoPlay controls onEnded={clear} className="h-full w-full object-contain">
         <track kind="captions" />
       </video>
       {isHost && (
