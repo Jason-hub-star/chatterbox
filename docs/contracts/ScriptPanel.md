@@ -15,6 +15,8 @@ tags: [contract]
 > **모드** = 권한 전환: `rehearsal`=활성 **배우** 전원 cue 진행(연습 방 규칙의 일반화)·`performance`=호스트만(기본). 서버 진실 `rooms.script_mode`(마이그 `20260709100000`), 쓰기는 `set-script-mode` Edge(호스트 검증→UPDATE→room-authority `script_mode` broadcast), 판정은 `advance-script-cue` 가 참조. **관전자는 모든 모드에서 진행 403**(진행은 배우의 것 — 클레임 규칙과 대칭, 연습 방 포함 강화).
 > **역할 배정** = 각자 선착순 클레임 + 호스트 재배정/해제: `sync-script-role` Edge(claim/release는 본인·배우만, assign 은 호스트만·대상=활성 배우) → `'script-role'` reliable broadcast(수신측 서버발만 수락, SEC-5 동형). 상태는 휘발(`RoomPage` roleMap + 순수 리듀서 `features/script/roleMap.ts`: set=1인1역 이동·clear·prune, 유닛 6). 늦입장 동기 = **각자 자기 클레임을 memberKey 변동 시 멱등 재클레임**(cue warm-up 동형 — 호스트 전체맵 sync 는 호스트 새로고침 시 전원 초기화 회귀라 기각). 퇴장자 클레임은 렌더 파생 prune. 충돌은 클라 가드+LWW(ponytail: 잦으면 DB 클레임 테이블 승급). "내 차례"=현재 cue 역할==**클레임한** 역할(로컬 select 폐기). 통합 실측 16/16(모드 403/400/DB반영·리허설 진행·관전자 403·클레임/assign 권한 매트릭스).
 
+> **(2026-07-10 ROOM-06 잔여) 개인 글자 크기 조절 구현** — 헤더 A−/A+ 3단계 폰트 스케일(현재 대사 text-base/lg/2xl·전체 대본 text-xs/sm/lg), `localStorage('cb.scriptFontScale')` persist·이상값 md 폴백. 기기 로컬 설정(다른 참가자 전파 없음). 렌더 테스트 5(`scriptPanelFontScale.test.tsx`).
+
 ## Props Interface
 
 ```typescript

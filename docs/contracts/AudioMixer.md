@@ -8,6 +8,8 @@ tags: [contract]
 
 참가자 목소리 / BGM / 메인뷰 사운드 채널별 볼륨 조절. LiveKit audioTrack N개 + HTMLAudioElement(BGM) 동시 제어.
 
+> **as-built (2026-07-10, ROOM-08 MVP):** `stores/audioStore.ts`(masterVolume·participantVolumes·`mixedVolume`=곱·0~1 클램프) + `features/room/AudioMixerPanel.tsx`(무대 우상단 🎚 토글 → 마스터+원격 참가자 슬라이더, 관전자 포함 전원) + `useLiveKitRoom` 브리지(스토어 구독 → `RemoteParticipant.setVolume` 전체 적용, TrackSubscribed 시 저장 볼륨 즉시 적용=재구독 초기화 방지). 스토어는 SDK 미보유(컨벤션 §2). **계약 대비 defer(죽은 코드 방지):** BGM 채널(앱에 BGM 기능 자체 부재)·업링크 헬스 체크(§ROOM-04)·audioTrackPublished 개별 핸들러(TrackSubscribed 로 충분).
+
 ## Props Interface
 
 ```typescript

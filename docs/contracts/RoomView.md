@@ -9,6 +9,12 @@ tags: [contract]
 
 룸 페이지 전체 orchestrator. LiveKit Room 연결 초기화, ParticipantSlot 6개 mount/unmount 조율, Zustand Store 초기화, Supabase Realtime 구독 시작점.
 
+> **as-built (2026-07-10, 룸 페이지 페이즈루프):**
+> **G-261 모드 전환 = 구현 완료** — 마이그 `rooms.current_mode` + Edge `set-room-mode`(set-room-background 동형: 호스트 검증→DB→서버 broadcast) + `stageStore.mode/announceMode`(배너 2.4s 타이머 store 소유) + `ModeBanner`(§배너 규격 색·페이드) + RightPanel 자동 탭 + late joiner 복원(입장 rooms 조회, 마이그 배포 전 400 호환 폴백). 트리거 = 호스트 관찰자(RoomPage: VGEN 생성 시작/종료 — 스튜디오 재사용 오발동 방지 위해 방에서만) · DubPanel(세션 개시→dub·합성 완료→normal).
+> **G-64 Self-PiP = 구현 완료** — `FloatingSelfMonitor` + `selfFrameSink`(SelfAvatar 프레임 탭). 편차: 토글=무대 우상단 자체 부동 버튼(Option1 SettingsPage 부재·Option2 하단바는 리디자인 트랙 소유)·리사이즈 defer(120px)·전용 store 대신 로컬 상태(YAGNI)·모바일(coarse/<480px) 토글 미노출(토스트 대신).
+> **G-63 즉흥 모드 = 기능 게이트 defer(2026-07-10 판정)** — 분기 조건 `rooms.script_id` 가 스키마·클라 어디에도 없음(대본=코드 seed, 대본 선택 CNT-02 미구현) → 지금 패널을 만들면 도달 불가한 죽은 코드. 대본 선택 슬라이스와 함께 구현.
+> **ROOM-24 리허설 피드백 = 미착수**(녹화 프리미티브 의존).
+
 ## Props Interface
 
 ```typescript

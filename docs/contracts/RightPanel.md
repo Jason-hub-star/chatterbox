@@ -18,7 +18,8 @@ tags: [contract]
 - **셸 = 탭 주입식** — `RightPanel({ tabs })` 로 탭 렌더러 배열을 주입받는다(계약의 `roomId`-only + 내부 import 대신). 이유: LiveKit 훅(`sendChat` 등)이 `RoomPage`에 있어 탭 콘텐츠가 그 콜백을 필요로 함 → RoomPage가 훅을 쥐고 탭을 주입하면 셸이 순수 "블록 컨테이너"가 되어 갈아끼우기가 쉬움.
 - **라이브 탭(3)**: `chat`(ChatPanel, 인라인 채팅 추출)·`dub`(DubPanel)·`vgen`(VgenStatusTab). 활성 탭은 `hidden`으로 숨기고 **언마운트하지 않음** → 녹음·생성 중 탭 전환에도 작업 유지(§금지사항 준수).
 - **store**: `rightPanelStore`(`activeTab`·`isOpen`·`setActiveTab`·`setIsOpen`·`toggle`). 활성 탭이 목록에 없으면 첫 탭으로 순수 파생(set-state-in-effect 회피).
-- **Defer**: 대본 미러(`script`)·디렉터 노트(`notes`, ROOM-17)·사운드보드·`mode` 자동전환(stageStore 미도입)·`isOpen` 접기 UI. 각 기능이 실제 빌드되면 tabs 배열에 한 항목씩 추가.
+- **`mode` 자동전환 구현(2026-07-10, G-261)** — `stageStore.mode` 도입: vgen/dub 진입 시 해당 탭 자동 활성, normal 은 현재 탭 유지(강제 회귀 없음). 렌더 테스트 2(`rightPanelAutoTab.test.tsx`).
+- **Defer**: 대본 미러(`script`)·사운드보드·`isOpen` 접기 UI. 각 기능이 실제 빌드되면 tabs 배열에 한 항목씩 추가. (디렉터 노트 `notes` 탭=ROOM-17 은 룸 리디자인 트랙에서 구현 진행.)
 - **파일**: `src/features/room/RightPanel.tsx`·`src/features/chat/ChatPanel.tsx`·`src/stores/rightPanelStore.ts`·`tests/unit/rightPanelStore.test.ts`.
 
 ---

@@ -219,6 +219,8 @@ type ParticipantKickedMessage = {
 
 > **as-built (2026-07-09, 배포됨)** — MVP 구현. 아래 계약과의 편차: ①손들기·초대·수락은 **Edge 경유**(`raise-hand`·`invite-to-stage`·`accept-stage-invite`) — RLS가 서버쓰기만 허용하므로 클라 직접 UPDATE 대신. ②호스트 큐 갱신은 `room-authority` broadcast(`raise_hand`/`stage_invite`/`promoted`) + `list-room-members`(raise_hand_at 반환) 재조회 — Realtime publication 대신(리액션·cue와 동형 서버 릴레이·스푸핑 차단). ③승격은 `promote_viewer_to_actor` RPC → 대상 클라가 `useLiveKitRoom.reconnectNonce`로 새 토큰(canPublish=true) 재연결. **defer(트랙 B)**: [무시] 버튼·슬롯 지정·경합(정원 참) 피드백 UX.
 
+> **(2026-07-10 HOST-01 강퇴 사유)** `kick-participant` 가 `reason`(선택·트림·≤200자) 수용 — 절단 직전 **대상에게만** `sendDataTo`(room-authority `{ type:'kicked', reason }`, destinationIdentities) 통지, 전달 실패 시 일반 강퇴 문구 폴백. 강퇴 확인 모달에 사유 입력(선택), 피강퇴자 화면에 사유 병기(표시는 kicked 상태 게이트 = 참가자 스푸핑 단독으론 표출 불가).
+
 ### 데이터 흐름
 
 ```
