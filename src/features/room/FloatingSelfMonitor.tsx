@@ -68,7 +68,7 @@ export default function FloatingSelfMonitor({ projectUrl }: { projectUrl: string
     <div
       data-self-monitor
       className="absolute z-30 cursor-grab touch-none select-none rounded-lg border border-stage-border bg-stage-panel/90 p-1 active:cursor-grabbing"
-      style={pos ? { left: pos.x, top: pos.y } : { right: 8, top: 8 }}
+      style={pos ? { left: pos.x, top: pos.y } : { right: 8, top: 56 }} // 기본 = 버튼줄 아래(믹서 버튼 가림 방지)
       onPointerDown={(e) => {
         const rect = e.currentTarget.getBoundingClientRect()
         dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top }

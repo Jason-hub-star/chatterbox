@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import {
   ConnectionState,
   DisconnectReason,
+  RemoteParticipant,
   Room,
   RoomEvent,
   Track,
@@ -10,6 +11,7 @@ import {
 import { useUserStore } from '@/stores/userStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
+import { useAudioStore, mixedVolume } from '@/stores/audioStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
 import { sendReactionRelay, advanceScriptCueRelay } from '@/lib/rooms'
 import { toast } from '@/hooks/useToast'
@@ -89,6 +91,15 @@ export function useLiveKitRoom(
   const seqRef = useRef(0)
   const lastReactionRef = useRef(0)
   const seenReactionsRef = useRef<Set<string>>(new Set()) // 리액션 재전송 dedupe(rid)
+
+  // 믹서(ROOM-08) 브리지: audioStore 변경 → 모든 원격 참가자 setVolume 적용(스토어는 SDK 미보유 — 컨벤션 §2).
+  useEffect(() => {
+    return useAudioStore.subscribe((s) => {
+      const room = roomRef.current
+      if (!room) return
+      room.remoteParticipants.forEach((p) => p.setVolume(mixedVolume(s, p.identity)))
+    })
+  }, [])
   const {
     setConnectionState,
     setParticipants,
@@ -144,11 +155,15 @@ export function useLiveKitRoom(
     // 원격 오디오 재생: 구독된 오디오 트랙을 hidden <audio>에 attach.
     room.on(
       RoomEvent.TrackSubscribed,
-      (track: RemoteTrack) => {
+      (track: RemoteTrack, _pub, participant) => {
         if (track.kind === Track.Kind.Audio) {
           const el = track.attach()
           el.setAttribute('data-lk-audio', '')
           document.body.appendChild(el)
+          // 믹서(ROOM-08): 저장된 볼륨을 새 트랙에 즉시 적용 — 재입장·재구독 시 볼륨 초기화 방지.
+          if (participant instanceof RemoteParticipant) {
+            participant.setVolume(mixedVolume(useAudioStore.getState(), participant.identity))
+          }
         }
       },
     )

@@ -26,6 +26,7 @@ import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import ModeBanner from '@/features/room/ModeBanner'
 import FloatingSelfMonitor from '@/features/room/FloatingSelfMonitor'
+import AudioMixerPanel from '@/features/room/AudioMixerPanel'
 import HostConsole from '@/features/room/HostConsole'
 import CampfireGlyph from '@/components/shared/CampfireGlyph'
 import Modal from '@/components/shared/Modal'
@@ -823,6 +824,8 @@ export default function RoomPage() {
           <ModeBanner />
           {/* G-64 Self-PiP — 관전자는 트래킹이 없어 미노출. */}
           {!isViewer && <FloatingSelfMonitor projectUrl={selfProjectUrl} />}
+          {/* ROOM-08 음량 믹서 — 관전자 포함 전원(듣기 볼륨은 로컬 권리). */}
+          <AudioMixerPanel />
         </div>
       )}
       {reactionOrigin && (
