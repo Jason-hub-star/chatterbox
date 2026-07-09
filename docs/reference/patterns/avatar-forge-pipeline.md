@@ -19,7 +19,8 @@ created: 2026-07-09
 > - ✅ **수령/렌더 반쪽 증명됨** — 서버 리그를 `avatars/<id>/` 에 발행하면 네이티브 `RigAvatar`(AvatarPreview·SelfAvatar·방)가 그대로 로드·렌더·웹캠 구동(미미 서버본 실증).
 > - ✅ **배선 코드 완료·검증** — 마이그 `avatar_jobs`, 엣지 `create-avatar-job`, 클라 `lib/avatarJobs.ts`, dev 라우트 `/atelier-forge` (type-check·lint 통과).
 > - ✅ **의상실 커미션 UI 승격 완료(2026-07-09)** — `features/avatar/CommissionCorner.tsx`+`useAvatarJobs.ts`+AtelierPage 입어보기. 아래 대기 UX 원칙 ①~⑤ 전부 구현(전역 알림만 defer). 마이그 push 완료(avatar_jobs·avatar-uploads 10MB/png). seed-and-drive E2E 17/17.
-> - ⏳ **자동 트리거 배포 대기** — Modal 웹엔드포인트(`modal deploy`) + 시크릿 + 엣지 배포 후 첫 $2 E2E. 배선·UI는 끝, 배포·실런만 남음.
+> - ✅ **자동 트리거 배포 완료(2026-07-09)** — Modal `chatterbox-rig` deploy(submit 웹엔드포인트) + `vtube-supabase` 시크릿 + supabase secrets(MODAL_ENDPOINT_URL·MODAL_TRIGGER_SECRET) + 엣지 `create-avatar-job` 배포 + 프론트 CF Pages. 스모크: 엣지 무인증 401·Modal 무시크릿 401. 배포판 E2E 통과.
+> - ⏳ **첫 실런($2) 대기** — 의상실에서 실 PNG 주문 1건으로 GPU 파이프라인 전체(analyzing→finishing→발행) 관찰.
 
 ## UI/UX 빌더가 알아야 할 것 (바로 쓰는 계약)
 
