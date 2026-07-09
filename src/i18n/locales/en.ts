@@ -405,6 +405,8 @@ export const en: Record<string, string> = {
   'stage.modeNormal': 'Back to normal mode',
   'stage.modeVgen': '🤖 VGEN mode in progress',
   'stage.modeDub': '🎤 Dub mode in progress',
+  'stage.selfMonitorShow': 'Show my avatar preview',
+  'stage.selfMonitorHide': 'Close preview',
   'reaction.wheelLabel': 'Reaction wheel',
   'reaction.hint': 'Right-click or long-press to react (keys 1–8)',
   'reaction.cancel': 'Cancel',

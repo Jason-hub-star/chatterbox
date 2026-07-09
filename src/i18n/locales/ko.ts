@@ -405,6 +405,8 @@ export const ko: Record<string, string> = {
   "stage.modeNormal": "일반 모드로 돌아왔어요",
   "stage.modeVgen": "🤖 VGEN 모드 진행 중",
   "stage.modeDub": "🎤 더빙 모드 진행 중",
+  "stage.selfMonitorShow": "내 아바타 미리보기 열기",
+  "stage.selfMonitorHide": "미리보기 닫기",
   "reaction.wheelLabel": "리액션 휠",
   "reaction.hint": "우클릭·길게 눌러 리액션 (숫자키 1~8)",
   "reaction.cancel": "취소",

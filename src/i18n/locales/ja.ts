@@ -405,6 +405,8 @@ export const ja: Record<string, string> = {
   'stage.modeNormal': '通常モードに戻りました',
   'stage.modeVgen': '🤖 VGENモード進行中',
   'stage.modeDub': '🎤 アフレコモード進行中',
+  'stage.selfMonitorShow': '自分のアバタープレビューを表示',
+  'stage.selfMonitorHide': 'プレビューを閉じる',
   'reaction.wheelLabel': 'リアクションホイール',
   'reaction.hint': '右クリック・長押しでリアクション（数字キー1〜8）',
   'reaction.cancel': 'キャンセル',

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { RigAvatar, createExpressionDriver, type HeadPose } from '@/lib/pixi/rig'
 import { useFaceTracking } from '@/hooks/useFaceTracking'
 import { useTrackingStore, type TrackingState } from '@/stores/trackingStore'
+import { emitSelfFrame } from '@/features/avatar/selfFrameSink'
 import HostCrown from './HostCrown'
 
 interface Props {
@@ -63,6 +64,7 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
   const onFrame = useCallback(
     (bs: Record<string, number>, headPose: HeadPose | null) => {
       avatarRef.current?.setParams(driver(bs, headPose))
+      emitSelfFrame(bs, headPose) // G-64 PiP 미리보기 탭(구독자 없으면 no-op)
       sendBlendshapes(bs)
     },
     [driver, sendBlendshapes],

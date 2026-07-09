@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import ModeBanner from '@/features/room/ModeBanner'
+import FloatingSelfMonitor from '@/features/room/FloatingSelfMonitor'
 import HostConsole from '@/features/room/HostConsole'
 import CampfireGlyph from '@/components/shared/CampfireGlyph'
 import Modal from '@/components/shared/Modal'
@@ -820,6 +821,8 @@ export default function RoomPage() {
           />
           <ReactionOverlay slotOf={slotOf} />
           <ModeBanner />
+          {/* G-64 Self-PiP — 관전자는 트래킹이 없어 미노출. */}
+          {!isViewer && <FloatingSelfMonitor projectUrl={selfProjectUrl} />}
         </div>
       )}
       {reactionOrigin && (
