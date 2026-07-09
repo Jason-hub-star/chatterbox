@@ -251,3 +251,17 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .interior-stage { animation: none; }
 }
+
+/* G-261 모드 전환 배너 — fade-in 200ms → 고정 2s → fade-out 200ms (RoomView.md §G-261 규격).
+   가시성 수명(2.4s)은 stageStore 타이머가 소유, 여기는 페이드만. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cb-mode-banner {
+    0% { opacity: 0; transform: translate(-50%, -4px); }
+    9%, 91% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, 0); }
+  }
+  .cb-mode-banner { animation: cb-mode-banner 2.4s ease both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cb-mode-banner { transform: translate(-50%, 0); }
+}

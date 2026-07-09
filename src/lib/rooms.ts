@@ -46,6 +46,10 @@ export interface KickResult { ok: boolean; kicked_identity: string; display_name
 export const kickParticipant = (accessToken: string, roomId: string, targetIdentity: string, reason?: string) =>
   callFn<KickResult>('kick-participant', accessToken, { room_id: roomId, target_identity: targetIdentity, ...(reason ? { reason } : {}) })
 
+// 호스트 모드 전환 (G-261). 서버가 rooms.current_mode 반영 + room-authority 'mode_change' broadcast.
+export const setRoomMode = (accessToken: string, roomId: string, mode: 'normal' | 'vgen' | 'dub') =>
+  callFn<{ ok: boolean; mode: string }>('set-room-mode', accessToken, { room_id: roomId, mode })
+
 // 리액션 서버 릴레이(ROOM-19). 서버가 멤버십 검증 후 방 전체 broadcast — 클라 직접 방송보다 유실0·스푸핑 불가.
 export const sendReactionRelay = (accessToken: string, roomId: string, emoji: string, idempotencyKey: string) =>
   callFn<{ ok: boolean }>('send-reaction', accessToken, { room_id: roomId, emoji, idempotency_key: idempotencyKey })

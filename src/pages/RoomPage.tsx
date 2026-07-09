@@ -5,11 +5,12 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode } from '@/lib/rooms'
 import { applyRoleEvent, isRoleEvent, pruneRoleMap, roleOf, type RoleMap } from '@/features/script/roleMap'
 import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
 import { useStageStore } from '@/stores/stageStore'
+import { useVgenStore } from '@/stores/vgenStore'
 import { fetchRoomMembers, fetchRoomHostId } from '@/lib/dub'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
@@ -23,6 +24,7 @@ import ScriptPanel from '@/features/script/ScriptPanel'
 import { supabase } from '@/lib/supabase'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
+import ModeBanner from '@/features/room/ModeBanner'
 import HostConsole from '@/features/room/HostConsole'
 import CampfireGlyph from '@/components/shared/CampfireGlyph'
 import Modal from '@/components/shared/Modal'
@@ -166,16 +168,25 @@ export default function RoomPage() {
     if (joinPhase !== 'ready') return
     let cancelled = false
     ;(async () => {
-      const { data } = await supabase.from('rooms').select('background_url, script_mode').eq('id', roomId).maybeSingle()
+      let { data } = await supabase.from('rooms').select('background_url, script_mode, current_mode').eq('id', roomId).maybeSingle()
+      if (!data) {
+        // 마이그(20260710093000_add_room_current_mode) 배포 전 프로드 호환: 미지 컬럼 select 는 PostgREST 400 →
+        // current_mode 없이 재조회해 배경·대본모드 복원은 지킨다. 마이그 배포 후 이 폴백은 도달하지 않는다.
+        ;({ data } = await supabase.from('rooms').select('background_url, script_mode').eq('id', roomId).maybeSingle())
+      }
       if (!cancelled && data) {
-        useStageStore.getState().setBackground((data.background_url as string | null) ?? null)
+        const row = data as { background_url?: string | null; script_mode?: string; current_mode?: string }
+        useStageStore.getState().setBackground(row.background_url ?? null)
         // 대본 모드 초기 동기(ROOM-14) — 이후 변경은 room-authority script_mode 로.
-        if (data.script_mode === 'rehearsal' || data.script_mode === 'performance') setScriptModeLocal(data.script_mode)
+        if (row.script_mode === 'rehearsal' || row.script_mode === 'performance') setScriptModeLocal(row.script_mode)
+        // 진행 모드 복원(G-261, late joiner) — setMode 는 조용(배너 없음). 이후 변경은 mode_change broadcast 로.
+        if (row.current_mode === 'vgen' || row.current_mode === 'dub') useStageStore.getState().setMode(row.current_mode)
       }
     })()
     return () => {
       cancelled = true
       useStageStore.getState().setBackground(null)
+      useStageStore.getState().setMode('normal') // 다음 방 모드 잔상 방지
     }
   }, [joinPhase, roomId])
 
@@ -193,7 +204,7 @@ export default function RoomPage() {
   const [handRaised, setHandRaised] = useState(false)
   const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
   const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string }) => {
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
@@ -202,6 +213,12 @@ export default function RoomPage() {
       if (msg.mode === 'rehearsal' || msg.mode === 'performance') setScriptModeLocal(msg.mode)
     }
     else if (msg.type === 'raise_hand') setRaiseHandRefetch((n) => n + 1) // 손든 관객 변동 → 큐 재조회(호스트 UI)
+    else if (msg.type === 'mode_change') {
+      // G-261: 서버(set-room-mode) broadcast. 배너 표출+탭 자동전환은 stageStore 구독측(ModeBanner·RightPanel).
+      if (msg.new_mode === 'normal' || msg.new_mode === 'vgen' || msg.new_mode === 'dub') {
+        useStageStore.getState().announceMode(msg.new_mode)
+      }
+    }
     else if (msg.type === 'kicked') {
       // 강퇴 사유(HOST-01): 서버(kick-participant)가 절단 직전 대상에게만 전송(destinationIdentities).
       // 표시는 kicked 상태(PARTICIPANT_REMOVED)에 게이트 — 참가자 스푸핑만으로는 화면에 못 띄운다.
@@ -407,6 +424,18 @@ export default function RoomPage() {
   // 호스트 판정은 rooms.host_id(서버 진실) 우선 — 호스트 이양 시 이 값 갱신으로 새 호스트가 컨트롤을 얻는다.
   // hostId 로드 전(초기)엔 기존 slot 프록시로 폴백(2인 경로 무변화). 서버는 host_id 로 권한 재검증.
   const isHost = hostId != null && appUserId != null ? hostId === appUserId : mySlotIndex === 0
+
+  // G-261 호스트 관찰자: VGEN 생성 시작/종료를 방 모드로 승격(set-room-mode → 서버 broadcast → 전원 반영).
+  // RoomPage 에만 배선 — VgenStatusTab/VgenPromptPanel 은 스튜디오(공방)에서도 재사용되므로 방 의미론은 여기서만.
+  const vgenGenerating = useVgenStore((s) => s.isGenerating)
+  const prevVgenGeneratingRef = useRef(false)
+  useEffect(() => {
+    const prev = prevVgenGeneratingRef.current
+    prevVgenGeneratingRef.current = vgenGenerating
+    if (!isHost || !session || joinPhase !== 'ready' || prev === vgenGenerating) return
+    // 모드 전파는 best-effort — 실패해도 생성 흐름은 무손상(배너·탭 전환만 빠짐).
+    void setRoomMode(session.access_token, roomId, vgenGenerating ? 'vgen' : 'normal').catch(() => {})
+  }, [vgenGenerating, isHost, session, roomId, joinPhase])
   // 대본 진행권: 호스트 또는 연습 방/리허설 모드의 배우(서버 advance-script-cue 가 동일 규칙으로 재검증 — 관전자 403).
   const canAdvanceCue = !isViewer && (isHost || isPractice || scriptMode === 'rehearsal')
   const script = SEED_SCRIPTS[0]
@@ -790,6 +819,7 @@ export default function RoomPage() {
             onStopShare={stopShareVgen}
           />
           <ReactionOverlay slotOf={slotOf} />
+          <ModeBanner />
         </div>
       )}
       {reactionOrigin && (

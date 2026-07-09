@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRightPanelStore } from '@/stores/rightPanelStore'
+import { useStageStore } from '@/stores/stageStore'
 
 // RightPanel — 우측 사이드바의 "탭 셸". 계약: contracts/RightPanel.md.
 // 설계: 탭 콘텐츠를 직접 import하지 않고 주입(inject)받는다. RoomPage가 LiveKit 훅(sendChat 등)을
@@ -16,6 +17,11 @@ export default function RightPanel({ tabs }: { tabs: RightPanelTab[] }) {
   const { t } = useTranslation()
   const activeTab = useRightPanelStore((s) => s.activeTab)
   const setActiveTab = useRightPanelStore((s) => s.setActiveTab)
+  const mode = useStageStore((s) => s.mode)
+  // G-261 자동 탭 전환: vgen/dub 진입 시 해당 탭 활성. normal 은 유지(강제 회귀 없음 — 계약 §자동 탭 전환 규칙).
+  useEffect(() => {
+    if (mode === 'vgen' || mode === 'dub') setActiveTab(mode)
+  }, [mode, setActiveTab])
   // 순수 파생: store 값이 탭 목록에 없으면 첫 탭으로 폴백(effect 없이).
   const current = tabs.find((tab) => tab.id === activeTab) ?? tabs[0]
   if (!current) return null

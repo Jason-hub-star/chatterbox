@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
+import { setRoomMode } from '@/lib/rooms'
 import { useRealtimeRow } from '@/hooks/useRealtimeRow'
 import DubRecorder from '@/features/dub/DubRecorder'
 import DubCompositor from '@/features/dub/DubCompositor'
@@ -95,6 +96,15 @@ export default function DubPanel({ roomId }: { roomId: string }) {
   const status = session?.status ?? null
   const allSynced = tracks.length > 0 && tracks.every((t) => t.status === 'synced')
 
+  // G-261 호스트 관찰자: 합성 완료 시 방 모드 'normal' 복귀(best-effort — 실패해도 더빙 흐름 무손상).
+  const prevDubStatusRef = useRef<string | null>(null)
+  useEffect(() => {
+    const prev = prevDubStatusRef.current
+    prevDubStatusRef.current = status
+    if (!isHost || !token) return
+    if (prev !== 'completed' && status === 'completed') void setRoomMode(token, roomId, 'normal').catch(() => {})
+  }, [status, isHost, token, roomId])
+
   return (
     <section className="mt-8 rounded-lg border border-stage-border p-4">
       <div className="flex items-center justify-between">
@@ -119,6 +129,8 @@ export default function DubPanel({ roomId }: { roomId: string }) {
               onClick={() => run(async () => {
                 const path = await uploadDubSource(token!, roomId, file!)
                 await createDubSession(token!, roomId, path)
+                // G-261: 더빙 세션 개시 = 방 모드 'dub'(서버 broadcast → 전원 탭 전환+배너). best-effort.
+                void setRoomMode(token!, roomId, 'dub').catch(() => {})
               })}
               className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
             >
