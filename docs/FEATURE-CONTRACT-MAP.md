@@ -30,6 +30,7 @@ tags: [hub]
 | `PROFILE-04`, `PROFILE-05` | `contracts/FriendSystem.md` | `DATA-SCHEMA.md §friendships`, `Supabase Realtime presence` | 계약 있음. 친구/팔로우/차단 + 팔로우 알림 |
 | `MOD-01`, `MOD-02`, `MOD-03`, `MOD-04` | `contracts/ModelSelector.md`, `contracts/AvatarCanvas.md` | `specs/rig-format.md`, `DATA-SCHEMA.md §models` | 계약 있음 |
 | `MOD-05`, `MOD-06`, `MOD-07` | `contracts/CalibrationWizard.md`, `contracts/GreenRoom.md`, `contracts/SettingsPage.md` | `state-machines/Tracking.md`, `ONBOARDING-FLOW.md` | 계약 있음. MOD-07 품질 게이지/표정 리플레이는 GreenRoom 세부 계약 보강 필요 |
+| `MOD-08` | `reference/patterns/avatar-forge-pipeline.md`(UI 빌더 계약 겸용) | `DATA-SCHEMA.md §1.9 avatar_jobs`, `API-SURFACE.md` Avatar Forge | 구현 완료(2026-07-09, `features/avatar/CommissionCorner`·`useAvatarJobs`). 남용 게이트(크레딧/레이트리밋) 잔여 |
 | `LOB-01`, `LOB-02`, `LOB-03`, `LOB-04` | `contracts/LobbyPage.md` | `state-machines/Room.md`, `DATA-SCHEMA.md §rooms` | 계약 있음 |
 | `LOB-05`, `LOB-06`, `LOB-07`, `LOB-08`, `LOB-09`, `LOB-10` | `contracts/LobbyPage.md`, `contracts/GreenRoom.md`, `contracts/MobileViewer.md` | `ONBOARDING-FLOW.md`, `DATA-SCHEMA.md §room_invites/room_reservations/notifications/user_room_history`, `PRODUCT-READINESS.md` | 계약 있음. 초대 role은 actor/viewer만, 모바일/게스트는 viewer 권한. LOB-09는 항상 켜진 데모룸, LOB-10은 연습 방 계약 보강 필요 |
 | `ROOM-01` | `contracts/RoomView.md`, `contracts/StageLayout.md` | `DESIGN-DIRECTION.md`, `state-machines/Room.md` | 계약 있음 |

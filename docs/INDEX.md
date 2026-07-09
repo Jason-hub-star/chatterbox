@@ -94,6 +94,7 @@ tags: [hub]
 | `design/WORLD-SYSTEM.md` | 세계관(World) 시스템 — 씬 매니페스트 월드축 구조·worldStore 우선순위·월드 갤러리·무한 확장 규칙 | **SSOT (월드 아키텍처)** |
 | `design/uiux-distilled.md` | 전문가 영상 증류 UI/UX 원칙 48개 + ChatterBox 적용 Top10 | 조사/설계 (UX 원칙 SSOT) |
 | `design/UX-GAPS-AND-PATTERNS.md` | 도그푸딩 감사(dogfood-audit) 반영 UX 갭→수정 + 재사용 프리미티브 선설계 | **설계 (UX 구현 입력)** |
+| `design/ROOM-REDESIGN-2026-07.md` | 룸 원형 무대 리디자인 — 컨셉→구현 스펙(존 분해·MVP/defer·R1~R4 페이즈·계약 개정). DESIGN-DIRECTION §6 와이어프레임 1패스 | **설계 (룸 구현 입력)** |
 | `design/README.md` | 토큰 폴더 구조·연결점 | SSOT |
 | `design/flecto-reference/*.md` | flecto.io 설계언어 추출 | 조사 |
 
@@ -265,6 +266,7 @@ tags: [hub]
 | `reference/patterns/pixijs-v8-avatar-render.md` | PixiJS v8 단일캔버스·RenderTexture·blendshape | `contracts/AvatarCanvas.md`·`specs/rig-format.md` |
 | `reference/patterns/falai-vgen-pipeline.md` | fal.ai 제출·폴링·webhook·3-way 게이트 | `state-machines/Vgen.md`·`contracts/VgenPanel.md` |
 | `reference/patterns/react-router-routing.md` | route tree·lazy·ViewerGate 래퍼 | `PLATFORM-ARCHITECTURE.md §2.1`·`contracts/ViewerGate.md` |
+| `reference/patterns/avatar-forge-pipeline.md` | PNG→Live2D 커미션(MOD-08) — 잡·Realtime·수령 UI 계약 | `DATA-SCHEMA.md §1.9`·`API-SURFACE.md` Avatar Forge |
 
 ---
 

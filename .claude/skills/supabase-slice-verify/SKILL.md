@@ -44,6 +44,8 @@ DB-backed 슬라이스(DUB-04 녹음·DUB-05 합성·방 기능 등)를 **추측
 15. **supabase 쿼리빌더는 네이티브 Promise 아님** — `admin.from(t).delete().eq(...).catch(...)` 는 `catch is not a function`으로 터짐(정리 코드에서 자주 밟음). `await`로 받거나 `try/catch`로 감싼다.
 16. **새 마이그레이션은 serve 재기동만으론 안 걸림** — `setup-local.sh`(함정1)는 functions serve만 재시작하지, 새 컬럼/테이블 마이그를 로컬 DB에 적용하진 않는다. 스키마를 바꿨으면 `supabase migration up` + **PostgREST 스키마 캐시 리로드**(`psql "$DB_URL" -c "NOTIFY pgrst, 'reload schema';"`) 필수. 안 하면 `Could not find the 'X' column of 'T' in the schema cache` 로 500(serve 재기동으론 안 낫는다). `DB_URL` 은 `sb.env` 에 있음.
 17. **실 외부 LLM/API 왕복 검증은 `fn.env` 더미를 실키로 교체** — 함정3은 "안 부르면 더미로 충분"인데, 실제 번역/STT 응답을 검증하려면 `.env` 실키를 `fn.env` 에 써서(값 stdout 금지: `printf 'OPENAI_API_KEY=%s\n' "$KEY" > $SCRATCH/fn.env`) serve 재기동. **검증 끝나면 반드시 더미(`sk-dummy-not-used`)로 복구** — scratch 에 실키 잔존 금지(성역).
+18. **소셜우선 로그인 — 이메일 폼은 숨어 있음** — 로그인 페이지가 OAuth 주버튼 구조(2026-07-08~)라 `input[type=email]` 이 처음엔 없다. **`[이메일로 로그인]` 버튼 클릭 후** `waitForSelector('input[type=email]')`. 구 템플릿의 즉시 fill 은 20s 타임아웃으로 죽는다. (의상실 E2E 실측 2026-07-09.)
+19. **Realtime postgres_changes 는 구독 join 전 UPDATE 유실** — 페이지 로드/리로드 직후 발사한 첫 UPDATE 는 WS join 전이면 리플레이 없이 사라진다. join 여유(~4s) 후 발사 + 미도달 시 **같은 값 재-UPDATE**(동일 값도 이벤트 방출됨) 폴링으로 드라이브. 실사용은 이벤트 간격이 길어 무해 — 테스트 하네스만의 함정.
 
 ## Steps
 

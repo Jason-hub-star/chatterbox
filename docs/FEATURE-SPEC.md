@@ -63,6 +63,7 @@ tags: [hub]
 | ★ MOD-05 | **대기실(Green Room)** — 입장 전 내 아바타·소리·배경 미리보기 | P0 | MediaPipe/LiveKit |
 | ★ MOD-06 | **권한·디바이스 트러블슈팅** — 웹캠/마이크 거부 안내, 중간 핫스왑 | P0 | — |
 | ★ MOD-07 | **트래킹 품질 게이지 + 표정 리플레이** — 조명/얼굴 인식/표정 매핑 신뢰도와 1초 지연 재생 확인 | P1 | MediaPipe/Pixi |
+| ★ MOD-08 | **아바타 커미션(Avatar Forge)** — 의상실에서 PNG 1장 주문→자동 리깅(25~40분, 4단계 주문서)→내 아바타 수령·입어보기. 구현: `reference/patterns/avatar-forge-pipeline.md` (2026-07-09 UI·배포 완료, 남용 게이트 P1 잔여) | P1 | Modal/Supabase |
 
 ## LOBBY — 방 탐색·로비
 
