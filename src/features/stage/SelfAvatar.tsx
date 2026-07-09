@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { RigAvatar, createExpressionDriver, type HeadPose } from '@/lib/pixi/rig'
 import { useFaceTracking } from '@/hooks/useFaceTracking'
 import { useTrackingStore, type TrackingState } from '@/stores/trackingStore'
+import HostCrown from './HostCrown'
 
 interface Props {
   projectUrl: string
   sendBlendshapes: (blendshapes: Record<string, number>) => void
   size: number
+  isHost?: boolean
 }
 
 const STATE_LABEL_KEY: Record<TrackingState, string> = {
@@ -20,12 +22,13 @@ const STATE_LABEL_KEY: Record<TrackingState, string> = {
 
 // 내 좌석: 웹캠 → MediaPipe → 네이티브 rig self-view 구동(head pose 포함) + blendshape 송신(52ch, head pose 미포함).
 // 웹캠은 트래킹 입력이라 코너 pip 로 작게 유지 — 표시 크기는 트래킹 품질과 무관(스트림 원본 해상도 사용).
-export default function SelfAvatar({ projectUrl, sendBlendshapes, size }: Props) {
+export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost = false }: Props) {
   const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const mountRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<RigAvatar | null>(null)
   const trackingState = useTrackingStore((s) => s.state)
+  const faceDetected = useTrackingStore((s) => s.faceDetected)
 
   // self 는 셀카 거울(video scaleX−1)과 방향 일치 → mirror on.
   const driver = useMemo(() => createExpressionDriver({ mirror: true }), [])
@@ -75,22 +78,46 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size }: Props)
     }
   }, [sendBlendshapes])
 
+  // 트래킹 실패 폴백(ROOM-11, §6.4): 얼굴 미인식(TRACKING 중) = "인식 중…", ERROR/UNSUPPORTED = 상태 라벨.
+  // IDLE/INITIALIZING 은 로딩이지 실패가 아니라 오버레이 없음.
+  const fallbackKey =
+    trackingState === 'TRACKING' && !faceDetected
+      ? 'avatar.trackingRecovering'
+      : trackingState === 'ERROR' || trackingState === 'UNSUPPORTED'
+        ? STATE_LABEL_KEY[trackingState]
+        : null
+
   return (
     <>
       <div className="relative" style={{ width: size, height: size }}>
         <div
           ref={mountRef}
           data-self-avatar
-          className="h-full w-full overflow-hidden rounded-lg bg-[#f4f0e8]"
+          className={`h-full w-full overflow-hidden rounded-full bg-[#f4f0e8] ${isHost ? 'ring-2 ring-fire-amber' : ''}`}
         />
+        {fallbackKey && (
+          <div
+            data-tracking-fallback
+            role="status"
+            className="pointer-events-none absolute inset-0 grid place-items-center rounded-full border-2 border-dashed bg-black/40"
+            style={{ borderColor: 'rgba(255,100,100,.4)' }}
+          >
+            <span className="flex flex-col items-center gap-0.5 text-[11px] font-medium text-stage-text">
+              <span aria-hidden className="text-lg">👤</span>
+              {t(fallbackKey)}
+            </span>
+          </div>
+        )}
+        {isHost && <HostCrown />}
+        {/* 웹캠 = 트래킹 입력 pip. 원형 프레임이라 코너 대신 하단 중앙에 겹쳐 둔다. */}
         <video
           ref={videoRef}
           muted
           playsInline
           autoPlay
           aria-label={t('stage.webcamAriaLabel')}
-          className="absolute bottom-1 right-1 w-10 rounded border border-stage-border/80"
-          style={{ transform: 'scaleX(-1)' }}
+          className="absolute bottom-0 left-1/2 w-9 -translate-x-1/2 rounded border border-stage-border/80"
+          style={{ transform: 'translateX(-50%) scaleX(-1)' }}
         />
       </div>
       <span className="text-[11px] text-spring-green">
