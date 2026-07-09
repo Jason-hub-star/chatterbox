@@ -331,8 +331,16 @@ export const en: Record<string, string> = {
 
   // --- script (teleprompter) ---
   'script.header': 'Script — {{title}}',
-  'script.myRole': 'My role',
-  'script.spectate': 'Spectate',
+  'script.roleFree': 'Open',
+  'script.claim': 'Claim',
+  'script.release': 'Release',
+  'script.unassignRole': 'Unassign role',
+  'script.assignTo': 'Assign…',
+  'script.modeRehearsal': 'Rehearsal',
+  'script.modePerformance': 'Performance',
+  'script.rehearsalHint': 'Rehearsal — anyone can advance the script',
+  'script.roleSyncFailed': 'Failed to sync role',
+  'script.modeSyncFailed': 'Failed to switch mode',
   'script.end': 'End of script',
   'script.myTurn': '▶ Your turn',
   'script.prev': '← Back',

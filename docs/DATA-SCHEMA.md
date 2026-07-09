@@ -119,6 +119,8 @@ CREATE TABLE account_restrictions (
 ### 1.2 rooms
 
 > **as-built 추가 컬럼 (2026-07-08, 마이그 `20260708160000`)** — `is_practice boolean not null default false`(LOB-10 연습 방: 시스템 호스트 시드·비어도 ended 안 함·참가자 전원 대본 진행). `public_rooms` 뷰 끝에 `is_practice` 노출. `genre` 는 create-room 화이트리스트(comedy·drama·romance·fantasy·horror·free)로 배선됨.
+>
+> **as-built 추가 컬럼 (2026-07-09, 마이그 `20260709100000`)** — `script_mode text not null default 'performance' check in ('rehearsal','performance')`(ROOM-14 모드 토글, 주인님 확정 의미론: 리허설=활성 참가자 전원 cue 진행 허용·본공연=호스트만). `set-script-mode` Edge(호스트 검증→update→room-authority `script_mode` broadcast)가 유일 쓰기 경로, `advance-script-cue` 가 진행권 판정에 참조. 뷰 노출 없음(멤버는 rooms 직접 SELECT).
 
 ```sql
 CREATE TABLE rooms (
@@ -604,6 +606,33 @@ CREATE TABLE vgen_appeals (
 -- RLS Policy: requester can create/read own appeals. Host can read same-room appeals. Admin/moderator can read/update all.
 -- Side effect: vgen-appeal keeps vgen_jobs.status='flagged' and sets vgen_jobs.appeal_status='pending'.
 ```
+
+### 1.8.2 avatar_jobs (Avatar Forge — PNG→Live2D)
+
+vgen_jobs 자매 잡 테이블. 결과가 영상이 아니라 rig(`avatars/<job>/project.json` + `parts/*.webp`). 크레딧/디덥/모더레이션은 슬라이스 제외(해피패스) — 트리거=Modal 웹엔드포인트 spawn, 진행/완료는 파이프라인이 service_role로 직접 PATCH(별도 webhook 없음). SSOT: `docs/reference/patterns/avatar-forge-pipeline.md`.
+
+```sql
+CREATE TABLE avatar_jobs (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id            UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status             TEXT NOT NULL DEFAULT 'queued',   -- queued | running | done | failed
+  phase              TEXT,                             -- analyzing | cutting | rigging | finishing (25~40분 하위 진행)
+  input_object_key   TEXT,                             -- Storage avatar-uploads/<authUid>/uploads/<uuid>.png
+  result_project_url TEXT,                             -- avatars/<job>/project.json (완료 시, 공개 URL — isValidAvatarUrl 통과)
+  provider           TEXT NOT NULL DEFAULT 'modal',
+  provider_call_id   TEXT,                             -- Modal FunctionCall id
+  error              TEXT,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at       TIMESTAMPTZ,
+  CONSTRAINT avatar_jobs_status_chk CHECK (status IN ('queued','running','done','failed'))
+);
+-- RLS: SELECT 본인 행만(user_id = current_user_id()). INSERT/UPDATE 정책 없음 = service_role(Edge·파이프라인)만.
+--   Realtime 전달도 이 SELECT 를 타므로 본인 잡 구독 성립.
+-- Realtime: subscribe to avatar_jobs (queued→running→done/failed, phase 진행)
+```
+
+**상태 기계**: `queued → running`(phase analyzing→cutting→rigging→finishing)`→ done`(result_project_url 세팅) | `→ failed`(error). 발행처는 **Supabase Storage 공개 `avatars` 버킷**(로더 신뢰-오리진 `*.supabase.co`), `project.json._project_base_url=""`(로더 파생). 입력은 `avatar-uploads`(private, 본인폴더 RLS).
 
 ### 1.9 credits
 
@@ -1109,6 +1138,8 @@ CREATE TABLE notifications (
 All DataChannels are created during CONNECTED state (see state-machines/_INDEX.md §5).
 
 **SSOT:** 허용 DataChannel은 `room-authority`, `script-cue`, `chat`, `blendshape` 4개뿐이다. 클라이언트가 채팅/반응/투표를 직접 publish하지 않는다. 사용자 입력은 `send-chat`, `send-viewer-chat`, `send-viewer-reaction`, `submit-viewer-poll` Edge Function이 sanitize/rate-limit/audit 후 `messages` INSERT 또는 server relay로 브로드캐스트한다.
+
+> **as-built 토픽 추가 (2026-07-09, ROOM-14)** — `script-role` (reliable, 서버 릴레이 전용): 대본 역할 클레임 동기. `sync-script-role` Edge 가 auth 로 클레이머를 확정 후 broadcast, 수신측은 `participant=undefined`(서버발)만 수락(SEC-5 동형). 메시지: `{kind:'set', role, authId, name}` · `{kind:'clear', role}`. 늦입장 동기는 각 클레이머가 memberKey 변동 시 자기 클레임 재전송(멱등, cue warm-up 동형) — 호스트 전체맵 sync 는 호스트 새로고침 시 전원 초기화 회귀가 있어 채택 안 함. 퇴장자 클레임은 수신측 렌더 파생 prune. room-authority 타입에 `script_mode` 추가(as-built).
 
 ### 2.1 room-authority (Reliable, Ordered)
 

@@ -6,6 +6,8 @@ tags: [fsm]
 
 # 4. Script Cue State Machine
 
+> **as-built (2026-07-09 ROOM-14):** cue 진행권은 `rooms.script_mode` 로 이원화 — `performance`(기본)=Host only·`rehearsal`=활성 배우 전원(연습 방 규칙의 일반화). **Viewer 는 모든 모드에서 진행 불가**(서버 403). 역할은 배우 선착순 클레임+호스트 조정(`'script-role'` 서버 릴레이, 휘발) — 권한 표의 Actor 행에 "claim/release own role" 추가로 읽을 것. 상세: contracts/ScriptPanel.md 구현 현황.
+
 ## State Diagram
 
 ```

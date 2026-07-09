@@ -53,6 +53,17 @@ export const sendReactionRelay = (accessToken: string, roomId: string, emoji: st
 export const advanceScriptCueRelay = (accessToken: string, roomId: string, sceneId: string, cueIndex: number) =>
   callFn<{ ok: boolean }>('advance-script-cue', accessToken, { room_id: roomId, scene_id: sceneId, cue_index: cueIndex })
 
+// 대본 역할 클레임/해제/호스트배정 서버 릴레이(ROOM-14). 서버가 클레이머를 auth 로 확정 후 'script-role' broadcast.
+export const scriptRoleAction = (
+  accessToken: string,
+  roomId: string,
+  body: { action: 'claim' | 'release'; role: string } | { action: 'assign'; role: string; target_auth_id: string | null },
+) => callFn<{ ok: boolean }>('sync-script-role', accessToken, { room_id: roomId, ...body })
+
+// 호스트 대본 모드 전환(ROOM-14): rehearsal=전원 진행 / performance=호스트만. 서버가 host 검증 후 room-authority broadcast.
+export const setScriptMode = (accessToken: string, roomId: string, mode: 'rehearsal' | 'performance') =>
+  callFn<{ ok: boolean; script_mode: string }>('set-script-mode', accessToken, { room_id: roomId, mode })
+
 export interface MuteResult { ok: boolean; muted: boolean; target_identity: string; display_name: string | null }
 
 // 호스트 음소거/해제 (HOST-08). 서버가 canPublish 를 토글 + muted_by_host 를 DB 에 기록.

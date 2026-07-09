@@ -331,8 +331,16 @@ export const ko: Record<string, string> = {
 
   // --- script(대본 텔레프롬프터) ---
   "script.header": "대본 — {{title}}",
-  "script.myRole": "내 역할",
-  "script.spectate": "관전",
+  "script.roleFree": "비어 있음",
+  "script.claim": "맡기",
+  "script.release": "내려놓기",
+  "script.unassignRole": "역할 해제",
+  "script.assignTo": "배정…",
+  "script.modeRehearsal": "리허설",
+  "script.modePerformance": "본공연",
+  "script.rehearsalHint": "리허설 — 누구나 대사를 진행할 수 있어요",
+  "script.roleSyncFailed": "역할 동기화에 실패했어요",
+  "script.modeSyncFailed": "모드 전환에 실패했어요",
   "script.end": "대본 끝",
   "script.myTurn": "▶ 내 차례",
   "script.prev": "← 이전",

@@ -48,6 +48,8 @@ export function useLiveKitRoom(
     onCue?: (payload: { sceneId: string; cueIndex: number }) => void
     // room-authority(reliable): 방 권위 이벤트. { type:'vgen_result', jobId } | { type:'vgen_stop' } | { type:'bg_change', url }(HOST-04·05).
     onRoomAuthority?: (msg: { type: string; jobId?: string; url?: string | null }) => void
+    // 대본 역할 클레임 동기(ROOM-14): 서버 릴레이(sync-script-role)만 수락. 형태 검증은 수신측(isRoleEvent).
+    onScriptRole?: (payload: unknown) => void
     // false면 연결 보류 — 방 입장(room_participants 행 생성)이 끝난 뒤에만 연결한다.
     // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 전에 연결하면 403으로 실패한다.
     enabled?: boolean
@@ -79,6 +81,10 @@ export function useLiveKitRoom(
   useEffect(() => {
     onKickedRef.current = opts?.onKicked
   }, [opts?.onKicked])
+  const onScriptRoleRef = useRef(opts?.onScriptRole)
+  useEffect(() => {
+    onScriptRoleRef.current = opts?.onScriptRole
+  }, [opts?.onScriptRole])
   const lastSentRef = useRef(0)
   const seqRef = useRef(0)
   const lastReactionRef = useRef(0)
@@ -167,6 +173,14 @@ export function useLiveKitRoom(
           if (typeof data?.cueIndex === 'number' && typeof data?.sceneId === 'string') {
             onCueRef.current?.({ sceneId: data.sceneId, cueIndex: data.cueIndex })
           }
+        } catch { /* 잘못된 페이로드 무시 */ }
+        return
+      }
+      if (topic === 'script-role') {
+        // 서버 릴레이(sync-script-role Edge)만 수락 — 클라 직접 publish 는 클레임 위조 가능 → 드롭(SEC-5 동형).
+        if (participant) return
+        try {
+          onScriptRoleRef.current?.(JSON.parse(new TextDecoder().decode(payload)))
         } catch { /* 잘못된 페이로드 무시 */ }
         return
       }

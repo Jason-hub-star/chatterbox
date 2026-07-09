@@ -331,8 +331,16 @@ export const ja: Record<string, string> = {
 
   // --- script(台本テレプロンプター) ---
   'script.header': '台本 — {{title}}',
-  'script.myRole': '自分の役',
-  'script.spectate': '観戦',
+  'script.roleFree': '空き',
+  'script.claim': '担当する',
+  'script.release': '外す',
+  'script.unassignRole': '配役を解除',
+  'script.assignTo': '割り当て…',
+  'script.modeRehearsal': 'リハーサル',
+  'script.modePerformance': '本番',
+  'script.rehearsalHint': 'リハーサル — 誰でもセリフを進められます',
+  'script.roleSyncFailed': '配役の同期に失敗しました',
+  'script.modeSyncFailed': 'モード切替に失敗しました',
   'script.end': '台本終了',
   'script.myTurn': '▶ 自分の番',
   'script.prev': '← 前へ',
