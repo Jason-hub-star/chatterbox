@@ -93,7 +93,10 @@ export function createExpressionDriver(options: ExpressionDriverOptions = {}): E
         1,
       ),
       ParamAngleX: clamp(normalizeCentered(yaw, -25, 25) * 30 * M, -30, 30),
-      ParamAngleY: clamp(normalizeCentered(pitch, -20, 20) * 30, -30, 30),
+      // 게인 18(=1.0 아래)로 축소 — rig 실렌더 검증 결과 ParamAngleY≥~22에서 head_z_warp 저피벗 스쿼시가
+      // 입/코를 뭉개고 앞뒤 머리 어긋남이 커짐(mimi·akane 공통 재현). 실측 피치 ±20°가 이 파손 구간에
+      // 진입하지 않도록 게인을 낮춤 — rig 쪽(스쿼시 피벗·격자, 앞/뒤 머리 바인딩) 근본 수정은 별도 작업.
+      ParamAngleY: clamp(normalizeCentered(pitch, -20, 20) * 18, -30, 30),
       ParamAngleZ: clamp(normalizeCentered(roll, -25, 25) * 30 * M, -30, 30),
       ParamBreath: clamp(0.5 + 0.5 * Math.sin(((performance.now() % 4000) / 4000) * Math.PI * 2), 0, 1),
     }
