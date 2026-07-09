@@ -6,6 +6,8 @@ tags: [fsm]
 
 `stageStore.mode`의 단일 진실 원천. VGen과 DUB는 같은 메인뷰 레이어를 점유하므로 동시에 활성화될 수 없다.
 
+> **as-built (2026-07-10, G-261):** 아래 forward 스펙과 편차 3. ①채널 타입은 `vgen_mode_*`/`dub_mode_*` 대신 **`mode_change` 단일 타입**(서버발 — `set-room-mode` Edge 가 호스트 검증→`rooms.current_mode` UPDATE→broadcast, 클라 직접 발행 없음=스푸핑 원천 차단). ②트리거 의미: VGEN = "프롬프트 패널 열림"이 아니라 **생성 진행 중**(시작→vgen·종료→normal, RoomPage 호스트 관찰자), DUB = 세션 개시→dub·합성 완료→normal(DubPanel). ③`canTransition` 가드(vgen↔dub 직접 전환 금지)는 서버 미적용 — as-built 의 모드는 레이어 점유가 아니라 패널 포커스+배너라 직접 전환이 무해(ponytail: 레이어 점유 모드가 생기면 Edge 에 가드 승급).
+
 ## States
 
 ```text

@@ -223,7 +223,10 @@ type RoomAuthorityType =
   | 'dub_mode_close'   // DUB — DUB 오버레이 닫기
   | 'invite_to_stage'  // ROOM-21 — 관객 무대 초대 { participant_id, slot_index }
   | 'slow_mode'        // HOST-09 — 슬로우 모드 { seconds: 0|5|10|30 }
-  | 'chat_clear';      // HOST-11 — 채팅 전체 클리어 { before_timestamp }
+  | 'chat_clear'       // HOST-11 — 채팅 전체 클리어 { before_timestamp }
+  | 'mode_change'      // G-261 — set-room-mode Edge 서버발 { new_mode, changed_at_ms, changed_by_host_id } (as-built: vgen_mode_*/dub_mode_* 를 통합 대체)
+  | 'kicked'           // HOST-01 — 강퇴 사유, 서버발 destinationIdentities(대상만) { reason }
+  | 'vod_sync';        // ROOM-01 — 메인뷰 타임라인 동기 { position_ms, playing, at_ms } (호스트 발행 + 5s 하트비트)
 ```
 
 새 타입을 추가할 때는 위 union에 실제 타입명을 한 줄 추가하고 중앙 dispatcher switch case도 함께 추가한다. `NEW_TYPE` 같은 placeholder 문자열은 허용 타입에 넣지 않는다.
@@ -238,6 +241,9 @@ type RoomAuthorityType =
 | 무대 초대 (ROOM-21) | `room-authority` | `invite_to_stage` |
 | 슬로우 모드 (HOST-09) | `room-authority` | `slow_mode` |
 | 채팅 클리어 (HOST-11) | `room-authority` | `chat_clear` |
+| 모드 전환 배너/자동탭 (G-261) | `room-authority` | `mode_change` (서버발 broadcast) |
+| 강퇴 사유 통지 (HOST-01) | `room-authority` | `kicked` (서버발·대상 한정) |
+| 메인뷰 타임라인 동기 (ROOM-01) | `room-authority` | `vod_sync` (호스트 발행+하트비트) |
 | 디렉터 노트 | `chat` | `message_type='note'` |
 | 참가자 리액션 | `chat` | `message_type='reaction'` |
 | 표정 트래킹 (52 blendshape) | `blendshape` | unreliable, 30 Hz |

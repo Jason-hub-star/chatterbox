@@ -21,6 +21,7 @@ tags: [guide]
 | Current user | `userStore.userId` | `current_user_id`, `user_id` store 필드 | DB/API에서는 `user_id` |
 | Stage background URL | `stageStore.backgroundUrl` | `stageStore.background_url`, `stageStore.background` | DB/API/DataChannel에서는 `background_url` |
 | Stage mode | `stageStore.mode: 'normal' | 'vgen' | 'dub'` | `'dubbing'`, `'recording'` | VGen/DUB 동시 활성 금지. 전환은 `state-machines/StageMode.md` 기준 |
+| Audio mixer (ROOM-08) | `audioStore.masterVolume`, `audioStore.participantVolumes` | store 에 SDK 객체·`volume_map` | 적용은 `useLiveKitRoom` 브리지(`RemoteParticipant.setVolume`) — store 는 SDK 미보유(§2) |
 | VGEN-07 generated-video dubbing | `vgenStore.dubbingState` | `dubState` | 생성영상 위 더빙 전용. 값은 `'idle' | 'dubbing' | 'capturing' | 'done' | 'failed'` |
 | DUB existing-video recording | `dubStore.recordingState` | `vgenStore.dubbingState` 재사용 | 기존 영상 기반 DUB-04 전용. VGEN-07과 store를 공유하지 않는다 |
 | Credits | `credits.balance` | `credit_balance` | DB/edge RPC 반환도 nested `credits.balance`로 문서화 |

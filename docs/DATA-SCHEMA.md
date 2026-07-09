@@ -130,6 +130,7 @@ CREATE TABLE rooms (
   description TEXT,
   genre TEXT,  -- drama, comedy, fantasy, romance, etc.
   status TEXT DEFAULT 'waiting',  -- waiting, live, ended
+  current_mode TEXT NOT NULL DEFAULT 'normal',  -- 무대 진행 모드 normal|vgen|dub (G-261, 마이그 20260710093000) — 쓰기는 set-room-mode Edge 전용, late joiner 복원용
   is_demo BOOLEAN DEFAULT FALSE,  -- public Watch-only demo room; viewer-only anonymous entry allowed
   is_locked BOOLEAN DEFAULT FALSE,  -- 비밀번호/초대 필요 여부. 해시는 room_secrets에만 저장.
   max_participants INT DEFAULT 6,
