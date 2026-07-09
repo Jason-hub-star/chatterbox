@@ -142,6 +142,7 @@ export const en: Record<string, string> = {
   'room.messagePlaceholder': 'Type a message',
   'room.messagePlaceholderDisabled': 'You can type once connected',
   'room.send': 'Send',
+  'room.sent': 'Sent',
   'room.sidePanel': 'Side panel',
   'room.tabDub': '🎙 DUB',
   'room.tabVgen': '🎬 VGen',

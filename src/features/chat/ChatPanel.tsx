@@ -4,6 +4,12 @@ import { useRoomStore } from '@/stores/roomStore'
 
 // ChatPanel — RightPanel 채팅 탭 콘텐츠. RoomPage에서 인라인이던 채팅을 블록으로 추출.
 // 메시지는 roomStore에서 직접 읽고, 송신은 상위(LiveKit 훅 보유)가 주입한 onSend로 위임.
+// 전송확인(✓): sendChat 이 publishData resolve 후에만 로컬 에코하므로 "렌더된 내 메시지=전송 완료"가 성립.
+const fmtTime = (ts: number) => {
+  const d = new Date(ts)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 export default function ChatPanel({
   connected,
   onSend,
@@ -38,10 +44,23 @@ export default function ChatPanel({
       >
         {messages.length === 0 && <li className="text-stage-text-muted">{t('room.noMessages')}</li>}
         {messages.map((m) => (
-          <li key={m.id}>
-            <span className={m.isLocal ? 'text-fire-amber' : 'text-stage-text-muted'}>{m.sender}</span>
-            <span className="text-stage-text-muted">: </span>
-            <span>{m.text}</span>
+          <li key={m.id} className="flex items-baseline gap-1.5">
+            <time
+              dateTime={new Date(m.ts).toISOString()}
+              className="shrink-0 text-[10px] tabular-nums text-stage-text-muted"
+            >
+              {fmtTime(m.ts)}
+            </time>
+            <span className="min-w-0 break-words">
+              <span className={m.isLocal ? 'text-fire-amber' : 'text-stage-text-muted'}>{m.sender}</span>
+              <span className="text-stage-text-muted">: </span>
+              <span>{m.text}</span>
+              {m.isLocal && (
+                <span className="ml-1 text-[10px] text-spring-green" role="img" aria-label={t('room.sent')}>
+                  ✓
+                </span>
+              )}
+            </span>
           </li>
         ))}
       </ul>

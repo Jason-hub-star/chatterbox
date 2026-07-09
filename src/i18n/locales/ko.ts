@@ -142,6 +142,7 @@ export const ko: Record<string, string> = {
   "room.messagePlaceholder": "메시지를 입력하세요",
   "room.messagePlaceholderDisabled": "연결되면 입력할 수 있어요",
   "room.send": "보내기",
+  "room.sent": "전송됨",
   "room.sidePanel": "사이드 패널",
   "room.tabDub": "🎙 DUB",
   "room.tabVgen": "🎬 VGen",

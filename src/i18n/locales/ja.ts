@@ -142,6 +142,7 @@ export const ja: Record<string, string> = {
   'room.messagePlaceholder': 'メッセージを入力',
   'room.messagePlaceholderDisabled': '接続すると入力できます',
   'room.send': '送信',
+  'room.sent': '送信済み',
   'room.sidePanel': 'サイドパネル',
   'room.tabDub': '🎙 DUB',
   'room.tabVgen': '🎬 VGen',
