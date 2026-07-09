@@ -5,6 +5,7 @@ import { useUserStore } from '@/stores/userStore'
 import { passwordIssue } from '@/lib/authValidation'
 import AuthShell from '@/components/shared/AuthShell'
 import OAuthButtons from '@/components/shared/OAuthButtons'
+import { OAUTH_PROVIDERS } from '@/lib/oauth'
 
 // SSOT: contracts/AuthPage.md — RegisterPage. 이메일/비밀번호 가입만 (Phase 0).
 // 비밀번호 강도 규칙은 lib/authValidation(가입·재설정 공유)에서 단일 정의.
@@ -37,6 +38,8 @@ export default function RegisterPage() {
   const [resendCooldown, setResendCooldown] = useState(0)
 
   const submitting = authState === 'AUTHENTICATING'
+  // 이메일 강등: 간편인증(OAuth) 활성 시 이메일 가입 폼을 토글 뒤로 접는다. OAuth 미설정이면 바로 노출.
+  const [showEmail, setShowEmail] = useState(OAUTH_PROVIDERS.length === 0)
 
   useEffect(() => {
     if (resendCooldown <= 0) return
@@ -98,57 +101,69 @@ export default function RegisterPage() {
 
         <OAuthButtons />
 
-        <label className="block space-y-1">
-          <span className="text-sm text-stage-text-muted">{t('register.email')}</span>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
-          />
-        </label>
+        {showEmail ? (
+          <>
+            <label className="block space-y-1">
+              <span className="text-sm text-stage-text-muted">{t('register.email')}</span>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
+              />
+            </label>
 
-        <label className="block space-y-1">
-          <span className="text-sm text-stage-text-muted">{t('register.password')}</span>
-          <input
-            type="password"
-            required
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
-          />
-          <span className="text-xs text-stage-text-muted">{t('register.passwordHint')}</span>
-        </label>
+            <label className="block space-y-1">
+              <span className="text-sm text-stage-text-muted">{t('register.password')}</span>
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
+              />
+              <span className="text-xs text-stage-text-muted">{t('register.passwordHint')}</span>
+            </label>
 
-        <label className="block space-y-1">
-          <span className="text-sm text-stage-text-muted">{t('register.passwordConfirm')}</span>
-          <input
-            type="password"
-            required
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
-          />
-        </label>
+            <label className="block space-y-1">
+              <span className="text-sm text-stage-text-muted">{t('register.passwordConfirm')}</span>
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
+              />
+            </label>
 
-        {(localError || storeError) && (
-          <p role="alert" className="text-sm text-fire-hot">
-            {localError ?? storeError}
-          </p>
+            {(localError || storeError) && (
+              <p role="alert" className="text-sm text-fire-hot">
+                {localError ?? storeError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-lg py-2 font-semibold text-[#241605] transition hover:brightness-110 disabled:opacity-50"
+              style={{ background: 'var(--scene-accent)' }}
+            >
+              {submitting ? t('register.submitting') : t('register.submit')}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowEmail(true)}
+            className="w-full text-center text-sm text-stage-text-muted hover:text-stage-text"
+          >
+            {t('register.useEmail')}
+          </button>
         )}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg py-2 font-semibold text-[#241605] transition hover:brightness-110 disabled:opacity-50"
-          style={{ background: 'var(--scene-accent)' }}
-        >
-          {submitting ? t('register.submitting') : t('register.submit')}
-        </button>
 
         <p className="text-center text-sm text-stage-text-muted">
           {t('register.hasAccount')}{' '}

@@ -90,7 +90,7 @@ interface EmailVerificationPendingProps {
 | `userStore` | `authState` | ✓ | ✓ | 'UNAUTHENTICATED'\|'AUTHENTICATING'\|'AUTHENTICATED' |
 | `userStore` | `login(email, password)` | | ✓ | 이메일 로그인 (비동기) |
 | `userStore` | `signUpWithEmail(email, password)` | | ✓ | 이메일 회원가입 (비동기) |
-| `userStore` | `signInWithGoogle()` | | ✓ | Google OAuth 로그인 (비동기) |
+| `userStore` | `loginWithOAuth(provider: 'google'\|'kakao')` | | ✓ | 간편인증 OAuth 로그인 (비동기, 소셜 우선) |
 | `userStore` | `logout()` | | ✓ | 로그아웃 (세션 종료) |
 | `userStore` | `error` | ✓ | ✓ | 인증 에러 메시지 (optional) |
 
