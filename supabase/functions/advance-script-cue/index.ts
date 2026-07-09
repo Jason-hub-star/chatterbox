@@ -30,18 +30,23 @@ Deno.serve(async (req) => {
   }
 
   // 방 존재 + 종료 아님 + 호스트 전용(진행 권한을 서버가 확정)
-  // 연습 방(LOB-10) 예외: 시스템 호스트라 아무도 host 가 아님 — 활성 참가자면 진행 허용(공용 리허설).
+  // 예외 1 — 연습 방(LOB-10): 시스템 호스트라 아무도 host 가 아님 — 활성 참가자면 진행 허용(공용 리허설).
+  // 예외 2 — 리허설 모드(ROOM-14): 호스트가 script_mode='rehearsal' 로 전환하면 활성 참가자 전원 진행 허용.
   const { data: room } = await user.service
-    .from("rooms").select("id, status, host_id, is_practice").eq("id", room_id).single();
+    .from("rooms").select("id, status, host_id, is_practice, script_mode").eq("id", room_id).single();
   if (!room) return json({ error: "Room not found" }, 404);
   if (room.status === "ended") return json({ error: "Room ended" }, 409);
   if (room.host_id !== user.userId) {
-    if (!room.is_practice) return json({ error: "호스트만 대본을 진행할 수 있어요." }, 403);
+    if (!room.is_practice && room.script_mode !== "rehearsal") {
+      return json({ error: "호스트만 대본을 진행할 수 있어요." }, 403);
+    }
     const { data: member } = await user.service
-      .from("room_participants").select("id")
+      .from("room_participants").select("id, role")
       .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
       .limit(1).maybeSingle();
     if (!member) return json({ error: "Not a participant" }, 403);
+    // 진행은 배우의 것 — 관전자는 리허설/연습에서도 텔레프롬프터를 못 움직인다(클레임 규칙과 대칭).
+    if (member.role === "viewer") return json({ error: "Viewers cannot advance the script" }, 403);
   }
 
   // 방 전체 broadcast(reliable). 수신측은 participant=undefined 로 받아 신뢰(클라 직접발은 드롭).
