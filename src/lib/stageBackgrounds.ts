@@ -13,6 +13,8 @@ export const STAGE_BACKGROUNDS: StageBackground[] = [
   { id: 'teahouse', url: '/scenes/lobby-interiors/teahouse.webp', labelKey: 'stage.bg.teahouse' },
   { id: 'workshop', url: '/scenes/lobby-interiors/workshop.webp', labelKey: 'stage.bg.workshop' },
   { id: 'plaza', url: '/scenes/lobby-plaza/plaza-1.webp', labelKey: 'stage.bg.plaza' },
+  { id: 'atelier', url: '/scenes/lobby-interiors/atelier.webp', labelKey: 'stage.bg.atelier' },
+  { id: 'street', url: '/scenes/lobby-street/day.webp', labelKey: 'stage.bg.street' },
 ]
 
 // 서버 검증과 동일 규칙(클라 방어적 미러): 우리 public 씬 에셋 경로만 허용.

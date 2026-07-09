@@ -379,6 +379,9 @@ export const en: Record<string, string> = {
   'script.prev': '← Back',
   'script.next': 'Next line →',
   'script.hostAdvances': 'The host advances the lines.',
+  'script.fontSize': 'Font size',
+  'script.fontSmaller': 'Smaller text',
+  'script.fontLarger': 'Larger text',
 
   // --- stage/avatar ---
   'stage.mainView': 'Main view',
@@ -393,6 +396,8 @@ export const en: Record<string, string> = {
   'stage.bg.teahouse': 'Teahouse',
   'stage.bg.workshop': 'Workshop',
   'stage.bg.plaza': 'Plaza',
+  'stage.bg.atelier': 'Atelier',
+  'stage.bg.street': 'Street',
   'reaction.wheelLabel': 'Reaction wheel',
   'reaction.hint': 'Right-click or long-press to react (keys 1–8)',
   'reaction.cancel': 'Cancel',

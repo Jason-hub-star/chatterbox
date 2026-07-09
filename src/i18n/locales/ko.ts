@@ -379,6 +379,9 @@ export const ko: Record<string, string> = {
   "script.prev": "← 이전",
   "script.next": "다음 대사 →",
   "script.hostAdvances": "호스트가 대사를 진행해요.",
+  "script.fontSize": "글자 크기",
+  "script.fontSmaller": "글자 작게",
+  "script.fontLarger": "글자 크게",
 
   // --- stage/avatar(무대·아바타) ---
   "stage.mainView": "메인 뷰",
@@ -393,6 +396,8 @@ export const ko: Record<string, string> = {
   "stage.bg.teahouse": "찻집",
   "stage.bg.workshop": "공방",
   "stage.bg.plaza": "광장",
+  "stage.bg.atelier": "의상실",
+  "stage.bg.street": "거리",
   "reaction.wheelLabel": "리액션 휠",
   "reaction.hint": "우클릭·길게 눌러 리액션 (숫자키 1~8)",
   "reaction.cancel": "취소",

@@ -1,6 +1,19 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Script } from './cues'
 import { roleOf, type RoleMap } from './roleMap'
+
+// 개인 글자 크기(MILESTONES Phase 3 AC) — 기기 로컬 설정(localStorage), 다른 참가자에게 전파 없음.
+const FONT_SCALES = ['sm', 'md', 'lg'] as const
+type FontScale = (typeof FONT_SCALES)[number]
+const FONT_SCALE_KEY = 'cb.scriptFontScale'
+const CUE_TEXT_CLS: Record<FontScale, string> = { sm: 'text-base', md: 'text-lg', lg: 'text-2xl' }
+const LIST_TEXT_CLS: Record<FontScale, string> = { sm: 'text-xs', md: 'text-sm', lg: 'text-lg' }
+
+function storedFontScale(): FontScale {
+  const v = localStorage.getItem(FONT_SCALE_KEY)
+  return (FONT_SCALES as readonly string[]).includes(v ?? '') ? (v as FontScale) : 'md'
+}
 
 // 실시간 연기 텔레프롬프터 + 역할 클레임(ROOM-14) — 호스트가(리허설 모드면 전원이) 대사를 진행하고
 // 전 참가자가 같은 위치를 본다. 역할은 각자 선착순 클레임 + 호스트 재배정/해제(주인님 확정 의미론).
@@ -40,6 +53,13 @@ export default function ScriptPanel({
   onAdvance,
 }: Props) {
   const { t } = useTranslation()
+  const [fontScale, setFontScale] = useState<FontScale>(storedFontScale)
+  const stepFontScale = (delta: number) => {
+    const i = FONT_SCALES.indexOf(fontScale) + delta
+    const next = FONT_SCALES[Math.max(0, Math.min(FONT_SCALES.length - 1, i))]
+    setFontScale(next)
+    localStorage.setItem(FONT_SCALE_KEY, next)
+  }
   const myRole = roleOf(roleMap, myAuthId)
   const current = script.cues[cueIndex]
   const myTurn = !!current && current.role === myRole
@@ -48,8 +68,28 @@ export default function ScriptPanel({
 
   return (
     <section className="mt-8">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-stage-text-muted">{t('script.header', { title: script.title })}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-stage-text-muted">{t('script.header', { title: script.title })}</h2>
+        <span role="group" aria-label={t('script.fontSize')} className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => stepFontScale(-1)}
+            disabled={fontScale === 'sm'}
+            aria-label={t('script.fontSmaller')}
+            className="rounded border border-stage-border px-1.5 py-0.5 text-[11px] text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+          >
+            A−
+          </button>
+          <button
+            type="button"
+            onClick={() => stepFontScale(1)}
+            disabled={fontScale === 'lg'}
+            aria-label={t('script.fontLarger')}
+            className="rounded border border-stage-border px-1.5 py-0.5 text-[11px] text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+          >
+            A+
+          </button>
+        </span>
         {/* 모드(ROOM-14): 호스트는 토글, 나머지는 리허설일 때만 배지로 인지. */}
         {isHost ? (
           <button
@@ -133,7 +173,7 @@ export default function ScriptPanel({
           {current ? `${current.role} · ${cueIndex + 1}/${script.cues.length}` : t('script.end')}
           {myTurn && <span className="ml-2 font-bold text-fire-amber">{t('script.myTurn')}</span>}
         </div>
-        <p className="mt-1 text-lg text-stage-text">{current?.text ?? '—'}</p>
+        <p className={`mt-1 ${CUE_TEXT_CLS[fontScale]} text-stage-text`}>{current?.text ?? '—'}</p>
       </div>
 
       {/* 진행 컨트롤 — 호스트 또는 리허설/연습 방 전원(canAdvance, 서버 advance-script-cue 가 동일 규칙 재검증) */}
@@ -169,7 +209,7 @@ export default function ScriptPanel({
             <li
               key={i}
               aria-current={isCurrent ? 'step' : undefined}
-              className={`rounded px-2 py-1 text-sm ${
+              className={`rounded px-2 py-1 ${LIST_TEXT_CLS[fontScale]} ${
                 isCurrent ? 'bg-stage-border/40 font-semibold text-stage-text' : 'text-stage-text-muted'
               }`}
             >

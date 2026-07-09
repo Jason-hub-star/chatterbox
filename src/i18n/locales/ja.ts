@@ -379,6 +379,9 @@ export const ja: Record<string, string> = {
   'script.prev': '← 前へ',
   'script.next': '次のセリフ →',
   'script.hostAdvances': 'ホストがセリフを進めます。',
+  'script.fontSize': '文字サイズ',
+  'script.fontSmaller': '文字を小さく',
+  'script.fontLarger': '文字を大きく',
 
   // --- stage/avatar ---
   'stage.mainView': 'メインビュー',
@@ -393,6 +396,8 @@ export const ja: Record<string, string> = {
   'stage.bg.teahouse': '茶屋',
   'stage.bg.workshop': '工房',
   'stage.bg.plaza': '広場',
+  'stage.bg.atelier': 'アトリエ',
+  'stage.bg.street': '街並み',
   'reaction.wheelLabel': 'リアクションホイール',
   'reaction.hint': '右クリック・長押しでリアクション（数字キー1〜8）',
   'reaction.cancel': 'キャンセル',
