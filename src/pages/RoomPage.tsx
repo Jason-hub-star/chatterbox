@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent, type TouchEv
 import { useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
-import { useRoomStore, type ConnectionState } from '@/stores/roomStore'
+import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, createRoomInvite, listRecentPeople } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople } from '@/lib/rooms'
 import { getVgenUrl } from '@/lib/vgen'
 import { useStageStore } from '@/stores/stageStore'
 import { fetchRoomMembers, fetchRoomHostId } from '@/lib/dub'
@@ -22,31 +22,17 @@ import { supabase } from '@/lib/supabase'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import HostConsole from '@/features/room/HostConsole'
+import NetworkStatusIndicator from '@/features/room/NetworkStatusIndicator'
 import CampfireGlyph from '@/components/shared/CampfireGlyph'
+import Modal from '@/components/shared/Modal'
 import { SEED_SCRIPTS } from '@/features/script/cues'
 
 // Phase 1B PoC → 우측 패널 셸 도입: 채팅·DUB·VGen 을 RightPanel 탭 블록으로 통합(contracts/RightPanel.md).
 // 좌측 컬럼 = 참가자·무대·대본 텔레프롬프터·마이크/나가기. 우측 = RightPanel(탭 콘텐츠 주입식).
 // 경로 B: 아바타는 네이티브 아리아 실 rig. 참가자별 avatar URL(users.avatar_url) — 미설정은 기본 아바타(resolveAvatarUrl).
 
-const STATE_COLOR: Record<ConnectionState, string> = {
-  DISCONNECTED: 'bg-stage-border',
-  CONNECTING: 'bg-fire-amber',
-  CONNECTED: 'bg-green-500',
-  RECONNECTING: 'bg-fire-amber',
-  FAILED: 'bg-fire-hot',
-}
-
 export default function RoomPage() {
   const { t } = useTranslation()
-
-  const STATE_LABEL: Record<ConnectionState, string> = {
-    DISCONNECTED: t('room.disconnected'),
-    CONNECTING: t('room.connecting'),
-    CONNECTED: t('room.connected'),
-    RECONNECTING: t('room.reconnecting'),
-    FAILED: t('room.failed'),
-  }
 
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
@@ -149,6 +135,21 @@ export default function RoomPage() {
     setCueIndex(Math.max(0, Math.min(sc.cues.length - 1, p.cueIndex)))
   }, [])
 
+  // 무대 배경 초기 로드(HOST-04·05): 입장 후(멤버 RLS) rooms.background_url 을 읽어 이미 설정된 배경을 반영.
+  // 이후 변경은 room-authority bg_change 로 실시간 동기. 방 이탈 시 초기화(다음 방 배경 잔상 방지).
+  useEffect(() => {
+    if (joinPhase !== 'ready') return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('rooms').select('background_url').eq('id', roomId).maybeSingle()
+      if (!cancelled && data) useStageStore.getState().setBackground((data.background_url as string | null) ?? null)
+    })()
+    return () => {
+      cancelled = true
+      useStageStore.getState().setBackground(null)
+    }
+  }, [joinPhase, roomId])
+
   // VGEN 공유재생(VGEN-04): 호스트가 방송한 jobId 로 각자 서명 URL 을 발급받아 센터 MainView 에 재생.
   const playSharedVgen = useCallback(async (jobId: string) => {
     if (!session) return
@@ -157,9 +158,29 @@ export default function RoomPage() {
       useStageStore.getState().setMainVideo(url, jobId)
     } catch { /* 접근 불가·미완성 → 무시(서버 get-vgen-url 이 멤버십·visibility 게이트) */ }
   }, [session])
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string }) => {
+  // 손들기 큐(ROOM-20): 호스트가 보는 손든 관객 목록 + 본인 손들기 상태. raise_hand broadcast 수신 시 refetch 카운터로 재조회.
+  const [raisedHands, setRaisedHands] = useState<{ authId: string; userId: string; name: string | null }[]>([])
+  const [raiseHandRefetch, setRaiseHandRefetch] = useState(0)
+  const [handRaised, setHandRaised] = useState(false)
+  const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
+  const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; target_auth_id?: string; auth_id?: string; slot_index?: number | null }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
+    else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
+    else if (msg.type === 'raise_hand') setRaiseHandRefetch((n) => n + 1) // 손든 관객 변동 → 큐 재조회(호스트 UI)
+    else if (msg.type === 'stage_invite') {
+      // 무대 초대(ROOM-21) — 대상 본인만 수락 모달, 다른 참가자는 무시.
+      if (msg.target_auth_id === useUserStore.getState().user?.id) setStageInvite(true)
+    } else if (msg.type === 'promoted') {
+      setRaiseHandRefetch((n) => n + 1) // 전원 좌석 갱신(승격자 새 slot 반영)
+      if (msg.auth_id === useUserStore.getState().user?.id) {
+        // 본인 승격 → actor 전환 + 재연결(새 토큰 canPublish=true). 수락 모달 닫기.
+        setStageInvite(false)
+        useRoomStore.getState().setRoomContext({ myRole: 'actor', mySlotIndex: msg.slot_index ?? null })
+        setReconnectNonce((n) => n + 1)
+      }
+    }
   }, [playSharedVgen])
 
   const { toggleMic, sendChat, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave } = useLiveKitRoom(roomId, {
@@ -168,6 +189,7 @@ export default function RoomPage() {
     onRoomAuthority: handleRoomAuthority,
     enabled: joinPhase === 'ready',
     onKicked: () => setKicked(true),
+    reconnectNonce,
   })
 
   const connectionState = useRoomStore((s) => s.connectionState)
@@ -211,22 +233,32 @@ export default function RoomPage() {
         const avatars: Record<string, string | null> = {}
         const slots: Record<string, number> = {}
         const muted = new Set<string>()
+        const raised: { authId: string; userId: string; name: string | null; at: string }[] = []
         for (const m of members) {
           avatars[m.authId] = m.avatarUrl
           slots[m.authId] = m.slotIndex // 절대좌석용(identity=auth uid)
           if (m.mutedByHost) muted.add(m.authId)
+          if (m.raiseHandAt) raised.push({ authId: m.authId, userId: m.userId, name: m.displayName, at: m.raiseHandAt })
         }
+        raised.sort((a, b) => a.at.localeCompare(b.at)) // 시간순(먼저 든 사람 위)
         setMemberAvatars(avatars)
         setMemberSlots(slots)
         setMutedIdentities(muted)
+        setRaisedHands(raised.map(({ authId, userId, name }) => ({ authId, userId, name })))
         useRoomStore.getState().setRoomContext({ hostId: newHostId })
         // mute 마운트 로드(A-FUNC-3): 새로고침 후에도 내 muted_by_host 를 서버 진실로 재동기(desync 제거).
         const myAuthId = useUserStore.getState().user?.id
-        if (myAuthId) useRoomStore.getState().setMutedByHost(muted.has(myAuthId))
+        if (myAuthId) {
+          useRoomStore.getState().setMutedByHost(muted.has(myAuthId))
+          setHandRaised(raised.some((r) => r.authId === myAuthId)) // 내 손들기도 서버 진실로 동기(새로고침 desync 제거)
+          // 내 역할·좌석도 서버 진실로 동기 — 승격(ROOM-21) 재연결 시 cleanup reset() 후 myRole 복원(무대 등단 반영).
+          const mine = members.find((m) => m.authId === myAuthId)
+          if (mine) useRoomStore.getState().setRoomContext({ myRole: mine.role === 'viewer' ? 'viewer' : 'actor', mySlotIndex: mine.slotIndex })
+        }
       } catch { /* 명단 조회 실패 → 기본 아바타 fallback + slot 미상은 임시배치 */ }
     })()
     return () => { cancelled = true }
-  }, [joinPhase, session, roomId, memberKey])
+  }, [joinPhase, session, roomId, memberKey, raiseHandRefetch])
 
   const selfProjectUrl = resolveAvatarUrl(myAvatarUrl)
   const remoteProjectUrl = useCallback(
@@ -355,6 +387,39 @@ export default function RoomPage() {
     },
     [session, roomId, roomLocked],
   )
+  // 무대 배경 교체/해제(HOST-04·05) → 서버 검증·broadcast. 성공 시 로컬 즉시 반영(서버 echo 는 같은 값 멱등).
+  const changeBackground = useCallback(
+    async (backgroundUrl: string): Promise<void> => {
+      if (!session) return
+      const r = await setRoomBackground(session.access_token, roomId, backgroundUrl)
+      useStageStore.getState().setBackground(r.background_url)
+    },
+    [session, roomId],
+  )
+  // 관객 손들기 토글(ROOM-20). 낙관적 반영 + 실패 롤백.
+  const toggleHand = useCallback(async () => {
+    if (!session) return
+    const next = !handRaised
+    setHandRaised(next)
+    try {
+      await raiseHand(session.access_token, roomId, next)
+    } catch {
+      setHandRaised(!next) // 실패 시 롤백
+    }
+  }, [session, roomId, handRaised])
+  // 무대 초대 수락(ROOM-21, 대상 관객) → viewer→actor 승격. promoted broadcast 로 재연결·좌석갱신 처리(여기선 낙관적 모달 닫기).
+  const acceptStage = useCallback(async () => {
+    if (!session) return
+    try {
+      await acceptStageInvite(session.access_token, roomId)
+      setStageInvite(false)
+    } catch { /* 실패(정원 참 등) → 모달 유지 */ }
+  }, [session, roomId])
+  // 호스트가 손든 관객을 무대로 초대(ROOM-21). 대상에게 수락 모달 broadcast(아직 승격 아님).
+  const inviteToStageCb = useCallback(async (targetUserId: string) => {
+    if (!session) return
+    await inviteToStage(session.access_token, roomId, targetUserId)
+  }, [session, roomId])
   // 초대링크 발급(LOB-05, role: actor/viewer) — 원문 코드 반환, URL 조립·복사는 HostConsole.
   const createInvite = useCallback(async (role: 'actor' | 'viewer'): Promise<string> => {
     if (!session) throw new Error('no session')
@@ -398,9 +463,12 @@ export default function RoomPage() {
           onKick={kick}
           onSetMute={mute}
           onSetPassword={changePassword}
+          onSetBackground={changeBackground}
           onCreateInvite={createInvite}
           loadRecentPeople={loadRecentPeople}
           onDirectInvite={directInvite}
+          raisedHands={raisedHands}
+          onInviteToStage={inviteToStageCb}
           initialLocked={roomLocked}
           initialMuted={mutedIdentities}
         />
@@ -541,12 +609,7 @@ export default function RoomPage() {
     <main className="min-h-screen bg-stage-base text-stage-text p-4 sm:p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t('room.title')}</h1>
-        <div className="flex items-center gap-2" role="status" aria-live="polite">
-          <span className={`h-2.5 w-2.5 rounded-full ${STATE_COLOR[connectionState]}`} />
-          <span className="text-sm text-stage-text-muted">
-            {STATE_LABEL[connectionState]}
-          </span>
-        </div>
+        <NetworkStatusIndicator />
       </div>
 
       {error && (
@@ -622,9 +685,20 @@ export default function RoomPage() {
 
           <div className="flex items-center gap-3">
             {isViewer ? (
-              <span className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted" role="status">
-                {t('room.watching')}
-              </span>
+              <>
+                <span className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted" role="status">
+                  {t('room.watching')}
+                </span>
+                {/* 무대 서기 요청(ROOM-20) — 호스트 승인 시 배우로 승격(슬라이스 2). */}
+                <button
+                  onClick={() => void toggleHand()}
+                  disabled={!connected}
+                  aria-pressed={handRaised}
+                  className="rounded-lg border border-fire-amber px-4 py-2 text-sm text-fire-amber hover:bg-fire-amber/10 disabled:opacity-40"
+                >
+                  {handRaised ? t('room.lowerHand') : t('room.raiseHand')}
+                </button>
+              </>
             ) : (
               <button
                 onClick={toggleMic}
@@ -651,6 +725,27 @@ export default function RoomPage() {
           <RightPanel tabs={tabs} />
         </div>
       </div>
+
+      {/* 무대 초대 수락 모달(ROOM-21) — 대상 관객 본인만. 수락 시 viewer→actor 승격 + 재연결. */}
+      {stageInvite && (
+        <Modal title={t('room.stageInviteTitle')} onClose={() => setStageInvite(false)}>
+          <p className="mt-2 text-sm text-stage-text-muted">{t('room.stageInviteBody')}</p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => void acceptStage()}
+              className="flex-1 rounded-lg bg-fire-amber px-3 py-2 text-sm font-semibold text-stage-base"
+            >
+              {t('room.stageInviteAccept')}
+            </button>
+            <button
+              onClick={() => setStageInvite(false)}
+              className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted"
+            >
+              {t('room.stageInviteDecline')}
+            </button>
+          </div>
+        </Modal>
+      )}
     </main>
   )
 }

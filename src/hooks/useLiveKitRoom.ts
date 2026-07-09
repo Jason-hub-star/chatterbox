@@ -46,18 +46,21 @@ export function useLiveKitRoom(
     onBlendshapes?: (identity: string, frame: BlendshapeFrame) => void
     // 대본 cue 동기: 호스트가 진행한 cue_index 를 수신(reliable·ordered 'script-cue' 토픽, API-SURFACE §DataChannel).
     onCue?: (payload: { sceneId: string; cueIndex: number }) => void
-    // room-authority(reliable): VGEN 공유재생 등 방 권위 이벤트. { type:'vgen_result', jobId } | { type:'vgen_stop' }.
-    onRoomAuthority?: (msg: { type: string; jobId?: string }) => void
+    // room-authority(reliable): 방 권위 이벤트. { type:'vgen_result', jobId } | { type:'vgen_stop' } | { type:'bg_change', url }(HOST-04·05).
+    onRoomAuthority?: (msg: { type: string; jobId?: string; url?: string | null }) => void
     // false면 연결 보류 — 방 입장(room_participants 행 생성)이 끝난 뒤에만 연결한다.
     // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 전에 연결하면 403으로 실패한다.
     enabled?: boolean
     // 호스트 강퇴(HOST-01): 서버 removeParticipant → Disconnected(PARTICIPANT_REMOVED) 로 통지.
     onKicked?: () => void
+    // 값이 바뀌면 재연결(새 토큰 발급) — viewer→actor 승격 시 canPublish=true 토큰으로 갈아끼운다(ROOM-21).
+    reconnectNonce?: number
   },
 ) {
   const roomRef = useRef<Room | null>(null)
   const session = useUserStore((s) => s.session)
   const enabled = opts?.enabled ?? true
+  const reconnectNonce = opts?.reconnectNonce ?? 0
 
   // 수신 콜백은 ref로 (effect deps 오염 방지). 송신 스로틀·seq도 ref로 유지.
   const onBlendshapesRef = useRef(opts?.onBlendshapes)
@@ -257,6 +260,7 @@ export function useLiveKitRoom(
     roomId,
     session,
     enabled,
+    reconnectNonce,
     setConnectionState,
     setParticipants,
     addMessage,

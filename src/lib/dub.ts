@@ -26,7 +26,7 @@ export interface DubTrack {
   translatedText: string | null
   status: 'assigned' | 'recording' | 'submitted' | 'synced'
 }
-export interface RoomMember { userId: string; authId: string; displayName: string | null; avatarUrl: string | null; slotIndex: number; role: string; mutedByHost: boolean }
+export interface RoomMember { userId: string; authId: string; displayName: string | null; avatarUrl: string | null; slotIndex: number; role: string; mutedByHost: boolean; raiseHandAt: string | null }
 export interface RoleAssignment { segment_id: number; participant_id: string }
 
 // ── 업로드(create-dub-upload → storage signed upload) ────────────────
@@ -159,13 +159,14 @@ export async function fetchRoomMembers(accessToken: string, roomId: string): Pro
   const { members } = await callFn<{
     members: Array<{
       user_id: string; auth_id: string; display_name: string | null
-      avatar_url: string | null; slot_index: number; role: string; muted_by_host?: boolean
+      avatar_url: string | null; slot_index: number; role: string; muted_by_host?: boolean; raise_hand_at?: string | null
     }>
   }>('list-room-members', accessToken, { room_id: roomId })
   return members.map((m) => ({
     userId: m.user_id, authId: m.auth_id, displayName: m.display_name,
     avatarUrl: m.avatar_url, slotIndex: m.slot_index, role: m.role,
     mutedByHost: m.muted_by_host ?? false, // 배포 지연 대비 옵셔널(구 배포본은 미반환)
+    raiseHandAt: m.raise_hand_at ?? null, // ROOM-20 손들기 큐(구 배포본 미반환 → null)
   }))
 }
 

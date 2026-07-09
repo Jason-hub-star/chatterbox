@@ -65,6 +65,24 @@ export interface SetPasswordResult { ok: boolean; is_locked: boolean }
 export const setRoomPassword = (accessToken: string, roomId: string, password: string) =>
   callFn<SetPasswordResult>('set-room-password', accessToken, { room_id: roomId, password })
 
+export interface SetBackgroundResult { ok: boolean; background_url: string | null }
+
+// 호스트 무대 배경 교체/해제 (HOST-04·05). backgroundUrl '' 이면 해제. 서버가 '/scenes/' 에셋만 허용 + host 검증 후 방 전체 broadcast.
+export const setRoomBackground = (accessToken: string, roomId: string, backgroundUrl: string) =>
+  callFn<SetBackgroundResult>('set-room-background', accessToken, { room_id: roomId, background_url: backgroundUrl })
+
+// 관객 손들기 토글(ROOM-20). raised=true 손들기·false 내리기. 서버가 raise_hand_at 세팅 + 호스트 큐 broadcast.
+export const raiseHand = (accessToken: string, roomId: string, raised: boolean) =>
+  callFn<{ ok: boolean; raised: boolean }>('raise-hand', accessToken, { room_id: roomId, raised })
+
+// 호스트가 손든 관객을 무대로 초대(ROOM-21). 승격 아님 — 대상에게 수락 모달 broadcast. 대상 수락은 acceptStageInvite.
+export const inviteToStage = (accessToken: string, roomId: string, targetUserId: string) =>
+  callFn<{ ok: boolean }>('invite-to-stage', accessToken, { room_id: roomId, target_user_id: targetUserId })
+
+// 초대받은 관객이 수락(ROOM-21) → viewer→actor 승격. 응답 후 클라가 토큰 재발급·재연결로 무대 등단.
+export const acceptStageInvite = (accessToken: string, roomId: string) =>
+  callFn<{ ok: boolean; slot_index: number | null; token_version: number | null }>('accept-stage-invite', accessToken, { room_id: roomId })
+
 // 잠금방 비밀번호 입장. 서버가 PBKDF2 로 대조(상수시간). 결과는 join-public-room 과 동일 형태.
 export const joinRoomWithPassword = (accessToken: string, roomId: string, password: string) =>
   callFn<JoinRoomResult>('join-room-with-password', accessToken, { room_id: roomId, password })

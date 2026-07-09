@@ -217,6 +217,8 @@ type ParticipantKickedMessage = {
 
 관객이 손들기를 하면 호스트 콘솔 큐에 시간순으로 쌓인다. 호스트는 큐 순서대로 무대 초대(ROOM-21)를 실행한다.
 
+> **as-built (2026-07-09, 배포됨)** — MVP 구현. 아래 계약과의 편차: ①손들기·초대·수락은 **Edge 경유**(`raise-hand`·`invite-to-stage`·`accept-stage-invite`) — RLS가 서버쓰기만 허용하므로 클라 직접 UPDATE 대신. ②호스트 큐 갱신은 `room-authority` broadcast(`raise_hand`/`stage_invite`/`promoted`) + `list-room-members`(raise_hand_at 반환) 재조회 — Realtime publication 대신(리액션·cue와 동형 서버 릴레이·스푸핑 차단). ③승격은 `promote_viewer_to_actor` RPC → 대상 클라가 `useLiveKitRoom.reconnectNonce`로 새 토큰(canPublish=true) 재연결. **defer(트랙 B)**: [무시] 버튼·슬롯 지정·경합(정원 참) 피드백 UX.
+
 ### 데이터 흐름
 
 ```

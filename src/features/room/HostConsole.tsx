@@ -4,6 +4,7 @@ import type { RoomParticipant } from '@/stores/roomStore'
 import type { RecentPerson } from '@/lib/rooms'
 import Modal from '@/components/shared/Modal'
 import { toast } from '@/hooks/useToast'
+import { STAGE_BACKGROUNDS } from '@/lib/stageBackgrounds'
 
 // 연결품질 점(6인 실증 — 참가자별 열화 즉시 파악). UI 최소: 행당 이모지 1개.
 const qualityDot = (q?: RoomParticipant['connectionQuality']): string =>
@@ -18,9 +19,12 @@ export default function HostConsole({
   onKick,
   onSetMute,
   onSetPassword,
+  onSetBackground,
   onCreateInvite,
   loadRecentPeople,
   onDirectInvite,
+  raisedHands,
+  onInviteToStage,
   initialLocked,
   initialMuted,
 }: {
@@ -29,9 +33,12 @@ export default function HostConsole({
   onKick: (identity: string) => Promise<void>
   onSetMute: (identity: string, muted: boolean) => Promise<void>
   onSetPassword: (password: string) => Promise<boolean>
+  onSetBackground: (backgroundUrl: string) => Promise<void> // 무대 배경 교체/해제(HOST-04·05)
   onCreateInvite: (role: 'actor' | 'viewer') => Promise<string> // 원문 invite_code 반환 — URL 조립·복사는 여기서
   loadRecentPeople: () => Promise<RecentPerson[]> // 최근 함께한 사람(LOB-08, 현재 방 참가자 제외)
   onDirectInvite: (userId: string) => Promise<void> // 지명 초대 = 1회권 + 상대 인앱 알림
+  raisedHands: { authId: string; userId: string; name: string | null }[] // ROOM-20 손든 관객 큐(호스트 승인 대기)
+  onInviteToStage: (targetUserId: string) => Promise<void> // ROOM-21 무대 초대(대상 수락 후 승격)
   initialLocked: boolean
   initialMuted?: Set<string>
 }) {
@@ -52,6 +59,21 @@ export default function HostConsole({
   const [pwInput, setPwInput] = useState('')
   const [pwBusy, setPwBusy] = useState(false)
   const [pwErr, setPwErr] = useState<string | null>(null)
+
+  // 무대 배경(HOST-04·05)
+  const [bgBusy, setBgBusy] = useState(false)
+  const [bgErr, setBgErr] = useState<string | null>(null)
+  const applyBackground = async (url: string) => {
+    setBgErr(null)
+    setBgBusy(true)
+    try {
+      await onSetBackground(url)
+    } catch {
+      setBgErr(t('host.backgroundFailed'))
+    } finally {
+      setBgBusy(false)
+    }
+  }
 
   // 초대링크 (LOB-05). URL 을 상태로 유지 — 클립보드 API 거부 환경에서도 readonly 입력으로 수동 복사 가능.
   const [invUrl, setInvUrl] = useState<string | null>(null)
@@ -166,6 +188,47 @@ export default function HostConsole({
 
   return (
     <div className="flex h-full flex-col gap-4">
+      {/* 손들기 큐(ROOM-20·G-154) — 손든 관객 목록. 초대(viewer→actor 승격)는 슬라이스 2. */}
+      {raisedHands.length > 0 && (
+        <section>
+          <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">
+            {t('host.raiseHandQueue')} ({raisedHands.length})
+          </h3>
+          <ul className="space-y-1.5">
+            {raisedHands.map((h) => (
+              <li key={h.authId} className="flex items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm">
+                <span aria-hidden>✋</span>
+                <span className="flex-1 truncate">{h.name ?? '?'}</span>
+                <button
+                  onClick={() => void onInviteToStage(h.userId)}
+                  className="shrink-0 rounded border border-fire-amber px-2 py-1 text-xs text-fire-amber hover:bg-fire-amber/10"
+                >
+                  {t('host.inviteToStage')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* 무대 배경(HOST-04·05) — 기존 씬 에셋 재사용. 썸네일 그리드·전환 fade 폴리시는 트랙 B. */}
+      <section>
+        <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.background')}</h3>
+        <div className="flex flex-wrap gap-2">
+          {STAGE_BACKGROUNDS.map((bg) => (
+            <button
+              key={bg.id}
+              onClick={() => void applyBackground(bg.url)}
+              disabled={bgBusy}
+              className="rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+            >
+              {t(bg.labelKey)}
+            </button>
+          ))}
+        </div>
+        {bgErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{bgErr}</p>}
+      </section>
+
       {/* 초대링크 — 친구 부르기(LOB-05). 72시간·5회 기본, 원문 코드는 이 세션 응답에만 존재. */}
       <section>
         <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.inviteTitle')}</h3>

@@ -6,6 +6,7 @@ import SelfAvatar from './SelfAvatar'
 import StageSlot from './StageSlot'
 import MainView from './MainView'
 import { SLOTS, SLOT_PX, seatParticipants } from './stageLayout'
+import { useStageStore } from '@/stores/stageStore'
 
 // 원형 무대(경로 B): 센터 프레임을 6석이 3쌍(상/중/하 × 좌·우)으로 둘러싼다(DESIGN-DIRECTION §6.1).
 // 좌석 배정 = DB slot_index 절대좌석(seatParticipants) → 입퇴장에 좌석 불변·전 클라 일치. active-speaker 는 앞으로(StageSlot).
@@ -47,13 +48,23 @@ export default function Stage({
 }: Props) {
   const { t } = useTranslation()
   const slotPx = useSlotPx()
+  const backgroundUrl = useStageStore((s) => s.backgroundUrl)
   // 최대 6석(§6.4; 8인 배치는 defer). slot_index 절대좌석 — key=identity 라 재배치돼도 캔버스 보존.
   const seats = seatParticipants(participants, slotOf, SLOTS.length)
 
   return (
-    <div className="grid w-full max-w-3xl grid-cols-3 grid-rows-3 gap-2">
-      {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 placeholder. */}
-      <MainView isHost={isHost} onStop={onStopShare} />
+    <div className="relative w-full max-w-3xl">
+      {/* 무대 배경(HOST-04·05, ROOM-09) — 호스트가 고른 씬. 아바타 가독성 위해 반투명. 전환 fade 등 폴리시는 트랙 B. */}
+      {backgroundUrl && (
+        <div
+          className="pointer-events-none absolute inset-0 rounded-lg bg-cover bg-center opacity-60"
+          style={{ backgroundImage: `url(${backgroundUrl})` }}
+          aria-hidden
+        />
+      )}
+      <div className="relative grid grid-cols-3 grid-rows-3 gap-2">
+        {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 placeholder. */}
+        <MainView isHost={isHost} onStop={onStopShare} />
 
       {seats.map((p, i) => (
         <StageSlot key={p ? p.identity : `empty-${i}`} col={SLOTS[i].col} row={SLOTS[i].row} speaking={p?.isSpeaking}>
@@ -79,6 +90,7 @@ export default function Stage({
           )}
         </StageSlot>
       ))}
+      </div>
     </div>
   )
 }

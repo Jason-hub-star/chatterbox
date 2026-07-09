@@ -255,6 +255,8 @@ CREATE TABLE room_invites (
 ### 1.3 room_participants
 
 > **as-built 갱신 (2026-07-08, 마이그 `20260708130000`·`20260708170000`)** — 유니크는 **활성 행 한정 부분 인덱스**: `(room_id,user_id) where state<>'left'` + `(room_id,slot_index) where state<>'left' and slot_index is not null`. 전행 유니크는 제거 — left 행이 좌석·재입장을 영구 점유하던 잠복 버그 2건의 정수정(재입장 = 세션당 새 행, 이력 보존). 뷰어는 slot_index null·정원 비점유(`join_room_as_viewer` RPC).
+>
+> **as-built 갱신 (2026-07-09, 마이그 `20260708190000`·`20260708200000`, 배포됨)** — `raise_hand_at` 컬럼(ROOM-20 손들기 큐) + `promote_viewer_to_actor(uuid,uuid)` RPC(ROOM-21 viewer→actor 승격: `FOR UPDATE` 슬롯 배정 + `token_version++` + `raise_hand_at=null`). RPC는 **service_role 전용 3중 revoke**(`public,anon,authenticated`) — 클라 노출 시 임의 승격을 막는 정수정(`join_room_as_participant` 패턴).
 
 ```sql
 CREATE TABLE room_participants (
@@ -269,8 +271,9 @@ CREATE TABLE room_participants (
   muted_by_host BOOLEAN DEFAULT FALSE,
   muted_until TIMESTAMP WITH TIME ZONE,  -- HOST-08/G-167 timed mute expiry. null = not timed
   is_disabled_by_host BOOLEAN DEFAULT FALSE,
-  token_version INT DEFAULT 1,  -- increments on kick/leave/safety revoke; LiveKit token metadata must match
+  token_version INT DEFAULT 1,  -- increments on kick/leave/safety revoke/promote; LiveKit token metadata must match
   token_revoked_at TIMESTAMP WITH TIME ZONE,
+  raise_hand_at TIMESTAMP WITH TIME ZONE,  -- ROOM-20 손들기 큐(마이그 20260708190000). null = 손 안 듦; 승격·내리기 시 null
   character_role TEXT,  -- actor's assigned character name (e.g., "리온", "세이라"); NULL = unassigned
   is_tracking_failed BOOLEAN DEFAULT FALSE,  -- fallback state when expression tracking fails (ROOM-11)
   is_ready BOOLEAN DEFAULT FALSE,  -- G-62: GreenRoom에서 준비 완료 여부 (호스트만 state 변경 권한)
