@@ -38,6 +38,7 @@ body {
   .campfire-flame.mid { animation-duration: 0.8s; animation-delay: 0.12s; }
   .campfire-flame.core { animation-duration: 0.65s; animation-delay: 0.05s; }
   .campfire-spark { animation: campfire-rise 2.2s linear infinite; }
+  .hero-fade { animation: hero-fade 0.5s ease; }
 }
 /* 불확정 바: 모션 없으면 흐름 표현 불가 → 저채도 풀바로 대체(멈춘 게 아니라는 신호는 phase 라벨이 담당) */
 @media (prefers-reduced-motion: reduce) {
@@ -61,6 +62,8 @@ body {
   15% { opacity: 0.9; }
   100% { opacity: 0; transform: translateY(-30px) translateX(4px); }
 }
+/* 히어로 캐러셀 텍스트 크로스페이드(방 전환 시 key 재마운트) */
+@keyframes hero-fade { from { opacity: 0.35; } to { opacity: 1; } }
 
 /* 진행바 채움·불씨 선단: 씬 액센트 연동(DESIGN-DIRECTION §4.3), 폴백=fire-amber */
 .progress-fill, .progress-indet { background: var(--scene-accent, var(--color-fire-amber)); }

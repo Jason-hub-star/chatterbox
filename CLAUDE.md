@@ -23,7 +23,7 @@ ChatterBox/
 ├── src/
 │   ├── app/            # 라우트 트리 + App.tsx
 │   ├── pages/          # 라우트 최상위 컴포넌트
-│   ├── features/       # avatar·chat·room·reaction·script·stage·tracking·vgen·dub
+│   ├── features/       # avatar·chat·room·reaction·script·stage·theater·tracking·vgen·dub
 │   ├── components/{ui,shared}
 │   ├── stores/         # Zustand 슬라이스
 │   ├── lib/{pixi,mediapipe}  # 외부 SDK 래퍼 (+ supabase.ts·livekit.ts·fal.ts)

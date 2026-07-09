@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
@@ -15,29 +15,34 @@ import {
   type RecentPerson,
   type Reservation,
 } from '@/lib/rooms'
-import InteriorShell from '@/pages/lobby/InteriorShell'
 import { useInterior } from '@/pages/lobby/useInterior'
+import Modal from '@/components/shared/Modal'
+import RoomCard from '@/features/theater/RoomCard'
+import RoomCardSkeleton from '@/features/theater/RoomCardSkeleton'
+import TheaterHero from '@/features/theater/TheaterHero'
 
-// 대극장(로비 v3) — 레거시 전가: 공개 방 목록·검색·Realtime nudge + 예약(매표소).
-// 살아있는 앵커: 좌측 금박 액자 게시판에 최신 방 3개가 "포스터로 걸림"(방이 그림을 바꾼다).
-// 진입 즉시 기본 UI 오픈(주인님 스펙) — 추가 클릭은 카드의 입장/관전뿐, 매표소만 탭 1클릭.
-const vars = (a: { l: number; t: number; w: number; h: number }) =>
-  ({ '--al': `${a.l}%`, '--at': `${a.t}%`, '--aw': `${a.w}%` }) as React.CSSProperties
+// 대극장(로비 v4 — 넷플릭스형 개편, 주인님 콜 2026-07-09): 앵커 붙박이(원화 위 포스터3+리스트)를
+// 히어로(원화 재활용) + 무채 미니멀 카드 그리드로 교체. 생성·예약은 기존 로직을 모달로 보존한다.
+// ←/Esc 광장 복귀는 직접(InteriorShell 탈피). 방 목록·Realtime nudge·입장 분기는 그대로.
+
+type Filter = 'all' | 'joinable' | 'live'
 
 export default function TheaterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const session = useUserStore((s) => s.session)
-  const interior = useInterior('rooms')
+  const heroBg = useInterior('rooms')?.hero
   const [searchParams] = useSearchParams()
   const initTab = searchParams.get('tab')
-  const [tab, setTab] = useState<'shows' | 'ticket' | 'create'>(
-    initTab === 'ticket' ? 'ticket' : initTab === 'create' ? 'create' : 'shows',
-  )
 
   const [rooms, setRooms] = useState<LobbyRoom[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<Filter>('all')
+  const [genreFilter, setGenreFilter] = useState<string | null>(null)
+  const [modal, setModal] = useState<null | 'create' | 'ticket'>(
+    initTab === 'ticket' ? 'ticket' : initTab === 'create' ? 'create' : null,
+  )
 
   const applyRooms = useCallback(async () => {
     try {
@@ -64,7 +69,7 @@ export default function TheaterPage() {
     }
   }, [t])
 
-  // 로비 Realtime nudge(기존 채널 재사용) — 방 생성/입퇴장 시 포스터·목록이 자동 갱신.
+  // 로비 Realtime nudge(기존 채널 재사용) — 방 생성/입퇴장 시 그리드 자동 갱신.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
     const nudge = () => {
@@ -78,139 +83,144 @@ export default function TheaterPage() {
     }
   }, [applyRooms])
 
-  const enter = (r: LobbyRoom) => {
-    const full = r.currentParticipants >= r.maxParticipants
-    if (full && !r.isLocked) navigate(`/rooms/${r.id}?watch=1`)
-    else navigate(`/rooms/${r.id}/ready`)
-  }
+  // ←/Esc 광장 복귀(InteriorShell 탈피 — 모달 열렸을 땐 모달이 Esc 를 소비하므로 !modal 가드).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !modal) navigate('/lobby')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navigate, modal])
+
+  const enter = useCallback(
+    (r: LobbyRoom) => {
+      const full = r.currentParticipants >= r.maxParticipants
+      if (full && !r.isLocked) navigate(`/rooms/${r.id}?watch=1`)
+      else navigate(`/rooms/${r.id}/ready`)
+    },
+    [navigate],
+  )
+
+  // 히어로 캐러셀 = 인기 상위 무대(LIVE 참여인원순, 없으면 최신순) 최대 5개. 연습방 제외.
+  const heroRooms = useMemo(() => {
+    const pool = rooms.filter((r) => !r.isPractice)
+    const live = pool.filter((r) => r.status === 'live').sort((a, b) => b.currentParticipants - a.currentParticipants)
+    return (live.length ? live : pool).slice(0, 5)
+  }, [rooms])
 
   const q = query.trim().toLowerCase()
-  const listed = rooms.filter(
-    (r) => !q || r.title.toLowerCase().includes(q) || (r.hostDisplayName ?? '').toLowerCase().includes(q),
+  const listed = useMemo(
+    () =>
+      rooms.filter((r) => {
+        if (filter === 'live' && r.status !== 'live') return false
+        if (filter === 'joinable' && r.currentParticipants >= r.maxParticipants) return false
+        if (genreFilter && r.genre !== genreFilter) return false
+        if (!q) return true
+        return r.title.toLowerCase().includes(q) || (r.hostDisplayName ?? '').toLowerCase().includes(q)
+      }),
+    [rooms, filter, genreFilter, q],
   )
-  const posters = rooms.filter((r) => !r.isPractice).slice(0, 3)
 
-  const statusDot = (r: LobbyRoom) => (
-    <span className={r.status === 'live' ? 'text-fire-hot' : 'text-stage-text-muted'}>
-      {r.status === 'live' ? '●' : '○'}
-    </span>
-  )
+  const FILTERS: { key: Filter; label: string }[] = [
+    { key: 'all', label: t('theater.filterAll') },
+    { key: 'joinable', label: t('theater.filterJoinable') },
+    { key: 'live', label: t('theater.filterLive') },
+  ]
 
   return (
-    <InteriorShell dest="rooms" title={t('hub.rooms.title')}>
-      {/* 살아있는 앵커: 액자 게시판 — 최신 방 3개가 포스터로 걸림(없으면 빈 액자 그대로). */}
-      {interior && (
-        <div className="interior-anchor" style={vars(interior.anchors.posterBoard)}>
-          <div className="grid grid-cols-1 gap-2 md:h-full md:grid-cols-3 md:gap-[4%] md:px-[3%] md:py-[6%]">
-            {posters.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => enter(r)}
-                className="interior-panel flex flex-col items-start gap-1 text-left transition hover:border-fire-amber md:h-full md:justify-between"
-              >
-                <span className="text-xs text-stage-text-muted">
-                  {statusDot(r)} {r.status === 'live' ? t('lobby.statusLive') : t('lobby.statusWaiting')}
-                </span>
-                <span className="line-clamp-3 text-sm font-bold text-stage-text">{r.title}</span>
-                <span className="text-xs text-stage-text-muted">
-                  {r.genre && <span className="mr-1">{t(`lobby.genre.${r.genre}`)}</span>}
-                  {t('lobby.participantCount', { currentParticipants: r.currentParticipants, maxParticipants: r.maxParticipants })}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+    <main className="min-h-screen bg-stage-base text-stage-text">
+      {/* 상단 바 — ← 광장 복귀 + 무대 만들기(InteriorShell 헤더 대체) */}
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-stage-border bg-stage-base/85 px-4 py-3 backdrop-blur md:px-6">
+        <button
+          onClick={() => navigate('/lobby')}
+          className="rounded-lg border border-stage-border px-3 py-1.5 text-sm text-stage-text-muted hover:text-stage-text"
+        >
+          ← {t('hub.backToPlaza')}
+        </button>
+        <h1 className="text-lg font-bold">{t('hub.rooms.title')}</h1>
+        <button
+          onClick={() => setModal('create')}
+          className="ml-auto rounded-lg bg-fire-amber px-4 py-1.5 text-sm font-bold text-stage-base hover:opacity-90"
+        >
+          {t('theater.newStage')}
+        </button>
+      </header>
 
-      {/* 우측 패널(매표소 창구 자리): 공연 목록 ↔ 매표소(예약) 탭 — 진입 시 목록이 기본 오픈. */}
-      {interior && (
-        <div className="interior-anchor md:h-[64%]" style={vars(interior.anchors.ticketBooth)}>
-          <div className="interior-panel flex flex-col gap-2 md:h-full">
-            <div className="flex gap-1">
-              <button
-                onClick={() => setTab('shows')}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${tab === 'shows' ? 'bg-fire-amber text-stage-base' : 'text-stage-text-muted hover:text-stage-text'}`}
-              >
-                {t('theater.tabShows')}
-              </button>
-              <button
-                onClick={() => setTab('ticket')}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${tab === 'ticket' ? 'bg-fire-amber text-stage-base' : 'text-stage-text-muted hover:text-stage-text'}`}
-              >
-                {t('theater.tabTicket')}
-              </button>
-              <button
-                onClick={() => setTab('create')}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${tab === 'create' ? 'bg-fire-amber text-stage-base' : 'text-stage-text-muted hover:text-stage-text'}`}
-              >
-                {t('theater.tabCreate')}
-              </button>
-            </div>
+      <div className="mx-auto max-w-6xl space-y-6 p-4 pb-24 md:p-6">
+        <TheaterHero rooms={heroRooms} bgUrl={heroBg} onEnter={enter} onCreate={() => setModal('create')} />
 
-            {tab === 'shows' ? (
-              <>
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  aria-label={t('lobby.searchLabel')}
-                  placeholder={t('lobby.searchPlaceholder')}
-                  maxLength={40}
-                  className="rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-xs"
-                />
-                <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
-                  {loading ? (
-                    <p className="text-xs text-stage-text-muted">{t('common.loading')}</p>
-                  ) : listed.length === 0 ? (
-                    <p className="text-xs text-stage-text-muted">{q ? t('lobby.noMatch') : t('lobby.noRooms')}</p>
-                  ) : (
-                    listed.map((r) => {
-                      const full = r.currentParticipants >= r.maxParticipants
-                      return (
-                        <div key={r.id} className="flex items-center gap-2 rounded-lg border border-stage-border px-2.5 py-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-semibold">
-                              {statusDot(r)} {r.isLocked && '🔒 '}
-                              {r.title}
-                              {r.isPractice && (
-                                <span className="ml-1.5 rounded bg-spring-green/15 px-1 py-0.5 text-[10px] text-spring-green">
-                                  {t('lobby.practiceBadge')}
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-[11px] text-stage-text-muted">
-                              {r.hostDisplayName ?? t('lobby.host')} · {r.currentParticipants}/{r.maxParticipants}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => enter(r)}
-                            className={`shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${
-                              full && !r.isLocked
-                                ? 'border border-stage-border text-stage-text-muted hover:text-stage-text'
-                                : 'bg-fire-amber text-stage-base'
-                            }`}
-                          >
-                            {full && !r.isLocked ? t('lobby.watch') : t('lobby.join')}
-                          </button>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </>
-            ) : tab === 'ticket' ? (
-              session && <TicketOffice accessToken={session.access_token} presetInvitee={searchParams.get('invitee')} />
-            ) : (
-              session && <StageCreator accessToken={session.access_token} />
-            )}
-          </div>
+        {/* 필터칩 + 검색 + 예약 진입 */}
+        <div className="flex flex-wrap items-center gap-2">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+                filter === f.key
+                  ? 'bg-stage-text text-stage-base'
+                  : 'border border-stage-border text-stage-text-muted hover:text-stage-text'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+          <span aria-hidden className="mx-1 hidden h-4 w-px bg-stage-border sm:block" />
+          {ROOM_GENRES.map((g) => (
+            <button
+              key={g}
+              onClick={() => setGenreFilter((cur) => (cur === g ? null : g))}
+              aria-pressed={genreFilter === g}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                genreFilter === g
+                  ? 'bg-stage-text text-stage-base'
+                  : 'border border-stage-border text-stage-text-muted hover:text-stage-text'
+              }`}
+            >
+              {t(`lobby.genre.${g}`)}
+            </button>
+          ))}
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label={t('lobby.searchLabel')}
+            placeholder={t('lobby.searchPlaceholder')}
+            maxLength={40}
+            className="ml-auto w-36 rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-sm transition-[width] focus:w-52 focus:outline-none focus:ring-1 focus:ring-fire-amber"
+          />
+          <button
+            onClick={() => setModal('ticket')}
+            className="rounded-lg border border-stage-border px-3 py-1.5 text-sm text-stage-text-muted hover:text-stage-text"
+          >
+            {t('theater.reserveOpen')}
+          </button>
         </div>
+
+        {/* 카드 그리드 (반응형 2/3/4) */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {loading
+            ? Array.from({ length: 8 }).map((_, i) => <RoomCardSkeleton key={i} />)
+            : listed.map((r) => <RoomCard key={r.id} room={r} onEnter={enter} />)}
+        </div>
+        {!loading && listed.length === 0 && (
+          <p className="py-12 text-center text-sm text-stage-text-muted">{q ? t('lobby.noMatch') : t('lobby.noRooms')}</p>
+        )}
+      </div>
+
+      {modal === 'create' && session && (
+        <Modal title={t('theater.newStage')} onClose={() => setModal(null)}>
+          <StageCreator accessToken={session.access_token} />
+        </Modal>
       )}
-    </InteriorShell>
+      {modal === 'ticket' && session && (
+        <Modal title={t('theater.reserveTitle')} onClose={() => setModal(null)} widthClass="max-w-md">
+          <TicketOffice accessToken={session.access_token} presetInvitee={searchParams.get('invitee')} />
+        </Modal>
+      )}
+    </main>
   )
 }
 
-// 무대 열기 = 방 생성(LOB-03). 로비 IA 재편으로 공방(구 방생성)에서 대극장 탭으로 이관 —
-// 방 관련(목록·입장·예약·생성)이 한 건물에 모임. 생성 즉시 분장실(/ready)로.
+// 무대 열기 = 방 생성(LOB-03). 생성 즉시 분장실(/ready)로 — 모달은 내비게이션으로 자동 언마운트.
 function StageCreator({ accessToken }: { accessToken: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -233,7 +243,7 @@ function StageCreator({ accessToken }: { accessToken: string }) {
   }
 
   return (
-    <form onSubmit={onCreate} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+    <form onSubmit={onCreate} className="mt-3 flex flex-col gap-2">
       <p className="text-xs text-stage-text-muted">{t('workshop.benchHint')}</p>
       <input
         value={title}
@@ -241,13 +251,13 @@ function StageCreator({ accessToken }: { accessToken: string }) {
         aria-label={t('lobby.roomTitleInput')}
         placeholder={t('lobby.roomTitlePlaceholder')}
         maxLength={80}
-        className="rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-xs"
+        className="rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-sm"
       />
       <select
         value={genre}
         onChange={(e) => setGenre(e.target.value)}
         aria-label={t('lobby.genreLabel')}
-        className="rounded-lg border border-stage-border bg-stage-base px-2 py-2 text-xs text-stage-text-muted"
+        className="rounded-lg border border-stage-border bg-stage-base px-2 py-2 text-sm text-stage-text-muted"
       >
         <option value="">{t('lobby.genreNone')}</option>
         {ROOM_GENRES.map((g) => (
@@ -259,7 +269,7 @@ function StageCreator({ accessToken }: { accessToken: string }) {
       <button
         type="submit"
         disabled={creating || !title.trim()}
-        className="rounded-lg bg-fire-amber px-4 py-2.5 text-xs font-bold text-stage-base disabled:opacity-40"
+        className="rounded-lg bg-fire-amber px-4 py-2.5 text-sm font-bold text-stage-base disabled:opacity-40"
       >
         {creating ? t('lobby.creating') : t('workshop.raiseStage')}
       </button>
@@ -267,7 +277,7 @@ function StageCreator({ accessToken }: { accessToken: string }) {
   )
 }
 
-// 매표소 = 예약 공연(LOB-06, 로비 레거시 이전). 찻집 칩 클릭이 ?invitee= 로 넘어오면 자동 체크.
+// 매표소 = 예약 공연(LOB-06). 찻집 칩 클릭이 ?invitee= 로 넘어오면 자동 체크.
 function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; presetInvitee: string | null }) {
   const { t, i18n } = useTranslation()
   const [mine, setMine] = useState<Reservation[]>([])
@@ -330,7 +340,7 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
   }
 
   return (
-    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+    <div className="mt-3 space-y-2">
       {mine.map((r) => (
         <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-stage-border px-2.5 py-2">
           <p className="min-w-0 truncate text-xs font-semibold">{r.title}</p>
