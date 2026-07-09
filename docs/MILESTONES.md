@@ -19,7 +19,7 @@ tags: [guide]
 - [x] `ChatterBox` 레포 생성, Vite 8 + React 19.2 + TypeScript 6 + Tailwind 4 초기화 (설계 예상 Vite 5 → 실제 8)
 - [x] `@/` alias 설정 완료, `tsc --noEmit` 에러 0개
 - [x] Supabase 클라이언트 연결 — 이메일/비밀번호 로그인 성공 (Confirm email OFF, Auth REST 실증: signUp 즉시세션·login 토큰·getUser·오답거부, 테스트유저 admin 삭제 / UI 폼은 동일 호출 래핑)
-- [ ] Zustand `userStore`에 로그인 세션 저장, 새로고침 후 세션 유지 확인 (코드 완료 + init() getSession/onAuthStateChange App 연결 — 브라우저 새로고침 세션유지 실증만 남음)
+- [x] Zustand `userStore`에 로그인 세션 저장, 새로고침 후 세션 유지 확인 — 2026-07-10 실증: 배포판 2탭 E2E 가 세션 localStorage 주입→페이지 로드에서 인증 상태 복원으로 성립(getSession 복원 경로 실측, `room-e2e` 12/12 전제 단계).
 - [x] `app_config` 테이블 시드 + `useConfigStore` 로드 확인 (supabase CLI 마이그레이션, anon REST 12행/enabled 10 검증)
 - [x] react-router (v8) 라우트 트리 구성 (`/`, `/login`, `/register`, `/lobby`, `/rooms/:roomId`, `/settings` — 보호 라우트는 ProtectedRoute 가드)
 - [x] Tailwind 4 디자인 토큰 (`stage-base`, `fire-amber`, `stage-text`) 적용 확인 (2026-07-01 무채색 개정 기준)
@@ -59,12 +59,12 @@ tags: [guide]
 
 ### Acceptance Criteria
 
-- [ ] 로비 피드 (라이브 방 목록, 실시간 Realtime 갱신) — 부분: `LobbyPage`+`public_rooms` 뷰로 방 목록·생성 O. **Realtime 자동갱신 미구현(수동 새로고침)** → 남은 개발.
-- [ ] 방 생성 폼 (공개/비밀번호/장르 태그) — 부분: 공개방 기본 생성 O(`create-room`). **비밀번호방(`room_secrets`)·장르 태그 미구현** → 남은 개발.
-- [ ] 방장 기능: 참가자 강퇴, 방 잠금, 슬롯 재배치 — 미구현(defer) → 남은 개발.
-- [ ] `ROOM_MAX_USERS` Feature Flag — 6명 초과 시 입장 거부 — 부분: `join-public-room` 최저빈슬롯 채움 로직 O. **초과 시 flag 게이트 거부 미확인** → 남은 개발.
-- [ ] 방 권한 위임 (방장 → 다른 참가자) — 부분: 호스트 퇴장 시 `leave-room` 자동 승계 O. **명시적 위임 UI·브로드캐스트 미구현** → 남은 개발.
-- [ ] 크레딧 시스템: 잔액 표시, 크레딧 0 시 VGEN 버튼 비활성화 (표시만, 구현은 Phase 4)
+- [x] 로비 피드 (라이브 방 목록, 실시간 Realtime 갱신) — as-built(로비 v3 재편): 대극장 `TheaterPage` 목록/검색/필터 + **Realtime nudge**(방 생성·입퇴장 시 자동 갱신). *(2026-07-10 정정 — 구주석은 LobbyPage 수동 새로고침 시절)*
+- [x] 방 생성 폼 (공개/비밀번호/장르 태그) — 비밀번호방 `room_secrets`+`set-room-password`+`join-room-with-password`(SEC-1 브루트포스 방어, 배포·E2E) · 장르 `ROOM_GENRES` 6종(`create-room` genre)+대극장 장르 필터. *(2026-07-10 정정)*
+- [ ] 방장 기능: 참가자 강퇴, 방 잠금, 슬롯 재배치 — 강퇴(`kick-participant`+사유 통지, 2026-07-10 프로드 2탭 E2E)·방 잠금(HOST-06) **완료**. **슬롯 재배치(드래그)만 잔여** → 남은 개발.
+- [ ] `ROOM_MAX_USERS` Feature Flag — 6명 초과 시 입장 거부 — 서버 원자 정원검사(`join-public-room`·뷰어 정원제외) O. **app_config flag 게이트 연동 확인만 잔여**.
+- [ ] 방 권한 위임 (방장 → 다른 참가자) — 자동 승계(`leave-room`) + 이양 실시간 배선(A-FUNC-3: hostId 재조회→새 호스트 컨트롤) O. **명시적 위임 UI만 잔여**.
+- [x] 크레딧 시스템: 잔액 표시, 크레딧 0 시 VGEN 버튼 비활성화 — `VgenStatusTab` 잔액 표시 + `VgenPromptPanel` `canSubmit`(balance≥cost) 게이트. *(2026-07-10 정정)*
 - [ ] Sentry 에러 수집 확인 (의도적 에러 발생 → Sentry Dashboard 수신)
 
 **검증 시나리오:**
@@ -107,7 +107,7 @@ tags: [guide]
 - [ ] 설정 페이지: 오디오 입력 선택, 웹캠 선택, 단축키 확인
 - [ ] Push-to-talk (스페이스바), 전체 뮤트 (F키) 동작
 - [ ] 필살기 핫키 + Lottie 효과 최소 2종
-- [ ] DUB 파이프라인 MVP: MP4 업로드 → Whisper STT → 역할 분배 → 녹음 → 합성
+- [x] DUB 파이프라인 MVP: MP4 업로드 → Whisper STT → 역할 분배 → 녹음 → 합성 — 슬라이스 1(업로드→STT→배정→동의)·2(녹음, 실브라우저 E2E 9/9)·3a/3b(음원분리·합성) 전부 프로드 배포 + 배포판 클릭스루 E2E. *(2026-07-10 정정)*
 - [ ] Playwright E2E Critical path (AUTH·ROOM·VGEN) 통과
 - [ ] 모니터링 대시보드 전체 가동: Sentry·LiveKit·Supabase·pg_cron 알림
 - [ ] SECURITY-OPS.md §초기 체크리스트 완료
