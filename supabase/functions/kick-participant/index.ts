@@ -9,7 +9,7 @@
 // 보안(성역): 호출자 == rooms.host_id 를 서버가 검증. 클라는 target_identity(=auth uid)만 넘긴다
 //   — 클라가 가진 유일 식별자가 LiveKit identity(=auth uid)이므로(room_participants.id 는 클라 미보유).
 import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
-import { roomServiceClient } from "../_shared/livekit.ts";
+import { roomServiceClient, sendDataTo } from "../_shared/livekit.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { user } = auth;
 
-  let body: { room_id?: unknown; target_identity?: unknown };
+  let body: { room_id?: unknown; target_identity?: unknown; reason?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -28,6 +28,8 @@ Deno.serve(async (req) => {
   const { room_id, target_identity } = body;
   if (!isUuid(room_id)) return json({ error: "Invalid room_id" }, 400);
   if (!isUuid(target_identity)) return json({ error: "Invalid target_identity" }, 400);
+  // 강퇴 사유(선택): 문자열만, 트림 후 200자 클램프. 그 외 타입은 조용히 무시(하위호환).
+  const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 200) : "";
   if (target_identity === user.authId) return json({ error: "Cannot kick self" }, 400);
 
   // (1) 방 존재 + 호스트 검증
@@ -60,7 +62,22 @@ Deno.serve(async (req) => {
     .eq("id", part.id);
   if (updErr) return json({ error: "Update failed" }, 500);
 
-  // (4) LiveKit 즉시 절단. 실패해도 DB 플래그로 재입장은 차단됨(기발급 토큰은 ≤10분 후 만료).
+  // (4) 사유가 있으면 절단 직전 대상에게만 통지(room-authority, 서버발=participant undefined).
+  //     전달 실패해도 강퇴는 진행 — 수신측은 일반 강퇴 문구로 폴백.
+  if (reason) {
+    try {
+      await sendDataTo(
+        room_id,
+        [String(target_identity)],
+        new TextEncoder().encode(JSON.stringify({ type: "kicked", reason })),
+        "room-authority",
+      );
+    } catch (e) {
+      console.error("kick reason notify failed:", e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // (5) LiveKit 즉시 절단. 실패해도 DB 플래그로 재입장은 차단됨(기발급 토큰은 ≤10분 후 만료).
   try {
     await roomServiceClient().removeParticipant(room_id, String(target_identity));
   } catch (e) {

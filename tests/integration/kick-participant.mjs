@@ -5,9 +5,9 @@
 //   node tests/integration/kick-participant.mjs
 //
 // 검증:
-//   1) 호스트 강퇴 → 200 + room_participants.is_disabled_by_host=true + token_version 증가
+//   1) 호스트 강퇴(+200자 초과 reason → 서버 클램프·통지 시도) → 200 + is_disabled_by_host=true + token_version 증가
 //   2) 비호스트 강퇴 시도 → 403 Not host
-//   3) 자기 강퇴 → 400
+//   3) 자기 강퇴(+비문자열 reason 은 조용히 무시) → 400
 //   4) 강퇴된 참가자 livekit-token → 403 Disabled by host (재입장 차단)
 import { createClient } from '@supabase/supabase-js'
 
@@ -70,13 +70,13 @@ async function main() {
   const r2 = await callFn('kick-participant', guestTok, { room_id: room.id, target_identity: hostAuth })
   ok(r2.status === 403 && r2.json?.error === 'Not host', '비호스트 강퇴 → 403 Not host')
 
-  // 3) 자기 강퇴 → 400
-  const r3 = await callFn('kick-participant', hostTok, { room_id: room.id, target_identity: hostAuth })
-  ok(r3.status === 400, '자기 강퇴 → 400')
+  // 3) 자기 강퇴 → 400 (비문자열 reason 은 관용 파싱 — 조용히 무시)
+  const r3 = await callFn('kick-participant', hostTok, { room_id: room.id, target_identity: hostAuth, reason: 123 })
+  ok(r3.status === 400, '자기 강퇴 → 400 (reason 비문자열 무시)')
 
-  // 1) 호스트 강퇴 → 200 + DB
-  const r1 = await callFn('kick-participant', hostTok, { room_id: room.id, target_identity: guestAuth })
-  ok(r1.status === 200 && r1.json?.ok === true, '호스트 강퇴 → 200 ok')
+  // 1) 호스트 강퇴 → 200 + DB. reason 200자 초과 → 서버 트림·클램프 후 대상 통지(sendDataTo, LiveKit 미가용이면 로그만).
+  const r1 = await callFn('kick-participant', hostTok, { room_id: room.id, target_identity: guestAuth, reason: ' 도배가 심해요 '.repeat(30) })
+  ok(r1.status === 200 && r1.json?.ok === true, '호스트 강퇴(+긴 reason) → 200 ok')
   const { data: after } = await svc.from('room_participants')
     .select('is_disabled_by_host, token_version').eq('room_id', room.id).eq('user_id', guestUserId).single()
   ok(after?.is_disabled_by_host === true, 'is_disabled_by_host = true')

@@ -30,7 +30,7 @@ export default function HostConsole({
 }: {
   participants: RoomParticipant[]
   myIdentity: string
-  onKick: (identity: string) => Promise<void>
+  onKick: (identity: string, reason?: string) => Promise<void> // reason(선택, ≤200자) — 서버가 대상에게 통지
   onSetMute: (identity: string, muted: boolean) => Promise<void>
   onSetPassword: (password: string) => Promise<boolean>
   onSetBackground: (backgroundUrl: string) => Promise<void> // 무대 배경 교체/해제(HOST-04·05)
@@ -45,6 +45,7 @@ export default function HostConsole({
   const { t } = useTranslation()
   // 강퇴 확인: 2단 토글(계약 위반·오클릭 위험) → Modal 프리미티브(P-4, 포커스트랩·Esc·복귀).
   const [confirming, setConfirming] = useState<{ identity: string; name: string } | null>(null)
+  const [kickReasonInput, setKickReasonInput] = useState('') // 강퇴 사유(선택) — 확정 시 서버로 전달
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   // 음소거 배지 = 서버 진실(initialMuted, muted_by_host)에 이 세션 낙관적 오버라이드(호스트 클릭)를 얹어
@@ -137,7 +138,7 @@ export default function HostConsole({
     setErr(null)
     setBusy(identity)
     try {
-      await onKick(identity)
+      await onKick(identity, kickReasonInput.trim() || undefined)
     } catch {
       setErr(t('host.kickFailed'))
     } finally {
@@ -344,7 +345,7 @@ export default function HostConsole({
                     {muting === p.identity ? t('host.muting') : isMuted ? t('host.unmute') : t('host.mute')}
                   </button>
                   <button
-                    onClick={() => setConfirming({ identity: p.identity, name: p.name })}
+                    onClick={() => { setKickReasonInput(''); setConfirming({ identity: p.identity, name: p.name }) }}
                     className="rounded border border-fire-hot/50 px-2 py-1 text-xs text-fire-hot hover:bg-fire-hot/10"
                   >
                     {t('host.kick')}
@@ -359,6 +360,14 @@ export default function HostConsole({
       {confirming && (
         <Modal title={t('host.kickConfirmTitle')} onClose={() => setConfirming(null)}>
           <p className="mt-2 text-sm text-stage-text-muted">{t('host.kickConfirmBody', { name: confirming.name })}</p>
+          <input
+            value={kickReasonInput}
+            onChange={(e) => setKickReasonInput(e.target.value)}
+            maxLength={200}
+            aria-label={t('host.kickReasonLabel')}
+            placeholder={t('host.kickReasonPlaceholder')}
+            className="mt-3 w-full rounded-lg border border-stage-border bg-transparent px-3 py-2 text-sm"
+          />
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => void doKick(confirming.identity)}

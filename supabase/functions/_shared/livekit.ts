@@ -18,3 +18,8 @@ export function roomServiceClient(): RoomServiceClient {
 export async function broadcastData(roomName: string, data: Uint8Array, topic: string): Promise<void> {
   await roomServiceClient().sendData(roomName, data, DataPacket_Kind.RELIABLE, { topic });
 }
+
+// 특정 참가자에게만 서버발 데이터 전송(강퇴 사유 통지 등). destinationIdentities 로 대상 한정.
+export async function sendDataTo(roomName: string, identities: string[], data: Uint8Array, topic: string): Promise<void> {
+  await roomServiceClient().sendData(roomName, data, DataPacket_Kind.RELIABLE, { topic, destinationIdentities: identities });
+}

@@ -42,8 +42,9 @@ export const leaveRoom = (accessToken: string, roomId: string) =>
 export interface KickResult { ok: boolean; kicked_identity: string; display_name: string | null }
 
 // 호스트 강퇴 (HOST-01). target = LiveKit identity(=auth uid). 서버가 rooms.host_id 로 권한 검증.
-export const kickParticipant = (accessToken: string, roomId: string, targetIdentity: string) =>
-  callFn<KickResult>('kick-participant', accessToken, { room_id: roomId, target_identity: targetIdentity })
+// reason(선택, ≤200자)은 서버가 절단 직전 대상에게 room-authority 로 통지.
+export const kickParticipant = (accessToken: string, roomId: string, targetIdentity: string, reason?: string) =>
+  callFn<KickResult>('kick-participant', accessToken, { room_id: roomId, target_identity: targetIdentity, ...(reason ? { reason } : {}) })
 
 // 리액션 서버 릴레이(ROOM-19). 서버가 멤버십 검증 후 방 전체 broadcast — 클라 직접 방송보다 유실0·스푸핑 불가.
 export const sendReactionRelay = (accessToken: string, roomId: string, emoji: string, idempotencyKey: string) =>

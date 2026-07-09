@@ -51,6 +51,7 @@ export default function RoomPage() {
   const [joinPhase, setJoinPhase] = useState<'joining' | 'ready' | 'error' | 'password'>('joining')
   const [joinError, setJoinError] = useState<string | null>(null)
   const [kicked, setKicked] = useState(false)
+  const [kickReason, setKickReason] = useState<string | null>(null) // 서버발 강퇴 사유(room-authority 'kicked') — 표시는 kicked 게이트
   // 잠금방: join-public-room 이 "Room is locked" 로 거부하면 비번 입력 단계로. 입장 성공 시 roomLocked=true.
   const [roomLocked, setRoomLocked] = useState(false)
   const [passwordInput, setPasswordInput] = useState('')
@@ -192,7 +193,7 @@ export default function RoomPage() {
   const [handRaised, setHandRaised] = useState(false)
   const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
   const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null }) => {
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
@@ -201,6 +202,11 @@ export default function RoomPage() {
       if (msg.mode === 'rehearsal' || msg.mode === 'performance') setScriptModeLocal(msg.mode)
     }
     else if (msg.type === 'raise_hand') setRaiseHandRefetch((n) => n + 1) // 손든 관객 변동 → 큐 재조회(호스트 UI)
+    else if (msg.type === 'kicked') {
+      // 강퇴 사유(HOST-01): 서버(kick-participant)가 절단 직전 대상에게만 전송(destinationIdentities).
+      // 표시는 kicked 상태(PARTICIPANT_REMOVED)에 게이트 — 참가자 스푸핑만으로는 화면에 못 띄운다.
+      if (typeof msg.reason === 'string' && msg.reason) setKickReason(msg.reason.slice(0, 200))
+    }
     else if (msg.type === 'stage_invite') {
       // 무대 초대(ROOM-21) — 대상 본인만 수락 모달, 다른 참가자는 무시.
       if (msg.target_auth_id === useUserStore.getState().user?.id) setStageInvite(true)
@@ -478,9 +484,9 @@ export default function RoomPage() {
   // 우측 패널 탭(주입식 블록): 채팅·DUB·VGen. 각 탭은 자족적 컴포넌트 — 셸은 전환만 담당.
   // ponytail: 대본 미러(script)·디렉터 노트(notes, ROOM-17)·사운드보드 탭은 후속(contracts/RightPanel.md 구현 현황).
   const kick = useCallback(
-    async (identity: string) => {
+    async (identity: string, reason?: string) => {
       if (!session) return
-      await kickParticipant(session.access_token, roomId, identity)
+      await kickParticipant(session.access_token, roomId, identity, reason)
     },
     [session, roomId],
   )
@@ -715,6 +721,9 @@ export default function RoomPage() {
       <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
         <div className="text-center">
           <p className="text-fire-hot" role="alert">{t('host.kickedNotice')}</p>
+          {kickReason && (
+            <p className="mt-2 text-sm text-stage-text-muted">{t('host.kickReasonShown', { reason: kickReason })}</p>
+          )}
           <button
             onClick={() => navigate('/lobby', { replace: true })}
             className="mt-4 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
