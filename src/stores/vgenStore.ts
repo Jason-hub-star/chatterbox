@@ -18,7 +18,7 @@ interface VgenStore {
   recentJobs: VgenJob[]
   error: string | null
   loadRecent: (roomId: string) => Promise<void>
-  generate: (roomId: string, prompt: string, durationSec: number, resolution: VgenResolution, imageUrls?: string[]) => Promise<void>
+  generate: (roomId: string, prompt: string, durationSec: number, resolution: VgenResolution, imageUrls?: string[], aspectRatio?: '9:16' | '16:9') => Promise<void>
   reset: () => void
 }
 
@@ -37,12 +37,12 @@ export const useVgenStore = create<VgenStore>((set, get) => ({
     set({ recentJobs: jobs })
   },
 
-  generate: async (roomId, prompt, durationSec, resolution, imageUrls) => {
+  generate: async (roomId, prompt, durationSec, resolution, imageUrls, aspectRatio) => {
     const token = useUserStore.getState().session?.access_token
     if (!token) { set({ error: '로그인이 필요해요.' }); return }
     set({ isGenerating: true, error: null, currentJobEtaSec: estimateVgenSeconds(durationSec) })
     try {
-      const res = await triggerVgen(token, roomId, prompt, durationSec, resolution, { imageUrls })
+      const res = await triggerVgen(token, roomId, prompt, durationSec, resolution, { imageUrls, aspectRatio })
       if (res.status === 'done') { // dedup 캐시 히트: 즉시 완료
         set({ isGenerating: false, currentJobEtaSec: null })
         await get().loadRecent(roomId)

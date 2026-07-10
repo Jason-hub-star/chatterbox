@@ -12,6 +12,8 @@ import CostConfirmDialog from '@/components/shared/CostConfirmDialog'
 // SSOT: docs/contracts/VgenPanel.md §VgenPromptPanel
 
 const DURATIONS = [5, 10] // VGEN_MAX_SEC=10. 15초는 플래그 상향 후 slice2.
+// 화면비(VGEN-11): 쇼츠 기본 9:16. Edge ALLOWED_AR(6종)의 부분집합 — 1:1 등은 UI 수요 생기면 추가.
+const ASPECTS = ['9:16', '16:9'] as const
 const MAX_PROMPT = 2000
 
 export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; onClose: () => void }) {
@@ -25,6 +27,7 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
   const [prompt, setPrompt] = useState('')
   const [duration, setDuration] = useState(5)
   const [resolution, setResolution] = useState<VgenResolution>('720p')
+  const [aspectRatio, setAspectRatio] = useState<(typeof ASPECTS)[number]>('9:16')
   const [confirm, setConfirm] = useState(false)
   const [refining, setRefining] = useState(false)
   const [refineErr, setRefineErr] = useState<string | null>(null)
@@ -65,7 +68,7 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
       }
       setPreparing(false)
     }
-    await generate(roomId, prompt.trim(), duration, resolution, imageUrls)
+    await generate(roomId, prompt.trim(), duration, resolution, imageUrls, aspectRatio)
   }
 
   return (
@@ -106,6 +109,17 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
           <button key={r} onClick={() => setResolution(r)} aria-pressed={resolution === r}
             className={`rounded-lg px-3 py-1 text-sm ${resolution === r ? 'bg-fire-amber text-stage-base' : 'border border-stage-border text-stage-text-muted'}`}>
             {r}
+          </button>
+        ))}
+      </div>
+
+      {/* 화면비(VGEN-11): 세로 쇼츠 기본. 비용은 비율 무관(duration×해상도 가중)·dedup 해시에 비율 포함(캐시 교차 없음). */}
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-xs text-stage-text-muted">{t('vgen.aspectLabel')}</span>
+        {ASPECTS.map((a) => (
+          <button key={a} onClick={() => setAspectRatio(a)} aria-pressed={aspectRatio === a}
+            className={`rounded-lg px-3 py-1 text-sm ${aspectRatio === a ? 'bg-fire-amber text-stage-base' : 'border border-stage-border text-stage-text-muted'}`}>
+            {a === '9:16' ? t('vgen.aspect916') : t('vgen.aspect169')}
           </button>
         ))}
       </div>

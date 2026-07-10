@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useVgenStore } from '@/stores/vgenStore'
 import { getVgenUrl } from '@/lib/vgen'
+import { toast } from '@/hooks/useToast'
+import i18n from '@/i18n'
 import { etaProgress } from '@/lib/vgenEta'
 import ProgressBar from '@/components/shared/ProgressBar'
 import VgenPromptPanel from '@/features/vgen/VgenPromptPanel'
@@ -64,6 +66,40 @@ export default function VgenStatusTab({
     try { setPlayUrl(await getVgenUrl(token, jobId)) } catch { /* 무시 */ }
   }
 
+  // VGEN-12 다운로드/공유 링크 — 서명 URL 재사용(get-vgen-url 이 멤버십·visibility 서버 재검증).
+  // ponytail: 링크는 만료 있는 임시 서명 URL(토스트로 고지) — 영구 공유 페이지는 VgenExport.md 후속.
+  const download = async (jobId: string) => {
+    if (!token) return
+    let url: string
+    try {
+      url = await getVgenUrl(token, jobId)
+    } catch {
+      toast.error(i18n.t('vgen.downloadFailed'))
+      return
+    }
+    try {
+      const blob = await (await fetch(url)).blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `chatterbox-${jobId.slice(0, 8)}.mp4`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch {
+      // R2 CORS 미허용 등으로 fetch 가 막히면 새 탭 폴백(브라우저가 직접 재생/저장).
+      window.open(url, '_blank', 'noopener')
+    }
+  }
+  const copyLink = async (jobId: string) => {
+    if (!token) return
+    try {
+      const url = await getVgenUrl(token, jobId)
+      await navigator.clipboard.writeText(url)
+      toast.success(i18n.t('vgen.linkCopied'))
+    } catch {
+      toast.error(i18n.t('vgen.linkCopyFailed'))
+    }
+  }
+
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between">
@@ -102,6 +138,12 @@ export default function VgenStatusTab({
               <span className="text-xs text-stage-text-muted">{j.status} · {j.creditCost}cr</span>
               {j.status === 'done' && (
                 <button onClick={() => play(j.id)} className="text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.playButton')}</button>
+              )}
+              {j.status === 'done' && (
+                <>
+                  <button onClick={() => void download(j.id)} className="text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.downloadButton')}</button>
+                  <button onClick={() => void copyLink(j.id)} className="text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.linkCopyButton')}</button>
+                </>
               )}
               {j.status === 'done' && isHost && onShare && (
                 <button onClick={() => void onShare(j.id)} className="text-xs font-semibold text-fire-amber">{t('vgen.shareButton')}</button>
