@@ -22,7 +22,7 @@ const STATE_LABEL_KEY: Record<TrackingState, string> = {
 }
 
 // 내 좌석: 웹캠 → MediaPipe → 네이티브 rig self-view 구동(head pose 포함) + blendshape 송신(52ch, head pose 미포함).
-// 웹캠은 트래킹 입력이라 코너 pip 로 작게 유지 — 표시 크기는 트래킹 품질과 무관(스트림 원본 해상도 사용).
+// 웹캠 video 는 순수 트래킹 입력 — 화면에는 안 보인다(주인님 콜 2026-07-10: 전 화면 pip 숨김).
 export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost = false }: Props) {
   const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -111,15 +111,15 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
           </div>
         )}
         {isHost && <HostCrown />}
-        {/* 웹캠 = 트래킹 입력 pip. 원형 프레임이라 코너 대신 하단 중앙에 겹쳐 둔다. */}
+        {/* 웹캠 video = MediaPipe 입력 소스 — 언마운트하면 트래킹이 죽으므로 시각만 숨긴다
+            (display:none 금지 — 브라우저가 렌더 파이프를 멈출 수 있음). */}
         <video
           ref={videoRef}
           muted
           playsInline
           autoPlay
-          aria-label={t('stage.webcamAriaLabel')}
-          className="absolute bottom-0 left-1/2 w-9 -translate-x-1/2 rounded border border-stage-border/80"
-          style={{ transform: 'translateX(-50%) scaleX(-1)' }}
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
         />
       </div>
       <span className="rounded-full bg-stage-elevated/70 px-2 py-0.5 text-[11px] text-spring-green">

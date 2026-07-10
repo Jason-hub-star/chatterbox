@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useTrackingStore } from '@/stores/trackingStore'
 import { resolveAvatarUrl } from '@/lib/avatars'
+import { useInterior } from '@/pages/lobby/useInterior'
 import SelfAvatar from '@/features/stage/SelfAvatar'
 import ProgressBar from '@/components/shared/ProgressBar'
 
@@ -13,12 +14,26 @@ import ProgressBar from '@/components/shared/ProgressBar'
 // 순수 로컬 단계라 방 멤버십 불요 — 조인·비번·정원 게이트는 다음 화면(RoomPage)이 담당.
 const SKIP_KEY = 'cb.greenroomSkip'
 
+// 거울 크기 — 화면을 지배하는 대형 거울(의상실 문법, 주인님 콜: "거울이 많이 커야해").
+// 데스크탑 = 우측 패널(320)+여백 제외 폭·뷰포트 높이 62% 중 작은 쪽. 분장실은 체류가 짧은
+// 이행 화면이라 마운트 1회 계산으로 충분(반응형 게이트는 뷰포트별 fresh load 로 판정).
+function computeMirrorPx(): number {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  if (!window.matchMedia('(min-width: 768px)').matches) return Math.min(Math.round(vw * 0.62), 300)
+  return Math.max(280, Math.min(Math.round(vh * 0.62), vw - 320 - 96, 560))
+}
+
+const noop = () => {}
+
 export default function GreenRoomPage() {
   const { t } = useTranslation()
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const myAvatarUrl = useUserStore((s) => s.avatarUrl)
   const trackingState = useTrackingStore((s) => s.state)
+  const backdrop = useInterior('rooms')?.hero // 대극장 내부 원화 — 직전 화면과 시각 연속
+  const [mirrorPx] = useState(computeMirrorPx)
 
   // "다음부턴 바로 입장" — 마운트 1회 판정(레이지): 체크된 유저는 분장실을 스치지 않고 직행.
   const [skipNext, setSkipNext] = useState(() => localStorage.getItem(SKIP_KEY) === '1')
@@ -74,44 +89,50 @@ export default function GreenRoomPage() {
   const deviceTrouble = micErr || trackingState === 'ERROR' || trackingState === 'UNSUPPORTED'
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-stage-base p-4 text-stage-text">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold">{t('greenroom.title')}</h1>
-        <p className="mt-1 text-sm text-stage-text-muted">{t('greenroom.hint')}</p>
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-stage-base p-4 text-stage-text md:p-6">
+      {/* 백드롭: 대극장 내부 원화 디밍+블러(주인님 콜) — 대극장→분장실→무대가 한 시퀀스로 이어짐 */}
+      {backdrop && <img src={backdrop} alt="" aria-hidden="true" draggable={false} className="scene-veil select-none" />}
 
-        {/* 아바타 프리뷰 — 무대와 동일 파이프라인(SelfAvatar). 송신은 없음(방 연결 전). */}
-        <div className="mt-4 flex justify-center rounded-lg border border-stage-border bg-stage-panel py-4">
-          <SelfAvatar projectUrl={resolveAvatarUrl(myAvatarUrl)} sendBlendshapes={() => {}} size={220} />
+      <div className="scene-veil-in relative flex w-full flex-col items-center gap-5 md:flex-row md:justify-center md:gap-10">
+        {/* 거울 — 화면의 주인공(의상실과 같은 아치 금장 프레임). 송신은 없음(방 연결 전). */}
+        <div className="mirror-frame mirror-frame--arch flex flex-col items-center">
+          <SelfAvatar projectUrl={resolveAvatarUrl(myAvatarUrl)} sendBlendshapes={noop} size={mirrorPx} />
         </div>
 
-        <div className="mt-4">
-          {micErr ? (
-            <p className="rounded-lg bg-fire-hot/10 px-3 py-2 text-xs text-fire-hot" role="alert">
-              {t('greenroom.micDenied')}
-            </p>
-          ) : (
-            <ProgressBar value={micLevel ?? 0} label={t('greenroom.micLevel')} />
+        {/* 점검 패널 — 목조 반투명(interior-panel, 내부 씬 공통 문법) */}
+        <div className="interior-panel w-full max-w-sm md:w-80">
+          <h1 className="text-xl font-bold md:text-2xl">{t('greenroom.title')}</h1>
+          <p className="mt-1 text-sm text-stage-text-muted">{t('greenroom.hint')}</p>
+
+          <div className="mt-5">
+            {micErr ? (
+              <p className="rounded-lg bg-fire-hot/10 px-3 py-2 text-xs text-fire-hot" role="alert">
+                {t('greenroom.micDenied')}
+              </p>
+            ) : (
+              <ProgressBar value={micLevel ?? 0} label={t('greenroom.micLevel')} />
+            )}
+          </div>
+
+          {/* MOD-06 최소: 권한/디바이스 문제 안내 — 그래도 입장은 막지 않는다(소프트 게이트). */}
+          {deviceTrouble && (
+            <p className="mt-3 text-xs text-stage-text-muted">{t('greenroom.troubleHint')}</p>
           )}
+
+          <button
+            onClick={() => navigate(`/rooms/${roomId}`)}
+            className={`mt-6 w-full rounded-lg bg-fire-amber px-4 py-3 text-base font-bold text-stage-base hover:opacity-90 ${
+              trackingState === 'TRACKING' ? 'ring-2 ring-spring-green/60' : ''
+            }`}
+          >
+            {t('greenroom.enter')}
+          </button>
+
+          <label className="mt-3 flex items-center gap-2 text-xs text-stage-text-muted">
+            <input type="checkbox" checked={skipNext} onChange={(e) => toggleSkip(e.target.checked)} />
+            {t('greenroom.skipNext')}
+          </label>
         </div>
-
-        {/* MOD-06 최소: 권한/디바이스 문제 안내 — 그래도 입장은 막지 않는다(소프트 게이트). */}
-        {deviceTrouble && (
-          <p className="mt-3 text-xs text-stage-text-muted">{t('greenroom.troubleHint')}</p>
-        )}
-
-        <button
-          onClick={() => navigate(`/rooms/${roomId}`)}
-          className={`mt-6 w-full rounded-lg bg-fire-amber px-4 py-3 text-sm font-semibold text-stage-base ${
-            trackingState === 'TRACKING' ? 'ring-2 ring-spring-green/60' : ''
-          }`}
-        >
-          {t('greenroom.enter')}
-        </button>
-
-        <label className="mt-3 flex items-center gap-2 text-xs text-stage-text-muted">
-          <input type="checkbox" checked={skipNext} onChange={(e) => toggleSkip(e.target.checked)} />
-          {t('greenroom.skipNext')}
-        </label>
       </div>
     </main>
   )

@@ -14,6 +14,7 @@ tags: [contract]
 > - **소프트 게이트(주인님 콜)**: 트래킹/권한 실패여도 [무대로 입장] 가능 — 8동작 필수 검증(CalibrationWizard)·"검증 후 입장 허용"은 외부 공개 직전에 조이는 후속(플래그 1개). CALIBRATING 상태는 trackingStore 에 없음(INITIALIZING→TRACKING).
 > - `cb.greenroomSkip`(localStorage) 체크 시 이후 입장은 분장실을 스치지 않고 직행. 로비의 입장·생성·초대 수락 전부 `/ready` 경유.
 > - 분장실은 순수 로컬 단계 — 조인·비번·정원 게이트는 RoomPage 가 담당(순서: 로비 → ready → 조인).
+> - **UIUX 리디자인(2026-07-10, 주인님 콜 "작고 통일감 없음")**: 대극장 내부 원화 디밍+블러 백드롭(`.scene-veil` — 대극장→분장실→조인 대기가 한 시퀀스) + 아치 금장 거울(`mirror-frame--arch`, 데스크탑 뷰포트 높이 62%·최대 560px "거울이 많이 커야해") + 점검 패널 `interior-panel`(목조 문법). 데스크탑 2열(거울|패널)·모바일 1열. 웹캠 pip 은 전 화면 숨김(SelfAvatar — video 는 MediaPipe 입력 소스라 시각만 숨김). 로직 무변경.
 
 ## Props Interface
 

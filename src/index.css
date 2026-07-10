@@ -189,6 +189,27 @@ body {
   }
 }
 @keyframes interior-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+/* 워크벤치 변형(의상실 v6 안 A): 룸 문법 — 입장 0.9초는 씬 온전히, 그 뒤 씬은 디밍+블러
+   백드롭으로 물러나고(.is-ready) 작업공간이 전폭을 채운다. 모바일(<md)은 기본 세로 흐름 그대로. */
+@media (min-width: 768px) {
+  .interior-stage--workbench {
+    width: 100%;
+    height: 100vh;
+    aspect-ratio: auto;
+    overflow: hidden;
+    animation: none;
+  }
+  /* scale 은 블러 가장자리 투명 번짐을 프레임 밖으로 밀어낸다 */
+  .interior-stage--workbench .interior-bg { transform: scale(1.06); transition: filter 0.7s ease; }
+  .interior-stage--workbench.is-ready .interior-bg {
+    filter: brightness(0.42) blur(6px) saturate(0.92);
+  }
+  .interior-stage--workbench .interior-body { opacity: 0; transition: opacity 0.5s ease 0.15s; }
+  .interior-stage--workbench.is-ready .interior-body { opacity: 1; }
+  /* 대형 거울은 아치 프레임(원화 거울과 같은 실루엣) — .mirror-frame(radius 14px)이
+     파일 뒤에 와서 이기므로 복합 선택자로 특이도 우위 확보 */
+  .mirror-frame.mirror-frame--arch { border-radius: 999px 999px 14px 14px; }
+}
 /* 앵커 위 가독 패널(원화 위 반투명) */
 .interior-panel {
   /* 통일감(주인님 감사 지시): 무채 패널 → 따뜻한 흑갈(간판·현판과 같은 목조 세계).
@@ -250,6 +271,21 @@ body {
 .tea-chip:hover { border-color: #ffd98a; }
 @media (prefers-reduced-motion: reduce) {
   .interior-stage { animation: none; }
+}
+/* 무대 이행 백드롭(분장실·조인 대기): 대극장 내부 원화를 디밍+블러로 깔아 직전 화면(대극장)과
+   시각적으로 잇는다 — 워크벤치 is-ready 필터와 같은 값. scale 은 블러 가장자리 번짐 밀어내기. */
+.scene-veil {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transform: scale(1.05);
+  filter: brightness(0.4) blur(5px) saturate(0.92);
+}
+.scene-veil-in { animation: interior-in 0.45s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .scene-veil-in { animation: none; }
 }
 
 /* G-261 모드 전환 배너 — fade-in 200ms → 고정 2s → fade-out 200ms (RoomView.md §G-261 규격).

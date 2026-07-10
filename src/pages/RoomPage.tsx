@@ -13,6 +13,7 @@ import { useStageStore } from '@/stores/stageStore'
 import { useVgenStore } from '@/stores/vgenStore'
 import { fetchRoomMembers, fetchRoomHostId } from '@/lib/dub'
 import { resolveAvatarUrl } from '@/lib/avatars'
+import { useInterior } from '@/pages/lobby/useInterior'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import Stage from '@/features/stage/Stage'
 import ReactionWheel from '@/features/reaction/ReactionWheel'
@@ -53,6 +54,7 @@ export default function RoomPage() {
   const appUserId = useUserStore((s) => s.appUserId)
   const hostId = useRoomStore((s) => s.hostId)
   const myIdentity = session?.user?.id ?? '' // LiveKit identity = auth uid
+  const joinBackdrop = useInterior('rooms')?.hero // 조인 대기 백드롭 — 분장실과 같은 대극장 원화(시각 연속)
 
   // 입장 단계: LiveKit 연결 전에 반드시 room_participants 행을 만든다(멱등).
   // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 성공 후에만 연결(enabled).
@@ -714,13 +716,21 @@ export default function RoomPage() {
 
   if (joinPhase === 'joining') {
     return (
-      <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text-muted">
-        <div className="flex flex-col items-center gap-4">
-          <CampfireGlyph />
-          <p role="status" aria-live="polite">{t('room.joining')}</p>
+      <main className="relative grid min-h-screen place-items-center overflow-hidden bg-stage-base text-stage-text-muted">
+        {joinBackdrop && (
+          <img src={joinBackdrop} alt="" aria-hidden="true" draggable={false} className="scene-veil select-none" />
+        )}
+        <div className="scene-veil-in relative flex flex-col items-center gap-4">
+          {/* 모닥불 글리프 — scale 은 레이아웃 박스를 안 키우므로 래퍼(h-28)로 겹침 방지 */}
+          <div className="grid h-28 w-28 place-items-center">
+            <div className="scale-[1.8]">
+              <CampfireGlyph />
+            </div>
+          </div>
+          <p role="status" aria-live="polite" className="text-base drop-shadow md:text-lg">{t('room.joining')}</p>
           <button
             onClick={() => { joinAbortRef.current?.abort(); navigate('/lobby', { replace: true }) }}
-            className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+            className="rounded-lg border border-stage-border bg-stage-base/60 px-4 py-2 text-sm text-stage-text-muted backdrop-blur hover:text-stage-text"
           >
             {t('room.joinCancel')}
           </button>
