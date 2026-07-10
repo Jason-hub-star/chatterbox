@@ -6,13 +6,14 @@ import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/useToast'
 import { acceptInvite, fetchPublicRooms, verifyInviteCode, type LobbyRoom } from '@/lib/rooms'
 import NotificationBell from '@/components/shared/NotificationBell'
+import LanguageToggle from '@/components/shared/LanguageToggle'
 import HubMap from '@/components/shared/HubMap'
 import { resolveWorld, type HubDest } from '@/scenes/manifest'
 import { useEffectiveWorld } from '@/stores/worldStore'
 
 // 로비 v3(주인님 확정 스펙): 광장 허브가 화면의 전부 — 레거시 섹션(목록·생성·예약·최근)은
 // 내부 4관(/lobby/theater·workshop·teahouse·atelier)으로 전가·삭제. 데스크톱은 헤더 바 없음
-// (광장 가림·분위기 — 주인님 콜): 벨 칩만 우상단, 로그아웃은 의상실로. 초대 배너(LOB-05)는
+// (광장 가림·분위기 — 주인님 콜): 우상단 칩 클러스터(언어·로그아웃·벨 — 설정 이관 P0). 초대 배너(LOB-05)는
 // 조건부 유지 / 모바일 = 제목+벨 헤더 + 배너 + 하단 네비 4탭(같은 라우트).
 // rooms 는 대극장 뱃지·연습 무대 라우팅용 최소 유지(Realtime nudge 포함).
 export default function LobbyPage() {
@@ -173,8 +174,17 @@ export default function LobbyPage() {
       <div className="relative flex min-h-screen flex-col p-4 pb-24 md:pointer-events-none md:p-6 md:pb-6">
         {/* 모바일=제목+벨 / 데스크톱=벨 칩만 우측(광장이 화면의 전부). 벨은 단일 인스턴스 —
             반응형 렌더는 컴포넌트 내부(중복 마운트 = Realtime 채널 재구독 크래시). */}
-        <div className="pointer-events-auto flex items-center justify-end">
+        <div className="pointer-events-auto flex items-center justify-end gap-2">
           <h1 className="mr-auto text-2xl font-bold md:hidden">{t('lobby.title')}</h1>
+          {/* 설정 이관(P0, 트랙 2): 의상실 v5 에서 제거된 언어·로그아웃을 광장 칩 클러스터로 — 별도 설정 패널 없이 배선만. */}
+          <LanguageToggle />
+          <button
+            type="button"
+            onClick={() => void useUserStore.getState().logout()}
+            className="rounded px-2 py-1 text-sm text-stage-text/60 hover:text-stage-text"
+          >
+            {t('lobby.logout')}
+          </button>
           <NotificationBell />
         </div>
 
