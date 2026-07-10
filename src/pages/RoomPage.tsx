@@ -36,6 +36,7 @@ import { SEED_SCRIPTS } from '@/features/script/cues'
 import RoomShell from '@/features/room/RoomShell'
 import RoomTopBar from '@/features/room/RoomTopBar'
 import RoomBottomBar from '@/features/room/RoomBottomBar'
+import SessionInfoCard from '@/features/room/SessionInfoCard'
 
 // Phase 1B PoC → 우측 패널 셸 도입: 채팅·DUB·VGen 을 RightPanel 탭 블록으로 통합(contracts/RightPanel.md).
 // 좌측 컬럼 = 참가자·무대·대본 텔레프롬프터·마이크/나가기. 우측 = RightPanel(탭 콘텐츠 주입식).
@@ -800,25 +801,30 @@ export default function RoomPage() {
   // 반응형: 태그는 장르 하나만(공간 제한)
   const roomTags = roomGenre ? [roomGenre] : []
 
-  // 좌도크: 대본 패널(연결 후) — 역할 클레임·모드는 서버 동기(ROOM-14)
-  const leftDockContent = connected ? (
-    <ScriptPanel
-      script={script}
-      cueIndex={cueIndex}
-      canAdvance={canAdvanceCue}
-      isHost={isHost}
-      isViewer={isViewer}
-      scriptMode={scriptMode}
-      roleMap={liveRoleMap}
-      myAuthId={myIdentity}
-      actors={actorOptions}
-      onClaim={claimRole}
-      onRelease={releaseRole}
-      onAssign={assignRole}
-      onToggleMode={toggleScriptMode}
-      onAdvance={advanceCue}
-    />
-  ) : null
+  // 좌도크: 세션정보 카드(상시) + 대본 패널(연결 후, ROOM-14) — R3 좌도크 카드 스택.
+  const leftDockContent = (
+    <div className="flex flex-col gap-3">
+      <SessionInfoCard genre={roomGenre} elapsed={elapsed} connected={connected} />
+      {connected && (
+        <ScriptPanel
+          script={script}
+          cueIndex={cueIndex}
+          canAdvance={canAdvanceCue}
+          isHost={isHost}
+          isViewer={isViewer}
+          scriptMode={scriptMode}
+          roleMap={liveRoleMap}
+          myAuthId={myIdentity}
+          actors={actorOptions}
+          onClaim={claimRole}
+          onRelease={releaseRole}
+          onAssign={assignRole}
+          onToggleMode={toggleScriptMode}
+          onAdvance={advanceCue}
+        />
+      )}
+    </div>
+  )
 
   // 무대 영역: Stage + ReactionOverlay/Wheel + 에러 표시
   const stageContent = (

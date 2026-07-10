@@ -68,7 +68,7 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry, siz
         />
         {isHost && <HostCrown />}
       </div>
-      <figcaption className="text-xs text-stage-text-muted">{name}</figcaption>
+      <figcaption className="rounded-full bg-stage-elevated/70 px-2 py-0.5 text-[11px] text-stage-text-muted">{name}</figcaption>
     </figure>
   )
 }

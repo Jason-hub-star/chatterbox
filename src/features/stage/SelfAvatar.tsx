@@ -122,8 +122,8 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
           style={{ transform: 'translateX(-50%) scaleX(-1)' }}
         />
       </div>
-      <span className="text-[11px] text-spring-green">
-        {t('stage.selfLabel')} {trackingState === 'TRACKING' ? `· ${t('stage.expressionSending')}` : `· ${t(STATE_LABEL_KEY[trackingState])}`}
+      <span className="rounded-full bg-stage-elevated/70 px-2 py-0.5 text-[11px] text-spring-green">
+        {t('stage.selfLabel')}{isHost ? ` · ${t('stage.directorTag')}` : ''} {trackingState === 'TRACKING' ? `· ${t('stage.expressionSending')}` : `· ${t(STATE_LABEL_KEY[trackingState])}`}
       </span>
     </>
   )
