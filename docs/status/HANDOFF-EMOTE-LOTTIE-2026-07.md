@@ -18,14 +18,19 @@ tags: [status, handoff]
 게이트 각 phase 통과: tsc 0 · lint 0 · vitest **125/125** · i18nCoverage 4/4.
 
 ## ⚠️ 배포 상태 — **미배포**
-- 프론트(Phase 1·3·4): 커밋만. CF Pages(`chatterbox-7r8.pages.dev`) **미갱신** — 라이브는 구버전.
+- 프론트(Phase 1·3·4 **+5–6 Lottie**): 커밋만. CF Pages(`chatterbox-7r8.pages.dev`) **미갱신** — 라이브는 구버전.
 - create-room Edge(Phase 2): 커밋만. **재배포 안 하면 신규 방에 모닥불 기본배경 안 붙음**.
 - → 배포 재개 시 Phase 7 루프: `build`→번들 비밀키 감사(성역)→`create-room` Edge 재배포→CF Pages→인증 룸 실렌더.
 
 ## 남은 작업
 
-### Phase 5–6 — 옐로 Lottie 이모트 (**메인레포에서**)
-**블로커(이 워크트리):** `diffusionstudio/lottie` 생성 툴 = `npx skills add …` 인데 이 환경에 `skills` CLI 미존재("Unknown command: skills"). 렌더러 의존성은 npm 설치 가능하나 **자산(옐로 이모트 .json) 없으면 무용**. 웹다운 SVG는 상업 라이선스 위험(주인님 배제). → 메인레포에서 생성 툴로 진행.
+### Phase 5–6 — 옐로 Lottie 이모트 — **완료 (2026-07-10, 이 워크트리에서)**
+**블로커 정정:** "skills CLI 미존재"는 오판 — 진범은 **rtk 훅의 npx 재작성**(`npx skills` → `rtk skills` → "Unknown command"). **절대경로 `/opt/homebrew/bin/npx skills add diffusionstudio/lottie`** 로 우회 성공([[work-in-jason-worktree]] npx 함정과 동일 뿌리). `text-to-lottie` 스킬 설치됨(`.claude/skills/text-to-lottie/`).
+
+**구현(설계된 확장점 그대로 drop-in):**
+- 자산: `public/lotties/emotes/` 8종(기본 로드아웃 전부) — 96×96·60fps·2s 루프·투명, 옐로/앰버 라운드(fire-amber), 합계 ~29KB. 생성기 스크립트로 저작 후 lottie_light 헤드리스 몽타주(8종×5프레임) 육안 3라운드 튜닝.
+- 코드: `lottieEmoteMap.ts`(LOTTIE_BY_ID·MAX_LOTTIE_FLOATS=8) · `EmoteGlyph.tsx`(단일 렌더러+성능 가드 전부) · 통합 3곳 스왑 · `EMOTE_ID_BY_EMOJI` 역색인 · 휠 화면끝 클램프(부수 ponytail 해소) · 의존성 `lottie-web@5.13`(lottie_light **지연 청크** 169KB/gzip 47KB — 초기 번들 영향 0).
+- 검증: tsc 0·lint 0·vitest 130/130(계약 테스트 +5)·docs:check·build PASS + **인룸 E2E 7/7**(dev 프론트+프로드 백엔드: 콘솔 8/8 Lottie 실렌더·발사→플로트 svg·지연청크 로드·콘솔에러 0). 상세 = `docs/contracts/ReactionWheel.md §비주얼 레이어`.
 
 **설계된 확장점(구현하면 drop-in):**
 - 이모트는 전부 **데이터 주도**(`reactionCatalog.ts` `EMOTE_CATALOG` = `{id,emoji,label}[]`). id 가 안정 키.

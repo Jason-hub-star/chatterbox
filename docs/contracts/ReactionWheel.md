@@ -12,8 +12,12 @@ tags: [contract]
 |---|---|
 | `src/features/reaction/reactionSlots.ts` | 순수 지오메트리(`slotAngle`·`slotOffset`·`nearestSlot`) — 링 위 균등배치·드래그 방향 최근접 슬롯. N 가변. |
 | `src/stores/reactionStore.ts` | `slots`(커스터마이즈·localStorage 영속)·`floats`(휘발성). `DEFAULT_SLOTS` 8개(❓=핑 포함). |
-| `src/features/reaction/ReactionWheel.tsx` | 휠 UI·상호작용(홀드-드래그-릴리즈 + sticky 폴백). |
-| `src/features/reaction/ReactionOverlay.tsx` | `floats` → 좌석 위 부동 애니(rise+fade, 2.2s 자동제거). |
+| `src/features/reaction/ReactionWheel.tsx` | 휠 UI·상호작용(홀드-드래그-릴리즈 + sticky 폴백). 화면끝 클램프(중심을 뷰포트 안쪽으로, 조준 계산 동일 중심). |
+| `src/features/reaction/ReactionOverlay.tsx` | `floats` → 좌석 위 부동 애니(rise+fade, 2.2s 자동제거). 동시 Lottie ≤`MAX_LOTTIE_FLOATS`(초과 emoji 강등). |
+| `src/features/reaction/reactionCatalog.ts` | `EMOTE_CATALOG`(피커 팔레트 단일 SSOT — 1행 추가=자동 노출) + `EMOTE_ID_BY_EMOJI` 역색인(플로트 와이어는 emoji 만). |
+| `src/features/reaction/EmoteLoadoutPicker.tsx` | 로드아웃 편성 모달(추가/제거/순서/기본복원, `setSlots` 소비). |
+| `src/features/reaction/lottieEmoteMap.ts` | `LOTTIE_BY_ID`(id→`/lotties/emotes/<id>.json`)·`MAX_LOTTIE_FLOATS`. 빈 항목=emoji 폴백. |
+| `src/features/reaction/EmoteGlyph.tsx` | 이모트 비주얼 **단일 렌더러**(휠 칩·콘솔 버튼·좌석 플로트 공용) — Lottie/emoji 스왑 지점. |
 
 ## Props
 
@@ -39,7 +43,17 @@ interface ReactionOverlayProps {
 
 - 슬롯 = `ReactionSlot{ id, emoji, label }[]`. 휠은 store `slots` 를 읽어 렌더 — 개수·이모지 무관하게 각도=360/N 자동 배치.
 - `setSlots(slots)` → localStorage(`chatterbox.reactionSlots`) 영속. 상한 `MAX_SLOTS=12`.
-- **피커 UI 는 후속 슬라이스** — 현재는 기본 세트 + 아키텍처(데이터 주도·영속)만.
+- ~~피커 UI 는 후속~~ **구현됨(2026-07-10)**: `EmoteLoadoutPicker`(이모트 콘솔 ✏️에서 개방) — 팔레트는 `EMOTE_CATALOG` 순회.
+
+## 비주얼 레이어 — 옐로 Lottie (2026-07-10)
+
+기능(슬롯/발사) ⊥ 비주얼(글리프) 레이어 분리. 글리프는 **`EmoteGlyph` 한 곳**에서 emoji↔Lottie 스왑.
+
+- **자산**: `public/lotties/emotes/<id>.json` — 96×96·60fps·2s 심리스 루프·투명배경, 옐로/앰버 라운드 세트(fire-amber 언어, 개당 1.5~4.9KB). 기본 로드아웃 8종 완비.
+- **추가 절차**: ① 자산 1파일 ② `LOTTIE_BY_ID` 1줄 — 컴포넌트 로직 변경 0. 고아 매핑·누락 파일은 `tests/unit/lottieEmoteMap.test.ts` 가 게이트.
+- **통합 3곳**: 휠 칩(30px)·이모트 콘솔 버튼(24px)·좌석 플로트(40px). 플로트는 emoji 만 실리므로 `EMOTE_ID_BY_EMOJI` 로 역매핑.
+- **성능 가드(성역)**: `prefers-reduced-motion`·coarse 포인터·뷰포트<480px → emoji / 렌더러=`lottie_light` **지연 청크**(169KB·gzip 47KB, 첫 Lottie 렌더 시에만 로드) / JSON fetch 1회 캐시(+`structuredClone` — lottie 가 데이터 변이) / 플로트 동시 Lottie ≤8(`MAX_LOTTIE_FLOATS`, 초과 emoji·`MAX_FLOATS=30` 별개).
+- 로드 전·실패 시 emoji 그대로 표시(시각 공백 없음). 인룸 E2E 7/7(콘솔 8/8 실렌더·발사→플로트 svg·지연청크·콘솔에러 0, 2026-07-10).
 
 ## DataChannel + 서버 릴레이
 
@@ -72,7 +86,7 @@ interface ReactionOverlayProps {
 - **모바일 뷰어**(`canPublishData=false`) 리액션: 서버 릴레이가 actor/host 와 동일 경로라 멤버십만 통과하면 뷰어도 가능 — 뷰어 role 게이트·전용 UI 만 **후속**.
 - **서버 rate-limit**(토큰버킷/KV)·검열 allowlist 는 후속(현재 클라 5/s 쓰로틀).
 - ~~모바일 롱프레스 트리거·키보드 핫키~~ **구현됨(P-5, 2026-07-08)**: 무대 터치 롱프레스 ≥500ms → 휠 `initialSticky` 개화(탭 선택; 개화 직후 touchend `preventDefault` 로 합성 mousedown 의 백드롭 닫힘 차단, 10px 이동=스크롤 의도로 취소) · 숫자키 1~N 즉발(입력 필드 포커스·수식키 조합 제외). 트리거는 RoomPage, 휠은 `initialSticky` prop 만 추가. 헤드리스 실측 9/9(touch dispatch→개화→sticky→탭 발사·핫키 발사·입력중 미발사).
-- ponytail: 2중링(12+)·전용 핑 사운드·화면끝 클램프.
+- ponytail: 2중링(12+)·전용 핑 사운드. ~~화면끝 클램프~~ **구현됨(2026-07-10)** — 뷰포트<휠지름 축은 중앙 폴백.
 
 ## MUST NOT (금지 사항)
 

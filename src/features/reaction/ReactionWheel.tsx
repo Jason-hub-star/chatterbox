@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactionStore } from '@/stores/reactionStore'
 import { slotOffset, nearestSlot } from './reactionSlots'
+import EmoteGlyph from './EmoteGlyph'
 
 // 라디얼 리액션 휠. RoomPage 가 무대 우클릭(mousedown button 2)으로 origin 을 세팅해 마운트한다(열 때마다 새 마운트 = 상태 초기화).
 // 상호작용: 홀드-드래그-릴리즈(파이메뉴 방식) — 조준 슬롯 위에서 떼면 발사, 중앙서 뗌/터치 롱프레스는 sticky(열린 채 → 탭·클릭 선택).
@@ -26,9 +27,16 @@ export default function ReactionWheel({ origin, initialSticky, onFire, onClose }
   const [sticky, setSticky] = useState(initialSticky ?? false)
   const stickyRef = useRef(initialSticky ?? false) // 이벤트 핸들러에서만 쓰기 — sticky 진입 후 mouseup 중복 발사 차단
 
+  // 화면끝 클램프(ReactionWheel.md ponytail 해소): 가장자리에서 열어도 휠 전체가 뷰포트 안에 들도록 중심을 안쪽으로 민다.
+  // 조준 계산도 같은 중심을 쓰므로 시각·입력이 어긋나지 않는다.
+  const M = RADIUS + CHIP
+  const clampAxis = (v: number, max: number) => (max < 2 * M ? max / 2 : Math.min(Math.max(v, M), max - M))
+  const cx = clampAxis(origin.x, window.innerWidth)
+  const cy = clampAxis(origin.y, window.innerHeight)
+
   useEffect(() => {
     const count = slots.length
-    const aimAt = (e: MouseEvent) => nearestSlot(e.clientX - origin.x, e.clientY - origin.y, count, DEADZONE)
+    const aimAt = (e: MouseEvent) => nearestSlot(e.clientX - cx, e.clientY - cy, count, DEADZONE)
     const onMove = (e: MouseEvent) => setActive(aimAt(e))
     const onUp = (e: MouseEvent) => {
       if (stickyRef.current) return // sticky = 이미 떼진 상태 → 이후 선택은 클릭으로
@@ -50,7 +58,7 @@ export default function ReactionWheel({ origin, initialSticky, onFire, onClose }
       document.removeEventListener('mouseup', onUp)
       document.removeEventListener('keydown', onKey)
     }
-  }, [origin, slots, onFire, onClose])
+  }, [cx, cy, slots, onFire, onClose])
 
   return (
     <div
@@ -62,7 +70,7 @@ export default function ReactionWheel({ origin, initialSticky, onFire, onClose }
       {/* sticky 모드 바깥 클릭 → 닫기(press 모드는 document mouseup 이 처리) */}
       {sticky && <div className="absolute inset-0" onMouseDown={onClose} />}
 
-      <div className="absolute" style={{ left: origin.x, top: origin.y }}>
+      <div className="absolute" style={{ left: cx, top: cy }}>
         {/* 링 배경 + 중앙 허브(현재 조준 라벨) */}
         <div
           className="pointer-events-none absolute grid place-items-center rounded-full bg-stage-base/70 text-[11px] text-stage-text-muted backdrop-blur-sm"
@@ -88,7 +96,7 @@ export default function ReactionWheel({ origin, initialSticky, onFire, onClose }
               }`}
               style={{ left: x - CHIP / 2, top: y - CHIP / 2, width: CHIP, height: CHIP }}
             >
-              <span aria-hidden>{s.emoji}</span>
+              <EmoteGlyph id={s.id} emoji={s.emoji} size={30} />
             </button>
           )
         })}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactionStore } from '@/stores/reactionStore'
 import EmoteLoadoutPicker from './EmoteLoadoutPicker'
+import EmoteGlyph from './EmoteGlyph'
 
 // 이모트 콘솔(ROOM-REDESIGN 우도크 재분배) — 방분위기 + 사운드보드 통합 카드.
 // = 활기 실집계(reactionStore.floats — 가짜/죽은UI 아님) 헤더 인라인 + 로드아웃 전 슬롯 그리드(휠과 공유) + ✏️ 피커.
@@ -67,7 +68,7 @@ export default function EmoteConsoleCard({ speaking, onReaction, disabled }: Pro
             title={s.label}
             className="grid place-items-center rounded-lg border border-stage-border bg-stage-elevated/60 py-1.5 text-lg transition-colors hover:border-fire-amber/60 disabled:opacity-40"
           >
-            <span aria-hidden>{s.emoji}</span>
+            <EmoteGlyph id={s.id} emoji={s.emoji} size={24} />
           </button>
         ))}
       </div>

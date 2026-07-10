@@ -23,3 +23,6 @@ const EXTRA_EMOTES: ReactionSlot[] = [
 ]
 
 export const EMOTE_CATALOG: ReactionSlot[] = [...DEFAULT_SLOTS, ...EXTRA_EMOTES]
+
+// 플로트(와이어)는 emoji 만 실리므로 비주얼 레이어(EmoteGlyph)용 역색인 — 카탈로그가 단일 SSOT.
+export const EMOTE_ID_BY_EMOJI: ReadonlyMap<string, string> = new Map(EMOTE_CATALOG.map((e) => [e.emoji, e.id]))
