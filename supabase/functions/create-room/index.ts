@@ -52,5 +52,35 @@ Deno.serve(async (req) => {
     return json({ error: "Create participant failed", detail: pErr?.message }, 500);
   }
 
+  // PROFILE-05 팔로워 공연시작 알림 — as-built: rooms.status 'live' 전환이 미구현이라 생성 시점 발송
+  // (live FSM 구현 시 그 전이 지점으로 이동). 스팸 캡: 시간당 10회 + 팔로워 상한 200. 실패해도 방 생성은 성립.
+  try {
+    const { data: notifyAllowed } = await service
+      .rpc("check_rate_limit", { p_key: `stream-notify:${userId}`, p_max: 10, p_window_sec: 3_600 });
+    if (notifyAllowed !== false) {
+      const { data: followers } = await service
+        .from("friendships")
+        .select("user_id")
+        .eq("relationship_type", "follow")
+        .eq("friend_id", userId)
+        .eq("status", "accepted")
+        .is("deleted_at", null)
+        .limit(200);
+      if (followers?.length) {
+        const { data: host } = await service.from("users").select("display_name").eq("id", userId).maybeSingle();
+        await service.from("notifications").insert(
+          followers.map((f) => ({
+            user_id: f.user_id,
+            type: "followed_creator_stream_start",
+            room_id: room.id,
+            payload: { room_id: room.id, room_title: title, host_name: host?.display_name ?? null },
+          })),
+        );
+      }
+    }
+  } catch (e) {
+    console.error("follower notify failed:", e instanceof Error ? e.message : String(e));
+  }
+
   return json({ room_id: room.id, participant_id: part.id, status: room.status }, 201);
 });

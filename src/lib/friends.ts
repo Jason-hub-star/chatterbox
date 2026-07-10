@@ -11,6 +11,7 @@ export interface PendingInEntry extends FriendEntry {
 }
 export interface FriendLists {
   friends: FriendEntry[]
+  following: FriendEntry[] // 내가 팔로우(PROFILE-05 공연시작 알림 관계, 비상호)
   pending_in: PendingInEntry[]
   pending_out: FriendEntry[]
 }
@@ -30,3 +31,6 @@ export const respondFriendRequest = (accessToken: string, friendshipId: string, 
 
 export const removeFriend = (accessToken: string, targetUserId: string) =>
   callFn<{ ok: boolean }>('remove-friend', accessToken, { target_user_id: targetUserId })
+
+export const setFollow = (accessToken: string, targetUserId: string, follow: boolean) =>
+  callFn<{ ok: boolean; following: boolean }>('set-follow', accessToken, { target_user_id: targetUserId, follow })

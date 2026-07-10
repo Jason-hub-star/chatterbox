@@ -4,7 +4,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useRealtimeRow } from '@/hooks/useRealtimeRow'
 import { listRecentPeople, type RecentPerson } from '@/lib/rooms'
-import { removeFriend, respondFriendRequest, sendFriendRequest } from '@/lib/friends'
+import { removeFriend, respondFriendRequest, sendFriendRequest, setFollow } from '@/lib/friends'
 import { toast } from '@/hooks/useToast'
 import i18n from '@/i18n'
 
@@ -16,6 +16,7 @@ export default function FriendsButton() {
   const token = useUserStore((s) => s.session?.access_token)
   const appUserId = useUserStore((s) => s.appUserId)
   const friends = useFriendStore((s) => s.friends)
+  const following = useFriendStore((s) => s.following)
   const pendingIn = useFriendStore((s) => s.pendingIn)
   const pendingOut = useFriendStore((s) => s.pendingOut)
   const onlinePresence = useFriendStore((s) => s.onlinePresence)
@@ -83,6 +84,23 @@ export default function FriendsButton() {
     setBusy(targetUserId)
     try {
       await removeFriend(token, targetUserId)
+      reload()
+    } catch {
+      toast.error(i18n.t('friends.actionFailed'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // 팔로우 토글(PROFILE-04/05) — 팔로우한 사람이 공연을 열면 알림(followed_creator_stream_start).
+  const followingIds = new Set(following.map((f) => f.user_id))
+  const toggleFollow = async (targetUserId: string) => {
+    if (!token) return
+    setBusy(targetUserId)
+    try {
+      const next = !followingIds.has(targetUserId)
+      await setFollow(token, targetUserId, next)
+      if (next) toast.success(i18n.t('friends.followDone'))
       reload()
     } catch {
       toast.error(i18n.t('friends.actionFailed'))
@@ -174,6 +192,22 @@ export default function FriendsButton() {
             )}
           </section>
 
+          {following.length > 0 && (
+            <section className="mt-2">
+              <h4 className="text-[11px] font-semibold text-stage-text-muted">{t('friends.following')}</h4>
+              <ul className="mt-1 space-y-1">
+                {following.map((f) => (
+                  <li key={f.user_id} className="group flex items-center gap-1.5 text-sm">
+                    <span aria-hidden className="shrink-0 text-[11px]">🔔</span>
+                    <span className="min-w-0 flex-1 truncate">{f.display_name ?? f.user_id.slice(0, 8)}</span>
+                    <button type="button" disabled={busy === f.user_id} onClick={() => void toggleFollow(f.user_id)} aria-label={t('friends.unfollow')}
+                      className="hidden text-[11px] text-stage-text-muted hover:text-fire-hot group-hover:block disabled:opacity-40">✕</button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section className="mt-3 border-t border-stage-border pt-2">
             <button type="button" onClick={() => void openAdd()} aria-expanded={showAdd}
               className="text-[11px] font-semibold text-stage-text-muted hover:text-stage-text">
@@ -192,6 +226,10 @@ export default function FriendsButton() {
                         <button type="button" disabled={busy === p.user_id} onClick={() => void request(p.user_id)}
                           className="rounded border border-stage-border px-2 py-0.5 text-[11px] text-stage-text-muted hover:text-stage-text disabled:opacity-40">
                           {t('friends.request')}
+                        </button>
+                        <button type="button" disabled={busy === p.user_id} onClick={() => void toggleFollow(p.user_id)}
+                          className={`rounded px-2 py-0.5 text-[11px] disabled:opacity-40 ${followingIds.has(p.user_id) ? 'bg-fire-amber/20 text-fire-amber' : 'border border-stage-border text-stage-text-muted hover:text-stage-text'}`}>
+                          {followingIds.has(p.user_id) ? t('friends.followingBadge') : t('friends.follow')}
                         </button>
                       </li>
                     ))}

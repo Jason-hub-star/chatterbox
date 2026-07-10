@@ -9,7 +9,14 @@ import { useUserStore } from '@/stores/userStore'
 interface Notif {
   id: string
   type: string
-  payload: { invite_code?: string; room_title?: string; host_name?: string }
+  payload: {
+    invite_code?: string
+    room_title?: string
+    host_name?: string
+    room_id?: string // followed_creator_stream_start — 클릭 시 /rooms/:id/ready 직행
+    requester_name?: string | null // friend_request
+    name?: string | null // friend_accepted
+  }
   read_at: string | null
 }
 
@@ -75,6 +82,10 @@ export default function NotificationBell() {
     setOpen(false)
     // 재초대/예약초대: 초대코드가 있으면 로비 초대 배너 흐름(LOB-05) 재사용.
     if (n.payload.invite_code) navigate(`/lobby?invite=${n.payload.invite_code}`)
+    // 팔로우 공연시작(PROFILE-05): 방으로 직행(분장실 경유).
+    else if (n.type === 'followed_creator_stream_start' && typeof n.payload.room_id === 'string') {
+      navigate(`/rooms/${n.payload.room_id}/ready`)
+    }
   }
 
   const label = (n: Notif): string => {
@@ -83,6 +94,10 @@ export default function NotificationBell() {
     if (n.type === 're_invite') return t('notif.reInvite', { host, room })
     if (n.type === 'reservation_invite') return t('notif.reservationInvite', { host, room })
     if (n.type === 'reservation_reminder') return t('notif.reservationReminder', { room })
+    // FriendSystem(PROFILE-04/05)
+    if (n.type === 'friend_request') return t('notif.friendRequest', { name: n.payload.requester_name ?? '?' })
+    if (n.type === 'friend_accepted') return t('notif.friendAccepted', { name: n.payload.name ?? '?' })
+    if (n.type === 'followed_creator_stream_start') return t('notif.streamStart', { host, room })
     return n.type
   }
 

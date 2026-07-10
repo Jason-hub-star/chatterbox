@@ -12,15 +12,17 @@ describe('friendStore (PROFILE-04)', () => {
     listFriendsMock.mockReset()
   })
 
-  it('load: list-friends 응답을 상태에 반영한다', async () => {
+  it('load: list-friends 응답을 상태에 반영한다(following 포함)', async () => {
     listFriendsMock.mockResolvedValue({
       friends: [{ user_id: 'a', display_name: 'A' }],
+      following: [{ user_id: 'd', display_name: 'D' }],
       pending_in: [{ friendship_id: 'f1', user_id: 'b', display_name: 'B' }],
       pending_out: [{ user_id: 'c', display_name: null }],
     })
     await useFriendStore.getState().load('tok')
     const s = useFriendStore.getState()
     expect(s.friends).toHaveLength(1)
+    expect(s.following[0].user_id).toBe('d')
     expect(s.pendingIn[0].friendship_id).toBe('f1')
     expect(s.pendingOut[0].user_id).toBe('c')
     expect(s.loading).toBe(false)

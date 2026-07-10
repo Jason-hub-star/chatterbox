@@ -7,6 +7,7 @@ export type PresenceActivity = 'lobby' | 'room'
 
 interface FriendStore {
   friends: FriendEntry[]
+  following: FriendEntry[]
   pendingIn: PendingInEntry[]
   pendingOut: FriendEntry[]
   onlinePresence: Record<string, PresenceActivity> // users.id → 활동(접속 중인 사용자만 키 존재)
@@ -18,6 +19,7 @@ interface FriendStore {
 
 const INITIAL = {
   friends: [] as FriendEntry[],
+  following: [] as FriendEntry[],
   pendingIn: [] as PendingInEntry[],
   pendingOut: [] as FriendEntry[],
   onlinePresence: {} as Record<string, PresenceActivity>,
@@ -31,7 +33,7 @@ export const useFriendStore = create<FriendStore>((set) => ({
     set({ loading: true })
     try {
       const lists = await listFriends(accessToken)
-      set({ friends: lists.friends, pendingIn: lists.pending_in, pendingOut: lists.pending_out, loading: false })
+      set({ friends: lists.friends, following: lists.following ?? [], pendingIn: lists.pending_in, pendingOut: lists.pending_out, loading: false })
     } catch {
       set({ loading: false }) // 목록 실패는 조용히(다음 realtime/재열기에서 재시도)
     }
