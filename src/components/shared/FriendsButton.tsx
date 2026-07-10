@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useFriendStore } from '@/stores/friendStore'
@@ -13,6 +14,7 @@ import i18n from '@/i18n'
 // 실시간: friendships 당사자 행 postgres_changes ×2(user_id·friend_id) → 신뢰 소스(list-friends) 재조회.
 export default function FriendsButton() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const token = useUserStore((s) => s.session?.access_token)
   const appUserId = useUserStore((s) => s.appUserId)
   const friends = useFriendStore((s) => s.friends)
@@ -157,7 +159,7 @@ export default function FriendsButton() {
                     <span className="min-w-0 flex-1 truncate">{p.display_name ?? p.user_id.slice(0, 8)}</span>
                     <button type="button" disabled={busy === p.friendship_id} onClick={() => void respond(p.friendship_id, 'accept')}
                       className="rounded bg-fire-amber px-2 py-0.5 text-[11px] font-semibold text-stage-base disabled:opacity-40">
-                      {t('friends.accept')}
+                      {busy === p.friendship_id ? t('friends.processing') : t('friends.accept')}
                     </button>
                     <button type="button" disabled={busy === p.friendship_id} onClick={() => void respond(p.friendship_id, 'reject')}
                       className="rounded border border-stage-border px-2 py-0.5 text-[11px] text-stage-text-muted disabled:opacity-40">
@@ -223,7 +225,14 @@ export default function FriendsButton() {
               <div className="mt-1">
                 <p className="text-[10px] text-stage-text-muted">{t('friends.addFromRecent')}</p>
                 {recent === null ? null : addable.length === 0 ? (
-                  <p className="mt-1 text-[11px] text-stage-text-muted">{t('friends.noRecent')}</p>
+                  // UX-1(델타 감사): 최근 사람 0명 신규유저 고립 — 데드엔드 대신 대극장 참여 안내.
+                  <div className="mt-1">
+                    <p className="text-[11px] text-stage-text-muted">{t('friends.noRecentHint')}</p>
+                    <button type="button" onClick={() => { setOpen(false); navigate('/lobby/theater') }}
+                      className="mt-1 rounded bg-fire-amber px-2 py-0.5 text-[11px] font-semibold text-stage-base">
+                      {t('friends.goTheater')}
+                    </button>
+                  </div>
                 ) : (
                   <ul className="mt-1 space-y-1">
                     {addable.map((p) => (

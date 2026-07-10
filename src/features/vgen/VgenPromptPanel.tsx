@@ -7,6 +7,7 @@ import { uploadAvatarReference } from '@/lib/avatarReference'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { creditCost as costOf, estimateUsd, RESOLUTIONS, type VgenResolution } from '@/lib/fal'
 import CostConfirmDialog from '@/components/shared/CostConfirmDialog'
+import { vgenErrorKey } from '@/lib/vgenError'
 
 // VGEN 프롬프트 패널(slice1: 호스트 단일작성). 협업 LWW·커서 어웨어니스는 slice2.
 // SSOT: docs/contracts/VgenPanel.md §VgenPromptPanel
@@ -131,7 +132,11 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
         </label>
       )}
 
-      {(error || refineErr) && <p className="mt-2 text-sm text-red-400">{error || refineErr}</p>}
+      {(error || refineErr) && (
+        <p className="mt-2 text-sm text-red-400">
+          {error ? (vgenErrorKey(error) ? t(vgenErrorKey(error)!) : error) : refineErr}
+        </p>
+      )}
       {balance < cost && <p className="mt-2 text-xs text-red-400">{t('vgen.insufficientCredits')}</p>}
 
       <button onClick={() => setConfirm(true)} disabled={!canSubmit}

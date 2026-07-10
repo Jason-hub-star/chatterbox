@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useUserStore } from '@/stores/userStore'
+import { toast } from '@/hooks/useToast'
 
 // 인앱 알림 벨(Phase 5). Edge 불요 — notifications RLS 가 본인 행만 열어주므로 직접 SELECT +
 // postgres_changes 구독(INSERT). 읽음 = read_at 만(컬럼 그랜트). 마이그 20260708140000.
@@ -78,12 +79,22 @@ export default function NotificationBell() {
     }
   }
 
-  const onItem = (n: Notif) => {
+  const onItem = async (n: Notif) => {
     setOpen(false)
     // 재초대/예약초대: 초대코드가 있으면 로비 초대 배너 흐름(LOB-05) 재사용.
-    if (n.payload.invite_code) navigate(`/lobby?invite=${n.payload.invite_code}`)
-    // 팔로우 공연시작(PROFILE-05): 방으로 직행(분장실 경유).
-    else if (n.type === 'followed_creator_stream_start' && typeof n.payload.room_id === 'string') {
+    if (n.payload.invite_code) {
+      navigate(`/lobby?invite=${n.payload.invite_code}`)
+      return
+    }
+    // 팔로우 공연시작(PROFILE-05): 방 상태 재검증 후 분기(UX-2, 델타 감사) — 종료/만석이면 데드엔드 대신 안내.
+    if (n.type === 'followed_creator_stream_start' && typeof n.payload.room_id === 'string') {
+      const { data } = await supabase
+        .from('public_rooms')
+        .select('status, current_participants, max_participants')
+        .eq('id', n.payload.room_id)
+        .maybeSingle()
+      if (!data || data.status === 'ended') { toast.info(t('notif.roomEnded')); return }
+      if ((data.current_participants ?? 0) >= (data.max_participants ?? 6)) { toast.info(t('notif.roomFull')); return }
       navigate(`/rooms/${n.payload.room_id}/ready`)
     }
   }
@@ -136,7 +147,7 @@ export default function NotificationBell() {
             items.map((n) => (
               <button
                 key={n.id}
-                onClick={() => onItem(n)}
+                onClick={() => void onItem(n)}
                 className="block w-full px-3 py-2 text-left text-sm hover:bg-stage-panel"
               >
                 {label(n)}
