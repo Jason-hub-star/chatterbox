@@ -67,6 +67,8 @@ tags: [design, room, redesign]
 
 > **as-built (2026-07-10, Fable — 인수 phase-loop):** R1 셸 커밋(OPS-1). **R2** 무대(호스트 앰버링·크라운·별자리 글로우·발화 글로우·이름칩·감독태그) `7ebf613`·`bd97384`. **R3** 좌도크 세션정보 카드(장르·러닝타임·언어 실데이터·Intl.DisplayNames) `bd97384`(다음순서 큐 defer). **R4** 우도크 카드 스택 `e442e61`: 방분위기=리액션 활기 **실집계 라이트**(활성 리액션 수+발화, 가짜 아님)+발화 파형(장식) / 사운드보드=slots 2×3→sendReaction 재사용 / RightPanel **도구탭 전 보존**(chat·dub·vgen·notes·host — 주인님 콜=카드스택+도구탭). 디렉터노트 배선(ROOM-17, chat 채널 message_type=note·author=participant 위조차단) `7ebf613`. **defer(후속):** 초대하기 상단 승격·라이브 타이머 완전 재배치·하단 스텁 배선(헤드폰/녹음/아바타)·다음순서 큐·채팅 오버레이 버블·영상 스크러버·mood 백엔드 집계·사운드보드 SFX. 게이트 tsc0·lint0·test120/120·docs:check PASS. 배포=프론트 CF Pages만(엔진 무변경).
 
+> **무대 씬 후속 (2026-07-10, Fable — `bd97384`~`2a0a6fc`):** 메인뷰 확대(센터 그리드 1.9fr) → **무대 씬이 센터 칼럼을 꽉 채움**(고정 4/3 aspect 제거·`flex-1 h-full`·place-items stretch → 검은 여백 제거). **무대 씬 배경 배선(엔진 기존재 확인)**: 방장 선택 `background_url`(HostConsole 관리탭 `STAGE_BACKGROUNDS`→`set-room-background` Edge `/scenes/` prefix 검증→`bg_change` 브로드캐스트→전원) 이 **무대 전체 배경 단일 렌더**(opacity-90), 센터 `MainView`는 투명(공유영상 자리)—이중 렌더 제거. 신규 자산 `public/scenes/room-stage/campfire-forest.webp`(주인님 제공·모닥불 테마 정합, WebP 120KB). **빈 아바타 슬롯 숨김**(씬 주역화) + **별자리 직선 연결선 제거**(→ §6.1 별자리 규칙 **폐기**: 동적 아바타 위치 추종이라 정적 생성 불가·씬이 분위기 대체, 원하면 곡선 글로우 코드로만 재작성 가능). 부수: 공유링크 라우트 버그 `/room/`→`/rooms/` 정수정(`b179e72`, 유일 호출처). 배포·인증 실렌더 검증 완료(테스트 방 배경 강제→MainView 씬 확인).
+
 ## 4. defer (컨셉엔 있으나 이번 MVP 밖 — 백엔드 신규, 후속 트랙)
 
 분위기 지수 산출(mood 백엔드) · 사운드보드 SFX 오디오 · 룸 녹음 · 다음순서 큐 로직 · 카메라/헤드폰 룸레벨 토글 · 채팅 오버레이 버블(ChatOverlay §7) · 영상 스크러버 · 별자리 글로우 풀 애니. → 각각 **시각 자리만** 잡고 배선/로직은 후속. 무리한 10기능 동시 신규 = 미니멀리즘 위반, 금지.
