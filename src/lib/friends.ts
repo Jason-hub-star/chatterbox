@@ -5,6 +5,8 @@ import { callFn } from '@/lib/edgeFn'
 export interface FriendEntry {
   user_id: string
   display_name: string | null
+  online?: boolean // DP-1: 서버가 last_active_at 로 판정(친구만). following/pending 엔 없음
+  activity?: 'room' | 'lobby'
 }
 export interface PendingInEntry extends FriendEntry {
   friendship_id: string

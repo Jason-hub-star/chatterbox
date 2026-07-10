@@ -81,7 +81,7 @@ export default function App() {
   const loadConfig = useConfigStore((s) => s.loadConfig)
   const subscribeRealtime = useConfigStore((s) => s.subscribeRealtime)
   const initAuth = useUserStore((s) => s.init)
-  usePresence() // friends_presence 전역 접속상태(PROFILE-04, LoL식) — 로그인 시 track, 방 입장 시 활동 갱신
+  usePresence() // 접속 heartbeat(PROFILE-04·DP-1) — 본인 users.last_active_at 주기 갱신, 친구 online 은 list-friends 서버 판정
 
   useEffect(() => {
     loadConfig()

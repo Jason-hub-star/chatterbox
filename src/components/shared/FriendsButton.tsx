@@ -34,6 +34,12 @@ export default function FriendsButton() {
   }, [token, load])
   useRealtimeRow('friendships', 'user_id', appUserId, reload)
   useRealtimeRow('friendships', 'friend_id', appUserId, reload)
+  // presence 폴링(DP-1): 전역 채널 대신 패널 열린 동안만 주기 재조회 → 친구 online/activity 갱신.
+  useEffect(() => {
+    if (!open || !token) return
+    const id = setInterval(() => void load(token), 15_000)
+    return () => clearInterval(id)
+  }, [open, token, load])
 
   const online = friends.filter((f) => onlinePresence[f.user_id])
   const offline = friends.filter((f) => !onlinePresence[f.user_id])

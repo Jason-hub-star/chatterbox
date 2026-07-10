@@ -12,19 +12,24 @@ describe('friendStore (PROFILE-04)', () => {
     listFriendsMock.mockReset()
   })
 
-  it('load: list-friends 응답을 상태에 반영한다(following 포함)', async () => {
+  it('load: list-friends 응답을 상태에 반영 + online 친구만 presence 파생', async () => {
     listFriendsMock.mockResolvedValue({
-      friends: [{ user_id: 'a', display_name: 'A' }],
+      friends: [
+        { user_id: 'a', display_name: 'A', online: true, activity: 'room' },
+        { user_id: 'e', display_name: 'E', online: false, activity: 'lobby' },
+      ],
       following: [{ user_id: 'd', display_name: 'D' }],
       pending_in: [{ friendship_id: 'f1', user_id: 'b', display_name: 'B' }],
       pending_out: [{ user_id: 'c', display_name: null }],
     })
     await useFriendStore.getState().load('tok')
     const s = useFriendStore.getState()
-    expect(s.friends).toHaveLength(1)
+    expect(s.friends).toHaveLength(2)
     expect(s.following[0].user_id).toBe('d')
     expect(s.pendingIn[0].friendship_id).toBe('f1')
     expect(s.pendingOut[0].user_id).toBe('c')
+    // presence 파생(DP-1): online 친구만 키 존재, 오프라인 친구는 제외
+    expect(s.onlinePresence).toEqual({ a: 'room' })
     expect(s.loading).toBe(false)
   })
 
@@ -35,9 +40,13 @@ describe('friendStore (PROFILE-04)', () => {
     expect(useFriendStore.getState().friends).toHaveLength(0)
   })
 
-  it('presence 맵 세팅 + reset 초기화', () => {
-    useFriendStore.getState().setOnlinePresence({ a: 'room', b: 'lobby' })
-    expect(useFriendStore.getState().onlinePresence.a).toBe('room')
+  it('reset 초기화(presence 포함)', async () => {
+    listFriendsMock.mockResolvedValue({
+      friends: [{ user_id: 'a', display_name: 'A', online: true, activity: 'lobby' }],
+      following: [], pending_in: [], pending_out: [],
+    })
+    await useFriendStore.getState().load('tok')
+    expect(useFriendStore.getState().onlinePresence.a).toBe('lobby')
     useFriendStore.getState().reset()
     expect(useFriendStore.getState().onlinePresence).toEqual({})
   })
