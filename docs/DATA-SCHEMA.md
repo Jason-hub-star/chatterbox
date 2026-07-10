@@ -984,6 +984,10 @@ CREATE TABLE reports_appeals (
 -- Side effect: moderation_reports.appeal_count/final_status can be derived or denormalized by moderation-action.
 ```
 
+### 1.19b friendships — **as-built (2026-07-10, 마이그 `20260710150000`)**
+
+계약(contracts/FriendSystem.md §Supabase 스키마) 그대로 배포: `(id, user_id, friend_id, relationship_type friend|follow, status pending|accepted|rejected, created/updated/deleted_at)` + `no_self_friendship` CHECK + `unique(user_id, friend_id, relationship_type)` + 인덱스 3(user_id·friend_id·status). RLS: SELECT=당사자(`current_user_id() in (user_id, friend_id)`), **쓰기 정책 없음**(Edge service 전용 — 미러 행·rate-limit 서버 강제). `supabase_realtime` publication 등재(패널 실시간 갱신). 이름 해석은 `list-friends` Edge(users RLS=본인만).
+
 ### 1.20 user_blocks
 
 ```sql

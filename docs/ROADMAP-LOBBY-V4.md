@@ -44,15 +44,15 @@
 ## 트랙 1 — 관별 기능 고도화 (SSOT: FEATURE-SPEC.md)
 
 ### 🛠 공방 (쇼츠 제작소) — **1순위: 골격→실사용**
-- [ ] **VGEN-11** 세로형 9:16 쇼츠 — `aspect_ratio` 파라미터는 이미 `trigger-vgen`/`lib/vgen` 에 존재(기본 9:16), **선택 UI(SET-08)만 미배선**. `VgenPromptPanel` 에 비율·해상도↔비용 토글 추가. 15초/클립.
-- [ ] **VGEN-12** 완성 쇼츠 **다운로드 + 공유 링크** — 계약 `VgenExport.md`만 존재·**컴포넌트 0**(감사 확정). `getVgenUrl` 재사용, 스튜디오는 룸 공유(`onShare` 미전달로 버튼 숨김) 대신 링크/다운로드. 바이럴 루프. 노력 **M**.
+- [x] **VGEN-11** 세로형 9:16 쇼츠 — **2026-07-10 구현**(`ee5f02e`): `VgenPromptPanel` 비율 토글(9:16 기본↔16:9) → `aspect_ratio` 관통(백엔드 기존재·dedup 해시 포함 실측). 1:1 등 추가 비율은 수요 시.
+- [x] **VGEN-12** 완성 쇼츠 **다운로드 + 공유 링크** — **2026-07-10 구현**(`ee5f02e`): done 잡 [다운로드](blob 저장·CORS 시 새 탭 폴백)+[링크 복사](만료 고지) — 스튜디오·룸 공용(VgenStatusTab). 영구 공유 페이지(VgenExport.md)는 후속.
 - [ ] 15초 클립 상향 — 백엔드 플래그 준비, `DURATIONS=[5,10]` 하드코딩(`VgenPromptPanel:14`)만. 노력 **XS**.
 - [ ] (P2) 구도 프리셋 · 60초 4클립 순차 합성 · 히스토리 갤러리(현재 리스트→썸네일 그리드).
 
 ### 🍵 찻집 (사람) — **2순위: 계약 완비, 배선 위주**
 > **IA 결정(2026-07-09 감사 · 2026-07-10 주인님 재확정 — LoL식):** 친구 목록·온라인 프레즌스는 **로비 광장 상시**(NotificationBell 옆 팝오버 — uiux #30 3클릭·#22 다중경로)에 두고, 찻집은 "사람과 관계 맺는" **deep 화면**(재초대·친구 요청 관리·아바타 자랑)으로 분리. → FriendSystem UI 복잡도↓(별도 FriendListPage/라우트 불필요). `contracts/FriendSystem.md`(friendships·user_blocks·friends_presence) **계약 완비**인데 `grep friendships src/`=**0줄**(코드 미착수 실대조).
-- [ ] **친구 팝오버(로비 상시)** — 벨 옆 `FriendsButton` → 친구·온라인 프레즌스(`friends_presence` 채널). `friendStore` 신설. **로비 IA의 핵심 진입점**(찻집 밖).
-- [ ] **PROFILE-04/05** 친구/팔로우 토글 + 팔로우 **라이브 알림**(`followed_creator_stream_start` 미구현 — NotificationBell 확장) — 찻집 칩·프로필에서 요청.
+- [x] **친구 팝오버(로비 상시)** — **2026-07-10 구현**(`7b81d9a`, LoL식 주인님 재확정): 벨 옆 `FriendsButton`→패널(온라인 초록점·광장/공연 중·요청 수신함·최근사람 추가)·`friendStore`·`usePresence`(App 전역 track).
+- [x] **PROFILE-04/05** 친구/팔로우 토글 + 팔로우 **라이브 알림** — **2026-07-10 구현**(`1c5106d`): set-follow+팔로우 중 섹션+`followed_creator_stream_start`(create-room 시점 as-built·캡 10/h·클릭→방 직행). 잔여: 프로필 `/user/:id`·차단 UI(defer).
 - [ ] **프로필 페이지 `/user/:id`** + 차단 UI(`user_blocks` 계약 있음·진입점 0) — 칩/알림에서 신원 표현(현재 host_name만).
 - [ ] **아바타 자랑 lite** — 프로필 카드에 `AvatarPreview` 재사용한 **정적 쇼케이스**(텍스트 UGC 없음 → 모더레이션 부담 0, S~M). *SNS 스레드/피드는 복잡도(posts·comments·feed·UGC 모더레이션)로 **P2 defer** — 건물은 확장 자리 선점만.*
 - [ ] (P2) COM-01 극단/크루 — troupe 빈 게이트(위 "빈 게이트 착수 정의").

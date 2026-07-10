@@ -6,6 +6,11 @@ tags: [contract]
 
 친구 추가/제거, 팔로우/언팔로우, 차단 기능을 통한 관계 관리 시스템. P1 성장 루프 기본 (친구 목록, 온라인 상태, 함께한 사람 추천).
 
+> **as-built (2026-07-10, PROFILE-04/05 코어 — 커밋 `7b81d9a`·`1c5106d`):**
+> **IA(주인님 확정, LoL식)**: 관리 거점은 **로비 광장 상시** — `FriendsButton`(벨 옆)→패널(온라인 초록점·광장/공연 중·요청 수신함·최근 함께한 사람에서 추가/팔로우). 별도 FriendListPage/라우트 없음.
+> **구현**: 마이그 `20260710150000_create_friendships`(계약 스키마 그대로) + Edge 5(send/respond/remove·set-follow·list-friends) + `friendStore`+`usePresence`(App 전역 `friends_presence` track, activity=lobby|room) + NotificationBell 3타입(friend_request/friend_accepted/followed_creator_stream_start→방 직행).
+> **계약 대비 편차**: ①RLS 는 `auth.uid()` 직비교 대신 `current_user_id()`(users.id≠auth_id 분리) ②쓰기 정책 미부여=Edge(service) 전용 — 차단·rate-limit(요청 30/일·팔로우 50/일)·미러 행(수락 시)을 서버 강제 ③타인 display_name 은 users RLS(본인만) 때문에 `list-friends` Edge 가 해석 ④공연시작 알림은 rooms 'live' 전환 FSM 미구현이라 **create-room 시점** 발송(캡 10/시간·팔로워 ≤200, live FSM 구현 시 이동) ⑤`friend_joined`(온라인 전환 알림)은 서버 훅 부재로 defer(presence 는 클라 채널) ⑥**차단(user_blocks)은 defer** — 소비 UI(프로필 페이지 슬라이스)와 함께(G-84 게이트 포함), 죽은 스키마 방지 ⑦presence 에 roomId 미포함(비공개 방 노출 방지 — 공개방 판별 seam 후 따라가기).
+
 ## Props Interface
 
 ```typescript

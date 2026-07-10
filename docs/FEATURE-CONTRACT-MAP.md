@@ -27,7 +27,7 @@ tags: [hub]
 | `AUTH-07` | candidate: `contracts/TwoFactorAuth.md` | `DATA-SCHEMA.md §mfa_secrets`, `Supabase MFA API` | P1 DRAFT. TOTP 기반 2FA, 크리에이터/호스트 대상 우선 |
 | `ONBOARDING-01`, `ONBOARDING-02`, `ONBOARDING-03` | `contracts/AuthPage.md` | `ONBOARDING-FLOW.md`, `state-machines/Onboarding.md`, `DATA-SCHEMA.md §users.onboarding_step/preferred_genres` | 계약 있음. ONBOARDING-01은 CinematicIntro, ONBOARDING-02는 GenreSelector, ONBOARDING-03은 dev skip flag |
 | `PROFILE-01`, `PROFILE-02`, `PROFILE-03` | `contracts/ProfilePage.md`, `contracts/SettingsPage.md` | `DATA-SCHEMA.md §users.bio/profile_visibility/notification_prefs` | 계약 있음. 알림 설정은 PROFILE-03과 SET-14 공유 |
-| `PROFILE-04`, `PROFILE-05` | `contracts/FriendSystem.md` | `DATA-SCHEMA.md §friendships`, `Supabase Realtime presence` | 계약 있음. 친구/팔로우/차단 + 팔로우 알림 |
+| `PROFILE-04`, `PROFILE-05` | `contracts/FriendSystem.md` | `DATA-SCHEMA.md §friendships`, `Supabase Realtime presence` | **코어 구현(2026-07-10)** — 친구/팔로우/공연시작 알림 + 로비 LoL식 패널·presence(FriendSystem as-built). 잔여: 차단 UI·프로필 페이지(defer) |
 | `MOD-01`, `MOD-02`, `MOD-03`, `MOD-04` | `contracts/ModelSelector.md`, `contracts/AvatarCanvas.md` | `specs/rig-format.md`, `DATA-SCHEMA.md §models` | 계약 있음 |
 | `MOD-05`, `MOD-06`, `MOD-07` | `contracts/CalibrationWizard.md`, `contracts/GreenRoom.md`, `contracts/SettingsPage.md` | `state-machines/Tracking.md`, `ONBOARDING-FLOW.md` | 계약 있음. MOD-07 품질 게이지/표정 리플레이는 GreenRoom 세부 계약 보강 필요 |
 | `MOD-08` | `reference/patterns/avatar-forge-pipeline.md`(UI 빌더 계약 겸용) | `DATA-SCHEMA.md §1.9 avatar_jobs`, `API-SURFACE.md` Avatar Forge | 구현 완료(2026-07-09, `features/avatar/CommissionCorner`·`useAvatarJobs`). 남용 게이트(크레딧/레이트리밋) 잔여 |

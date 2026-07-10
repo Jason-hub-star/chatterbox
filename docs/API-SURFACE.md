@@ -55,6 +55,11 @@ tags: [hub, spec]
 | `POST /functions/v1/set-room-mode` | `Host` | `{ room_id, mode: 'normal'\|'vgen'\|'dub' }` | `{ ok: true, mode }` | Host 서버검증 → `rooms.current_mode` UPDATE → `room-authority` `mode_change` 서버 broadcast (G-261). late joiner 는 입장 rooms 조회로 복원 | [[RoomView]], [[DATA-SCHEMA]] |
 | `POST /functions/v1/set-script-mode` | `Host` | `{ room_id, mode: 'rehearsal'\|'performance' }` | `{ ok: true, mode }` | Host 서버검증 → `rooms.script_mode` UPDATE → `room-authority` `script_mode` broadcast (ROOM-14) | [[ScriptPanel]] |
 | `POST /functions/v1/sync-script-role` | `Participant` | `{ room_id, action: 'claim'\|'release'\|'assign', role, target_auth_id? }` | `{ ok: true }` | claim/release=본인·활성 배우만, assign=호스트만 서버검증 → `script-role` reliable broadcast(수신측 서버발만 수락, ROOM-14) | [[ScriptPanel]] |
+| `POST /functions/v1/send-friend-request` | `Auth` | `{ target_user_id }` | `{ ok, status, friendship_id? }` | 자기/부재/중복 서버검증 + rate-limit(30/일) + 상대 friend_request 알림. 멱등(pending/accepted 반환)·상대 선요청 시 409 incoming_exists (PROFILE-04) | [[FriendSystem]] |
+| `POST /functions/v1/respond-friend-request` | `Auth`(수신자) | `{ friendship_id, action: 'accept'\|'reject' }` | `{ ok, status }` | 수신자 검증 → 수락 시 미러 행(양방향 기록) service upsert + friend_accepted 알림 | [[FriendSystem]] |
+| `POST /functions/v1/remove-friend` | `Auth` | `{ target_user_id }` | `{ ok }` | 친구 관계 양방향 soft delete | [[FriendSystem]] |
+| `POST /functions/v1/set-follow` | `Auth` | `{ target_user_id, follow: boolean }` | `{ ok, following }` | 즉시 accepted 팔로우 토글 + rate-limit(50/일) — 공연시작 알림 관계 (PROFILE-05) | [[FriendSystem]] |
+| `POST /functions/v1/list-friends` | `Auth` | `{}` | `{ friends, following, pending_in, pending_out }` | 당사자 friendships 집계 + 표시명 service 해석(users RLS=본인만) | [[FriendSystem]] |
 | `POST /functions/v1/join-room-with-password` | `Auth` | `{ room_id, password }` | `{ room_id, participant_id, slot_index, role, rejoined? }` | 잠금방 PBKDF2 상수시간 대조 + **브루트포스 레이트리밋**(user·room 5회/5분, 정답 시 리셋, SEC-1) | [[SecurityPolicies]], [[LobbyPage]] |
 
 ## VGEN & Credit APIs
