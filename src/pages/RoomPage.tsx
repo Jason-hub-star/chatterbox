@@ -839,7 +839,7 @@ export default function RoomPage() {
       {connected && (
         <div
           data-stage-area
-          className="relative flex flex-col items-center justify-center rounded-lg border border-stage-border p-4"
+          className="relative overflow-hidden rounded-xl"
           onContextMenu={(e) => e.preventDefault()}
           onMouseDown={openReactionWheel}
           onTouchStart={onStageTouchStart}
