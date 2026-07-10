@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { RigAvatar, createExpressionDriver } from '@/lib/pixi/rig'
 import type { BlendshapeFrame } from '@/lib/blendshapeCodec'
+import HostCrown from '@/features/stage/HostCrown'
 
 // 원격 참가자 1명의 네이티브 아리아 아바타(경로 B). 생성 시 registry에 **프레임 싱크**를 등록 —
 // 수신 blendshape 프레임이 registry.get(identity)(frame)으로 직접 구동한다(React state 우회).
@@ -15,9 +16,10 @@ interface Props {
   registry: RefObject<Map<string, RemoteFrameSink>>
   // 렌더 픽셀 크기(무대 슬롯에서 축소). 기본 240.
   size?: number
+  isHost?: boolean
 }
 
-export default function RemoteAvatar({ identity, name, projectUrl, registry, size = 240 }: Props) {
+export default function RemoteAvatar({ identity, name, projectUrl, registry, size = 240, isHost = false }: Props) {
   const mountRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -58,12 +60,14 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry, siz
 
   return (
     <figure className="flex flex-col items-center gap-2">
-      <div
-        ref={mountRef}
-        data-remote-avatar={identity}
-        className="overflow-hidden rounded-lg border border-stage-border bg-[#f4f0e8]"
-        style={{ width: size, height: size }}
-      />
+      <div className="relative" style={{ width: size, height: size }}>
+        <div
+          ref={mountRef}
+          data-remote-avatar={identity}
+          className={`h-full w-full overflow-hidden rounded-full border border-stage-border bg-[#f4f0e8] ${isHost ? 'ring-2 ring-fire-amber' : ''}`}
+        />
+        {isHost && <HostCrown />}
+      </div>
       <figcaption className="text-xs text-stage-text-muted">{name}</figcaption>
     </figure>
   )

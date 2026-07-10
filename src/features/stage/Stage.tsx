@@ -5,7 +5,7 @@ import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvat
 import SelfAvatar from './SelfAvatar'
 import StageSlot from './StageSlot'
 import MainView from './MainView'
-import { SLOTS, SLOT_PX, seatParticipants } from './stageLayout'
+import { SLOTS, SLOT_PX, SLOT_POS_PCT, STAGE_CENTER_PCT, seatParticipants } from './stageLayout'
 import { useStageStore } from '@/stores/stageStore'
 
 // 원형 무대(경로 B): 센터 프레임을 6석이 3쌍(상/중/하 × 좌·우)으로 둘러싼다(DESIGN-DIRECTION §6.1).
@@ -19,6 +19,8 @@ interface Props {
   sendBlendshapes: (blendshapes: Record<string, number>) => void
   remoteAvatars: RefObject<Map<string, RemoteFrameSink>>
   isHost: boolean
+  // 호스트 좌석 판정(rooms.host_id). identity(=auth uid)가 hostId 와 같으면 그 좌석이 호스트 — 앰버 링+크라운(§6.4).
+  hostId?: string | null
   onStopShare: () => void
 }
 
@@ -44,6 +46,7 @@ export default function Stage({
   sendBlendshapes,
   remoteAvatars,
   isHost,
+  hostId,
   onStopShare,
 }: Props) {
   const { t } = useTranslation()
@@ -62,15 +65,46 @@ export default function Stage({
           aria-hidden
         />
       )}
+      {/* 별자리 글로우(§6.1): 점유 좌석 → 센터 연결선. 비스케일 스트로크로 크기 무관 얇은 선, 저강도 앰버.
+          정적(모션 없음)이라 prefers-reduced-motion 무관. 그리드보다 먼저 그려 아바타 아래로 깔린다. */}
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        style={{ filter: 'drop-shadow(0 0 2px rgba(255,140,42,0.45))' }}
+        aria-hidden
+      >
+        {seats.map((p, i) =>
+          p ? (
+            <line
+              key={p.identity}
+              x1={SLOT_POS_PCT[i].x}
+              y1={SLOT_POS_PCT[i].y}
+              x2={STAGE_CENTER_PCT.x}
+              y2={STAGE_CENTER_PCT.y}
+              stroke="#FF8C2A"
+              strokeWidth={p.isSpeaking ? 1.5 : 1}
+              strokeOpacity={p.isSpeaking ? 0.5 : 0.22}
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null,
+        )}
+      </svg>
       <div className="relative grid grid-cols-3 grid-rows-3 gap-2">
-        {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 placeholder. */}
+        {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 씬 배경이 비치는 히어로 placeholder. */}
         <MainView isHost={isHost} onStop={onStopShare} />
 
       {seats.map((p, i) => (
         <StageSlot key={p ? p.identity : `empty-${i}`} col={SLOTS[i].col} row={SLOTS[i].row} speaking={p?.isSpeaking}>
           {p ? (
             p.isLocal ? (
-              <SelfAvatar projectUrl={selfProjectUrl} sendBlendshapes={sendBlendshapes} size={slotPx} />
+              <SelfAvatar
+                projectUrl={selfProjectUrl}
+                sendBlendshapes={sendBlendshapes}
+                size={slotPx}
+                isHost={!!hostId && p.identity === hostId}
+              />
             ) : (
               <RemoteAvatar
                 identity={p.identity}
@@ -78,11 +112,12 @@ export default function Stage({
                 projectUrl={remoteProjectUrl(p.identity)}
                 registry={remoteAvatars}
                 size={slotPx}
+                isHost={!!hostId && p.identity === hostId}
               />
             )
           ) : (
             <span
-              className="grid place-items-center rounded-lg border border-dashed border-stage-border bg-stage-panel/40 text-[11px] text-stage-text-muted"
+              className="grid place-items-center rounded-full border border-dashed border-stage-border bg-stage-panel/40 text-[11px] text-stage-text-muted"
               style={{ width: slotPx, height: slotPx }}
             >
               {t('stage.emptySlot')}

@@ -51,7 +51,7 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
   if (!url) {
     return (
       <div
-        className="col-start-2 row-start-2 grid min-h-[120px] place-items-center rounded-lg border border-stage-border bg-stage-panel text-xs text-stage-text-muted"
+        className="col-start-2 row-start-2 grid min-h-[120px] place-items-center rounded-lg border border-stage-border bg-stage-panel/30 text-xs text-stage-text-muted"
         aria-label={t('stage.mainView')}
       >
         {t('stage.mainView')}

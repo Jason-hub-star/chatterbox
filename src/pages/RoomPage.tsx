@@ -28,6 +28,7 @@ import ModeBanner from '@/features/room/ModeBanner'
 import FloatingSelfMonitor from '@/features/room/FloatingSelfMonitor'
 import AudioMixerPanel from '@/features/room/AudioMixerPanel'
 import { applyVodSync, readVodSyncState, setVodSyncPublisher } from '@/features/stage/vodSync'
+import DirectorNotesTab from '@/features/room/DirectorNotesTab'
 import HostConsole from '@/features/room/HostConsole'
 import CampfireGlyph from '@/components/shared/CampfireGlyph'
 import Modal from '@/components/shared/Modal'
@@ -250,7 +251,7 @@ export default function RoomPage() {
     }
   }, [playSharedVgen])
 
-  const { toggleMic, sendChat, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave } = useLiveKitRoom(roomId, {
+  const { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
     onCue: handleCue,
     onRoomAuthority: handleRoomAuthority,
@@ -314,6 +315,7 @@ export default function RoomPage() {
   const [memberSlots, setMemberSlots] = useState<Record<string, number>>({})
   const [mutedIdentities, setMutedIdentities] = useState<Set<string>>(new Set())
   const [actorIds, setActorIds] = useState<Set<string>>(new Set()) // 배우만(호스트 역할 배정 후보 — 관전자 제외)
+  const [hostAuthId, setHostAuthId] = useState<string | null>(null) // 노트 방장 강조용(ROOM-17, users.id→auth uid 매핑)
   useEffect(() => {
     if (joinPhase !== 'ready' || !session) return
     let cancelled = false
@@ -342,6 +344,7 @@ export default function RoomPage() {
         setMemberSlots(slots)
         setMutedIdentities(muted)
         setActorIds(actorSet)
+        setHostAuthId(members.find((m) => m.userId === newHostId)?.authId ?? null)
         setRaisedHands(raised.map(({ authId, userId, name }) => ({ authId, userId, name })))
         useRoomStore.getState().setRoomContext({ hostId: newHostId })
         // mute 마운트 로드(A-FUNC-3): 새로고침 후에도 내 muted_by_host 를 서버 진실로 재동기(desync 제거).
@@ -629,6 +632,7 @@ export default function RoomPage() {
     { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} /> },
     { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },
     { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} onShare={shareVgen} /> },
+    { id: 'notes', label: t('room.tabNotes'), render: () => <DirectorNotesTab connected={connected} hostAuthId={hostAuthId} onSend={sendNote} /> },
   ]
   if (isHost) {
     tabs.push({

@@ -15,9 +15,9 @@ export default function StageSlot({ col, row, speaking = false, children }: Prop
     <div
       style={{ gridColumn: col, gridRow: row }}
       data-speaking={speaking ? 'true' : 'false'}
-      className={`flex flex-col items-center justify-center gap-1 rounded-xl p-1 transition-all ${
+      className={`flex flex-col items-center justify-center gap-1 rounded-xl p-1 transition-all motion-reduce:transition-none ${
         speaking
-          ? 'z-10 scale-105 ring-2 ring-fire-amber shadow-[0_0_18px_rgba(255,140,42,0.55)]'
+          ? 'z-10 scale-105 shadow-[0_0_22px_rgba(255,140,42,0.55)]'
           : 'z-0'
       }`}
     >

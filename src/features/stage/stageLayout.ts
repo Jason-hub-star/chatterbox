@@ -12,6 +12,12 @@ export const SLOTS = [
   { col: 3, row: 3 }, // 하단 우
 ] as const
 
+// 별자리 글로우(§6.1): 각 슬롯 중심 → 센터(50,50) 연결선용 좌표(%, 3×3 셀 중심).
+// SLOTS 와 같은 순서. col/row 1·2·3 → 셀 중심 16.67·50·83.33%. gap 로 인한 미세오차는 lite 라 허용.
+const CELL_PCT = [16.67, 50, 83.33] as const
+export const STAGE_CENTER_PCT = { x: 50, y: 50 } as const
+export const SLOT_POS_PCT = SLOTS.map((s) => ({ x: CELL_PCT[s.col - 1], y: CELL_PCT[s.row - 1] }))
+
 // 절대좌석: 각 참가자를 자기 DB slot_index 자리에 고정 배치한다.
 // identity 정렬(과거)은 인원 변동 시 좌석이 리플로우됐다 — slot_index 기반이면 입퇴장에 좌석 불변.
 // slot 미상(멤버 fetch 랩) 또는 slot 충돌 참가자는 남은 최저 빈 슬롯에 임시 배치(fetch 완료 시 정착).

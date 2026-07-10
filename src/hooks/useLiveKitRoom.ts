@@ -11,6 +11,7 @@ import {
 import { useUserStore } from '@/stores/userStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
+import { useNotesStore } from '@/stores/notesStore'
 import { useAudioStore, mixedVolume } from '@/stores/audioStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
 import { sendReactionRelay, advanceScriptCueRelay } from '@/lib/rooms'
@@ -236,6 +237,20 @@ export function useLiveKitRoom(
       if (topic !== 'chat') return
       try {
         const data = JSON.parse(new TextDecoder().decode(payload))
+        // 디렉터 노트(ROOM-17): 같은 chat 채널의 message_type='note'(계약 — 별도 채널 금지).
+        // author 는 payload 아닌 participant 에서 파생(채팅과 동형·위조 차단). 휘발성 — notesStore 만.
+        if (data?.message_type === 'note') {
+          if (typeof data.content !== 'string' || data.content.length < 1 || data.content.length > 500) return
+          if (!participant) return
+          useNotesStore.getState().addNote({
+            id: crypto.randomUUID(),
+            authorId: participant.identity,
+            authorName: participant.name || participant.identity,
+            content: data.content,
+            ts: typeof data.ts === 'number' ? data.ts : Date.now(),
+          })
+          return
+        }
         if (typeof data?.text !== 'string') return
         addMessage({
           id: crypto.randomUUID(),
@@ -283,6 +298,7 @@ export function useLiveKitRoom(
       cancelled = true
       void room.disconnect()
       document.querySelectorAll('[data-lk-audio]').forEach((el) => el.remove())
+      useNotesStore.getState().clearNotes() // 노트는 세션 휘발(ROOM-17) — 방 이탈 시 비움
       reset()
     }
   }, [
@@ -328,6 +344,25 @@ export function useLiveKitRoom(
     },
     [addMessage],
   )
+
+  // 디렉터 노트 송신(ROOM-17): chat 채널 message_type='note'. publishData 는 자기 echo 없음 → 로컬 직접 추가.
+  const sendNote = useCallback(async (content: string) => {
+    const room = roomRef.current
+    const trimmed = content.trim().slice(0, 500)
+    if (!room || !trimmed) return
+    const ts = Date.now()
+    await room.localParticipant.publishData(
+      new TextEncoder().encode(JSON.stringify({ message_type: 'note', content: trimmed, ts })),
+      { reliable: true, topic: 'chat' },
+    )
+    useNotesStore.getState().addNote({
+      id: crypto.randomUUID(),
+      authorId: room.localParticipant.identity,
+      authorName: room.localParticipant.name || room.localParticipant.identity,
+      content: trimmed,
+      ts,
+    })
+  }, [])
 
   // 표정 송신: 원본 blendshape 맵 → 220B 프레임(seq++·crc16). 스로틀 초과분은 드롭(lossy).
   const sendBlendshapes = useCallback((blendshapes: Record<string, number>) => {
@@ -393,5 +428,5 @@ export function useLiveKitRoom(
     await roomRef.current?.disconnect()
   }, [])
 
-  return { toggleMic, sendChat, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave }
+  return { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave }
 }
