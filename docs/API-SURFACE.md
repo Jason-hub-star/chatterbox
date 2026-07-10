@@ -59,7 +59,7 @@ tags: [hub, spec]
 | `POST /functions/v1/respond-friend-request` | `Auth`(수신자) | `{ friendship_id, action: 'accept'\|'reject' }` | `{ ok, status }` | 수신자 검증 → 수락 시 미러 행(양방향 기록) service upsert + friend_accepted 알림 | [[FriendSystem]] |
 | `POST /functions/v1/remove-friend` | `Auth` | `{ target_user_id }` | `{ ok }` | 친구 관계 양방향 soft delete | [[FriendSystem]] |
 | `POST /functions/v1/set-follow` | `Auth` | `{ target_user_id, follow: boolean }` | `{ ok, following }` | 즉시 accepted 팔로우 토글 + rate-limit(50/일) — 공연시작 알림 관계 (PROFILE-05) | [[FriendSystem]] |
-| `POST /functions/v1/list-friends` | `Auth` | `{}` | `{ friends, following, pending_in, pending_out }` | 당사자 friendships 집계 + 표시명 service 해석(users RLS=본인만) | [[FriendSystem]] |
+| `POST /functions/v1/list-friends` | `Auth` | `{}` | `{ friends[+online,activity], following, pending_in, pending_out }` | 당사자 friendships 집계 + 표시명·presence service 해석(친구관계 검증 후 last_active_at<60s=online·활성 room_participants=room, DP-1 전역 노출 0) | [[FriendSystem]] |
 | `POST /functions/v1/join-room-with-password` | `Auth` | `{ room_id, password }` | `{ room_id, participant_id, slot_index, role, rejoined? }` | 잠금방 PBKDF2 상수시간 대조 + **브루트포스 레이트리밋**(user·room 5회/5분, 정답 시 리셋, SEC-1) | [[SecurityPolicies]], [[LobbyPage]] |
 
 ## VGEN & Credit APIs

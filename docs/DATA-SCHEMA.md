@@ -988,6 +988,8 @@ CREATE TABLE reports_appeals (
 
 계약(contracts/FriendSystem.md §Supabase 스키마) 그대로 배포: `(id, user_id, friend_id, relationship_type friend|follow, status pending|accepted|rejected, created/updated/deleted_at)` + `no_self_friendship` CHECK + `unique(user_id, friend_id, relationship_type)` + 인덱스 3(user_id·friend_id·status). RLS: SELECT=당사자(`current_user_id() in (user_id, friend_id)`), **쓰기 정책 없음**(Edge service 전용 — 미러 행·rate-limit 서버 강제). `supabase_realtime` publication 등재(패널 실시간 갱신). 이름 해석은 `list-friends` Edge(users RLS=본인만).
 
+**presence(DP-1, 마이그 `20260710160000`)**: `users.last_active_at timestamptz` 추가(본인 UPDATE=기존 `users_update_own` RLS). 온라인 판정은 `list-friends`가 친구관계 검증 후 `last_active_at<60s`(online) + 활성 `room_participants`(activity=room) 로 서버 계산 — 전역 Realtime presence 채널 폐기(전역 노출 0).
+
 ### 1.20 user_blocks
 
 ```sql
