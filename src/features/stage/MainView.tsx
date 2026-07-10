@@ -50,23 +50,19 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
   }, [url, isHost])
 
   if (!url) {
+    // 씬 설정 시(방장 선택) 무대 전체 배경이 씬을 담당 → 센터는 투명(중복 제거·불꽃이 비침). 공유 시 이 자리에 영상.
+    if (backgroundUrl) return <div className="col-start-2 row-start-2" aria-hidden />
     return (
       <div
-        className="relative col-start-2 row-start-2 grid min-h-[120px] place-items-center overflow-hidden rounded-xl border border-stage-border bg-gradient-to-br from-stage-elevated/60 via-stage-panel/30 to-stage-base/50 text-xs text-stage-text-muted"
+        className="relative col-start-2 row-start-2 grid min-h-[120px] place-items-center overflow-hidden rounded-xl bg-gradient-to-br from-stage-elevated/50 via-stage-panel/20 to-stage-base/40 text-xs text-stage-text-muted"
         aria-label={t('stage.mainView')}
       >
-        {backgroundUrl ? (
-          // 무대 씬(방장 선택 background_url)을 센터 히어로로 크게 — 공유영상 시 이 자리에 영상 오버레이.
-          <img src={backgroundUrl} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
-        ) : (
-          <>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.35))]" aria-hidden />
-            <span className="relative flex flex-col items-center gap-1.5 opacity-70">
-              <span aria-hidden className="text-2xl">🎬</span>
-              {t('stage.mainView')}
-            </span>
-          </>
-        )}
+        {/* 씬 힌트(그라디언트+🎬) — 방장이 배경을 고르면 무대 전체 배경이 씬을 담당(중복 방지)해 이 자리는 영상 슬롯이 된다. */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.28))]" aria-hidden />
+        <span className="relative flex flex-col items-center gap-1.5 opacity-60">
+          <span aria-hidden className="text-2xl">🎬</span>
+          {t('stage.mainView')}
+        </span>
       </div>
     )
   }

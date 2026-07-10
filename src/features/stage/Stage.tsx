@@ -4,7 +4,7 @@ import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvat
 import SelfAvatar from './SelfAvatar'
 import StageSlot from './StageSlot'
 import MainView from './MainView'
-import { SLOTS, SLOT_PX, SLOT_POS_PCT, STAGE_CENTER_PCT, seatParticipants } from './stageLayout'
+import { SLOTS, SLOT_PX, seatParticipants } from './stageLayout'
 import { useStageStore } from '@/stores/stageStore'
 
 // 원형 무대(경로 B): 센터 프레임을 6석이 3쌍(상/중/하 × 좌·우)으로 둘러싼다(DESIGN-DIRECTION §6.1).
@@ -56,39 +56,14 @@ export default function Stage({
   return (
     <div className="relative w-full max-w-5xl">
       {/* 무대 배경(HOST-04·05, ROOM-09) — 호스트가 고른 씬. 아바타 가독성 위해 반투명. 전환 fade 등 폴리시는 트랙 B. */}
+      {/* 무대 씬(방장 선택) = 무대 전체 배경으로 선명하게(단일 렌더 — 센터 중복 제거). 아바타 가독 위해 살짝 어둡게. */}
       {backgroundUrl && (
         <div
-          className="pointer-events-none absolute inset-0 rounded-lg bg-cover bg-center opacity-60"
+          className="pointer-events-none absolute inset-0 rounded-xl bg-cover bg-center opacity-90"
           style={{ backgroundImage: `url(${backgroundUrl})` }}
           aria-hidden
         />
       )}
-      {/* 별자리 글로우(§6.1): 점유 좌석 → 센터 연결선. 비스케일 스트로크로 크기 무관 얇은 선, 저강도 앰버.
-          정적(모션 없음)이라 prefers-reduced-motion 무관. 그리드보다 먼저 그려 아바타 아래로 깔린다. */}
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        style={{ filter: 'drop-shadow(0 0 2px rgba(255,140,42,0.45))' }}
-        aria-hidden
-      >
-        {seats.map((p, i) =>
-          p ? (
-            <line
-              key={p.identity}
-              x1={SLOT_POS_PCT[i].x}
-              y1={SLOT_POS_PCT[i].y}
-              x2={STAGE_CENTER_PCT.x}
-              y2={STAGE_CENTER_PCT.y}
-              stroke="#FF8C2A"
-              strokeWidth={p.isSpeaking ? 1.5 : 1}
-              strokeOpacity={p.isSpeaking ? 0.5 : 0.22}
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          ) : null,
-        )}
-      </svg>
       <div className="relative grid grid-cols-[1fr_1.9fr_1fr] grid-rows-[1fr_1.9fr_1fr] gap-2">
         {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 씬 배경이 비치는 히어로 placeholder. */}
         <MainView isHost={isHost} onStop={onStopShare} />
