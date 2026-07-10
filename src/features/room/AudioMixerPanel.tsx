@@ -1,14 +1,12 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRoomStore } from '@/stores/roomStore'
 import { useAudioStore } from '@/stores/audioStore'
 
-// ROOM-08 음량 믹서 — 무대 우상단 부동 토글(🎚, PiP 아래) → 마스터 + 원격 참가자별 슬라이더.
+// ROOM-08 음량 믹서 — 하단바 🎧(open/onClose controlled prop, RoomPage 소유) → 마스터 + 원격 참가자별 슬라이더.
 // 로컬 전용: 스토어에만 쓰고, 실제 적용은 useLiveKitRoom 의 스토어 구독 브리지가 담당.
 // 계약 대비 편차: BGM 슬라이더(기능 부재)·업링크 헬스체크 defer — audioStore ponytail 주석 참조.
-export default function AudioMixerPanel() {
+export default function AudioMixerPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const participants = useRoomStore((s) => s.participants)
   const masterVolume = useAudioStore((s) => s.masterVolume)
   const participantVolumes = useAudioStore((s) => s.participantVolumes)
@@ -16,19 +14,7 @@ export default function AudioMixerPanel() {
   const setParticipantVolume = useAudioStore((s) => s.setParticipantVolume)
   const remotes = participants.filter((p) => !p.isLocal)
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={t('stage.mixerOpen')}
-        title={t('stage.mixerOpen')}
-        className="absolute right-14 top-2 z-30 grid h-9 w-9 place-items-center rounded-full border border-stage-border bg-stage-panel/80 text-sm hover:border-fire-amber"
-      >
-        🎚
-      </button>
-    )
-  }
+  if (!open) return null
 
   return (
     <div
@@ -40,7 +26,7 @@ export default function AudioMixerPanel() {
         <h3 className="text-xs font-semibold text-stage-text">🎚 {t('stage.mixerTitle')}</h3>
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={onClose}
           aria-label={t('common.close')}
           className="text-xs text-stage-text-muted hover:text-stage-text"
         >

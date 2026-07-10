@@ -374,6 +374,8 @@ export default function RoomPage() {
   // 리액션 휠: 무대 우클릭(button 2)으로 커서 위치에 개화(홀드-드래그-릴리즈). origin=null=닫힘.
   const [reactionOrigin, setReactionOrigin] = useState<{ x: number; y: number } | null>(null)
   const [reactionSticky, setReactionSticky] = useState(false) // 터치 개화는 sticky(탭 선택) 모드로 시작
+  const [mixerOpen, setMixerOpen] = useState(false) // ROOM-08 음량 믹서 개방(하단바 🎧 소유)
+  const [pipOpen, setPipOpen] = useState(false)     // G-64 Self-PiP 개방(하단바 🎭 소유)
   const openReactionWheel = useCallback((e: MouseEvent) => {
     if (e.button !== 2) return
     e.preventDefault()
@@ -862,9 +864,11 @@ export default function RoomPage() {
           <ReactionOverlay slotOf={slotOf} />
           <ModeBanner />
           {/* G-64 Self-PiP — 관전자는 트래킹이 없어 미노출. */}
-          {!isViewer && <FloatingSelfMonitor projectUrl={selfProjectUrl} />}
+          {!isViewer && (
+            <FloatingSelfMonitor projectUrl={selfProjectUrl} open={pipOpen} onClose={() => setPipOpen(false)} />
+          )}
           {/* ROOM-08 음량 믹서 — 관전자 포함 전원(듣기 볼륨은 로컬 권리). */}
-          <AudioMixerPanel />
+          <AudioMixerPanel open={mixerOpen} onClose={() => setMixerOpen(false)} />
         </div>
       )}
       {reactionOrigin && (
@@ -905,8 +909,12 @@ export default function RoomPage() {
       mutedByHost={mutedByHost}
       handRaised={handRaised}
       connected={connected}
+      mixerOpen={mixerOpen}
+      pipOpen={pipOpen}
       onToggleMic={toggleMic}
       onToggleHand={toggleHand}
+      onToggleMixer={() => setMixerOpen((v) => !v)}
+      onTogglePip={() => setPipOpen((v) => !v)}
       onReaction={() => {
         if (connected) {
           const rect = document.querySelector('[data-stage-area]')?.getBoundingClientRect()

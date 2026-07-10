@@ -43,8 +43,7 @@ describe('AudioMixerPanel', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    act(() => root!.render(<AudioMixerPanel />))
-    act(() => container.querySelector<HTMLButtonElement>('button[title]')!.click()) // 토글 열기
+    act(() => root!.render(<AudioMixerPanel open onClose={() => {}} />)) // 제어형: 부모가 open 소유
   })
 
   afterEach(() => {

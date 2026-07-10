@@ -6,9 +6,13 @@ interface Props {
   mutedByHost: boolean
   handRaised: boolean
   connected: boolean
+  mixerOpen: boolean
+  pipOpen: boolean
   onToggleMic: () => void
   onToggleHand: () => void
   onReaction: () => void
+  onToggleMixer: () => void
+  onTogglePip: () => void
   onLeave: () => void
 }
 
@@ -18,9 +22,13 @@ export default function RoomBottomBar({
   mutedByHost,
   handRaised,
   connected,
+  mixerOpen,
+  pipOpen,
   onToggleMic,
   onToggleHand,
   onReaction,
+  onToggleMixer,
+  onTogglePip,
   onLeave,
 }: Props) {
   const { t } = useTranslation()
@@ -69,33 +77,45 @@ export default function RoomBottomBar({
         <span className="hidden sm:inline">{t('room.ctrlReaction')}</span>
       </button>
 
-      {/* 시각 스텁: 헤드폰, 녹음, 아바타 (미배선) */}
+      {/* 헤드폰 → 음량 믹서 토글(전원 — 듣기 볼륨은 로컬 권리) */}
       <button
-        disabled
-        className="flex items-center gap-1.5 rounded-lg border border-stage-border/40 px-3 py-1.5 text-[10px] font-semibold text-stage-text-muted/40 sm:px-4 sm:py-2 sm:text-xs"
+        onClick={onToggleMixer}
+        disabled={!connected}
+        aria-pressed={mixerOpen}
+        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm ${
+          mixerOpen ? 'border-fire-amber text-fire-amber' : 'border-stage-border text-stage-text-muted hover:text-stage-text'
+        }`}
         title={t('room.ctrlHeadphone')}
       >
         <span>🎧</span>
         <span className="hidden sm:inline">{t('room.ctrlHeadphone')}</span>
       </button>
 
+      {/* 녹음 → defer(Egress 엔진 부재) — 비활성 '준비 중', 가짜 녹화 금지 */}
       <button
         disabled
         className="flex items-center gap-1.5 rounded-lg border border-stage-border/40 px-3 py-1.5 text-[10px] font-semibold text-stage-text-muted/40 sm:px-4 sm:py-2 sm:text-xs"
-        title={t('room.ctrlRecord')}
+        title={t('room.ctrlRecordSoon')}
       >
         <span>⏺</span>
         <span className="hidden sm:inline">{t('room.ctrlRecord')}</span>
       </button>
 
-      <button
-        disabled
-        className="flex items-center gap-1.5 rounded-lg border border-stage-border/40 px-3 py-1.5 text-[10px] font-semibold text-stage-text-muted/40 sm:px-4 sm:py-2 sm:text-xs"
-        title={t('room.ctrlAvatar')}
-      >
-        <span>🎭</span>
-        <span className="hidden sm:inline">{t('room.ctrlAvatar')}</span>
-      </button>
+      {/* 아바타/카메라 → self PiP 미리보기 토글(배우 전용 — 관전자는 트래킹 없음) */}
+      {!isViewer && (
+        <button
+          onClick={onTogglePip}
+          disabled={!connected}
+          aria-pressed={pipOpen}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm ${
+            pipOpen ? 'border-fire-amber text-fire-amber' : 'border-stage-border text-stage-text-muted hover:text-stage-text'
+          }`}
+          title={t('room.ctrlAvatar')}
+        >
+          <span>🎭</span>
+          <span className="hidden sm:inline">{t('room.ctrlAvatar')}</span>
+        </button>
+      )}
 
       {/* 나가기 */}
       <button

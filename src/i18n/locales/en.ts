@@ -274,6 +274,7 @@ export const en: Record<string, string> = {
   'room.shareLink': 'Share link',
   'room.ctrlHeadphone': '🎧 Headphones',
   'room.ctrlRecord': '⏺ Record',
+  'room.ctrlRecordSoon': '⏺ Record (soon)',
   'room.ctrlAvatar': '🎭 Avatar',
   'room.ctrlReaction': '👋 Reaction',
   'greenroom.title': 'Green room',

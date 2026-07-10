@@ -30,8 +30,12 @@ beforeEach(() => {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  act(() => root!.render(<FloatingSelfMonitor projectUrl="https://example.com/project.json" />))
 })
+
+// 제어형: 부모가 open 을 준다. 렌더 헬퍼로 open 토글 재현.
+const el = (open: boolean) => (
+  <FloatingSelfMonitor projectUrl="https://example.com/project.json" open={open} onClose={() => {}} />
+)
 
 afterEach(() => {
   act(() => root?.unmount())
@@ -39,25 +43,26 @@ afterEach(() => {
   container.remove()
 })
 
-const toggleBtn = () => container.querySelector<HTMLButtonElement>('button[title]')!
-
 describe('FloatingSelfMonitor (G-64)', () => {
-  it('기본 off: 토글 버튼만, PiP 패널 없음', () => {
-    expect(toggleBtn()).not.toBeNull()
+  it('닫힘(open=false): PiP 패널 없음 · 인스턴스 미생성', () => {
+    act(() => root!.render(el(false)))
     expect(container.querySelector('[data-self-monitor]')).toBeNull()
     expect(created.length).toBe(0)
   })
 
   it('열기 → 인스턴스 생성 + 싱크로 프레임 구동, 닫기 → destroy + 싱크 해제', async () => {
-    await act(async () => toggleBtn().click())
+    await act(async () => {
+      root!.render(el(true))
+    })
     expect(container.querySelector('[data-self-monitor]')).not.toBeNull()
     expect(created.length).toBe(1)
 
     emitSelfFrame({ jawOpen: 1 }, null)
     expect(created[0].setParams).toHaveBeenCalledWith({ jawOpen: 1 })
 
-    const close = container.querySelector<HTMLButtonElement>('[data-self-monitor] button')!
-    await act(async () => close.click())
+    await act(async () => {
+      root!.render(el(false))
+    })
     expect(container.querySelector('[data-self-monitor]')).toBeNull()
     expect(created[0].destroy).toHaveBeenCalled()
 

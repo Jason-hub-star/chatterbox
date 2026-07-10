@@ -274,6 +274,7 @@ export const ja: Record<string, string> = {
   'room.shareLink': 'リンク共有',
   'room.ctrlHeadphone': '🎧 ヘッドフォン',
   'room.ctrlRecord': '⏺ 録音',
+  'room.ctrlRecordSoon': '⏺ 録音（準備中）',
   'room.ctrlAvatar': '🎭 アバター',
   'room.ctrlReaction': '👋 リアクション',
   'greenroom.title': '楽屋',

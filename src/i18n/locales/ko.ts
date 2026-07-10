@@ -274,6 +274,7 @@ export const ko: Record<string, string> = {
   "room.shareLink": "링크 공유",
   "room.ctrlHeadphone": "🎧 헤드폰",
   "room.ctrlRecord": "⏺ 녹음",
+  "room.ctrlRecordSoon": "⏺ 녹음 (준비 중)",
   "room.ctrlAvatar": "🎭 아바타",
   "room.ctrlReaction": "👋 리액션",
   "greenroom.title": "분장실",
