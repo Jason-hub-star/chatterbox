@@ -37,8 +37,7 @@ import RoomShell from '@/features/room/RoomShell'
 import RoomTopBar from '@/features/room/RoomTopBar'
 import RoomBottomBar from '@/features/room/RoomBottomBar'
 import SessionInfoCard from '@/features/room/SessionInfoCard'
-import MoodMeterCard from '@/features/room/MoodMeterCard'
-import SoundboardCard from '@/features/room/SoundboardCard'
+import EmoteConsoleCard from '@/features/reaction/EmoteConsoleCard'
 
 // Phase 1B PoC → 우측 패널 셸 도입: 채팅·DUB·VGen 을 RightPanel 탭 블록으로 통합(contracts/RightPanel.md).
 // 좌측 컬럼 = 참가자·무대·대본 텔레프롬프터·마이크/나가기. 우측 = RightPanel(탭 콘텐츠 주입식).
@@ -880,11 +879,14 @@ export default function RoomPage() {
   // 우도크: 방분위기(상단) + 라이브피드 탭 패널(중앙) + 사운드보드(하단) — R4 카드 스택.
   const rightDockContent = (
     <div className="flex h-full flex-col gap-3">
-      <MoodMeterCard speaking={participants.some((p) => p.isSpeaking)} />
       <div className="min-h-0 flex-1">
         <RightPanel tabs={tabs} />
       </div>
-      <SoundboardCard onReaction={sendReaction} disabled={!connected} />
+      <EmoteConsoleCard
+        speaking={participants.some((p) => p.isSpeaking)}
+        onReaction={sendReaction}
+        disabled={!connected}
+      />
     </div>
   )
 
