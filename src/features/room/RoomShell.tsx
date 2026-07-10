@@ -15,7 +15,7 @@ export default function RoomShell({ topBar, leftDock, stage, rightDock, bottomBa
   return (
     <div className="grid h-[100dvh] grid-rows-[auto_1fr_auto] bg-stage-base text-stage-text">
       <header className="border-b border-stage-border">{topBar}</header>
-      <div className="grid min-h-0 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[clamp(240px,20vw,280px)_1fr_300px] lg:overflow-hidden">
+      <div className="grid min-h-0 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[clamp(216px,17vw,256px)_1fr_clamp(256px,19vw,292px)] lg:overflow-hidden">
         <aside className="order-2 min-h-0 overflow-y-auto lg:order-1">{leftDock}</aside>
         <section className="order-1 grid min-h-0 place-items-center overflow-y-auto lg:order-2">{stage}</section>
         <aside className="order-3 min-h-0 overflow-y-auto">{rightDock}</aside>

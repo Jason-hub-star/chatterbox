@@ -56,7 +56,7 @@ export default function Stage({
   const seats = seatParticipants(participants, slotOf, SLOTS.length)
 
   return (
-    <div className="relative w-full max-w-3xl">
+    <div className="relative w-full max-w-5xl">
       {/* 무대 배경(HOST-04·05, ROOM-09) — 호스트가 고른 씬. 아바타 가독성 위해 반투명. 전환 fade 등 폴리시는 트랙 B. */}
       {backgroundUrl && (
         <div
@@ -91,7 +91,7 @@ export default function Stage({
           ) : null,
         )}
       </svg>
-      <div className="relative grid grid-cols-3 grid-rows-3 gap-2">
+      <div className="relative grid grid-cols-[1fr_1.5fr_1fr] grid-rows-[1fr_1.5fr_1fr] gap-2">
         {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 씬 배경이 비치는 히어로 placeholder. */}
         <MainView isHost={isHost} onStop={onStopShare} />
 
