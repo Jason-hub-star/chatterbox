@@ -417,6 +417,7 @@ export const ko: Record<string, string> = {
   "stage.selfLabel": "나",
   "stage.expressionSending": "표정 전송",
   "stage.bg.none": "배경 없음",
+  "stage.bg.campfire": "모닥불 숲",
   "stage.bg.theater": "극장",
   "stage.bg.teahouse": "찻집",
   "stage.bg.workshop": "공방",

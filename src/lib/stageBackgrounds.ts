@@ -9,6 +9,7 @@ export interface StageBackground {
 
 export const STAGE_BACKGROUNDS: StageBackground[] = [
   { id: 'none', url: '', labelKey: 'stage.bg.none' },
+  { id: 'campfire', url: '/scenes/room-stage/campfire-forest.webp', labelKey: 'stage.bg.campfire' },
   { id: 'theater', url: '/scenes/lobby-interiors/theater.webp', labelKey: 'stage.bg.theater' },
   { id: 'teahouse', url: '/scenes/lobby-interiors/teahouse.webp', labelKey: 'stage.bg.teahouse' },
   { id: 'workshop', url: '/scenes/lobby-interiors/workshop.webp', labelKey: 'stage.bg.workshop' },

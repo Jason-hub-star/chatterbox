@@ -1,5 +1,4 @@
 import { useEffect, useState, type RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import SelfAvatar from './SelfAvatar'
@@ -49,7 +48,6 @@ export default function Stage({
   hostId,
   onStopShare,
 }: Props) {
-  const { t } = useTranslation()
   const slotPx = useSlotPx()
   const backgroundUrl = useStageStore((s) => s.backgroundUrl)
   // 최대 6석(§6.4; 8인 배치는 defer). slot_index 절대좌석 — key=identity 라 재배치돼도 캔버스 보존.
@@ -115,14 +113,7 @@ export default function Stage({
                 isHost={!!hostId && p.identity === hostId}
               />
             )
-          ) : (
-            <span
-              className="grid place-items-center rounded-full border border-dashed border-stage-border bg-stage-panel/40 text-[11px] text-stage-text-muted"
-              style={{ width: slotPx, height: slotPx }}
-            >
-              {t('stage.emptySlot')}
-            </span>
-          )}
+          ) : null}
         </StageSlot>
       ))}
       </div>

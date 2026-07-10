@@ -417,6 +417,7 @@ export const en: Record<string, string> = {
   'stage.selfLabel': 'Me',
   'stage.expressionSending': 'Sending expressions',
   'stage.bg.none': 'No background',
+  'stage.bg.campfire': 'Campfire forest',
   'stage.bg.theater': 'Theater',
   'stage.bg.teahouse': 'Teahouse',
   'stage.bg.workshop': 'Workshop',

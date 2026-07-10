@@ -18,6 +18,7 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
   const { t } = useTranslation()
   const url = useStageStore((s) => s.mainVideoUrl)
   const clear = useStageStore((s) => s.clearMainVideo)
+  const backgroundUrl = useStageStore((s) => s.backgroundUrl)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   // 타임라인 동기(ROOM-01): 호스트=상태 리더+play/pause/seeked 발행 / 비호스트=수신 보정.
@@ -54,12 +55,18 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
         className="relative col-start-2 row-start-2 grid min-h-[120px] place-items-center overflow-hidden rounded-xl border border-stage-border bg-gradient-to-br from-stage-elevated/60 via-stage-panel/30 to-stage-base/50 text-xs text-stage-text-muted"
         aria-label={t('stage.mainView')}
       >
-        {/* 중앙 히어로 비네트(코드 임시) — 레퍼런스급은 씬 자산 필요(scene-pipeline). */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.35))]" aria-hidden />
-        <span className="relative flex flex-col items-center gap-1.5 opacity-70">
-          <span aria-hidden className="text-2xl">🎬</span>
-          {t('stage.mainView')}
-        </span>
+        {backgroundUrl ? (
+          // 무대 씬(방장 선택 background_url)을 센터 히어로로 크게 — 공유영상 시 이 자리에 영상 오버레이.
+          <img src={backgroundUrl} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <>
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.35))]" aria-hidden />
+            <span className="relative flex flex-col items-center gap-1.5 opacity-70">
+              <span aria-hidden className="text-2xl">🎬</span>
+              {t('stage.mainView')}
+            </span>
+          </>
+        )}
       </div>
     )
   }

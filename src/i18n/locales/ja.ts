@@ -417,6 +417,7 @@ export const ja: Record<string, string> = {
   'stage.selfLabel': '自分',
   'stage.expressionSending': '表情送信中',
   'stage.bg.none': '背景なし',
+  'stage.bg.campfire': '焚き火の森',
   'stage.bg.theater': '劇場',
   'stage.bg.teahouse': '茶屋',
   'stage.bg.workshop': '工房',
