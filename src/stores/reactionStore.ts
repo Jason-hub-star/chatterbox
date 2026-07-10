@@ -34,7 +34,7 @@ export interface FloatingReaction {
   ts: number
 }
 
-const STORAGE_KEY = 'chatterbox.reactionSlots'
+export const STORAGE_KEY = 'chatterbox.reactionSlots'
 
 function loadSlots(): ReactionSlot[] {
   if (typeof localStorage === 'undefined') return DEFAULT_SLOTS
