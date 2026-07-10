@@ -226,7 +226,7 @@ SecurityPolicies.md의 구현 체크리스트 `[ ]` 항목을 스캔:
 | ID | 분류 | 내용 | 발견일 | 상태 |
 |---|---|---|---|---|
 | ISS-01 | 스킬 정리 | `doc-health-audit`(ChatterBox 정본)과 `doc-health-check`(Vtube 이식본)가 3기준 진단 목적 중복. 코딩 착수 후 어느 쪽이 더 잘 맞는지 드러나면 나머지를 `docs/archive/`로 이동 | 2026-07-01 | OPEN |
-| ISS-02 | 룸 마무리(세션 인계) | 하단바 죽은 스텁 3개 배선(🎧→믹서·🎭→PiP·⏺ 녹음 defer) + 신규 방 기본 배경=모닥불(create-room 1줄+Edge 재배포). 조사결과·구현안·배포루프 = [HANDOFF-ROOM-FINISH-2026-07.md](./HANDOFF-ROOM-FINISH-2026-07.md). 룸 리디자인 SSOT=`../design/ROOM-REDESIGN-2026-07.md` | 2026-07-10 | HANDOFF |
+| ISS-02 | 이모트 기능화·인계 | Phase 1–4 완료·커밋(하단바 배선·신규방 모닥불 기본배경·로드아웃 피커·우도크 재분배 통합카드, 게이트 125/125). **미배포**(프론트 CF·create-room Edge). 남음: 옐로 Lottie 이모트(메인레포에서 — `npx skills` 툴 블로커)·Phase 7 배포·SSOT 백로그 기록. 인계=[HANDOFF-EMOTE-LOTTIE-2026-07.md](./HANDOFF-EMOTE-LOTTIE-2026-07.md) · 확장점(lottieEmoteMap/EmoteGlyph) 설계됨 | 2026-07-10 | HANDOFF |
 
 > 에이전트가 이슈 발견 시 이 표에 행을 추가하고 `open_issues` frontmatter를 갱신한다.
 
