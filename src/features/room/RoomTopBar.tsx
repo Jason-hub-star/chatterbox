@@ -30,10 +30,10 @@ export default function RoomTopBar({ roomName, tags, connected, elapsed, count, 
         ))}
       </div>
       {connected && (
-        <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-stage-border px-3 py-1 text-xs">
+        <span className="flex shrink-0 items-center gap-2 rounded-full border border-stage-border px-3 py-1">
           <span className="h-2 w-2 rounded-full bg-fire-hot motion-safe:animate-pulse" aria-hidden />
-          <span className="font-medium text-fire-hot">{t('room.live')}</span>
-          <span className="tabular-nums text-stage-text-muted">{elapsed}</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-fire-hot">{t('room.live')}</span>
+          <span className="text-sm font-bold tabular-nums text-stage-text">{elapsed}</span>
         </span>
       )}
       <button
