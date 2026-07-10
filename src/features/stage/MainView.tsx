@@ -51,10 +51,15 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
   if (!url) {
     return (
       <div
-        className="col-start-2 row-start-2 grid min-h-[120px] place-items-center rounded-lg border border-stage-border bg-stage-panel/30 text-xs text-stage-text-muted"
+        className="relative col-start-2 row-start-2 grid min-h-[120px] place-items-center overflow-hidden rounded-xl border border-stage-border bg-gradient-to-br from-stage-elevated/60 via-stage-panel/30 to-stage-base/50 text-xs text-stage-text-muted"
         aria-label={t('stage.mainView')}
       >
-        {t('stage.mainView')}
+        {/* 중앙 히어로 비네트(코드 임시) — 레퍼런스급은 씬 자산 필요(scene-pipeline). */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.35))]" aria-hidden />
+        <span className="relative flex flex-col items-center gap-1.5 opacity-70">
+          <span aria-hidden className="text-2xl">🎬</span>
+          {t('stage.mainView')}
+        </span>
       </div>
     )
   }

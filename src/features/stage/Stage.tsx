@@ -91,7 +91,7 @@ export default function Stage({
           ) : null,
         )}
       </svg>
-      <div className="relative grid grid-cols-[1fr_1.5fr_1fr] grid-rows-[1fr_1.5fr_1fr] gap-2">
+      <div className="relative grid grid-cols-[1fr_1.9fr_1fr] grid-rows-[1fr_1.9fr_1fr] gap-2">
         {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 씬 배경이 비치는 히어로 placeholder. */}
         <MainView isHost={isHost} onStop={onStopShare} />
 

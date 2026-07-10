@@ -846,7 +846,7 @@ export default function RoomPage() {
           onTouchMove={onStageTouchMove}
           onTouchEnd={onStageTouchEnd}
           onTouchCancel={cancelStageTouch}
-          style={{ aspectRatio: '16/9', minHeight: '300px' }}
+          style={{ aspectRatio: '4/3', minHeight: '300px' }}
         >
           <Stage
             participants={isViewer ? participants.filter((p) => !p.isLocal) : participants}
