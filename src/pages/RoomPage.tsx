@@ -706,7 +706,7 @@ export default function RoomPage() {
 
   // 상단바 액션: 링크 공유(클립보드 복사)
   const handleShareLink = useCallback(() => {
-    const url = `${window.location.origin}/room/${roomId}${isViewer ? '?watch=1' : ''}`
+    const url = `${window.location.origin}/rooms/${roomId}${isViewer ? '?watch=1' : ''}`
     navigator.clipboard.writeText(url)
     // ponytail: 토스트는 후속. 현재는 클립보드만 처리.
   }, [roomId, isViewer])
