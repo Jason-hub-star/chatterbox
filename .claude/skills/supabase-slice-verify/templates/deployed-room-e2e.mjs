@@ -47,7 +47,9 @@ async function loginJoin(context, email, sink) {
   sawLoginGate = true // 미인증으로 보호 라우트 → 로그인 폼 노출
   await page.fill('input[type=email]', email); await page.fill('input[type=password]', PW)
   await page.click('button[type=submit]')
-  await page.waitForFunction(() => document.body.innerText.includes('연결됨'), { timeout: 50000 })
+  // [함정 20·21] options 는 3번째 인자 · '연결됨' 문구는 폐기(품질 배지로 진화) → 인룸 신호('라이브' 배지)로 판정.
+  // LiveKit 연결 의존 액션은 해당 버튼 disabled 해제 대기(함정 22).
+  await page.waitForFunction(() => document.body.innerText.includes('라이브'), null, { timeout: 50000 })
   return page
 }
 const has = (page, sel) => page.evaluate((sel) => !!document.querySelector(sel), sel)

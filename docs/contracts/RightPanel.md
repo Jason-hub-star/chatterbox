@@ -7,7 +7,7 @@ tags: [contract]
 
 # 19. RightPanel
 
-우측 사이드바 컨테이너. 5탭(채팅·대본·VGen·DUB·노트) 관리 + 하단 고정 사운드보드. 탭 콘텐츠는 각각 위임.
+우측 사이드바 컨테이너. 탭 관리 + 상단 카드 스택. 탭 콘텐츠는 각각 위임. (~~하단 고정 사운드보드~~ — 2026-07-10 우도크 재분배로 **이모트 콘솔 카드에 흡수·폐기**, `contracts/ReactionWheel.md` 참조.)
 
 ---
 
@@ -19,7 +19,8 @@ tags: [contract]
 - **라이브 탭(3)**: `chat`(ChatPanel, 인라인 채팅 추출)·`dub`(DubPanel)·`vgen`(VgenStatusTab). 활성 탭은 `hidden`으로 숨기고 **언마운트하지 않음** → 녹음·생성 중 탭 전환에도 작업 유지(§금지사항 준수).
 - **store**: `rightPanelStore`(`activeTab`·`isOpen`·`setActiveTab`·`setIsOpen`·`toggle`). 활성 탭이 목록에 없으면 첫 탭으로 순수 파생(set-state-in-effect 회피).
 - **`mode` 자동전환 구현(2026-07-10, G-261)** — `stageStore.mode` 도입: vgen/dub 진입 시 해당 탭 자동 활성, normal 은 현재 탭 유지(강제 회귀 없음). 렌더 테스트 2(`rightPanelAutoTab.test.tsx`).
-- **Defer**: 대본 미러(`script`)·사운드보드·`isOpen` 접기 UI. 각 기능이 실제 빌드되면 tabs 배열에 한 항목씩 추가. (디렉터 노트 `notes` 탭=ROOM-17 은 룸 리디자인 트랙에서 구현 진행.)
+- **실탭 5 + 카드 스택(2026-07-10 정정)** — 실탭 = `chat`·`dub`·`vgen`·`notes`·`host`. 우도크 재분배로 MoodMeterCard·SoundboardCard 삭제 → `EmoteConsoleCard`(방분위기 실집계 인라인 + 로드아웃 전 슬롯 그리드 + ✏️`EmoteLoadoutPicker`) 단일 카드로 통합, RightPanel 세로 flex-1 확대. 이모트 비주얼은 `EmoteGlyph`(옐로 Lottie) — `contracts/ReactionWheel.md §비주얼 레이어`.
+- **Defer**: 대본 미러(`script`)·`isOpen` 접기 UI. 각 기능이 실제 빌드되면 tabs 배열에 한 항목씩 추가(`RoomPage.tsx` tabs 배열 1 push).
 - **파일**: `src/features/room/RightPanel.tsx`·`src/features/chat/ChatPanel.tsx`·`src/stores/rightPanelStore.ts`·`tests/unit/rightPanelStore.test.ts`.
 
 ---

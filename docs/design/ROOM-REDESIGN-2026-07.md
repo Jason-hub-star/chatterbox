@@ -69,6 +69,8 @@ tags: [design, room, redesign]
 
 > **무대 씬 후속 (2026-07-10, Fable — `bd97384`~`2a0a6fc`):** 메인뷰 확대(센터 그리드 1.9fr) → **무대 씬이 센터 칼럼을 꽉 채움**(고정 4/3 aspect 제거·`flex-1 h-full`·place-items stretch → 검은 여백 제거). **무대 씬 배경 배선(엔진 기존재 확인)**: 방장 선택 `background_url`(HostConsole 관리탭 `STAGE_BACKGROUNDS`→`set-room-background` Edge `/scenes/` prefix 검증→`bg_change` 브로드캐스트→전원) 이 **무대 전체 배경 단일 렌더**(opacity-90), 센터 `MainView`는 투명(공유영상 자리)—이중 렌더 제거. 신규 자산 `public/scenes/room-stage/campfire-forest.webp`(주인님 제공·모닥불 테마 정합, WebP 120KB). **빈 아바타 슬롯 숨김**(씬 주역화) + **별자리 직선 연결선 제거**(→ §6.1 별자리 규칙 **폐기**: 동적 아바타 위치 추종이라 정적 생성 불가·씬이 분위기 대체, 원하면 곡선 글로우 코드로만 재작성 가능). 부수: 공유링크 라우트 버그 `/room/`→`/rooms/` 정수정(`b179e72`, 유일 호출처). 배포·인증 실렌더 검증 완료(테스트 방 배경 강제→MainView 씬 확인).
 
+> **이모트 기능화 as-built (2026-07-10, Opus→Fable — `a656783`·`0e907fe`·`0659c05`·`daeafa8`·`83c965a`):** 하단바 스텁 실배선(🎧→믹서·🎭→PiP 배우전용·⏺→'준비중' — §2 "하단 스텁 배선" defer 부분 해소) · 신규 방 기본 배경=모닥불(create-room, **Edge 재배포 대기**) · 우도크 재분배 — 방분위기+사운드보드를 `EmoteConsoleCard` 로 통합(로드아웃 전 슬롯 그리드 + ✏️`EmoteLoadoutPicker`), MoodMeterCard·SoundboardCard 삭제 · **옐로 Lottie 비주얼 레이어**(기본 8종 자산 + `EmoteGlyph` 단일 렌더러, 인룸 E2E 7/7 — 상세 `contracts/ReactionWheel.md §비주얼 레이어`). SFX 오디오·mood 백엔드는 §4 defer 유지. **미배포**(프론트 CF·create-room Edge — `status/HANDOFF-EMOTE-LOTTIE-2026-07.md`).
+
 ## 4. defer (컨셉엔 있으나 이번 MVP 밖 — 백엔드 신규, 후속 트랙)
 
 분위기 지수 산출(mood 백엔드) · 사운드보드 SFX 오디오 · 룸 녹음 · 다음순서 큐 로직 · 카메라/헤드폰 룸레벨 토글 · 채팅 오버레이 버블(ChatOverlay §7) · 영상 스크러버 · 별자리 글로우 풀 애니. → 각각 **시각 자리만** 잡고 배선/로직은 후속. 무리한 10기능 동시 신규 = 미니멀리즘 위반, 금지.

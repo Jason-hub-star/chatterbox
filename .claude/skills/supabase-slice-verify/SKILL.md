@@ -46,6 +46,9 @@ DB-backed 슬라이스(DUB-04 녹음·DUB-05 합성·방 기능 등)를 **추측
 17. **실 외부 LLM/API 왕복 검증은 `fn.env` 더미를 실키로 교체** — 함정3은 "안 부르면 더미로 충분"인데, 실제 번역/STT 응답을 검증하려면 `.env` 실키를 `fn.env` 에 써서(값 stdout 금지: `printf 'OPENAI_API_KEY=%s\n' "$KEY" > $SCRATCH/fn.env`) serve 재기동. **검증 끝나면 반드시 더미(`sk-dummy-not-used`)로 복구** — scratch 에 실키 잔존 금지(성역).
 18. **소셜우선 로그인 — 이메일 폼은 숨어 있음** — 로그인 페이지가 OAuth 주버튼 구조(2026-07-08~)라 `input[type=email]` 이 처음엔 없다. **`[이메일로 로그인]` 버튼 클릭 후** `waitForSelector('input[type=email]')`. 구 템플릿의 즉시 fill 은 20s 타임아웃으로 죽는다. (의상실 E2E 실측 2026-07-09.)
 19. **Realtime postgres_changes 는 구독 join 전 UPDATE 유실** — 페이지 로드/리로드 직후 발사한 첫 UPDATE 는 WS join 전이면 리플레이 없이 사라진다. join 여유(~4s) 후 발사 + 미도달 시 **같은 값 재-UPDATE**(동일 값도 이벤트 방출됨) 폴링으로 드라이브. 실사용은 이벤트 간격이 길어 무해 — 테스트 하네스만의 함정.
+20. **playwright `waitForFunction` 의 options 는 3번째 인자** — `waitForFunction(fn, {timeout})` 처럼 2번째에 넣으면 **arg 로 먹혀** 기본 30s 가 적용된다(지정한 timeout 과 다른 "30000ms exceeded" 가 단서). 올바른 형태: `waitForFunction(fn, null, {timeout})`. (이모트 E2E 실측 2026-07-10.)
+21. **'연결됨' 문구는 stale** — 룸 상단 연결 배지가 품질 표시('좋음' 등)로 진화해 `innerText.includes('연결됨')` 은 영원히 false. 인룸 판정은 **목표 UI 셀렉터**(예: `button[aria-label="좋아요"]`, '라이브' 배지)로 한다.
+22. **룸 액션 버튼은 LiveKit 연결 전 disabled** — `evaluate` 로 `.click()` 하면 조용히 no-op(발사 안 됨). 발사 전 `!btn.disabled` 를 대기(≤60s)한 뒤 클릭. 연결 완료 판정으로도 이게 문구 매칭보다 견고.
 
 ## Steps
 
