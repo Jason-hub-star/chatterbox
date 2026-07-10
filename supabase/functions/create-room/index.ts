@@ -33,9 +33,10 @@ Deno.serve(async (req) => {
   const genre = typeof body.genre === "string" && GENRES.includes(body.genre) ? body.genre : null;
 
   // 방 생성 (status='waiting', 호스트 포함 current_participants=1)
+  // 신규 방 기본 무대 배경 = 모닥불 씬(방장이 관리탭에서 교체 가능). set-room-background 와 동일 /scenes/ 경로라 서버검증 통과.
   const { data: room, error: rErr } = await service
     .from("rooms")
-    .insert({ host_id: userId, title, max_participants: maxP, language, genre, status: "waiting", current_participants: 1 })
+    .insert({ host_id: userId, title, max_participants: maxP, language, genre, status: "waiting", current_participants: 1, background_url: "/scenes/room-stage/campfire-forest.webp" })
     .select("id, status")
     .single();
   if (rErr || !room) return json({ error: "Create room failed", detail: rErr?.message }, 500);
