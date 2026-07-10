@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { useConfigStore } from '@/stores/configStore'
 import { useUserStore } from '@/stores/userStore'
+import { usePresence } from '@/hooks/usePresence'
 import ProtectedRoute from '@/components/shared/ProtectedRoute'
 import MaintenanceBanner from '@/components/shared/MaintenanceBanner'
 import ToastHost from '@/components/shared/ToastHost'
@@ -80,6 +81,7 @@ export default function App() {
   const loadConfig = useConfigStore((s) => s.loadConfig)
   const subscribeRealtime = useConfigStore((s) => s.subscribeRealtime)
   const initAuth = useUserStore((s) => s.init)
+  usePresence() // friends_presence 전역 접속상태(PROFILE-04, LoL식) — 로그인 시 track, 방 입장 시 활동 갱신
 
   useEffect(() => {
     loadConfig()
