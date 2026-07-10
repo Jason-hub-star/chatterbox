@@ -830,7 +830,7 @@ export default function RoomPage() {
 
   // 무대 영역: Stage + ReactionOverlay/Wheel + 에러 표시
   const stageContent = (
-    <div className="relative flex flex-col gap-4">
+    <div className="relative flex h-full flex-col gap-4">
       {error && (
         <p className="rounded-lg bg-fire-hot/10 px-3 py-2 text-xs text-fire-hot sm:text-sm" role="alert">
           {error}
@@ -839,14 +839,14 @@ export default function RoomPage() {
       {connected && (
         <div
           data-stage-area
-          className="relative overflow-hidden rounded-xl"
+          className="relative min-h-0 flex-1 overflow-hidden rounded-xl"
           onContextMenu={(e) => e.preventDefault()}
           onMouseDown={openReactionWheel}
           onTouchStart={onStageTouchStart}
           onTouchMove={onStageTouchMove}
           onTouchEnd={onStageTouchEnd}
           onTouchCancel={cancelStageTouch}
-          style={{ aspectRatio: '4/3', minHeight: '300px' }}
+          style={{ minHeight: '280px' }}
         >
           <Stage
             participants={isViewer ? participants.filter((p) => !p.isLocal) : participants}
