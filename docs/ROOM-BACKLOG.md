@@ -19,13 +19,14 @@ tags: [status, backlog]
 
 ### 트랙 V — 수직 기능 (먼저)
 
-- [x] **V-1 채팅 모더레이션 묶음** (HOST-09 슬로우모드·HOST-10 금칙어·HOST-11 클리어/숨김) — 구현(2026-07-11): rooms 정책 컬럼+`audit_logs` 마이그(`20260711170000`)·`set-chat-policy`/`moderate-chat` Edge(soft delete+감사+`chat-mod` broadcast)·send-chat 서버 강제(400 banned_word/429 slow_mode·호스트 면제)·HostConsole 정책 UI+클리어 Modal·ChatPanel 호스트 숨김. **실측**: 통합 18/18·deno 3/3·게이트 그린. ⏳ 배포는 Phase 3 몰아치기. <!-- probe: supabase/functions/moderate-chat/index.ts -->
-- [x] **V-2 신고/차단** — 구현(2026-07-12 · 스펙 정정: `reporting-logging-feedback.md` §16.2 차단=**개인 경험 필터**라 livekit-token 입장 게이트 가정 폐기): 마이그 `20260711180000`(moderation_reports 운영 큐·user_blocks+blocked_auth_id 비정규화·본인 SELECT RLS)·`create-report`(3/분+20/시·발신자/본문 서버 확정 스냅샷·audit)·`create-block`/`delete-block`(멱등)·ChatPanel 접힘/펼침·신고 모달(+동시 차단)·차단 해제. **실측**: 통합 18/18·deno 3/3·게이트 그린. ⏳ 배포는 Phase 3. <!-- probe: supabase/functions/create-report/index.ts -->
+- [x] **V-1 채팅 모더레이션 묶음** (HOST-09 슬로우모드·HOST-10 금칙어·HOST-11 클리어/숨김) — 구현(2026-07-11): rooms 정책 컬럼+`audit_logs` 마이그(`20260711170000`)·`set-chat-policy`/`moderate-chat` Edge(soft delete+감사+`chat-mod` broadcast)·send-chat 서버 강제(400 banned_word/429 slow_mode·호스트 면제)·HostConsole 정책 UI+클리어 Modal·ChatPanel 호스트 숨김. **실측**: 통합 18/18(로컬+프로드)·deno 3/3·게이트 그린 · ✅ 프로드 배포+2탭 E2E(hide 라이브 전파, 2026-07-12). <!-- probe: supabase/functions/moderate-chat/index.ts -->
+- [x] **V-2 신고/차단** — 구현(2026-07-12 · 스펙 정정: `reporting-logging-feedback.md` §16.2 차단=**개인 경험 필터**라 livekit-token 입장 게이트 가정 폐기): 마이그 `20260711180000`(moderation_reports 운영 큐·user_blocks+blocked_auth_id 비정규화·본인 SELECT RLS)·`create-report`(3/분+20/시·발신자/본문 서버 확정 스냅샷·audit)·`create-block`/`delete-block`(멱등)·ChatPanel 접힘/펼침·신고 모달(+동시 차단)·차단 해제. **실측**: 통합 19/19(로컬+프로드)·deno 3/3·게이트 그린 · ✅ 프로드 배포+2탭 E2E(차단 접힘, 2026-07-12). <!-- probe: supabase/functions/create-report/index.ts -->
 - [ ] **V-3 인앱 녹화·다시보기 (ROOM-13)** — 하단바 Recording 비활성(`RoomBottomBar.tsx:94`, Egress 엔진 부재). LiveKit Egress→Storage→작품함. <!-- probe: supabase/functions/start-room-egress/index.ts -->
 - [ ] **V-4 로컬 백업 녹화 (ROOM-23)** — 참가자별 MediaRecorder chunk + IndexedDB(`DubRecorder.tsx:11` defer와 공유 기반).
 - [ ] **V-5 관객 투표/폴 (ROOM-22)** — 코드 0건(grep 실측). <!-- probe: src/features/room/PollPanel.tsx -->
 - [ ] **V-6 방장 이양 명시 UI + HOST-02 화면 비활성화** — 서버 승계(leave-room)·음소거만 존재.
-- [ ] **V-7 서버 하드닝 잔여** — livekit-token 게이트(onboarding/age/blocks)·leave-room 30s grace·sync-script-role DB 승급·CORS `'*'`(`_shared/supa.ts:10`)·ROOM_MAX_USERS 플래그.
+- [x] **V-7a 하드닝 — ROOM_MAX_USERS·CORS 스위치** (2026-07-12) — 정원 상한을 app_config `ROOM_MAX_USERS`(기본 6) 클램프로(create-room 생성 시 — 방별 강제는 기존 RPC 'full' 원자 담당) + CORS 를 env `ALLOWED_ORIGIN` 스위치로(기본 '*' 유지: localhost→프로드 개발 루프 상시 의존·Bearer API 라 실위험 Low — 공개 런칭 때 secrets 로 좁힘, 다오리진 echo 는 json(req) 전 함수 승급 ceiling). **실측**: 정원 7 요청 400(프로드 통합)·deno 전 함수 스윕 클린·전 함수 재배포 완료(2026-07-12). <!-- probe: supabase/functions/create-room/index.ts :: ROOM_MAX_USERS -->
+- [ ] **V-7b 서버 하드닝 잔여(defer)** — leave-room 30s grace·sync-script-role DB 승급·livekit-token onboarding/age 게이트(의존 기능·테이블 부재)·CORS 다오리진 echo. 사유: 의존 기능 미구현·실위험 Low — 해당 기능 슬라이스에 동반.
 - [ ] **V-8 1:1 귓속말 (G-72)** — recipient 필드 or DM 토픽(send-chat 확장).
 - [ ] **V-9 리허설 피드백 (ROOM-24)** — 10초 다시듣기·대사 겹침 분석. V-3(녹화) 뒤.
 

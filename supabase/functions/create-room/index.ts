@@ -25,8 +25,13 @@ Deno.serve(async (req) => {
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title || title.length > 80) return json({ error: "Invalid title" }, 400);
 
-  const maxP = Number.isInteger(body.max_participants) ? (body.max_participants as number) : 6;
-  if (maxP < 1 || maxP > 6) return json({ error: "Invalid max_participants" }, 400);
+  // ROOM_MAX_USERS(FeatureFlags): 전역 정원 상한 — app_config 플래그(기본 6). 방별 정원 "강제"는
+  // join_room_as_participant RPC('full' 409, FOR UPDATE 원자)가 담당하고, 여긴 생성 시 상한만 클램프.
+  const { data: capRow } = await service
+    .from("app_config").select("value").eq("key", "ROOM_MAX_USERS").maybeSingle();
+  const roomMaxUsers = Number((capRow?.value as { value?: number } | null)?.value) || 6;
+  const maxP = Number.isInteger(body.max_participants) ? (body.max_participants as number) : Math.min(6, roomMaxUsers);
+  if (maxP < 1 || maxP > roomMaxUsers) return json({ error: "Invalid max_participants" }, 400);
 
   // SEC-CR-2: 화이트리스트 — 자유 문자열 저장 오염 방지(genre 와 동형).
   const LANGS = ["ko", "en", "ja"];

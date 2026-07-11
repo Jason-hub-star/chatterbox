@@ -62,7 +62,7 @@ tags: [guide]
 - [x] 로비 피드 (라이브 방 목록, 실시간 Realtime 갱신) — as-built(로비 v3 재편): 대극장 `TheaterPage` 목록/검색/필터 + **Realtime nudge**(방 생성·입퇴장 시 자동 갱신). *(2026-07-10 정정 — 구주석은 LobbyPage 수동 새로고침 시절)*
 - [x] 방 생성 폼 (공개/비밀번호/장르 태그) — 비밀번호방 `room_secrets`+`set-room-password`+`join-room-with-password`(SEC-1 브루트포스 방어, 배포·E2E) · 장르 `ROOM_GENRES` 6종(`create-room` genre)+대극장 장르 필터. *(2026-07-10 정정)*
 - [ ] 방장 기능: 참가자 강퇴, 방 잠금, 슬롯 재배치 — 강퇴(`kick-participant`+사유 통지, 2026-07-10 프로드 2탭 E2E)·방 잠금(HOST-06) **완료**. **슬롯 재배치(드래그)만 잔여** → 남은 개발.
-- [ ] `ROOM_MAX_USERS` Feature Flag — 6명 초과 시 입장 거부 — 서버 원자 정원검사(`join-public-room`·뷰어 정원제외) O. **app_config flag 게이트 연동 확인만 잔여**.
+- [x] `ROOM_MAX_USERS` Feature Flag — 6명 초과 시 입장 거부 — 서버 원자 정원검사(`join-public-room`·뷰어 정원제외) O + app_config `ROOM_MAX_USERS`(기본 6) 생성 상한 클램프(`create-room`, 정원 7 요청 400 통합 실측). *(2026-07-12, V-7a)*
 - [ ] 방 권한 위임 (방장 → 다른 참가자) — 자동 승계(`leave-room`) + 이양 실시간 배선(A-FUNC-3: hostId 재조회→새 호스트 컨트롤) O. **명시적 위임 UI만 잔여**.
 - [x] 크레딧 시스템: 잔액 표시, 크레딧 0 시 VGEN 버튼 비활성화 — `VgenStatusTab` 잔액 표시 + `VgenPromptPanel` `canSubmit`(balance≥cost) 게이트. *(2026-07-10 정정)*
 - [ ] Sentry 에러 수집 확인 (의도적 에러 발생 → Sentry Dashboard 수신)

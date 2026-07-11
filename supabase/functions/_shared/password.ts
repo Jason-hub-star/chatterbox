@@ -21,7 +21,8 @@ async function derive(password: string, salt: Uint8Array, iterations: number): P
     ["deriveBits"],
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    // cast: TS 5.7 typed-array 제네릭이 Uint8Array<ArrayBufferLike>를 BufferSource 로 안 좁힘(런타임 무영향)
+    { name: "PBKDF2", hash: "SHA-256", salt: salt as BufferSource, iterations },
     key,
     KEY_BYTES * 8,
   );

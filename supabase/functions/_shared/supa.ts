@@ -7,7 +7,11 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export const cors = {
-  "Access-Control-Allow-Origin": "*", // ponytail: PoC '*'. 프로덕션은 앱 오리진으로 좁힌다.
+  // 기본 '*': 개발 루프(localhost → 프로드 백엔드)가 상시라 지금 좁히면 일상 개발이 깨짐 + Bearer 토큰
+  // API 라 ambient credential 없음(실위험 Low). 공개 런칭 시 secrets 로 ALLOWED_ORIGIN=<앱 오리진> 설정해
+  // 전 함수 일괄로 좁힌다(cold start 평가·재배포 필요). ponytail ceiling: localhost 병행까지 필요한
+  // 다오리진은 요청 origin echo — json() 이 req 를 받는 전 함수 call-site 승급이 필요해 defer.
+  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
