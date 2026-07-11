@@ -102,11 +102,11 @@ tags: [guide]
 
 ### Acceptance Criteria
 
-- [ ] `npm run build` 성공, `dist/` 크기 gzip 초기 번들 < 200 KB
+- [ ] `npm run build` 성공, `dist/` 크기 gzip 초기 번들 < 200 KB *(2026-07-11 실측: build 성공, 초기 번들 gzip 499KB — pixi·livekit 단일 청크, 코드 스플리팅 필요)*
 - [x] Cloudflare Pages 배포 완료 (`*.pages.dev` URL 접근 가능) — 2026-07-03: 프로젝트 `chatterbox`→`chatterbox-7r8.pages.dev`(unlisted). 번들 비밀키 감사 통과·헤드리스 실렌더(React 마운트·콘솔0)·배포판 E2E **14/14**(인증·방·상호프레즌스·아바타·채팅·**더빙 3b 풀 클릭스루**). 재배포/검증 스킬 `cf-pages-deploy-verify`. 공개 런칭은 별개(핵심 다듬은 뒤).
 - [ ] 설정 페이지: 오디오 입력 선택, 웹캠 선택, 단축키 확인
 - [ ] Push-to-talk (스페이스바), 전체 뮤트 (F키) 동작
-- [ ] 필살기 핫키 + Lottie 효과 최소 2종
+- [x] 필살기 핫키 + Lottie 효과 최소 2종 — 이모트 기능화로 충족: 옐로 Lottie 8종(`public/lotties/emotes/`) + EmoteGlyph·라디얼 휠·숫자키 핫키·터치 롱프레스, E2E 7/7 (2026-07-10, 커밋 83c965a·55db4f4). *(2026-07-11 정합 정정)*
 - [x] DUB 파이프라인 MVP: MP4 업로드 → Whisper STT → 역할 분배 → 녹음 → 합성 — 슬라이스 1(업로드→STT→배정→동의)·2(녹음, 실브라우저 E2E 9/9)·3a/3b(음원분리·합성) 전부 프로드 배포 + 배포판 클릭스루 E2E. *(2026-07-10 정정)*
 - [ ] Playwright E2E Critical path (AUTH·ROOM·VGEN) 통과
 - [ ] 모니터링 대시보드 전체 가동: Sentry·LiveKit·Supabase·pg_cron 알림

@@ -55,11 +55,6 @@ tags: [hub, spec]
 | `POST /functions/v1/set-room-mode` | `Host` | `{ room_id, mode: 'normal'\|'vgen'\|'dub' }` | `{ ok: true, mode }` | Host 서버검증 → `rooms.current_mode` UPDATE → `room-authority` `mode_change` 서버 broadcast (G-261). late joiner 는 입장 rooms 조회로 복원 | [[RoomView]], [[DATA-SCHEMA]] |
 | `POST /functions/v1/set-script-mode` | `Host` | `{ room_id, mode: 'rehearsal'\|'performance' }` | `{ ok: true, mode }` | Host 서버검증 → `rooms.script_mode` UPDATE → `room-authority` `script_mode` broadcast (ROOM-14) | [[ScriptPanel]] |
 | `POST /functions/v1/sync-script-role` | `Participant` | `{ room_id, action: 'claim'\|'release'\|'assign', role, target_auth_id? }` | `{ ok: true }` | claim/release=본인·활성 배우만, assign=호스트만 서버검증 → `script-role` reliable broadcast(수신측 서버발만 수락, ROOM-14) | [[ScriptPanel]] |
-| `POST /functions/v1/send-friend-request` | `Auth` | `{ target_user_id }` | `{ ok, status, friendship_id? }` | 자기/부재/중복 서버검증 + rate-limit(30/일) + 상대 friend_request 알림. 멱등(pending/accepted 반환)·상대 선요청 시 409 incoming_exists (PROFILE-04) | [[FriendSystem]] |
-| `POST /functions/v1/respond-friend-request` | `Auth`(수신자) | `{ friendship_id, action: 'accept'\|'reject' }` | `{ ok, status }` | 수신자 검증 → 수락 시 미러 행(양방향 기록) service upsert + friend_accepted 알림 | [[FriendSystem]] |
-| `POST /functions/v1/remove-friend` | `Auth` | `{ target_user_id }` | `{ ok }` | 친구 관계 양방향 soft delete | [[FriendSystem]] |
-| `POST /functions/v1/set-follow` | `Auth` | `{ target_user_id, follow: boolean }` | `{ ok, following }` | 즉시 accepted 팔로우 토글 + rate-limit(50/일) — 공연시작 알림 관계 (PROFILE-05) | [[FriendSystem]] |
-| `POST /functions/v1/list-friends` | `Auth` | `{}` | `{ friends[+online,activity], following, pending_in, pending_out }` | 당사자 friendships 집계 + 표시명·presence service 해석(친구관계 검증 후 last_active_at<60s=online·활성 room_participants=room, DP-1 전역 노출 0) | [[FriendSystem]] |
 | `POST /functions/v1/join-room-with-password` | `Auth` | `{ room_id, password }` | `{ room_id, participant_id, slot_index, role, rejoined? }` | 잠금방 PBKDF2 상수시간 대조 + **브루트포스 레이트리밋**(user·room 5회/5분, 정답 시 리셋, SEC-1) | [[SecurityPolicies]], [[LobbyPage]] |
 
 ## VGEN & Credit APIs
@@ -72,6 +67,18 @@ tags: [hub, spec]
 | `POST /functions/v1/refund-credit` | `Admin` or system job | `{ user_id, amount, reason, ref_id, idempotency_key }` | `{ ok: true, balance }` | Transactional credit refund + `credit_transactions` append | [[DATA-SCHEMA]], [[COST-ESTIMATE]] |
 | `POST /functions/v1/vgen-appeal` | `Owner` or `Host` | `{ job_id, reason }` | `{ appeal_id, status: 'pending' }` | Insert `vgen_appeals`, keep `vgen_jobs.status='flagged'`, set `vgen_jobs.appeal_status='pending'`, send receipt | [[VgenPanel]], [[MODERATION-OPS]] |
 | `GET /functions/v1/signed-asset-url?type=...&asset_id=...` | RLS resource viewer | Query `{ type: 'vgen'|'recording'|'dub_output', asset_id }` | `{ url, expires_at }` | [SECURITY] ①asset_id(UUID v4만 허용, sequential ID 거부) → owner_user_id 또는 room_id 조회 → 요청자 일치 검증 후 signed URL 발급. ②durable DB의 object key만 신뢰하고 저장 URL 직접 노출 금지. ③존재하지 않거나 권한 없으면 동일하게 404 반환. ④`private_hold`/consent withdrawal 상태는 admin/evidence service 외 404. | [[DATA-SCHEMA]], [[SecurityPolicies]] |
+
+## Avatar Forge APIs (PNG→Live2D)
+
+> SSOT: `docs/reference/patterns/avatar-forge-pipeline.md` · [[DATA-SCHEMA]] §1.8.2 avatar_jobs. 클라 래퍼 `src/lib/avatarJobs.ts`. 결과=rig(`avatars/<job>/project.json`), 25~40분 비동기 잡. UI 빌더는 아래 4함수만 호출.
+
+| Endpoint / Call | Auth | Request | Response | Notes | Refs |
+|---|---|---|---|---|---|
+| Storage `avatar-uploads` upload (클라 직접) | `Auth` | `uploadAvatarPng(file)` → `<authUid>/uploads/<uuid>.png` | `{ object_key }` | RLS 본인 폴더만(auth.uid()). private 버킷 | [[avatar-forge-pipeline]] |
+| `POST /functions/v1/create-avatar-job` | `Auth` | `{ object_key }` | `{ job_id, status:'running' }` | `isSafeObjectKey(authId)` 검증 → `avatar_jobs` insert(queued) → 업로드 signed URL → Modal 웹엔드포인트 spawn(`trigger_secret` body). 실패 시 status=failed | [[avatar-forge-pipeline]], [[DATA-SCHEMA]] |
+| `subscribeToAvatarJob(jobId, cb)` (Realtime) | `Auth` | postgres_changes UPDATE on `avatar_jobs` | `AvatarJob` | phase 진행/완료 자동 방송. `fetchMyAvatarJobs()`=재진입 | [[avatar-forge-pipeline]] |
+
+**Modal → Supabase (webhook 대신 직접 PATCH)**: 파이프라인 컨테이너가 service_role로 `PATCH /rest/v1/avatar_jobs?id=eq.<job>`(phase·status=done+result_project_url). 인바운드 엣지 없음, 인증=Modal `vtube-supabase` 시크릿. 트리거 엔드포인트=`POST <modal>/submit`(`{trigger_secret, job_id, exp_id, png_url}` → `{call_id}`).
 
 ## Recording & DUB APIs
 
@@ -136,6 +143,7 @@ These are not Edge endpoints. Use Supabase client with RLS and Realtime subscrip
 | `rooms` | list/search active rooms | `Auth` or public demo rules | Respect password/private flags | [[LobbyPage]], [[DATA-SCHEMA]] |
 | `room_participants` | read same-room participants | `Participant` | Client hides blocked users but DB evidence remains | [[DATA-SCHEMA]], [[SecurityPolicies]] |
 | `vgen_jobs` | subscribe/read visible jobs | Visibility RLS | `public`, `members_only`, `private` gates | [[VgenPanel]], [[DATA-SCHEMA]] |
+| `avatar_jobs` | subscribe/read own jobs | Own-row RLS | `createAvatarJob`/`subscribeToAvatarJob`/`fetchMyAvatarJobs` (avatarJobs.ts). 완료 시 `result_project_url`→AvatarPreview/SelfAvatar | [[avatar-forge-pipeline]], [[DATA-SCHEMA]] |
 | `recordings` | read visible recordings | Visibility RLS | Durable playback URL requires signed URL endpoint | [[DATA-SCHEMA]] |
 | `notifications` | read/update `read_at` own rows | `Auth` | Creation only through Edge/system | [[DATA-SCHEMA]] |
 

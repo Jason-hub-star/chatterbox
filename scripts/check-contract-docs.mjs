@@ -122,6 +122,20 @@ function topLargestDocs(limit = 10) {
     .slice(0, limit);
 }
 
+// 문서 크기 임계 (doc-health-check 스킬 기준). 경고 전용 — 게이트를 실패시키지 않는다.
+const SIZE_THRESHOLDS = { review: 800, rotate: 1500 };
+
+function oversizedDocs() {
+  return walkFiles('docs', (rel) => rel.endsWith('.md'))
+    .map((rel) => ({ rel, lines: lineCount(rel) }))
+    .filter((doc) => doc.lines > SIZE_THRESHOLDS.review)
+    .map((doc) => ({
+      ...doc,
+      level: doc.lines > SIZE_THRESHOLDS.rotate ? 'ROTATE' : 'REVIEW',
+    }))
+    .sort((a, b) => b.lines - a.lines);
+}
+
 function makeHealthReport(metrics) {
   const gate = metrics.strictBlockers.length === 0 ? 'READY' : 'BLOCKED';
   const blockerRows = metrics.strictBlockers.length === 0
@@ -133,6 +147,12 @@ function makeHealthReport(metrics) {
   const largestRows = metrics.largestDocs
     .map((item) => `| \`${item.rel}\` | ${item.lines} |`)
     .join('\n');
+  const oversizedRows = metrics.oversizedDocs.length === 0
+    ? '| - | - | - |\n'
+    : metrics.oversizedDocs
+        .map((item) => `| ${item.level} | \`${item.rel}\` | ${item.lines} |`)
+        .join('\n') + '\n';
+  const rotateCount = metrics.oversizedDocs.filter((d) => d.level === 'ROTATE').length;
 
   return `# CONTRACT-HEALTH — 계약 문서 건강 리포트
 
@@ -184,6 +204,14 @@ ${warningRows}
 |---|---:|
 ${largestRows}
 
+## Oversized Docs (경고 · 비게이트)
+
+> 기준(doc-health-check 스킬): REVIEW > ${SIZE_THRESHOLDS.review}줄, ROTATE > ${SIZE_THRESHOLDS.rotate}줄(archive 회전 권장).
+> 이 섹션은 **경고 전용**이며 \`docs:check\`를 실패시키지 않는다. 현재 ROTATE 대상 ${rotateCount}건.
+
+| Level | File | Lines |
+|---|---|---:|
+${oversizedRows}
 ## Operating Rule
 
 - \`npm run docs:check\`: 문서 구조 기본 게이트. 항상 PASS 상태를 유지한다.
@@ -220,6 +248,7 @@ let metrics = {
   gapStatusCounts: {},
   forbiddenAliases: 0,
   largestDocs: [],
+  oversizedDocs: [],
 };
 
 if (failures.length === 0) {
@@ -227,6 +256,7 @@ if (failures.length === 0) {
   metrics.docs = docs.length;
   metrics.totalDocLines = docs.reduce((sum, rel) => sum + lineCount(rel), 0);
   metrics.largestDocs = topLargestDocs();
+  metrics.oversizedDocs = oversizedDocs();
 
   const featureIds = extractFeatureIds(read('docs/FEATURE-SPEC.md'));
   const featureMap = read('docs/FEATURE-CONTRACT-MAP.md');

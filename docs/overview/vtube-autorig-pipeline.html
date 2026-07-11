@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>버튜버 자동 제작 흐름</title>
+<style>
+  html,body{margin:0;padding:0}
+  :root{
+    --ground:#15131d; --panel:#1e1b2a; --panel2:#26232f; --line:#332f44;
+    --ink:#f0edf6; --muted:#a29db3; --faint:#726d86;
+    --signal:#ef5aa0; --depth:#42d2cb; --cream:#f3ead8; --gold:#f2b34a;
+    --pass:#59d79a;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"Helvetica Neue",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{
+    background:
+      radial-gradient(1000px 480px at 84% -10%, rgba(239,90,160,.11), transparent 60%),
+      radial-gradient(820px 420px at 6% 106%, rgba(66,210,203,.09), transparent 62%),
+      var(--ground);
+    color:var(--ink); font-family:var(--sans); min-height:100vh;
+    padding:46px 20px 70px; -webkit-font-smoothing:antialiased; line-height:1.55;
+  }
+  .inner{max-width:760px; margin:0 auto}
+
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--signal); margin:0 0 12px; display:flex; align-items:center; gap:10px}
+  .eyebrow::before{content:""; width:24px; height:1px; background:linear-gradient(90deg,var(--signal),transparent)}
+  h1{font-size:clamp(28px,6vw,40px); line-height:1.06; margin:0 0 14px; font-weight:800; letter-spacing:-.02em; text-wrap:balance}
+  .tldr{font-size:16px; color:var(--muted); margin:0 0 34px; max-width:60ch}
+  .tldr b{color:var(--cream); font-weight:600}
+  .tldr .ar{color:var(--depth); font-weight:700; padding:0 3px}
+
+  /* timeline spine */
+  .flow{position:relative; padding-left:46px}
+  .flow::before{content:""; position:absolute; left:19px; top:12px; bottom:14px; width:2px;
+    background:linear-gradient(180deg,var(--signal),var(--depth) 55%,var(--pass))}
+
+  .step{position:relative; margin-bottom:14px}
+  .step::before{content:""; position:absolute; left:-35px; top:15px; width:20px; height:20px;
+    border-radius:50%; background:var(--panel2); border:2px solid var(--line); z-index:1}
+  .step::after{content:attr(data-n); position:absolute; left:-35px; top:15px; width:20px; height:20px;
+    display:grid; place-items:center; font-family:var(--mono); font-size:10px; font-weight:700; color:var(--muted); z-index:2}
+  .step.sig::before{border-color:var(--signal)} .step.sig::after{color:var(--signal)}
+  .step.dep::before{border-color:var(--depth)} .step.dep::after{color:var(--depth)}
+  /* human gate = diamond */
+  .step.gate::before{border-radius:4px; transform:rotate(45deg); border-color:var(--gold); background:#231e18}
+  .step.gate::after{color:var(--gold)}
+  /* start/end caps */
+  .step.cap::before{background:var(--signal); border-color:var(--signal)}
+  .step.cap.end::before{background:var(--pass); border-color:var(--pass)}
+  .step.cap::after{content:""}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:15px 17px}
+  .step.cap .card{background:transparent; border-style:dashed}
+  .kw{font-size:21px; font-weight:800; letter-spacing:-.01em; line-height:1.2}
+  .step.cap .kw{font-size:19px}
+  .sub{color:var(--muted); font-size:13.5px; margin-top:3px}
+
+  /* branch keyword chips */
+  .branch{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px}
+  .chip{font-size:13px; font-weight:600; padding:6px 12px; border-radius:9px;
+    background:var(--panel2); border:1px solid var(--line); color:var(--cream); position:relative}
+  .chip.hot{border-color:rgba(239,90,160,.5); color:#ffd7e9}
+  .chip.new{border-color:rgba(66,210,203,.5); color:#c6f4f0}
+  .chip.new::after{content:"NEW"; font-family:var(--mono); font-size:8px; letter-spacing:.08em;
+    color:var(--depth); margin-left:6px; vertical-align:middle}
+  .chip.hot.newp::after{content:"NEW"; font-family:var(--mono); font-size:8px; letter-spacing:.08em;
+    color:var(--signal); margin-left:6px}
+
+  /* result strip */
+  .result{margin:38px 0 0; background:linear-gradient(180deg,var(--panel),#191622);
+    border:1px solid var(--line); border-radius:15px; padding:20px 22px}
+  .result h2{font-size:16px; margin:0 0 3px; font-weight:750}
+  .result p{color:var(--muted); font-size:12.5px; margin:0 0 16px}
+  .nums{display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:12px}
+  .num{text-align:center}
+  .num .v{font-size:23px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+  .num .l{font-size:11px; color:var(--muted); margin-top:2px}
+  .num.s .v{color:var(--signal)} .num.d .v{color:var(--depth)} .num.p .v{color:var(--pass)}
+
+  .foot{margin-top:22px; color:var(--faint); font-size:12px; font-family:var(--mono); text-align:center}
+  @media(max-width:520px){ .kw{font-size:19px} }
+</style>
+</head><body>
+
+<div class="wrap"><div class="inner">
+
+  <p class="eyebrow">Vtube · AUTORIG</p>
+  <h1>그림 한 장 → 움직이는 버튜버</h1>
+  <p class="tldr">정면 그림을 넣으면 <b>오려서</b><span class="ar">→</span><b>뼈대를 붙이고</b><span class="ar">→</span><b>웹캠으로 움직이는</b> 2D 버튜버가 나옵니다. 손으로 리깅하지 않고, 아래 흐름이 자동으로 돕니다. 사람이 눈으로 확인하는 곳은 두 군데(◆)뿐이에요.</p>
+
+  <div class="flow">
+
+    <div class="step cap" data-n="">
+      <div class="card"><div class="kw">🖼️ 정면 그림 1장</div><div class="sub">입력 — AI로 생성하거나 업로드</div></div>
+    </div>
+
+    <div class="step sig" data-n="1">
+      <div class="card"><div class="kw">그림 점검</div><div class="sub">잘 그려졌는지 자동 확인 (입·눈 정렬)</div></div>
+    </div>
+
+    <div class="step sig" data-n="2">
+      <div class="card"><div class="kw">레이어 분해</div><div class="sub">한 장을 부위별 29겹으로 오려냄 · 고해상은 클라우드 GPU</div></div>
+    </div>
+
+    <div class="step dep" data-n="3">
+      <div class="card"><div class="kw">크기 맞추기</div><div class="sub">모든 조각을 2048 기준으로 정렬 (흐림 없음)</div></div>
+    </div>
+
+    <div class="step gate" data-n="◆">
+      <div class="card"><div class="kw">사람 확인 ①</div><div class="sub">오려낸 결과를 눈으로 체크</div></div>
+    </div>
+
+    <div class="step sig" data-n="4">
+      <div class="card">
+        <div class="kw">부품 만들기</div>
+        <div class="sub">움직일 조각들을 준비</div>
+        <div class="branch">
+          <span class="chip">입 4단계</span>
+          <span class="chip">눈 6표정</span>
+          <span class="chip">머리카락</span>
+          <span class="chip hot newp">한 올 찰랑</span>
+          <span class="chip">볼터치·눈물</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step sig" data-n="5">
+      <div class="card">
+        <div class="kw">뼈대 넣기 · 리깅</div>
+        <div class="sub">조각에 관절·물리·깊이를 연결</div>
+        <div class="branch">
+          <span class="chip">관절·회전</span>
+          <span class="chip">가슴 모핑</span>
+          <span class="chip new">2.5D 깊이</span>
+          <span class="chip hot newp">귀 찰랑 펜듈럼</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step dep" data-n="6">
+      <div class="card">
+        <div class="kw">품질 검사</div>
+        <div class="sub">부러진 곳·성능 자동 점검</div>
+        <div class="branch">
+          <span class="chip">리그 건강성</span>
+          <span class="chip new">모바일 최적화</span>
+          <span class="chip">깊이 단조성</span>
+          <span class="chip">실렌더 확인</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step gate" data-n="◆">
+      <div class="card"><div class="kw">사람 확인 ②</div><div class="sub">웹캠 켜고 고개 움직여 직접 테스트 → OK면 배포</div></div>
+    </div>
+
+    <div class="step cap end" data-n="">
+      <div class="card"><div class="kw">🎉 버튜버 완성</div><div class="sub">웹 링크 · OBS 방송으로 바로 사용</div></div>
+    </div>
+
+  </div>
+
+  <div class="result">
+    <h2>유키 실제 결과 · 2026-07-03</h2>
+    <p>이번에 만든 토끼귀 캐릭터 — bust-up 프레이밍 + 귀 찰랑 + 깊이</p>
+    <div class="nums">
+      <div class="num s"><div class="v">29→21</div><div class="l">겹 분해</div></div>
+      <div class="num s"><div class="v">44</div><div class="l">부품</div></div>
+      <div class="num d"><div class="v">2.5D</div><div class="l">깊이 시차</div></div>
+      <div class="num s"><div class="v">×2</div><div class="l">귀 펜듈럼</div></div>
+      <div class="num p"><div class="v">PASS</div><div class="l">품질 게이트</div></div>
+      <div class="num d"><div class="v">30MB</div><div class="l">모바일 OK</div></div>
+    </div>
+  </div>
+
+  <p class="foot">쉽게 말하면 — 그림 → 오리기 → 뼈대 → 웹캠. 파랑=데이터·분홍=캐릭터 신호 · ◆=사람이 보는 곳</p>
+
+</div></div>
+
+</body></html>
