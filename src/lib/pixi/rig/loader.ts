@@ -1,5 +1,5 @@
-// project.json + 파츠 이미지 로더. 원천: public/aria-player/src/{main,core/utils}.js.
-// projectUrl은 파라미터 — 아리아 하드코딩 아님(전 AUTORIG 모델 로드 가능, rig-format §7.5).
+// project.json + 파츠 이미지 로더. 원천: SNACK 플레이어 src/{main,core/utils}.js.
+// projectUrl은 파라미터 — 특정 모델 하드코딩 아님(전 AUTORIG 모델 로드 가능, rig-format §7.5).
 
 import type { Part, Project, RigConfig } from './types'
 import { normalizeRig } from './rigMath'
@@ -17,7 +17,7 @@ function deriveBaseUrl(projectUrl: string): string {
 }
 
 // 보안: 신뢰 오리진만(동일 오리진 또는 *.supabase.co). 임의 외부 URL 로드 차단 —
-// aria-player 런타임 화이트리스트와 동일 정책(페이블 보안리뷰 반영).
+// 원본 플레이어 런타임 화이트리스트와 동일 정책(페이블 보안리뷰 반영).
 function assertTrustedOrigin(projectUrl: string): void {
   const host = new URL(projectUrl, location.href).hostname
   if (host !== location.hostname && !host.endsWith('.supabase.co')) {
@@ -52,7 +52,10 @@ async function loadImages(project: Project): Promise<Map<string, HTMLImageElemen
 
 export async function loadRigProject(projectUrl: string): Promise<LoadedAvatar> {
   assertTrustedOrigin(projectUrl)
-  const response = await fetch(projectUrl)
+  // project.json은 같은 URL로 내용이 갱신되는 가변 포인터 — Storage가 max-age=3600이라 기본 캐시면
+  // 업데이트 후에도 유저가 최대 1시간(+캐시 엔트리 수명) 구본을 본다(2026-07-11 실측: 하드 리프레시도
+  // 로드 후 fetch에는 무효). no-cache = ETag 재검증(304)이라 비용 미미. 파츠는 ?v=generated_at 불변 캐시.
+  const response = await fetch(projectUrl, { cache: 'no-cache' })
   if (!response.ok) throw new Error(`${projectUrl} ${response.status}`)
   const project = (await response.json()) as Project
 

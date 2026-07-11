@@ -18,6 +18,15 @@ const KEYFRAMES = `
   14%  { transform: translateY(0) scale(1.15); opacity: 1; }
   28%  { transform: translateY(-6px) scale(1); opacity: 1; }
   100% { transform: translateY(-64px) scale(1); opacity: 0; }
+}
+@keyframes reaction-fade {
+  0%   { opacity: 0; }
+  14%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reaction-anim { animation-name: reaction-fade !important; }
 }`
 
 function seatPercent(slot: number | undefined): { left: string; top: string } {
@@ -48,7 +57,7 @@ function ReactionFloat({
       style={{ left: pos.left, top: pos.top }}
       aria-hidden
     >
-      <span className="block" style={{ animation: `reaction-rise ${DURATION_MS}ms ease-out forwards` }}>
+      <span className="block reaction-anim" style={{ animation: `reaction-rise ${DURATION_MS}ms ease-out forwards` }}>
         <EmoteGlyph id={EMOTE_ID_BY_EMOJI.get(float.emoji)} emoji={float.emoji} size={40} animate={animate} />
       </span>
     </span>

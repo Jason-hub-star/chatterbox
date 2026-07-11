@@ -24,6 +24,8 @@ export default function ReactionWheel({ origin, initialSticky, onFire, onClose }
   const { t } = useTranslation()
   const slots = useReactionStore((s) => s.slots)
   const [active, setActive] = useState<number | null>(null)
+  const activeRef = useRef<number | null>(null)
+  useEffect(() => { activeRef.current = active }, [active]) // 키보드 Enter 가 최신 active 를 읽도록(렌더 중 ref 쓰기 금지)
   const [sticky, setSticky] = useState(initialSticky ?? false)
   const stickyRef = useRef(initialSticky ?? false) // 이벤트 핸들러에서만 쓰기 — sticky 진입 후 mouseup 중복 발사 차단
 
@@ -49,7 +51,18 @@ export default function ReactionWheel({ origin, initialSticky, onFire, onClose }
         setSticky(true) // 중앙서 뗌 → 열린 채 유지
       }
     }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return }
+      const n = slots.length
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault(); setActive((a) => ((a ?? -1) + 1 + n) % n)
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault(); setActive((a) => ((a ?? 0) - 1 + n) % n)
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        const a = activeRef.current
+        if (a != null && slots[a]) { e.preventDefault(); onFire(slots[a].emoji); onClose() }
+      }
+    }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
     document.addEventListener('keydown', onKey)

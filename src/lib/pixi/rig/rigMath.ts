@@ -1,4 +1,4 @@
-// rig 변형 수학 — public/aria-player/src/core/{rig,physics,pendulum}.js의 인스턴스화 이식.
+// rig 변형 수학 — SNACK 플레이어 src/core/{rig,physics,pendulum}.js의 인스턴스화 이식.
 //
 // 원천은 모듈 싱글턴 `state`에 결합돼 아바타 1개만 가능했다. 여기서는 createRigMath(ctx)
 // 팩토리가 ctx(파라미터/rig/물리/프로젝트)와 프레임 캐시를 클로저로 캡슐화 → participant N명이

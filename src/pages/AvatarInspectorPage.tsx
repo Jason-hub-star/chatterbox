@@ -2,12 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { RigAvatar } from '@/lib/pixi/rig'
 
-// B1 게이트: 아리아 실 rig의 **네이티브 이식**(src/lib/pixi/rig) 미리보기.
-// 왼쪽 = 네이티브 RigAvatar(경로 B), 오른쪽 = aria-player 런타임 iframe(동일 project.json, ?renderer=pixi).
-// 중립 포즈로 나란히 대조 → 픽셀/시각 정합 확인. 슬라이더로 FFD 격자변형·키폼·눈커버·물리를 실증.
-// ?project=<url> 로 임의 아바타를 네이티브 렌더러로 검사(기본 아리아). 새 rig 배포 검증용.
-// ponytail: 자동 픽셀 diff(Playwright)는 후속. B1은 시각 대조 게이트.
-const ARIA_PROJECT = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/avatars/aria/project.json`
+// 아바타 인스펙터 — 네이티브 rig(src/lib/pixi/rig) 렌더 검사 도구.
+// ?project=<url> 로 임의 아바타를 렌더하고 슬라이더로 FFD 격자변형·키폼·눈커버·물리를 실증.
+// 새 rig 배포 검증용(avatar-deploy 스킬이 사용). 기본 = 현 기본 아바타(유키).
+const DEFAULT_PROJECT = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/avatars/yuki/project.json`
 
 interface Slider {
   id: string
@@ -31,8 +29,7 @@ const SLIDERS: Slider[] = [
 
 export default function AvatarInspectorPage() {
   const [searchParams] = useSearchParams()
-  const projectUrl = searchParams.get('project') || ARIA_PROJECT
-  const referenceSrc = `/aria-player/index.html?renderer=pixi&project=${encodeURIComponent(projectUrl)}`
+  const projectUrl = searchParams.get('project') || DEFAULT_PROJECT
   const mountRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<RigAvatar | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -88,17 +85,9 @@ export default function AvatarInspectorPage() {
       <header className="flex items-center justify-between border-b border-stage-border px-6 py-3">
         <div>
           <h1 className="text-lg font-bold">아바타 인스펙터 — 네이티브 rig</h1>
-          <p className="text-xs text-stage-text-muted">
-            왼쪽 = 네이티브 이식 렌더 · 오른쪽 = aria-player 런타임(동일 project.json). 중립 포즈 대조.
-          </p>
+          <p className="text-xs text-stage-text-muted">?project=&lt;url&gt; 로 임의 rig 검사 · 슬라이더로 파라미터 구동.</p>
         </div>
         <nav className="flex gap-4 text-sm text-stage-text-muted">
-          <Link to="/avatar-aria-self" className="hover:text-stage-text">
-            웹캠 self drive (B2)
-          </Link>
-          <Link to="/avatar-aria" className="hover:text-stage-text">
-            iframe PoC
-          </Link>
           <Link to="/" className="hover:text-stage-text">
             홈
           </Link>
@@ -114,21 +103,11 @@ export default function AvatarInspectorPage() {
             aria-label="네이티브 아바타 캔버스"
           />
           <figcaption className="text-xs text-stage-text-muted">
-            네이티브 이식 (src/lib/pixi/rig)
+            네이티브 렌더 (src/lib/pixi/rig)
             {status === 'loading' && ' · 로딩 중…'}
             {status === 'ready' && ' · 렌더 중'}
             {status === 'error' && ' · 오류'}
           </figcaption>
-        </figure>
-
-        <figure className="flex flex-col items-center gap-2">
-          <iframe
-            src={referenceSrc}
-            title="aria-player 런타임 참조"
-            className="rounded-lg border border-stage-border"
-            style={{ width: 480, height: 480 }}
-          />
-          <figcaption className="text-xs text-stage-text-muted">aria-player 런타임 (참조 골든)</figcaption>
         </figure>
 
         <div className="flex w-64 flex-col gap-3">

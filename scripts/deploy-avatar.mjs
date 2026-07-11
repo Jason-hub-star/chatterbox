@@ -3,7 +3,7 @@
 //
 // 사용법:
 //   node scripts/deploy-avatar.mjs <rigDir> <id> <name>
-//   예) node scripts/deploy-avatar.mjs ~/jason/Vtube/experiments/autorig-character-010/rig_v0_project ruby 루비
+//   예) node scripts/deploy-avatar.mjs ~/jason/Vtube/experiments/snack-yuki-001/rig_v0_project yuki 유키
 //
 // 하는 일:
 //   1) rigDir 의 character.json + mini_rig.json → project.json (_mini_rig 인라인, 렌더 필수)
@@ -47,8 +47,11 @@ const character = JSON.parse(readFileSync(charPath, 'utf8'))
 const miniRig = existsSync(miniPath) ? JSON.parse(readFileSync(miniPath, 'utf8')) : null
 if (!miniRig) console.warn('⚠️ mini_rig.json 없음 — _mini_rig 미인라인 시 렌더 부정확(아리아형 fallback). 계속하려면 확인.')
 const project = { ...character, ...(miniRig ? { _mini_rig: miniRig } : {}) }
+// 배포 = 새 버전: generated_at을 항상 범프 — 같은 URL 재배포 시 파츠 캐시(?v=generated_at)와
+// CDN/브라우저가 구본을 계속 서빙하는 함정 차단(2026-07-11 커미션 발행 실측과 동일 클래스).
+project.generated_at = new Date().toISOString()
 const renderMode = miniRig?.render_mode ?? '(none)'
-console.log(`[${id}] project_kind=${project.project_kind} parts=${project.parts.length} render_mode=${renderMode}`)
+console.log(`[${id}] project_kind=${project.project_kind} parts=${project.parts.length} render_mode=${renderMode} rev=${project.generated_at}`)
 
 // 2) parts 검증
 const paths = [...new Set(project.parts.map((p) => p.source_path))]
@@ -84,13 +87,25 @@ manifest.avatars.sort((a, b) => a.id.localeCompare(b.id))
 await up('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2)), 'application/json')
 console.log(`매니페스트: ${manifest.avatars.map((a) => a.id).join(', ')} ✓`)
 
-// 5) 원격 검증
+// 5) 원격 검증 — 200만 보면 안 된다(내용이 구본일 수 있음, 2026-07-11 실측): 내용 대조 + 맨 URL 전파까지.
 const base = `${SB_URL}/storage/v1/object/public/avatars/${id}`
-let ok = (await fetch(`${base}/project.json?t=${Date.now()}`)).status === 200 ? 1 : 0
+const origin = await (await fetch(`${base}/project.json?t=${Date.now()}`, { cache: 'no-store' })).json()
+if (origin.generated_at !== project.generated_at) {
+  console.error(`❌ 원본 내용 불일치: 원격 rev=${origin.generated_at} ≠ 업로드 rev=${project.generated_at}`)
+  process.exit(1)
+}
+let ok = 1
 const bad = []
 for (const rel of paths) {
-  ;(await fetch(`${base}/${rel}`)).status === 200 ? ok++ : bad.push(rel)
+  ;(await fetch(`${base}/${rel}?v=${encodeURIComponent(project.generated_at)}`)).status === 200 ? ok++ : bad.push(rel)
 }
-console.log(`원격 검증: ${ok}/${paths.length + 1} 200` + (bad.length ? ` ❌ ${bad.slice(0, 5)}` : ' ✓'))
+console.log(`원격 검증: ${ok}/${paths.length + 1} 200 + 내용 rev 일치` + (bad.length ? ` ❌ ${bad.slice(0, 5)}` : ' ✓'))
+let propagated = false
+for (let i = 0; i < 12 && !propagated; i++) {
+  const bare = await (await fetch(`${base}/project.json`, { cache: 'no-store' })).json()
+  if (bare.generated_at === project.generated_at) propagated = true
+  else await new Promise((r) => setTimeout(r, 5000))
+}
+console.log(propagated ? '맨 URL 전파 확인 ✓' : '⚠️ 맨 URL 아직 구본 — CDN TTL 대기(유저는 당분간 구본)')
 console.log(bad.length ? '\n배포 불완전 — 위 실패 확인.' : `\n✅ "${name}"(${id}) 배포 완료 — 설정에서 바로 선택 가능.`)
 process.exit(bad.length ? 1 : 0)

@@ -1,6 +1,6 @@
 // AUTORIG 메시변형 rig(project.json ≡ Vtube character.json)의 타입.
 // 스키마 SSOT: docs/specs/rig-format.md §2. 산출 계약: docs/specs/avatar-pipeline.md §2.
-// 원천 구현: public/aria-player/src/core/{rig,draw_pixi,state,physics}.js (인스턴스화 이식).
+// 원천 구현: SNACK 플레이어 src/core/{rig,draw_pixi,state,physics}.js (인스턴스화 이식).
 
 export type Vec2 = [number, number]
 export type BBox = [number, number, number, number] // [x, y, w, h]
@@ -187,4 +187,4 @@ export interface RigContext {
 }
 
 // setParams 입력 — ParamXxx id → 값. blendshapesToRigParams(B2)의 출력 타입이기도.
-export type AriaRigParams = Record<string, number>
+export type RigParams = Record<string, number>

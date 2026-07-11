@@ -1,4 +1,4 @@
-// blendshape(52 ARKit) + head pose → AUTORIG ParamXxx 매핑. 원천: public/aria-player/drive.html
+// blendshape(52 ARKit) + head pose → AUTORIG ParamXxx 매핑. 원천: SNACK 플레이어 drive.html
 // convert()+rawChannels() (실측 검증본, rig-format §3). self(로컬 웹캠)·remote(RT-02 수신) 공용 브릿지.
 //
 // 팩토리인 이유: 눈 개폐가 **적응형 데드존(eyeOpenBaseline)** + EMA 상태를 가진다. self와 각 remote
@@ -9,7 +9,7 @@
 //  - headPose(yaw/pitch/roll, 도): **로컬 랜드마크 전용** — RT-02는 head pose 미전송이라 원격은 null → AngleX/Y/Z=0.
 // ponytail: body(shoulder/Pose)·표정 번들(ParamEyeExpr 등)은 후속 매핑/UI 층. gaze/head는 여기서 구동.
 
-import type { AriaRigParams } from './types'
+import type { RigParams } from './types'
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, Number.isFinite(v) ? v : 0))
@@ -43,14 +43,14 @@ export interface ExpressionDriverOptions {
 export type ExpressionDriver = (
   blendshapes: Record<string, number>,
   headPose?: HeadPose | null,
-) => AriaRigParams
+) => RigParams
 
 export function createExpressionDriver(options: ExpressionDriverOptions = {}): ExpressionDriver {
   const M = options.mirror === false ? 1 : -1
   let eyeOpenBaseline = 0.3 // 눈 평상 eyeBlink 시작 추정(높게=뜸 바이어스). 라이브 적응.
   let eyeSmooth = 1 // EMA 상태(뜸=1)
 
-  return function drive(bs: Record<string, number>, headPose?: HeadPose | null): AriaRigParams {
+  return function drive(bs: Record<string, number>, headPose?: HeadPose | null): RigParams {
     const g = (k: string) => bs[k] ?? 0
 
     // 눈: 양눈 링크(THA4 — 뜬눈 디테일이 ParamEyeLOpen 공유, 독립 윙크 불가) + 적응 데드존.

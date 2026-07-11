@@ -14,11 +14,11 @@ import TheaterPage from '@/pages/lobby/TheaterPage'
 import WorkshopPage from '@/pages/lobby/WorkshopPage'
 import TeahousePage from '@/pages/lobby/TeahousePage'
 import AtelierPage from '@/pages/lobby/AtelierPage'
+import AvatarForgeDevPage from '@/pages/AvatarForgeDevPage'
 import GreenRoomPage from '@/pages/GreenRoomPage'
 import RoomPage from '@/pages/RoomPage'
-import AriaPocPage from '@/pages/AriaPocPage'
 import AvatarInspectorPage from '@/pages/AvatarInspectorPage'
-import AriaSelfPage from '@/pages/AriaSelfPage'
+import StreamPage from '@/pages/StreamPage'
 import LegalDoc from '@/pages/legal/LegalDoc'
 import { PRIVACY, TERMS } from '@/pages/legal/content'
 
@@ -39,10 +39,9 @@ const router = createBrowserRouter([
   // 법률 문서(공개·인증 불필요) — Google OAuth 동의화면 게시용. /privacy·/terms.
   { path: '/privacy', element: <LegalDoc doc={PRIVACY} /> },
   { path: '/terms', element: <LegalDoc doc={TERMS} /> },
-  // Phase 1 PoC: 표정 트래킹 (인증 불필요 — 데모/테스트용).
-  { path: '/avatar-aria', element: <AriaPocPage /> }, // 실 rig(아리아) — iframe PoC
-  { path: '/avatar-inspect', element: <AvatarInspectorPage /> }, // 실 rig 네이티브 이식 (경로 B, B1 게이트)
-  { path: '/avatar-aria-self', element: <AriaSelfPage /> }, // 웹캠 → 네이티브 아리아 self drive (경로 B, B2)
+  // 개발 도구 (인증 불필요 — rig 배포 검증용).
+  { path: '/avatar-inspect', element: <AvatarInspectorPage /> }, // 임의 rig 네이티브 렌더 검사 (?project=)
+  { path: '/stream', element: <StreamPage /> }, // 데스크톱 방송 앱(snack-streamer)용 풀스크린 웹캠 구동 아바타 (?project=&bg=)
   {
     path: '/lobby',
     element: (
@@ -56,6 +55,8 @@ const router = createBrowserRouter([
   { path: '/lobby/workshop', element: <ProtectedRoute><WorkshopPage /></ProtectedRoute> },
   { path: '/lobby/teahouse', element: <ProtectedRoute><TeahousePage /></ProtectedRoute> },
   { path: '/lobby/atelier', element: <ProtectedRoute><AtelierPage /></ProtectedRoute> },
+  // 기능 수직 슬라이스 dev 트리거(PNG→Live2D 배선 검증) — UI/UX는 의상실에 나중 통합.
+  { path: '/atelier-forge', element: <ProtectedRoute><AvatarForgeDevPage /></ProtectedRoute> },
   {
     // 분장실(MOD-05) — 입장 전 로컬 점검. cb.greenroomSkip 이면 페이지가 스스로 직행 리다이렉트.
     path: '/rooms/:roomId/ready',

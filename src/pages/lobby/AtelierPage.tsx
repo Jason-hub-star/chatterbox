@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
-import { fetchAvatarPresets, resolveAvatarUrl, type AvatarPreset } from '@/lib/avatars'
+import { fetchAvatarPresets, resolveAvatarUrl, thumbUrlFor, type AvatarPreset } from '@/lib/avatars'
 import AvatarPreview from '@/features/avatar/AvatarPreview'
 import SelfAvatar from '@/features/stage/SelfAvatar'
 import CommissionCorner from '@/features/avatar/CommissionCorner'
 import { useAvatarJobs } from '@/features/avatar/useAvatarJobs'
-import LanguageToggle from '@/components/shared/LanguageToggle'
 import InteriorShell from '@/pages/lobby/InteriorShell'
-import { useInterior } from '@/pages/lobby/useInterior'
 
-// 의상실(로비 v3) — 레거시 전가: /settings 전체(아바타 선택·언어) + 로그아웃.
-// 살아있는 앵커: 중앙 거울에 아바타가 비침 — [비춰보기]로 웹캠 트래킹 승급(권한은 의도적 행동 뒤).
-// v4 수직화: 입어보기(클릭=거울 프리뷰 → [입기] 확정 저장) + 커미션(PNG→내 아바타 주문, Forge)
-// + 내가 만든 아바타 섹션(done 잡, 미착용 NEW 배지 — localStorage).
-const vars = (a: { l: number; t: number; w: number; h: number }) =>
-  ({ '--al': `${a.l}%`, '--at': `${a.t}%`, '--aw': `${a.w}%` }) as React.CSSProperties
+// 의상실(로비 v3 · v6 안 A) — 워크벤치 3열: 옷장(좌 그리드)→거울(중앙 대형)→커미션(우) 한 화면.
+// 씬은 InteriorShell workbench 연출(0.9초 온전히→백드롭)로 물러난다 — "배경은 연출, 화면은 작업공간".
+// 동선 한 축: 타일 클릭=입어보기(저장 안 함) → 거울 아래 [입기] 확정. 거울 [비춰보기]로 웹캠 트래킹 승급.
+// 커미션 = 우측 상시 패널 + 옷장 하단 [주문] 버튼 이중 진입(위저드는 컨트롤드로 공유).
+// 모바일(<md)은 거울→옷장→커미션 세로 스택(DOM 순서 그대로).
+// 레거시 설정(언어·로그아웃)은 이 페이지에서 제거 — 로비 관할로 이관 예정(2026-07-09 결정).
 
 const noop = () => {}
 
@@ -30,19 +27,109 @@ const readSeen = (): string[] => {
   }
 }
 
+// 거울 캔버스 크기 — 중앙 열을 최대한 채운다(주인님: "거울이 더 커야 함").
+// 그리드 상수(좌 minmax(210,24%)·우 minmax(250,26%)·gap 20×2·px 24×2)와 동기 — 열 폭·뷰포트
+// 높이 중 작은 쪽. 리사이즈(뷰포트·브레이크포인트) 추종은 디바운스 리스너로.
+function computeMirrorSize(): number {
+  if (!window.matchMedia('(min-width: 768px)').matches) return 190
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const side = Math.max(210, vw * 0.24) + Math.max(250, vw * 0.26) + 88
+  return Math.max(190, Math.min(Math.round(vw - side - 24), Math.round(vh * 0.55), 520))
+}
+function useMirrorSize(): number {
+  const [size, setSize] = useState(computeMirrorSize)
+  useEffect(() => {
+    let timer: number | undefined
+    const on = () => {
+      clearTimeout(timer)
+      timer = window.setTimeout(() => setSize(computeMirrorSize()), 250)
+    }
+    window.addEventListener('resize', on)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', on)
+    }
+  }, [])
+  return size
+}
+
 interface WardrobeEntry extends AvatarPreset {
   jobId?: string
   isNew?: boolean
 }
 
+// 옷장 타일 — 정적 썸네일(<img> thumb.png) + 이름 + 착용/입어보기 상태. 그리드 칸에 맞춰 유동 폭.
+// 썸네일 부재(커미션 등 미생성분)는 onError 폴백으로 이름만 — rig 렌더는 거울 1곳뿐이라
+// 아바타가 쌓여도 첫 페인트가 느려지지 않는다.
+function WardrobeTile({
+  entry,
+  worn,
+  isTrying,
+  disabled,
+  onTry,
+}: {
+  entry: WardrobeEntry
+  worn: boolean
+  isTrying: boolean
+  disabled: boolean
+  onTry: () => void
+}) {
+  const { t } = useTranslation()
+  const [thumbOk, setThumbOk] = useState(true)
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={worn || isTrying}
+      disabled={disabled}
+      onClick={onTry}
+      className={`w-full rounded-xl border p-2 text-center transition disabled:opacity-50 ${
+        worn
+          ? 'border-fire-amber bg-fire-amber/10'
+          : isTrying
+            ? 'border-dashed border-fire-amber/70'
+            : 'border-stage-border hover:border-fire-amber/50'
+      }`}
+    >
+      <span className="relative block aspect-square w-full overflow-hidden rounded-lg bg-[#f4f0e8]">
+        {thumbOk ? (
+          <img
+            src={entry.thumbUrl ?? thumbUrlFor(entry.projectUrl)}
+            alt=""
+            loading="lazy"
+            onError={() => setThumbOk(false)}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="block h-full w-full bg-stage-border/40" aria-hidden />
+        )}
+        {entry.isNew && (
+          <span className="absolute right-0 top-0 rounded-bl bg-fire-amber px-1 py-0.5 text-[9px] font-bold text-stage-base">
+            {t('atelier.new')}
+          </span>
+        )}
+      </span>
+      <span
+        className={`mt-1 block truncate text-[11px] font-semibold ${
+          worn || isTrying ? 'text-fire-amber' : 'text-stage-text'
+        }`}
+      >
+        {entry.name}
+      </span>
+      <span className="block h-3.5 text-[9px] text-stage-text-muted">
+        {worn ? t('atelier.worn') : isTrying ? t('atelier.tryingBadge') : ''}
+      </span>
+    </button>
+  )
+}
+
 export default function AtelierPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const interior = useInterior('profile')
   const avatarUrl = useUserStore((s) => s.avatarUrl)
-  const logout = useUserStore((s) => s.logout)
   const setMyAvatar = useUserStore((s) => s.setMyAvatar)
   const { jobs, loaded: jobsLoaded, submit } = useAvatarJobs()
+  const mirrorSize = useMirrorSize()
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
   const [presets, setPresets] = useState<AvatarPreset[]>([])
@@ -50,6 +137,7 @@ export default function AtelierPage() {
   const [live, setLive] = useState(false) // 거울 웹캠 트래킹(비춰보기)
   const [trying, setTrying] = useState<string | null>(null) // 입어보는 중(미저장) projectUrl
   const [seen, setSeen] = useState<string[]>(readSeen)
+  const [wizardOpen, setWizardOpen] = useState(false) // 커미션 위저드 — 패널·옷장 버튼 공유
 
   useEffect(() => {
     let cancelled = false
@@ -80,7 +168,12 @@ export default function AtelierPage() {
         })),
     [jobs, seen, t],
   )
-  const hasUnseen = myAvatars.some((e) => e.isNew)
+
+  // 옷장 단일 그리드: 내가 만든(최신·NEW 우선) → 기성.
+  const wardrobe = useMemo<WardrobeEntry[]>(
+    () => [...(jobsLoaded ? myAvatars : []), ...presets],
+    [jobsLoaded, myAvatars, presets],
+  )
 
   const markSeen = (jobId: string) => {
     setSeen((prev) => {
@@ -95,10 +188,10 @@ export default function AtelierPage() {
     })
   }
 
-  // 입어보기: 클릭=거울에 비침(저장 안 함). 입고 있는 걸 클릭하면 입어보기 해제.
+  // 입어보기: 클릭=거울에 비침(저장 안 함). 입고 있거나 입어보던 걸 클릭하면 해제.
   const tryOn = (entry: WardrobeEntry) => {
     if (entry.jobId) markSeen(entry.jobId)
-    setTrying(entry.projectUrl === current ? null : entry.projectUrl)
+    setTrying(entry.projectUrl === current || entry.projectUrl === trying ? null : entry.projectUrl)
   }
 
   // 입기: 입어보던 아바타를 확정 저장.
@@ -112,61 +205,28 @@ export default function AtelierPage() {
     else setFailed(true)
   }
 
-  const renderEntry = (entry: WardrobeEntry) => {
-    const worn = entry.projectUrl === current && !trying
-    const isTrying = entry.projectUrl === trying
-    return (
-      <button
-        key={entry.id}
-        type="button"
-        role="radio"
-        aria-checked={worn || isTrying}
-        disabled={saving}
-        onClick={() => tryOn(entry)}
-        className={`flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-xs font-semibold transition disabled:opacity-50 ${
-          worn
-            ? 'border-fire-amber bg-fire-amber/10 text-fire-amber'
-            : isTrying
-              ? 'border-dashed border-fire-amber/70 text-fire-amber'
-              : 'border-stage-border text-stage-text hover:border-fire-amber/50'
-        }`}
-      >
-        <span>
-          {entry.name}
-          {worn && ' ✓'}
-        </span>
-        {entry.isNew && (
-          <span className="rounded bg-fire-amber/20 px-1.5 py-0.5 text-[10px] font-bold text-fire-amber">
-            {t('atelier.new')}
-          </span>
-        )}
-      </button>
-    )
-  }
-
   return (
-    <InteriorShell dest="profile" title={t('hub.profile.title')}>
-      {/* 거울 앵커: 입어보는(또는 입고 있는) 아바타가 비침 — live 면 웹캠 트래킹으로 실시간. */}
-      {interior && (
-        <div className="interior-anchor text-center" style={vars(interior.anchors.mirror)}>
+    <InteriorShell dest="profile" title={t('hub.profile.title')} workbench>
+      <div className="flex flex-col gap-4 md:grid md:h-full md:grid-cols-[minmax(210px,24%)_1fr_minmax(250px,26%)] md:gap-5 md:px-6 md:pb-6 md:pt-16">
+        {/* 중앙: 거울 — 입어보는(또는 입고 있는) 아바타가 비침, live 면 웹캠 트래킹으로 실시간.
+            [입기] 확정·저장 실패 알림이 전부 여기 — 옷장→거울→확정 한 시선. */}
+        <section className="text-center md:col-start-2 md:row-start-1 md:flex md:min-h-0 md:flex-col md:items-center md:justify-center">
           <div className="inline-flex flex-col items-center gap-2">
-            <div className="relative">
-              <div className="mirror-frame">
-                {live ? (
-                  <SelfAvatar key={mirrorUrl} projectUrl={mirrorUrl} sendBlendshapes={noop} size={190} />
-                ) : (
-                  <AvatarPreview key={mirrorUrl} projectUrl={mirrorUrl} size={190} />
-                )}
-              </div>
-              {hasUnseen && !trying && (
-                <span className="absolute -right-2 -top-2 rounded bg-fire-amber px-1.5 py-0.5 text-[10px] font-bold text-stage-base">
-                  {t('atelier.new')}
-                </span>
+            <div className="mirror-frame mirror-frame--arch">
+              {live ? (
+                <SelfAvatar key={mirrorUrl} projectUrl={mirrorUrl} sendBlendshapes={noop} size={mirrorSize} />
+              ) : (
+                <AvatarPreview key={mirrorUrl} projectUrl={mirrorUrl} size={mirrorSize} />
               )}
             </div>
+            {failed && (
+              <p className="max-w-[240px] rounded bg-fire-hot/10 px-2.5 py-1.5 text-xs text-fire-hot" role="alert">
+                {t('settings.avatarSaveFailed')}
+              </p>
+            )}
             {trying ? (
               <>
-                <p className="max-w-[190px] rounded bg-stage-base/70 px-2 py-1 text-xs text-stage-text-muted backdrop-blur">
+                <p className="max-w-[240px] rounded bg-stage-base/70 px-2 py-1 text-xs text-stage-text-muted backdrop-blur">
                   {t('atelier.tryingHint')}
                 </p>
                 <button
@@ -186,65 +246,53 @@ export default function AtelierPage() {
               </button>
             )}
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* 좌측 패널: 옷장(내가 만든/기성) + 커미션 + 언어 — 진입 즉시 표시(설정 페이지 이전). */}
-      <div className="interior-anchor md:!left-[4%] md:!top-[10%] md:!w-[30%]" style={{}}>
-        <div className="interior-panel space-y-3 md:max-h-[70vh] md:overflow-y-auto">
-          <div>
-            <p className="text-sm font-semibold">{t('settings.avatar')}</p>
-            <p className="mt-0.5 text-xs text-stage-text-muted">{t('settings.avatarDescription')}</p>
-            {failed && (
-              <p className="mt-1.5 rounded bg-fire-hot/10 px-2.5 py-1.5 text-xs text-fire-hot" role="alert">
-                {t('settings.avatarSaveFailed')}
-              </p>
-            )}
-
-            {jobsLoaded && myAvatars.length > 0 && (
-              <>
-                <p className="mt-2 text-xs font-semibold text-stage-text-muted">{t('atelier.myAvatars')}</p>
-                <div className="mt-1 flex flex-col gap-1.5" role="radiogroup" aria-label={t('atelier.myAvatars')}>
-                  {myAvatars.map(renderEntry)}
+        {/* 좌: 옷장 그리드 — 상시 노출, 클릭=입어보기. 하단 [주문] 버튼이 커미션 위저드 이중 진입. */}
+        <section className="md:col-start-1 md:row-start-1 md:min-h-0">
+          <div className="interior-panel flex flex-col !py-3 md:h-full">
+            <div className="flex items-baseline gap-2">
+              <p className="text-sm font-semibold">{t('atelier.wardrobe')}</p>
+              <p className="text-xs text-stage-text-muted">{t('atelier.wardrobeHint')}</p>
+            </div>
+            <div className="mt-2 min-h-0 flex-1 md:overflow-y-auto">
+              {loadingPresets ? (
+                <div aria-label={t('settings.loadingAvatars')} className="grid grid-cols-3 gap-2 md:grid-cols-2">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="aspect-[4/5] animate-pulse rounded-xl bg-stage-border/40" />
+                  ))}
                 </div>
-              </>
-            )}
-
-            <p className="mt-2 text-xs font-semibold text-stage-text-muted">{t('atelier.presets')}</p>
-            <div className="mt-1 flex flex-col gap-1.5" role="radiogroup" aria-label={t('settings.avatarSelection')}>
-              {loadingPresets && (
-                <div aria-label={t('settings.loadingAvatars')} className="space-y-1.5">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="h-7 animate-pulse rounded-lg bg-stage-border/40" />
+              ) : (
+                <div role="radiogroup" aria-label={t('atelier.wardrobe')} className="grid grid-cols-3 gap-2 md:grid-cols-2">
+                  {wardrobe.map((entry) => (
+                    <WardrobeTile
+                      key={entry.id}
+                      entry={entry}
+                      worn={entry.projectUrl === current && !trying}
+                      isTrying={entry.projectUrl === trying}
+                      disabled={saving}
+                      onTry={() => tryOn(entry)}
+                    />
                   ))}
                 </div>
               )}
-              {presets.map((p) => renderEntry(p))}
             </div>
-          </div>
-
-          <div className="border-t border-stage-border/60 pt-3">
-            <CommissionCorner jobs={jobs} onSubmit={submit} />
-          </div>
-
-          <div className="border-t border-stage-border/60 pt-3">
-            <p className="text-sm font-semibold">{t('settings.language')}</p>
-            <div className="mt-1.5">
-              <LanguageToggle />
-            </div>
-          </div>
-
-          <div className="border-t border-stage-border/60 pt-3">
             <button
-              onClick={() => {
-                void logout().then(() => navigate('/', { replace: true }))
-              }}
-              className="rounded-lg border border-stage-border px-3 py-1.5 text-xs text-stage-text-muted hover:text-stage-text"
+              type="button"
+              onClick={() => setWizardOpen(true)}
+              className="mt-2 w-full rounded-xl border border-dashed border-fire-amber/60 py-2 text-xs font-semibold text-fire-amber transition hover:bg-fire-amber/10"
             >
-              {t('lobby.logout')}
+              + {t('atelier.commissionNew')}
             </button>
           </div>
-        </div>
+        </section>
+
+        {/* 우: 커미션 공방 — 주문서·진행 스텝 상시 패널 */}
+        <section className="md:col-start-3 md:row-start-1 md:min-h-0">
+          <div className="interior-panel md:h-full md:overflow-y-auto">
+            <CommissionCorner jobs={jobs} onSubmit={submit} wizardOpen={wizardOpen} onWizardToggle={setWizardOpen} />
+          </div>
+        </section>
       </div>
     </InteriorShell>
   )

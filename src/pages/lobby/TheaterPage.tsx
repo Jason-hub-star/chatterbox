@@ -149,50 +149,55 @@ export default function TheaterPage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 pb-24 md:p-6">
         <TheaterHero rooms={heroRooms} bgUrl={heroBg} onEnter={enter} onCreate={() => setModal('create')} />
 
-        {/* 필터칩 + 검색 + 예약 진입 */}
-        <div className="flex flex-wrap items-center gap-2">
-          {FILTERS.map((f) => (
+        {/* 필터/검색 — 모바일: 칩은 가로 스크롤 1줄(YouTube·CHZZK식), 검색·예약은 아래 한 줄로 분리해
+            세로 낭비 제거. 데스크톱(md↑): 칩 줄바꿈 + 검색 우측 정렬. 주인님 콜 2026-07-09 */}
+        <div className="space-y-2">
+          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden">
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+                  filter === f.key
+                    ? 'bg-stage-text text-stage-base'
+                    : 'border border-stage-border text-stage-text-muted hover:text-stage-text'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+            <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-stage-border" />
+            {ROOM_GENRES.map((g) => (
+              <button
+                key={g}
+                onClick={() => setGenreFilter((cur) => (cur === g ? null : g))}
+                aria-pressed={genreFilter === g}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                  genreFilter === g
+                    ? 'bg-stage-text text-stage-base'
+                    : 'border border-stage-border text-stage-text-muted hover:text-stage-text'
+                }`}
+              >
+                {t(`lobby.genre.${g}`)}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label={t('lobby.searchLabel')}
+              placeholder={t('lobby.searchPlaceholder')}
+              maxLength={40}
+              className="min-w-0 flex-1 rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-fire-amber md:ml-auto md:w-52 md:flex-none"
+            />
             <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
-                filter === f.key
-                  ? 'bg-stage-text text-stage-base'
-                  : 'border border-stage-border text-stage-text-muted hover:text-stage-text'
-              }`}
+              onClick={() => setModal('ticket')}
+              className="shrink-0 rounded-lg border border-stage-border px-3 py-1.5 text-sm text-stage-text-muted hover:text-stage-text"
             >
-              {f.label}
+              {t('theater.reserveOpen')}
             </button>
-          ))}
-          <span aria-hidden className="mx-1 hidden h-4 w-px bg-stage-border sm:block" />
-          {ROOM_GENRES.map((g) => (
-            <button
-              key={g}
-              onClick={() => setGenreFilter((cur) => (cur === g ? null : g))}
-              aria-pressed={genreFilter === g}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                genreFilter === g
-                  ? 'bg-stage-text text-stage-base'
-                  : 'border border-stage-border text-stage-text-muted hover:text-stage-text'
-              }`}
-            >
-              {t(`lobby.genre.${g}`)}
-            </button>
-          ))}
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label={t('lobby.searchLabel')}
-            placeholder={t('lobby.searchPlaceholder')}
-            maxLength={40}
-            className="ml-auto w-36 rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-sm transition-[width] focus:w-52 focus:outline-none focus:ring-1 focus:ring-fire-amber"
-          />
-          <button
-            onClick={() => setModal('ticket')}
-            className="rounded-lg border border-stage-border px-3 py-1.5 text-sm text-stage-text-muted hover:text-stage-text"
-          >
-            {t('theater.reserveOpen')}
-          </button>
+          </div>
         </div>
 
         {/* 카드 그리드 (반응형 2/3/4) */}

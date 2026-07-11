@@ -1,4 +1,4 @@
-// PIXI-RENDER-001: PixiJS v8 WebGL 렌더러 — 원천 public/aria-player/src/core/draw_pixi.js.
+// PIXI-RENDER-001: PixiJS v8 WebGL 렌더러 — 원천 SNACK 플레이어 src/core/draw_pixi.js.
 // 원천은 모듈 전역(let app·const nodes·const coverSprites·let bgSprite)이라 아바타 1개만
 // 가능했다. 여기서는 createRenderer(app, ctx, rig)가 이들을 클로저 필드로 캡슐화 →
 // participant N명이 각자 렌더러를 가진다(멀티플레이어 전제). 그리기 로직은 무수정.
@@ -88,7 +88,11 @@ export function createRenderer(
     crop.width = w
     crop.height = h
     crop.getContext('2d')!.drawImage(image, x0, y0, w, h, 0, 0, w, h)
-    return { texture: Texture.from(crop), origin: [x0, y0] as Vec2, size: [w, h] as Vec2 }
+    const texture = Texture.from(crop)
+    // 스테이지가 renderScale(0.1~0.5)로 축소되어 2048급 파츠를 강축소 샘플링 — 밉맵 없이는
+    // 지글거림(2026-07-11 주인님 실측). 첫 업로드 전에 켜야 GL이 레벨 수를 계산한다.
+    texture.source.autoGenerateMipmaps = true
+    return { texture, origin: [x0, y0] as Vec2, size: [w, h] as Vec2 }
   }
 
   function buildSimpleMesh(project: Project, part: Part, meshData: Mesh, image: HTMLImageElement): MeshSimple {

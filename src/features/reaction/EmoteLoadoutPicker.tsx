@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/components/shared/Modal'
+import { toast } from '@/hooks/useToast'
 import { useReactionStore, DEFAULT_SLOTS, MAX_SLOTS, type ReactionSlot } from '@/stores/reactionStore'
 import { EMOTE_CATALOG } from './reactionCatalog'
 
@@ -27,6 +28,7 @@ export default function EmoteLoadoutPicker({ onClose }: { onClose: () => void })
     })
   const save = () => {
     setSlots(draft)
+    toast.success(t('reaction.loadoutSaved'))
     onClose()
   }
 

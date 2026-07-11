@@ -1,4 +1,4 @@
-// 순수 수학 헬퍼 (원천: public/aria-player/src/core/utils.js의 수학 부분만).
+// 순수 수학 헬퍼 (원천: SNACK 플레이어 src/core/utils.js의 수학 부분만).
 import type { BBox, Vec2 } from './types'
 
 export function clamp(value: number, min: number, max: number): number {

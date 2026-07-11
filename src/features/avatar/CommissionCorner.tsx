@@ -199,15 +199,19 @@ function UploadWizard({ onClose, onSubmit }: { onClose: () => void; onSubmit: (f
   )
 }
 
+// 위저드 열림 상태는 부모 소유(컨트롤드) — 옷장 캐러셀 [+] 타일 등 외부 진입점이 같은 위저드를 연다.
 export default function CommissionCorner({
   jobs,
   onSubmit,
+  wizardOpen,
+  onWizardToggle,
 }: {
   jobs: AvatarJob[]
   onSubmit: (file: File) => Promise<void>
+  wizardOpen: boolean
+  onWizardToggle: (open: boolean) => void
 }) {
   const { t } = useTranslation()
-  const [wizardOpen, setWizardOpen] = useState(false)
   const active = jobs.find((j) => j.status === 'queued' || j.status === 'running')
   // 최신 잡이 실패면 사유 + 재주문 노출(활성 잡 있으면 주문서가 우선).
   const lastFailed = !active && jobs[0]?.status === 'failed' ? jobs[0] : null
@@ -223,14 +227,15 @@ export default function CommissionCorner({
         {lastFailed && (
           <div className="rounded-lg border border-fire-hot/40 bg-fire-hot/10 p-3">
             <p className="text-xs font-semibold text-fire-hot">{t('atelier.commissionFailed')}</p>
-            {lastFailed.error && <p className="mt-1 text-xs text-stage-text-muted">{lastFailed.error}</p>}
+            {/* 실패 원문(파이썬 트레이스백 등)은 잡 레코드에만 — 사용자에겐 일반 안내(2026-07-11 첫 실런). */}
+            <p className="mt-1 text-xs text-stage-text-muted">{t('atelier.commissionFailedHint')}</p>
           </div>
         )}
 
         {!active && (
           <button
             type="button"
-            onClick={() => setWizardOpen(true)}
+            onClick={() => onWizardToggle(true)}
             className="w-full rounded-lg border border-fire-amber/60 bg-fire-amber/10 px-3 py-1.5 text-xs font-semibold text-fire-amber hover:bg-fire-amber/20"
           >
             {lastFailed ? t('atelier.retryUpload') : t('atelier.commissionNew')}
@@ -238,7 +243,7 @@ export default function CommissionCorner({
         )}
       </div>
 
-      {wizardOpen && <UploadWizard onClose={() => setWizardOpen(false)} onSubmit={onSubmit} />}
+      {wizardOpen && <UploadWizard onClose={() => onWizardToggle(false)} onSubmit={onSubmit} />}
     </div>
   )
 }

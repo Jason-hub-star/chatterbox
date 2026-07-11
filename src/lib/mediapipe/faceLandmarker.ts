@@ -12,17 +12,25 @@ const WASM_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
 
-// ponytail: delegate 생략 = CPU 추론(항상 동작). GPU delegate·Web Worker·SIMD(COOP/COEP)는
-// 6인 프로덕션 성능 튜닝 Phase 2. 단일 로컬 얼굴은 CPU로 충분.
+// GPU 우선(스펙 §GPU 추론 권장) — CPU 추론은 메인스레드를 프레임당 수십 ms 블로킹해 거울/무대
+// 아바타가 렉 걸린 듯 움직인다(2026-07-10 주인님 실측). GPU delegate 초기화 실패 기기만 CPU 폴백.
+// ponytail: Web Worker·SIMD(COOP/COEP)는 6인 프로덕션 성능 튜닝 Phase 2.
 export async function createFaceLandmarker(): Promise<FaceLandmarker> {
   const fileset = await FilesetResolver.forVisionTasks(WASM_BASE)
-  return FaceLandmarker.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: MODEL_URL },
-    outputFaceBlendshapes: true,
-    outputFacialTransformationMatrixes: true,
-    runningMode: 'VIDEO',
-    numFaces: 1,
-  })
+  const make = (delegate?: 'GPU') =>
+    FaceLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: MODEL_URL, ...(delegate ? { delegate } : {}) },
+      outputFaceBlendshapes: true,
+      outputFacialTransformationMatrixes: true,
+      runningMode: 'VIDEO',
+      numFaces: 1,
+    })
+  try {
+    return await make('GPU')
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('GPU delegate 실패 — CPU 폴백', e)
+    return make()
+  }
 }
 
 export function hasFace(result: FaceLandmarkerResult): boolean {
@@ -46,9 +54,9 @@ export function headRoll(result: FaceLandmarkerResult): number {
   return Math.atan2(m[1], m[0])
 }
 
-// 랜드마크 기반 머리 포즈(yaw/pitch/roll, 도). 원천: aria-player drive.html rawChannels() 실측 이식
+// 랜드마크 기반 머리 포즈(yaw/pitch/roll, 도). 원천: SNACK 플레이어 drive.html rawChannels() 실측 이식
 // (행렬이 아닌 눈·코·턱·이마 랜드마크로 산출 — 배포본과 동일 방식·동일 상수). 캘리브레이션(neutral)은
-// 생략 = raw(배포본 기본 경로). 아리아 실 rig의 ParamAngleX/Y/Z 구동용(expressionDriver).
+// 생략 = raw(배포본 기본 경로). 실 rig의 ParamAngleX/Y/Z 구동용(expressionDriver).
 export function extractHeadPose(
   result: FaceLandmarkerResult,
 ): { yaw: number; pitch: number; roll: number } | null {
