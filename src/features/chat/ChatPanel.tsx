@@ -13,9 +13,13 @@ const fmtTime = (ts: number) => {
 export default function ChatPanel({
   connected,
   onSend,
+  isHost,
+  onHideMessage,
 }: {
   connected: boolean
   onSend: (text: string) => Promise<void> | void
+  isHost?: boolean // HOST-11: 호스트에게만 메시지별 [숨김] 노출(서버 moderate-chat 이 진짜 권한 재검증)
+  onHideMessage?: (id: string) => void
 }) {
   const { t } = useTranslation()
   const messages = useRoomStore((s) => s.messages)
@@ -59,6 +63,16 @@ export default function ChatPanel({
                 <span className="ml-1 text-[10px] text-spring-green" role="img" aria-label={t('room.sent')}>
                   ✓
                 </span>
+              )}
+              {isHost && onHideMessage && (
+                <button
+                  onClick={() => onHideMessage(m.id)}
+                  aria-label={t('room.hideMessage')}
+                  title={t('room.hideMessage')}
+                  className="ml-1 align-middle text-[10px] text-stage-text-muted hover:text-fire-hot"
+                >
+                  ✕
+                </button>
               )}
             </span>
           </li>

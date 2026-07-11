@@ -67,6 +67,9 @@ interface RoomStore {
   addMessage: (message: ChatMessage) => void
   // 히스토리 백필(늦입장): 라이브 수신분과 id 로 dedupe 해 앞에 붙인다 — 백필이 라이브를 덮지 않게.
   seedMessages: (history: ChatMessage[]) => void
+  // HOST-11 라이브 반영: 서버 'chat-mod' broadcast 수신 시 숨김/클리어(영속 진실은 messages.status).
+  hideMessages: (ids: string[]) => void
+  clearMessages: () => void
   setMicEnabled: (enabled: boolean) => void
   setMutedByHost: (muted: boolean) => void
   setError: (error: string | null) => void
@@ -100,6 +103,8 @@ export const useRoomStore = create<RoomStore>((set) => ({
       const seen = new Set(s.messages.map((m) => m.id))
       return { messages: [...history.filter((m) => !seen.has(m.id)), ...s.messages] }
     }),
+  hideMessages: (ids) => set((s) => ({ messages: s.messages.filter((m) => !ids.includes(m.id)) })),
+  clearMessages: () => set({ messages: [] }),
   setMicEnabled: (micEnabled) => set({ micEnabled }),
   setMutedByHost: (mutedByHost) => set({ mutedByHost }),
   setError: (error) => set({ error }),

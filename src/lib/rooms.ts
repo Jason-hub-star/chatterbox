@@ -79,6 +79,34 @@ export async function fetchRoomMessages(roomId: string): Promise<ChatMessage[]> 
   }))
 }
 
+// 호스트 채팅 정책(HOST-09 슬로우모드·HOST-10 금칙어) — 강제는 send-chat 서버측, 이 호출은 rooms 정책 컬럼 갱신.
+export const setChatPolicy = (
+  accessToken: string,
+  roomId: string,
+  policy: { slow_mode_sec?: number; banned_words?: string[] },
+) => callFn<{ ok: boolean; chat_slow_mode_sec: number; chat_banned_words: string[] }>('set-chat-policy', accessToken, { room_id: roomId, ...policy })
+
+// 채팅 정책 초기값(HOST-09·10) — rooms RLS(멤버 SELECT) 직접 조회.
+export async function fetchChatPolicy(roomId: string): Promise<{ slowSec: number; bannedWords: string[] }> {
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('chat_slow_mode_sec, chat_banned_words')
+    .eq('id', roomId)
+    .single()
+  if (error) throw new Error(error.message)
+  return {
+    slowSec: (data?.chat_slow_mode_sec as number | null) ?? 0,
+    bannedWords: (data?.chat_banned_words as string[] | null) ?? [],
+  }
+}
+
+// 호스트 채팅 숨김/클리어(HOST-11) — soft delete(status='hidden') + audit_logs + 'chat-mod' broadcast.
+export const moderateChat = (
+  accessToken: string,
+  roomId: string,
+  action: { action: 'hide'; message_id: string } | { action: 'clear' },
+) => callFn<{ ok: boolean; hidden: number }>('moderate-chat', accessToken, { room_id: roomId, ...action })
+
 // 대본 큐 진행 서버 릴레이(SEC-5). 서버가 host 검증 후 방 전체 broadcast — 클라 직접 publish 의 진행권한 스푸핑·유실 제거.
 export const advanceScriptCueRelay = (accessToken: string, roomId: string, sceneId: string, cueIndex: number) =>
   callFn<{ ok: boolean }>('advance-script-cue', accessToken, { room_id: roomId, scene_id: sceneId, cue_index: cueIndex })

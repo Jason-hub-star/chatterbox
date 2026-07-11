@@ -5,7 +5,7 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode, fetchRoomMessages } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat } from '@/lib/rooms'
 import { applyRoleEvent, isRoleEvent, pruneRoleMap, roleOf, type RoleMap } from '@/features/script/roleMap'
 import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
@@ -636,6 +636,23 @@ export default function RoomPage() {
     if (!session) throw new Error('no session')
     await createRoomInvite(session.access_token, roomId, 'actor', userId)
   }, [session, roomId])
+  // 채팅 정책(HOST-09·10) — 초기값은 rooms RLS(멤버 SELECT), 저장은 set-chat-policy Edge(호스트 재검증).
+  const loadChatPolicy = useCallback(() => fetchChatPolicy(roomId), [roomId])
+  const saveChatPolicy = useCallback(async (policy: { slow_mode_sec: number; banned_words: string[] }) => {
+    if (!session) throw new Error('no session')
+    await setChatPolicy(session.access_token, roomId, policy)
+  }, [session, roomId])
+  // 채팅 클리어/개별 숨김(HOST-11) — 성공 시 서버 'chat-mod' broadcast 가 전원(호스트 포함) 스토어에 반영.
+  const clearChat = useCallback(async () => {
+    if (!session) throw new Error('no session')
+    await moderateChat(session.access_token, roomId, { action: 'clear' })
+  }, [session, roomId])
+  const hideMessage = useCallback((id: string) => {
+    if (!session) return
+    void moderateChat(session.access_token, roomId, { action: 'hide', message_id: id }).catch(() => {
+      toast.error(t('host.hideMessageFailed'))
+    })
+  }, [session, roomId, t])
   // VGEN 공유: jobId 방송 + 자기 화면 로컬 반영(publishData self-echo 없음). 중지도 방송+로컬.
   const shareVgen = useCallback(
     async (jobId: string) => {
@@ -650,7 +667,7 @@ export default function RoomPage() {
   }, [sendRoomAuthority])
 
   const tabs: RightPanelTab[] = [
-    { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} /> },
+    { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} /> },
     { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },
     { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} onShare={shareVgen} /> },
     { id: 'notes', label: t('room.tabNotes'), render: () => <DirectorNotesTab connected={connected} hostAuthId={hostAuthId} onSend={sendNote} /> },
@@ -672,6 +689,9 @@ export default function RoomPage() {
           onDirectInvite={directInvite}
           raisedHands={raisedHands}
           onInviteToStage={inviteToStageCb}
+          loadChatPolicy={loadChatPolicy}
+          onSetChatPolicy={saveChatPolicy}
+          onClearChat={clearChat}
           initialLocked={roomLocked}
           initialMuted={mutedIdentities}
         />

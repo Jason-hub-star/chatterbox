@@ -251,6 +251,17 @@ export function useLiveKitRoom(
         } catch { /* 잘못된 페이로드 무시 */ }
         return
       }
+      if (topic === 'chat-mod') {
+        // HOST-11 숨김/클리어: 서버발(moderate-chat Edge)만 수락 — 영속 진실은 messages.status, 여긴 라이브 반영.
+        if (participant) return
+        try {
+          const data = JSON.parse(new TextDecoder().decode(payload))
+          if (data?.type === 'clear') useRoomStore.getState().clearMessages()
+          else if (data?.type === 'hide' && Array.isArray(data.ids))
+            useRoomStore.getState().hideMessages(data.ids.filter((x: unknown): x is string => typeof x === 'string'))
+        } catch { /* 잘못된 페이로드 무시 */ }
+        return
+      }
       if (topic !== 'chat') return
       try {
         const data = JSON.parse(new TextDecoder().decode(payload))
@@ -370,14 +381,19 @@ export function useLiveKitRoom(
       }
       const rid = crypto.randomUUID()
       seenChatRef.current.add(rid) // 서버가 본인에게도 broadcast → 내 self-echo 를 dedupe
+      let persistedId: string
       try {
-        await sendChatRelay(token, roomId, check.text, rid)
-      } catch {
-        toast.error(i18n.t('room.chatSendFailed'))
+        persistedId = (await sendChatRelay(token, roomId, check.text, rid)).id
+      } catch (e) {
+        // 서버 정책 거부는 원인별 안내(HOST-09/10) — edgeFn 이 서버 error 문자열을 message 로 보존.
+        const msg = e instanceof Error ? e.message : ''
+        if (msg.includes('slow_mode')) toast.error(i18n.t('room.chatSlowMode'))
+        else if (msg.includes('banned_word')) toast.error(i18n.t('room.chatBannedWord'))
+        else toast.error(i18n.t('room.chatSendFailed'))
         return
       }
       addMessage({
-        id: rid,
+        id: persistedId, // DB id — 호스트가 자기 메시지를 숨길 때(HOST-11)도 이 id 로 동작
         sender: room.localParticipant.name || room.localParticipant.identity,
         text: check.text,
         ts: Date.now(),

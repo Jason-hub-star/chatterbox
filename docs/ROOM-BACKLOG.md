@@ -19,7 +19,7 @@ tags: [status, backlog]
 
 ### 트랙 V — 수직 기능 (먼저)
 
-- [ ] **V-1 채팅 모더레이션 묶음** (HOST-09 슬로우모드·HOST-10 금칙어·HOST-11 클리어/숨김) — `send-chat/index.ts:6` 후속 주석. `messages.status`(hidden/tombstone)는 준비됨 — send-chat 릴레이 위 최소 diff, 숨김 전파는 realtime publication 추가(마이그 `20260711100000` 주석 참조). <!-- probe: supabase/functions/moderate-chat/index.ts -->
+- [x] **V-1 채팅 모더레이션 묶음** (HOST-09 슬로우모드·HOST-10 금칙어·HOST-11 클리어/숨김) — 구현(2026-07-11): rooms 정책 컬럼+`audit_logs` 마이그(`20260711170000`)·`set-chat-policy`/`moderate-chat` Edge(soft delete+감사+`chat-mod` broadcast)·send-chat 서버 강제(400 banned_word/429 slow_mode·호스트 면제)·HostConsole 정책 UI+클리어 Modal·ChatPanel 호스트 숨김. **실측**: 통합 18/18·deno 3/3·게이트 그린. ⏳ 배포는 Phase 3 몰아치기. <!-- probe: supabase/functions/moderate-chat/index.ts -->
 - [ ] **V-2 신고/차단** — `user_blocks` 테이블 미생성(`livekit-token/index.ts:12` defer). 마이그 + livekit-token 게이트 + 신고 Edge. <!-- probe: supabase/functions/livekit-token/index.ts :: from\(.user_blocks.\) -->
 - [ ] **V-3 인앱 녹화·다시보기 (ROOM-13)** — 하단바 Recording 비활성(`RoomBottomBar.tsx:94`, Egress 엔진 부재). LiveKit Egress→Storage→작품함. <!-- probe: supabase/functions/start-room-egress/index.ts -->
 - [ ] **V-4 로컬 백업 녹화 (ROOM-23)** — 참가자별 MediaRecorder chunk + IndexedDB(`DubRecorder.tsx:11` defer와 공유 기반).

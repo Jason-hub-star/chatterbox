@@ -3,7 +3,7 @@
 // sanitize·멤버십·rate-limit 검증 후 messages 에 영속(INSERT) + 방 전체 broadcast.
 // 왜(send-reaction 과 동일): 클라 직접 publishData 는 sender 스푸핑 가능 + datachannel 개설지연 첫 메시지 유실.
 //   수신측은 participant=undefined 인 '서버발'만 수락, sender/sender_name 은 payload(서버 확정) 신뢰.
-// ponytail: slow mode(HOST-09)·금칙어(HOST-10)·note 영속은 후속.
+// slow mode(HOST-09)·금칙어(HOST-10)는 rooms 정책 컬럼(set-chat-policy)으로 여기서 강제. ponytail: note 영속(ROOM-17)은 후속.
 // broadcast 실패 시 INSERT 를 보상 삭제 후 502 — "성공=영속+전달" 원자 유지(재시도해도 중복 행 없음).
 import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
   // 방 존재 + 종료 아님
   const { data: room } = await user.service
-    .from("rooms").select("id, status").eq("id", room_id).single();
+    .from("rooms").select("id, status, host_id, chat_slow_mode_sec, chat_banned_words").eq("id", room_id).single();
   if (!room) return json({ error: "Room not found" }, 404);
   if (room.status === "ended") return json({ error: "Room ended" }, 409);
 
@@ -71,6 +71,26 @@ Deno.serve(async (req) => {
     .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
     .maybeSingle();
   if (!part) return json({ error: "Not a participant" }, 403);
+
+  // 금칙어(HOST-10): 방별 목록 — 대소문자 무시 부분일치. sanitize 통과 텍스트 기준.
+  const banned = (room.chat_banned_words ?? []) as string[];
+  if (banned.length > 0) {
+    const lower = check.text.toLowerCase();
+    if (banned.some((w) => w && lower.includes(w.toLowerCase()))) {
+      return json({ error: "banned_word" }, 400);
+    }
+  }
+
+  // 슬로우모드(HOST-09): 호스트 면제 — check_rate_limit 원자 재사용(slow 창에 1회).
+  const slowSec = (room.chat_slow_mode_sec ?? 0) as number;
+  if (slowSec > 0 && room.host_id !== user.userId) {
+    const { data: slowOk } = await user.service.rpc("check_rate_limit", {
+      p_key: `chat-slow:${room_id}:${user.userId}`,
+      p_max: 1,
+      p_window_sec: slowSec,
+    });
+    if (slowOk === false) return json({ error: "slow_mode" }, 429);
+  }
 
   // 레이트리밋: 사용자당 20회/분 — 도배·봇 서버측 캡(클라 UX 쓰로틀과 별개 백스톱).
   const { data: rlOk } = await user.service.rpc("check_rate_limit", { p_key: `chat:${user.userId}`, p_max: 20, p_window_sec: 60 });

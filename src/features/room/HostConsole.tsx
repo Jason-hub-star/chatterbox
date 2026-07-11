@@ -25,6 +25,9 @@ export default function HostConsole({
   onDirectInvite,
   raisedHands,
   onInviteToStage,
+  loadChatPolicy,
+  onSetChatPolicy,
+  onClearChat,
   initialLocked,
   initialMuted,
 }: {
@@ -39,6 +42,9 @@ export default function HostConsole({
   onDirectInvite: (userId: string) => Promise<void> // 지명 초대 = 1회권 + 상대 인앱 알림
   raisedHands: { authId: string; userId: string; name: string | null }[] // ROOM-20 손든 관객 큐(호스트 승인 대기)
   onInviteToStage: (targetUserId: string) => Promise<void> // ROOM-21 무대 초대(대상 수락 후 승격)
+  loadChatPolicy: () => Promise<{ slowSec: number; bannedWords: string[] }> // HOST-09·10 초기값(rooms RLS)
+  onSetChatPolicy: (policy: { slow_mode_sec: number; banned_words: string[] }) => Promise<void>
+  onClearChat: () => Promise<void> // HOST-11 — 서버 'chat-mod' broadcast 가 전원 스토어 클리어
   initialLocked: boolean
   initialMuted?: Set<string>
 }) {
@@ -60,6 +66,56 @@ export default function HostConsole({
   const [pwInput, setPwInput] = useState('')
   const [pwBusy, setPwBusy] = useState(false)
   const [pwErr, setPwErr] = useState<string | null>(null)
+
+  // 채팅 관리(HOST-09·10·11) — 정책 강제는 send-chat 서버측, 여긴 설정 UI + 클리어.
+  const [slowSec, setSlowSec] = useState(0)
+  const [bannedInput, setBannedInput] = useState('')
+  const [chatBusy, setChatBusy] = useState(false)
+  const [chatErr, setChatErr] = useState<string | null>(null)
+  const [clearConfirm, setClearConfirm] = useState(false)
+  const [clearBusy, setClearBusy] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const p = await loadChatPolicy()
+        if (!cancelled) {
+          setSlowSec(p.slowSec)
+          setBannedInput(p.bannedWords.join(', '))
+        }
+      } catch {
+        /* 초기값 로드 실패 — 0/빈값으로 강등 */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [loadChatPolicy])
+  const saveChatPolicy = async () => {
+    setChatErr(null)
+    setChatBusy(true)
+    try {
+      const words = bannedInput.split(',').map((w) => w.trim()).filter(Boolean).slice(0, 50)
+      await onSetChatPolicy({ slow_mode_sec: slowSec, banned_words: words })
+      setBannedInput(words.join(', '))
+      toast.success(t('host.chatPolicySaved'))
+    } catch {
+      setChatErr(t('host.chatPolicyFailed'))
+    } finally {
+      setChatBusy(false)
+    }
+  }
+  const doClearChat = async () => {
+    setClearBusy(true)
+    try {
+      await onClearChat()
+      setClearConfirm(false)
+    } catch {
+      toast.error(t('host.clearChatFailed'))
+    } finally {
+      setClearBusy(false)
+    }
+  }
 
   // 무대 배경(HOST-04·05)
   const [bgBusy, setBgBusy] = useState(false)
@@ -318,6 +374,48 @@ export default function HostConsole({
         {pwErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{pwErr}</p>}
       </section>
 
+      {/* 채팅 관리(HOST-09 슬로우모드·HOST-10 금칙어·HOST-11 클리어) — 서버(set-chat-policy/moderate-chat)가 host 재검증. */}
+      <section>
+        <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.chatTitle')}</h3>
+        <div className="flex items-center gap-2">
+          <label htmlFor="chat-slow-mode" className="text-xs text-stage-text-muted">{t('host.slowMode')}</label>
+          <select
+            id="chat-slow-mode"
+            value={slowSec}
+            onChange={(e) => setSlowSec(Number(e.target.value))}
+            className="rounded border border-stage-border bg-transparent px-2 py-1 text-xs"
+          >
+            <option value={0}>{t('host.slowModeOff')}</option>
+            {[5, 10, 30].map((s) => (
+              <option key={s} value={s}>{s}s</option>
+            ))}
+          </select>
+        </div>
+        <input
+          value={bannedInput}
+          onChange={(e) => setBannedInput(e.target.value)}
+          aria-label={t('host.bannedWords')}
+          placeholder={t('host.bannedWordsPlaceholder')}
+          className="mt-2 w-full rounded border border-stage-border bg-transparent px-3 py-1.5 text-sm"
+        />
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={() => void saveChatPolicy()}
+            disabled={chatBusy}
+            className="rounded bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40"
+          >
+            {t('host.chatPolicySave')}
+          </button>
+          <button
+            onClick={() => setClearConfirm(true)}
+            className="rounded border border-fire-hot/50 px-3 py-1.5 text-xs text-fire-hot hover:bg-fire-hot/10"
+          >
+            {t('host.clearChat')}
+          </button>
+        </div>
+        {chatErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{chatErr}</p>}
+      </section>
+
       {/* 참가자 관리 */}
       <section>
         <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.consoleTitle')}</h3>
@@ -377,6 +475,24 @@ export default function HostConsole({
               {busy === confirming.identity ? t('host.kicking') : t('host.kickConfirm')}
             </button>
             <button onClick={() => setConfirming(null)} className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted">
+              {t('common.cancel')}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {clearConfirm && (
+        <Modal title={t('host.clearChatConfirmTitle')} onClose={() => setClearConfirm(false)}>
+          <p className="mt-2 text-sm text-stage-text-muted">{t('host.clearChatConfirmBody')}</p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => void doClearChat()}
+              disabled={clearBusy}
+              className="flex-1 rounded-lg bg-fire-hot px-3 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+            >
+              {t('host.clearChat')}
+            </button>
+            <button onClick={() => setClearConfirm(false)} className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted">
               {t('common.cancel')}
             </button>
           </div>
