@@ -27,6 +27,8 @@ export interface RoomParticipant {
 export interface ChatMessage {
   id: string
   sender: string
+  // 발신자 auth id(LiveKit identity) — V-2 차단(개인 필터) 접힘 키. 수신·백필·로컬에코 모두 채움.
+  senderAuthId?: string
   text: string
   ts: number
   isLocal: boolean

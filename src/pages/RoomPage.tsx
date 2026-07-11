@@ -5,7 +5,7 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock } from '@/lib/rooms'
 import { applyRoleEvent, isRoleEvent, pruneRoleMap, roleOf, type RoleMap } from '@/features/script/roleMap'
 import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
@@ -653,6 +653,42 @@ export default function RoomPage() {
       toast.error(t('host.hideMessageFailed'))
     })
   }, [session, roomId, t])
+  // V-2 차단(개인 경험 필터 — reporting-logging-feedback §16.2): 내 차단 목록으로 채팅 접힘.
+  const [blockedAuthIds, setBlockedAuthIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (joinPhase !== 'ready') return
+    let cancelled = false
+    fetchMyBlockedAuthIds()
+      .then((ids) => { if (!cancelled && ids.length) setBlockedAuthIds(new Set(ids)) })
+      .catch(() => { /* 차단 목록 실패는 비치명 — 필터 없이 표시 */ })
+    return () => { cancelled = true }
+  }, [joinPhase])
+  // 신고 제출(+선택 차단). 신고 실패는 throw 로 모달 유지, 차단 실패는 신고와 독립 안내.
+  const submitReport = useCallback(async (r: { messageId: string; senderAuthId: string; reason: string; alsoBlock: boolean }) => {
+    if (!session) return
+    try {
+      await createReport(session.access_token, { room_id: roomId, message_id: r.messageId, reason: r.reason })
+      toast.success(t('room.reportDone'))
+    } catch {
+      toast.error(t('room.reportFailed'))
+      throw new Error('report failed')
+    }
+    if (r.alsoBlock) {
+      try {
+        await createBlock(session.access_token, { blocked_auth_id: r.senderAuthId })
+        setBlockedAuthIds((prev) => new Set(prev).add(r.senderAuthId))
+        toast.success(t('room.blockDone'))
+      } catch {
+        toast.error(t('room.blockFailed'))
+      }
+    }
+  }, [session, roomId, t])
+  const unblock = useCallback((senderAuthId: string) => {
+    if (!session) return
+    void deleteBlock(session.access_token, { blocked_auth_id: senderAuthId })
+      .then(() => setBlockedAuthIds((prev) => { const n = new Set(prev); n.delete(senderAuthId); return n }))
+      .catch(() => toast.error(t('room.unblockFailed')))
+  }, [session, t])
   // VGEN 공유: jobId 방송 + 자기 화면 로컬 반영(publishData self-echo 없음). 중지도 방송+로컬.
   const shareVgen = useCallback(
     async (jobId: string) => {
@@ -667,7 +703,7 @@ export default function RoomPage() {
   }, [sendRoomAuthority])
 
   const tabs: RightPanelTab[] = [
-    { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} /> },
+    { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} blockedAuthIds={blockedAuthIds} onSubmitReport={submitReport} onUnblock={unblock} /> },
     { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },
     { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} onShare={shareVgen} /> },
     { id: 'notes', label: t('room.tabNotes'), render: () => <DirectorNotesTab connected={connected} hostAuthId={hostAuthId} onSend={sendNote} /> },

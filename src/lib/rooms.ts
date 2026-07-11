@@ -73,6 +73,7 @@ export async function fetchRoomMessages(roomId: string): Promise<ChatMessage[]> 
   return (data ?? []).reverse().map((m) => ({
     id: m.id as string,
     sender: (m.sender_name as string | null) ?? (m.sender_auth_id as string),
+    senderAuthId: m.sender_auth_id as string,
     text: m.text as string,
     ts: new Date(m.created_at as string).getTime(),
     isLocal: false,
@@ -106,6 +107,26 @@ export const moderateChat = (
   roomId: string,
   action: { action: 'hide'; message_id: string } | { action: 'clear' },
 ) => callFn<{ ok: boolean; hidden: number }>('moderate-chat', accessToken, { room_id: roomId, ...action })
+
+// V-2 신고(reporting-logging-feedback.md §16.1) — 운영 검토 큐. 메시지 신고는 발신자·본문을 서버가 확정.
+export const createReport = (
+  accessToken: string,
+  payload: { room_id?: string; reported_user_id?: string; message_id?: string; reason: string; description?: string },
+) => callFn<{ ok: boolean; id: string }>('create-report', accessToken, payload)
+
+// V-2 차단(§16.2 — 개인 경험 필터, 입장 차단 아님). 대상은 users.id 또는 auth id(채팅 발신자 키).
+export const createBlock = (accessToken: string, target: { blocked_user_id?: string; blocked_auth_id?: string }) =>
+  callFn<{ ok: boolean; blocked_user_id: string; blocked_auth_id: string }>('create-block', accessToken, target)
+
+export const deleteBlock = (accessToken: string, target: { blocked_user_id?: string; blocked_auth_id?: string }) =>
+  callFn<{ ok: boolean }>('delete-block', accessToken, target)
+
+// 내 차단 목록(RLS 본인 행만) — ChatPanel 접힘 필터 키(auth id).
+export async function fetchMyBlockedAuthIds(): Promise<string[]> {
+  const { data, error } = await supabase.from('user_blocks').select('blocked_auth_id')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((r) => r.blocked_auth_id as string)
+}
 
 // 대본 큐 진행 서버 릴레이(SEC-5). 서버가 host 검증 후 방 전체 broadcast — 클라 직접 publish 의 진행권한 스푸핑·유실 제거.
 export const advanceScriptCueRelay = (accessToken: string, roomId: string, sceneId: string, cueIndex: number) =>

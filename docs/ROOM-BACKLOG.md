@@ -20,7 +20,7 @@ tags: [status, backlog]
 ### 트랙 V — 수직 기능 (먼저)
 
 - [x] **V-1 채팅 모더레이션 묶음** (HOST-09 슬로우모드·HOST-10 금칙어·HOST-11 클리어/숨김) — 구현(2026-07-11): rooms 정책 컬럼+`audit_logs` 마이그(`20260711170000`)·`set-chat-policy`/`moderate-chat` Edge(soft delete+감사+`chat-mod` broadcast)·send-chat 서버 강제(400 banned_word/429 slow_mode·호스트 면제)·HostConsole 정책 UI+클리어 Modal·ChatPanel 호스트 숨김. **실측**: 통합 18/18·deno 3/3·게이트 그린. ⏳ 배포는 Phase 3 몰아치기. <!-- probe: supabase/functions/moderate-chat/index.ts -->
-- [ ] **V-2 신고/차단** — `user_blocks` 테이블 미생성(`livekit-token/index.ts:12` defer). 마이그 + livekit-token 게이트 + 신고 Edge. <!-- probe: supabase/functions/livekit-token/index.ts :: from\(.user_blocks.\) -->
+- [x] **V-2 신고/차단** — 구현(2026-07-12 · 스펙 정정: `reporting-logging-feedback.md` §16.2 차단=**개인 경험 필터**라 livekit-token 입장 게이트 가정 폐기): 마이그 `20260711180000`(moderation_reports 운영 큐·user_blocks+blocked_auth_id 비정규화·본인 SELECT RLS)·`create-report`(3/분+20/시·발신자/본문 서버 확정 스냅샷·audit)·`create-block`/`delete-block`(멱등)·ChatPanel 접힘/펼침·신고 모달(+동시 차단)·차단 해제. **실측**: 통합 18/18·deno 3/3·게이트 그린. ⏳ 배포는 Phase 3. <!-- probe: supabase/functions/create-report/index.ts -->
 - [ ] **V-3 인앱 녹화·다시보기 (ROOM-13)** — 하단바 Recording 비활성(`RoomBottomBar.tsx:94`, Egress 엔진 부재). LiveKit Egress→Storage→작품함. <!-- probe: supabase/functions/start-room-egress/index.ts -->
 - [ ] **V-4 로컬 백업 녹화 (ROOM-23)** — 참가자별 MediaRecorder chunk + IndexedDB(`DubRecorder.tsx:11` defer와 공유 기반).
 - [ ] **V-5 관객 투표/폴 (ROOM-22)** — 코드 0건(grep 실측). <!-- probe: src/features/room/PollPanel.tsx -->

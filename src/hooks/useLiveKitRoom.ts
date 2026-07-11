@@ -297,6 +297,7 @@ export function useLiveKitRoom(
           id: typeof data.id === 'string' ? data.id : crypto.randomUUID(),
           sender: (typeof data.sender_name === 'string' && data.sender_name) ||
             (typeof data.sender === 'string' ? data.sender : '알 수 없음'),
+          senderAuthId: typeof data.sender === 'string' ? data.sender : undefined,
           text: data.text,
           ts: typeof data.ts === 'number' ? data.ts : Date.now(),
           isLocal: false,
@@ -395,6 +396,7 @@ export function useLiveKitRoom(
       addMessage({
         id: persistedId, // DB id — 호스트가 자기 메시지를 숨길 때(HOST-11)도 이 id 로 동작
         sender: room.localParticipant.name || room.localParticipant.identity,
+        senderAuthId: room.localParticipant.identity,
         text: check.text,
         ts: Date.now(),
         isLocal: true,
