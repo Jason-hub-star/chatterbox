@@ -75,8 +75,13 @@ export function useFaceTracking(
       }
       if (detected) {
         const bs = blendshapeMap(result)
-        // 52 blendshape + 랜드마크 head pose를 콜백으로 (RT-02 송신엔 bs만 씀 · aria self drive는 둘 다).
+        // 52 blendshape + 랜드마크 head pose를 콜백으로 (RT-02 송신엔 bs만 씀 · rig self drive는 둘 다).
         onFrameRef.current?.(bs, extractHeadPose(result))
+      } else {
+        // ROOM-11 트래킹 실패 폴백: 얼굴 미인식 프레임엔 빈 blendshape(52ch=0)·headPose null 을 흘려
+        // 아바타를 중립 idle(눈뜸·입닫힘·정면·breath 지속)로 되돌린다 — 안 흘리면 마지막 표정에 얼어붙는다.
+        // 송신 경로도 0프레임을 타므로 원격 아바타도 동반 idle. 안내 배지는 SelfAvatar(faceDetected)가 표시.
+        onFrameRef.current?.({}, null)
       }
 
       frames++

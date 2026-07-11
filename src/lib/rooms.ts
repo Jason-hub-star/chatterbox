@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 // SSOT: docs/API-SURFACE.md · docs/DATA-SCHEMA.md §1.2.0
 
 import { callFn } from '@/lib/edgeFn'
+import type { ChatMessage } from '@/stores/roomStore'
 
 export interface CreateRoomResult { room_id: string; participant_id: string; status: string }
 export interface JoinRoomResult {
@@ -53,6 +54,30 @@ export const setRoomMode = (accessToken: string, roomId: string, mode: 'normal' 
 // 리액션 서버 릴레이(ROOM-19). 서버가 멤버십 검증 후 방 전체 broadcast — 클라 직접 방송보다 유실0·스푸핑 불가.
 export const sendReactionRelay = (accessToken: string, roomId: string, emoji: string, idempotencyKey: string) =>
   callFn<{ ok: boolean }>('send-reaction', accessToken, { room_id: roomId, emoji, idempotency_key: idempotencyKey })
+
+// 채팅 서버 릴레이(ChatPanel.md). 서버가 sanitize·멤버십·rate-limit 검증 후 messages 영속 + 방 전체 broadcast.
+// rid = 수신측 self-echo dedupe 키(리액션과 동형).
+export const sendChatRelay = (accessToken: string, roomId: string, text: string, rid: string) =>
+  callFn<{ ok: boolean; id: string }>('send-chat', accessToken, { room_id: roomId, text, rid })
+
+// 채팅 히스토리(늦입장 백필) — RLS(멤버 + visible)로 보호되는 직접 SELECT. 최근 50건을 시간순으로.
+export async function fetchRoomMessages(roomId: string): Promise<ChatMessage[]> {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('id, sender_name, sender_auth_id, text, created_at')
+    .eq('room_id', roomId)
+    .eq('message_type', 'chat')
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw new Error(error.message)
+  return (data ?? []).reverse().map((m) => ({
+    id: m.id as string,
+    sender: (m.sender_name as string | null) ?? (m.sender_auth_id as string),
+    text: m.text as string,
+    ts: new Date(m.created_at as string).getTime(),
+    isLocal: false,
+  }))
+}
 
 // 대본 큐 진행 서버 릴레이(SEC-5). 서버가 host 검증 후 방 전체 broadcast — 클라 직접 publish 의 진행권한 스푸핑·유실 제거.
 export const advanceScriptCueRelay = (accessToken: string, roomId: string, sceneId: string, cueIndex: number) =>

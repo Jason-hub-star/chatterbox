@@ -5,7 +5,7 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode, fetchRoomMessages } from '@/lib/rooms'
 import { applyRoleEvent, isRoleEvent, pruneRoleMap, roleOf, type RoleMap } from '@/features/script/roleMap'
 import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
@@ -108,6 +108,22 @@ export default function RoomPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t 는 안정적, 언어 변경 시 재조인 방지 위해 제외
   }, [session, roomId])
+
+  // 채팅 히스토리 백필(ChatPanel.md): join 성공 후 1회 RLS(멤버) SELECT — 라이브 수신분과 id dedupe 병합.
+  useEffect(() => {
+    if (joinPhase !== 'ready' || !roomId) return
+    let cancelled = false
+    fetchRoomMessages(roomId)
+      .then((history) => {
+        if (!cancelled && history.length) useRoomStore.getState().seedMessages(history)
+      })
+      .catch(() => {
+        /* 히스토리 실패는 비치명 — 라이브 채팅은 정상 동작 */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [joinPhase, roomId])
 
   // 원격 아바타 프레임 싱크(participant identity → 구동 함수)와 마지막 seq. 고빈도 구동은 ref로만(리렌더 없음).
   // 싱크는 RemoteAvatar가 자기 RigAvatar+드라이버로 등록 — RoomPage는 아바타 타입을 모른다(디커플).
@@ -255,6 +271,8 @@ export default function RoomPage() {
     }
   }, [playSharedVgen])
 
+  // 노트 방장 강조(ROOM-17) + room-authority 발신자 검증(SEC-RA-1) — useLiveKitRoom 옵션보다 먼저 선언(TDZ 회피).
+  const [hostAuthId, setHostAuthId] = useState<string | null>(null)
   const { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
     onCue: handleCue,
@@ -263,6 +281,7 @@ export default function RoomPage() {
     enabled: joinPhase === 'ready',
     onKicked: () => setKicked(true),
     reconnectNonce,
+    hostIdentity: hostAuthId ?? undefined,
   })
 
   const connectionState = useRoomStore((s) => s.connectionState)
@@ -319,7 +338,6 @@ export default function RoomPage() {
   const [memberSlots, setMemberSlots] = useState<Record<string, number>>({})
   const [mutedIdentities, setMutedIdentities] = useState<Set<string>>(new Set())
   const [actorIds, setActorIds] = useState<Set<string>>(new Set()) // 배우만(호스트 역할 배정 후보 — 관전자 제외)
-  const [hostAuthId, setHostAuthId] = useState<string | null>(null) // 노트 방장 강조용(ROOM-17, users.id→auth uid 매핑)
   useEffect(() => {
     if (joinPhase !== 'ready' || !session) return
     let cancelled = false
@@ -477,9 +495,6 @@ export default function RoomPage() {
   // 대본 진행권: 호스트 또는 연습 방/리허설 모드의 배우(서버 advance-script-cue 가 동일 규칙으로 재검증 — 관전자 403).
   const canAdvanceCue = !isViewer && (isHost || isPractice || scriptMode === 'rehearsal')
   const script = SEED_SCRIPTS[0]
-  // ponytail: cue 진행 권한은 현재 **클라이언트 게이트만**(호스트에게만 버튼 노출) — 악의적 참가자가
-  // 'script' 토픽을 직접 publish 하면 desync 가능. Phase 2 서버 권한(scripts 테이블 host-only UPDATE +
-  // Edge Function 검증, contracts/ScriptPanel.md·state-machines/Script.md)으로 승급. MVP(초대 기반 협업방)는 수용.
   const advanceCue = useCallback((delta: number) => {
     const next = Math.max(0, Math.min(script.cues.length - 1, cueIndex + delta))
     if (next === cueIndex) return
@@ -710,9 +725,11 @@ export default function RoomPage() {
   // 상단바 액션: 링크 공유(클립보드 복사)
   const handleShareLink = useCallback(() => {
     const url = `${window.location.origin}/rooms/${roomId}${isViewer ? '?watch=1' : ''}`
-    navigator.clipboard.writeText(url)
-    // ponytail: 토스트는 후속. 현재는 클립보드만 처리.
-  }, [roomId, isViewer])
+    navigator.clipboard.writeText(url).then(
+      () => toast.success(t('room.linkCopied')),
+      () => toast.error(t('room.linkCopyFailed')),
+    )
+  }, [roomId, isViewer, t])
 
   if (joinPhase === 'joining') {
     return (

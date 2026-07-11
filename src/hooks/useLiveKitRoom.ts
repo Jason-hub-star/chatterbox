@@ -14,7 +14,8 @@ import { useReactionStore } from '@/stores/reactionStore'
 import { useNotesStore } from '@/stores/notesStore'
 import { useAudioStore, mixedVolume } from '@/stores/audioStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
-import { sendReactionRelay, advanceScriptCueRelay } from '@/lib/rooms'
+import { sendReactionRelay, advanceScriptCueRelay, sendChatRelay } from '@/lib/rooms'
+import { sanitizeChatInput } from '@/lib/chatSanitize'
 import { toast } from '@/hooks/useToast'
 import i18n from '@/i18n'
 import {
@@ -60,6 +61,8 @@ export function useLiveKitRoom(
     onKicked?: () => void
     // 값이 바뀌면 재연결(새 토큰 발급) — viewer→actor 승격 시 canPublish=true 토큰으로 갈아끼운다(ROOM-21).
     reconnectNonce?: number
+    // room-authority 클라 발행(vod_sync/vgen_*)의 발신자 검증용 — 방 호스트 identity(=auth uid, SEC-RA-1).
+    hostIdentity?: string
   },
 ) {
   const roomRef = useRef<Room | null>(null)
@@ -80,6 +83,10 @@ export function useLiveKitRoom(
   useEffect(() => {
     onRoomAuthorityRef.current = opts?.onRoomAuthority
   }, [opts?.onRoomAuthority])
+  const hostIdentityRef = useRef(opts?.hostIdentity)
+  useEffect(() => {
+    hostIdentityRef.current = opts?.hostIdentity
+  }, [opts?.hostIdentity])
   const onKickedRef = useRef(opts?.onKicked)
   useEffect(() => {
     onKickedRef.current = opts?.onKicked
@@ -92,6 +99,7 @@ export function useLiveKitRoom(
   const seqRef = useRef(0)
   const lastReactionRef = useRef(0)
   const seenReactionsRef = useRef<Set<string>>(new Set()) // 리액션 재전송 dedupe(rid)
+  const seenChatRef = useRef<Set<string>>(new Set()) // 채팅 self-echo dedupe(rid) — 서버가 발신자에게도 broadcast
 
   // 믹서(ROOM-08) 브리지: audioStore 변경 → 모든 원격 참가자 setVolume 적용(스토어는 SDK 미보유 — 컨벤션 §2).
   useEffect(() => {
@@ -203,8 +211,17 @@ export function useLiveKitRoom(
       if (topic === 'room-authority') {
         try {
           const data = JSON.parse(new TextDecoder().decode(payload))
-          // 접근제어는 수신측 getVgenUrl(멤버십·visibility 게이트)가 재검증 — 여기선 형태만 통과.
-          if (typeof data?.type === 'string') onRoomAuthorityRef.current?.(data)
+          if (typeof data?.type !== 'string') return
+          // SEC-RA-1: 서버 릴레이(participant=undefined)는 신뢰. 클라 직접 publish 는 호스트 클라 타입
+          // (vod_sync/vgen_*)이고 발신자가 방 호스트일 때만 수락 — 나머지(promoted/mode_change/bg_change 등
+          // 서버 전용)는 스푸핑으로 간주해 드롭. script-cue/reaction 과 동형(단 호스트 클라 발행은 예외 허용).
+          if (participant) {
+            const HOST_CLIENT_TYPES = new Set(['vod_sync', 'vgen_result', 'vgen_stop'])
+            if (!HOST_CLIENT_TYPES.has(data.type)) return
+            if (!hostIdentityRef.current || participant.identity !== hostIdentityRef.current) return
+          }
+          // 접근제어는 수신측 getVgenUrl(멤버십·visibility 게이트)가 추가 재검증.
+          onRoomAuthorityRef.current?.(data)
         } catch { /* 잘못된 페이로드 무시 */ }
         return
       }
@@ -251,10 +268,24 @@ export function useLiveKitRoom(
           })
           return
         }
-        if (typeof data?.text !== 'string') return
+        // 채팅: 서버 릴레이만 수락(reaction 과 동형) — 클라 직접 publish(participant 존재)는 sender 위조
+        // 가능이라 드롭. send-chat Edge 가 sender/sender_name 을 auth 로 확정 + messages 영속.
+        if (participant) return
+        if (typeof data?.text !== 'string' || data.text.length < 1 || data.text.length > 500) return
+        // rid dedupe: 발신자 self-echo(서버가 본인에게도 broadcast)를 1회로 — 로컬은 송신 시 이미 추가됨.
+        const rid = typeof data.rid === 'string' ? data.rid : null
+        if (rid) {
+          if (seenChatRef.current.has(rid)) return
+          seenChatRef.current.add(rid)
+          if (seenChatRef.current.size > 256) {
+            const oldest = seenChatRef.current.values().next().value
+            if (oldest !== undefined) seenChatRef.current.delete(oldest)
+          }
+        }
         addMessage({
-          id: crypto.randomUUID(),
-          sender: participant?.name || participant?.identity || '알 수 없음',
+          id: typeof data.id === 'string' ? data.id : crypto.randomUUID(),
+          sender: (typeof data.sender_name === 'string' && data.sender_name) ||
+            (typeof data.sender === 'string' ? data.sender : '알 수 없음'),
           text: data.text,
           ts: typeof data.ts === 'number' ? data.ts : Date.now(),
           isLocal: false,
@@ -284,6 +315,7 @@ export function useLiveKitRoom(
             setMicEnabled(true)
           } catch {
             setMicEnabled(false)
+            toast.error(i18n.t('room.micBlocked'))
           }
         }
         refreshParticipants()
@@ -323,26 +355,36 @@ export function useLiveKitRoom(
     setMicEnabled(next)
   }, [setMicEnabled])
 
+  // 채팅 송신: 서버 릴레이(send-chat Edge → messages 영속 + broadcast). 직접 publishData 대신 서버
+  // 경유인 이유(reaction·cue 와 동일): sender 를 auth 로 확정(스푸핑 차단) + 안정연결(첫 메시지 유실 0)
+  // + 늦입장 히스토리 영속. 로컬 에코는 릴레이 성공 후 — "렌더된 내 메시지=전송(영속) 완료" ✓ 계약 유지.
   const sendChat = useCallback(
     async (text: string) => {
       const room = roomRef.current
-      const trimmed = text.trim()
-      if (!room || !trimmed) return
-      const ts = Date.now()
-      await room.localParticipant.publishData(
-        new TextEncoder().encode(JSON.stringify({ text: trimmed, ts })),
-        { reliable: true, topic: 'chat' },
-      )
-      // publishData는 발신자 자신에게 echo되지 않으므로 로컬 메시지는 직접 추가.
+      const token = useUserStore.getState().session?.access_token
+      if (!room || !token) return
+      const check = sanitizeChatInput(text.trim())
+      if (!check.ok) {
+        if (check.reason !== 'empty') toast.error(i18n.t('room.chatBlocked'))
+        return
+      }
+      const rid = crypto.randomUUID()
+      seenChatRef.current.add(rid) // 서버가 본인에게도 broadcast → 내 self-echo 를 dedupe
+      try {
+        await sendChatRelay(token, roomId, check.text, rid)
+      } catch {
+        toast.error(i18n.t('room.chatSendFailed'))
+        return
+      }
       addMessage({
-        id: crypto.randomUUID(),
+        id: rid,
         sender: room.localParticipant.name || room.localParticipant.identity,
-        text: trimmed,
-        ts,
+        text: check.text,
+        ts: Date.now(),
         isLocal: true,
       })
     },
-    [addMessage],
+    [addMessage, roomId],
   )
 
   // 디렉터 노트 송신(ROOM-17): chat 채널 message_type='note'. publishData 는 자기 echo 없음 → 로컬 직접 추가.

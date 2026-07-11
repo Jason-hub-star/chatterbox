@@ -21,8 +21,8 @@ export interface RoomParticipant {
   connectionQuality?: 'excellent' | 'good' | 'poor' | 'lost' | 'unknown'
 }
 
-// DataChannel 'chat' 토픽 메시지 (WebRTC.md DataChannel Multiplexing).
-// ponytail: messages 테이블 영속화·sanitize 3단계(SecurityPolicies §6.4)는 Phase 2.
+// 채팅 메시지(ChatPanel.md): 송신=send-chat Edge(영속+broadcast), 라이브 수신='chat' 토픽 서버발,
+// 늦입장 백필=messages RLS SELECT(seedMessages). sanitize 는 lib/chatSanitize + 서버 재실행(§6.4).
 // 출력 XSS는 React 기본 이스케이프로 커버(dangerouslySetInnerHTML 미사용).
 export interface ChatMessage {
   id: string
@@ -65,6 +65,8 @@ interface RoomStore {
   setConnectionState: (state: ConnectionState) => void
   setParticipants: (participants: RoomParticipant[]) => void
   addMessage: (message: ChatMessage) => void
+  // 히스토리 백필(늦입장): 라이브 수신분과 id 로 dedupe 해 앞에 붙인다 — 백필이 라이브를 덮지 않게.
+  seedMessages: (history: ChatMessage[]) => void
   setMicEnabled: (enabled: boolean) => void
   setMutedByHost: (muted: boolean) => void
   setError: (error: string | null) => void
@@ -93,6 +95,11 @@ export const useRoomStore = create<RoomStore>((set) => ({
   setConnectionState: (connectionState) => set({ connectionState }),
   setParticipants: (participants) => set({ participants }),
   addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
+  seedMessages: (history) =>
+    set((s) => {
+      const seen = new Set(s.messages.map((m) => m.id))
+      return { messages: [...history.filter((m) => !seen.has(m.id)), ...s.messages] }
+    }),
   setMicEnabled: (micEnabled) => set({ micEnabled }),
   setMutedByHost: (mutedByHost) => set({ mutedByHost }),
   setError: (error) => set({ error }),

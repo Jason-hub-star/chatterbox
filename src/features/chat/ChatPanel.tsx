@@ -4,7 +4,7 @@ import { useRoomStore } from '@/stores/roomStore'
 
 // ChatPanel — RightPanel 채팅 탭 콘텐츠. RoomPage에서 인라인이던 채팅을 블록으로 추출.
 // 메시지는 roomStore에서 직접 읽고, 송신은 상위(LiveKit 훅 보유)가 주입한 onSend로 위임.
-// 전송확인(✓): sendChat 이 publishData resolve 후에만 로컬 에코하므로 "렌더된 내 메시지=전송 완료"가 성립.
+// 전송확인(✓): sendChat 이 send-chat 릴레이(영속+broadcast) resolve 후에만 로컬 에코하므로 "렌더된 내 메시지=전송 완료"가 성립.
 const fmtTime = (ts: number) => {
   const d = new Date(ts)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
