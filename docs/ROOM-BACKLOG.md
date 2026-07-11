@@ -39,8 +39,8 @@ tags: [status, backlog]
 
 ## §1. 완료 — 회귀 감시 (probe 활성)
 
-- [x] **ROOM-11 트래킹 실패 폴백** — 얼굴 미인식 → 빈 blendshape 폴백(중립 idle·원격 동반 idle). 유닛 + 실렌더 E2E 9/9(2026-07-11). <!-- probe: src/hooks/useFaceTracking.ts :: ROOM-11 -->
-- [x] **채팅 영속화 (ROOM-05·ChatPanel.md 계약)** — send-chat 서버릴레이 + `messages` 30일 보존(pg_cron purge)·히스토리 백필. 통합 17/17(2026-07-11). ⏳ 배포 대기(마이그+함수+CF Pages). <!-- probe: supabase/functions/send-chat/index.ts :: check_rate_limit --> <!-- probe: supabase/migrations/20260711100000_create_messages.sql -->
+- [x] **ROOM-11 트래킹 실패 폴백** — 얼굴 미인식 → 빈 blendshape 폴백(중립 idle·원격 동반 idle). 유닛 + 실렌더 E2E 9/9 + 프로드 스모크 4/4(픽셀 시간변화=폴백 구동, 2026-07-11 배포). <!-- probe: src/hooks/useFaceTracking.ts :: ROOM-11 -->
+- [x] **채팅 영속화 (ROOM-05·ChatPanel.md 계약)** — send-chat 서버릴레이 + `messages` 30일 보존(pg_cron purge)·히스토리 백필. 통합 17/17 + 배포판 2탭 E2E 10/10(2026-07-11 프로드 배포 완료 — 릴레이 왕복·행 영속·새로고침 백필). <!-- probe: supabase/functions/send-chat/index.ts :: check_rate_limit --> <!-- probe: supabase/migrations/20260711100000_create_messages.sql -->
 - 보안 5건(SEC-RA-1·AVJ-1·RXN-1·CR-1·CR-2)의 probe 는 `DOGFOOD-AUDIT-2026-07.md` §0 원행에 부착(중복 등재 안 함).
 
 ## 스캔에서 정리한 stale 표식 (2026-07-11)
