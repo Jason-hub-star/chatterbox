@@ -4,7 +4,7 @@
 //   서버는 이미 안정연결이라 유실 0 + 발신자 identity 를 auth 로 확정 → 스푸핑 불가
 //   (수신측은 participant=undefined 인 '서버발'만 수락, sender 는 payload 신뢰).
 // SSOT: contracts/ReactionWheel.md · API-SURFACE (send-viewer-reaction 계열, actor/host 용).
-// ponytail: 서버 rate-limit(토큰버킷/KV)는 후속 — 현재는 클라 5/s 쓰로틀. 검열/allowlist 도 후속.
+// SEC-RXN-1: 서버 rate-limit(check_rate_limit 30/분) = 클라 5/s 쓰로틀의 서버측 백스톱. 검열/allowlist 는 후속(ponytail).
 import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
@@ -44,6 +44,10 @@ Deno.serve(async (req) => {
     .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
     .maybeSingle();
   if (!part) return json({ error: "Not a participant" }, 403);
+
+  // 레이트리밋(SEC-RXN-1): 사용자당 30회/분 — broadcast 폭탄 방어(봇 자동발사 서버측 캡).
+  const { data: rlOk } = await user.service.rpc("check_rate_limit", { p_key: `reaction:${user.userId}`, p_max: 30, p_window_sec: 60 });
+  if (rlOk === false) return json({ error: "리액션이 너무 빨라요." }, 429);
 
   // 방 전체 broadcast(reliable). sender=auth uid(=LiveKit identity, 서버 확정) → 수신측 신뢰.
   // 발신자 본인도 수신 → 클라가 로컬 self-echo 를 rid 로 dedupe.

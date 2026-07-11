@@ -28,9 +28,15 @@ Deno.serve(async (req) => {
   const maxP = Number.isInteger(body.max_participants) ? (body.max_participants as number) : 6;
   if (maxP < 1 || maxP > 6) return json({ error: "Invalid max_participants" }, 400);
 
-  const language = typeof body.language === "string" ? body.language : "ko";
+  // SEC-CR-2: 화이트리스트 — 자유 문자열 저장 오염 방지(genre 와 동형).
+  const LANGS = ["ko", "en", "ja"];
+  const language = typeof body.language === "string" && LANGS.includes(body.language) ? body.language : "ko";
   // 장르(옵션) — 화이트리스트 외 값은 무시(null): 자유 텍스트가 배지 어휘를 오염시키지 않게.
   const genre = typeof body.genre === "string" && GENRES.includes(body.genre) ? body.genre : null;
+
+  // 레이트리밋(SEC-CR-1): 사용자당 5회/시간 — 방 스팸·로비 오염 차단(check_rate_limit RPC 재사용).
+  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `room-create:${userId}`, p_max: 5, p_window_sec: 3600 });
+  if (rlOk === false) return json({ error: "방 생성이 너무 잦아요. 잠시 후 다시 시도해주세요." }, 429);
 
   // 방 생성 (status='waiting', 호스트 포함 current_participants=1)
   // 신규 방 기본 무대 배경 = 모닥불 씬(방장이 관리탭에서 교체 가능). set-room-background 와 동일 /scenes/ 경로라 서버검증 통과.
