@@ -8,7 +8,7 @@ import DubCompositor from '@/features/dub/DubCompositor'
 import {
   uploadDubSource, createDubSession, startTranscription, translateDubScript, assignRoles,
   recordConsent, startRecording, fetchRoomMembers, fetchActiveDubSession,
-  fetchMyUserId, fetchRoomHostId, fetchDubTracks,
+  fetchMyUserId, fetchRoomHostId, fetchDubTracks, updateDubSegmentText,
   type DubSegment, type DubTrack, type RoomMember,
 } from '@/lib/dub'
 
@@ -38,6 +38,8 @@ export default function DubPanel({ roomId }: { roomId: string }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showTranslation, setShowTranslation] = useState(false)
+  // V-10 자막편집: 편집 중인 세그먼트(보이는 필드를 고침 — 번역 표시 중이면 translated_text, 아니면 text)
+  const [editing, setEditing] = useState<{ segId: number; value: string } | null>(null)
 
   const isHost = !!myId && myId === hostId
   const segments = session?.diarization_result_json?.segments ?? []
@@ -189,12 +191,55 @@ export default function DubPanel({ roomId }: { roomId: string }) {
               )}
             </div>
             <ul className="mt-2 space-y-1 text-sm">
-              {segments.map((seg) => (
+              {segments.map((seg) => {
+                const editsTranslation = showTranslation && !!seg.translated_text
+                const shownText = editsTranslation ? seg.translated_text! : seg.text
+                return (
                 <li key={seg.id} className="flex items-center gap-2">
                   <span className="w-14 shrink-0 text-xs text-stage-text-muted">
                     {(seg.start_ms / 1000).toFixed(1)}s
                   </span>
-                  <span className="flex-1 truncate">{showTranslation && seg.translated_text ? seg.translated_text : seg.text}</span>
+                  {editing?.segId === seg.id ? (
+                    <span className="flex flex-1 items-center gap-1">
+                      <input
+                        value={editing.value}
+                        onChange={(e) => setEditing({ segId: seg.id, value: e.target.value })}
+                        maxLength={500}
+                        aria-label={t('dub.segEditLabel')}
+                        className="w-full rounded border border-stage-border bg-transparent px-2 py-1 text-sm"
+                      />
+                      <button
+                        disabled={busy || !editing.value.trim()}
+                        onClick={() => run(async () => {
+                          await updateDubSegmentText(token!, session!.id, seg.id,
+                            editsTranslation ? { translated_text: editing.value } : { text: editing.value })
+                          setEditing(null)
+                        })}
+                        className="rounded border border-stage-border px-2 py-1 text-xs hover:bg-stage-border/30 disabled:opacity-40"
+                      >
+                        {t('dub.segEditSave')}
+                      </button>
+                      <button
+                        onClick={() => setEditing(null)}
+                        className="rounded border border-stage-border px-2 py-1 text-xs hover:bg-stage-border/30"
+                      >
+                        {t('dub.segEditCancel')}
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="flex-1 truncate">
+                      {shownText}
+                      {isHost && (
+                        <button
+                          onClick={() => setEditing({ segId: seg.id, value: shownText })}
+                          aria-label={t('dub.segEditLabel')}
+                          className="ml-1 text-xs text-stage-text-muted hover:text-stage-text"
+                        >
+                          ✏️
+                        </button>
+                      )}
+                    </span>
+                  )}
                   {isHost ? (
                     <select
                       value={assignedTo(seg.id)}
@@ -214,7 +259,8 @@ export default function DubPanel({ roomId }: { roomId: string }) {
                     </span>
                   )}
                 </li>
-              ))}
+                )
+              })}
             </ul>
             {isHost && (
               <button
@@ -270,6 +316,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
               status={status}
               isHost={isHost}
               tracks={tracks}
+              segments={segments}
               onChanged={refresh}
             />
           )}
@@ -283,6 +330,7 @@ export default function DubPanel({ roomId }: { roomId: string }) {
           status={status}
           isHost={isHost}
           tracks={tracks}
+          segments={segments}
           onChanged={refresh}
         />
       )}

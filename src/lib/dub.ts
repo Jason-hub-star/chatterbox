@@ -56,6 +56,15 @@ export const translateDubScript = (accessToken: string, dubSessionId: string) =>
     'translate-dub-script', accessToken, { dub_session_id: dubSessionId },
   )
 
+// V-10 자막편집: READY 상태에서 세그먼트 대사(원문/번역) 수정 — 프롬프터·합성 자막에 반영.
+export const updateDubSegmentText = (
+  accessToken: string, dubSessionId: string, segmentId: number,
+  patch: { text?: string; translated_text?: string },
+) =>
+  callFn<{ dub_session_id: string; segment_id: number }>(
+    'update-dub-segment-text', accessToken, { dub_session_id: dubSessionId, segment_id: segmentId, ...patch },
+  )
+
 export const assignRoles = (accessToken: string, dubSessionId: string, assignments: RoleAssignment[]) =>
   callFn<{ dub_session_id: string; track_count: number }>(
     'assign-dub-roles', accessToken, { dub_session_id: dubSessionId, assignments },

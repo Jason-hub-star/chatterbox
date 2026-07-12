@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import {
   startDubCompositing, uploadDubOutput, finalizeDubOutput, getDubOutputUrl,
-  fetchDubRecordings, getDubSourceUrl, separateDubAudio, type DubTrack,
+  fetchDubRecordings, getDubSourceUrl, separateDubAudio, type DubSegment, type DubTrack,
 } from '@/lib/dub'
-import { mixAndMux, type DubCue } from '@/lib/ffmpeg'
+import { mixAndMux, buildVtt, type DubCue, type SubtitleCue } from '@/lib/ffmpeg'
 import ProgressBar from '@/components/shared/ProgressBar'
 
 // Phase 3B 슬라이스 3a/3b: 더빙 완성본 합성(DUB-05, 원본 재더빙 + 음원분리 배경합류).
@@ -19,12 +19,13 @@ interface Props {
   status: string
   isHost: boolean
   tracks: DubTrack[]
+  segments: DubSegment[]
   onChanged: () => void | Promise<void>
 }
 
 type Phase = 'idle' | 'separating' | 'downloading' | 'mixing' | 'uploading' | 'error'
 
-export default function DubCompositor({ dubSessionId, status, isHost, tracks, onChanged }: Props) {
+export default function DubCompositor({ dubSessionId, status, isHost, tracks, segments, onChanged }: Props) {
   const { t } = useTranslation()
   const token = useUserStore((s) => s.session?.access_token)
   const [phase, setPhase] = useState<Phase>('idle')
@@ -33,6 +34,16 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
   const [outputUrl, setOutputUrl] = useState<string | null>(null)
 
   const allSynced = tracks.length > 0 && tracks.every((t) => t.status === 'synced')
+  // V-10 자막: 세그먼트 → 자막 큐(더빙 대사 = 번역본 우선). mp4 내장(mov_text) + 미리보기 <track>(VTT) 동일 소스.
+  const subtitleCues = useMemo<SubtitleCue[]>(
+    () => segments.map((s) => ({ startMs: s.start_ms, endMs: s.end_ms, text: s.translated_text || s.text })),
+    [segments],
+  )
+  const vttUrl = useMemo(
+    () => (subtitleCues.length ? URL.createObjectURL(new Blob([buildVtt(subtitleCues)], { type: 'text/vtt' })) : null),
+    [subtitleCues],
+  )
+  useEffect(() => () => { if (vttUrl) URL.revokeObjectURL(vttUrl) }, [vttUrl])
   const isCompleted = status === 'completed'
   const isCompositing = status === 'compositing'
   const busy = phase === 'separating' || phase === 'downloading' || phase === 'mixing' || phase === 'uploading'
@@ -72,7 +83,7 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
         sep.background_urls.map(async (u) => (await fetch(u)).blob()),
       )
       setPhase('mixing')
-      const out = await mixAndMux(srcBlob, cues, background, setProgress)
+      const out = await mixAndMux(srcBlob, cues, background, subtitleCues, setProgress)
       setPhase('uploading')
       await uploadDubOutput(started.uploadUrl, out)
       await finalizeDubOutput(token, { outputId, outputPath: started.path, fileSizeBytes: out.size })
@@ -87,7 +98,7 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
       if (outputId) { try { await finalizeDubOutput(token, { outputId, errorMessage: msg }) } catch { /* noop */ } }
       await onChanged()
     }
-  }, [token, dubSessionId, onChanged, t])
+  }, [token, dubSessionId, subtitleCues, onChanged, t])
 
   const phaseLabel = phase === 'separating' ? t('dub.phaseSeparating')
     : phase === 'downloading' ? t('dub.phaseDownloading')
@@ -103,7 +114,7 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, on
       {isCompleted && outputUrl && (
         <div className="mt-2 space-y-2">
           <video src={outputUrl} controls className="w-full rounded-lg">
-            <track kind="captions" />
+            {vttUrl ? <track kind="captions" srcLang="ko" src={vttUrl} default /> : <track kind="captions" />}
           </video>
           <a
             href={outputUrl}

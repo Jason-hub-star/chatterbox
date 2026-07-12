@@ -26,8 +26,37 @@ export function loadFfmpeg(): Promise<FFmpeg> {
 }
 
 export interface DubCue { blob: Blob; startMs: number }
+export interface SubtitleCue { startMs: number; endMs: number; text: string }
 
 const ms = (n: number) => Math.max(0, Math.round(n))
+
+// V-10 자막: 세그먼트 → SRT(mp4 내장 mov_text 스트림용) / WebVTT(<track> 미리보기용).
+// ponytail: 번인(-vf subtitles)은 libass 부재(wasm 코어) + 전체 재인코딩이라 기각 —
+//   소프트 자막은 -c:v copy 유지(합성 속도 불변). 번인이 필요해지면 서버측(Egress P2)에서.
+const validCues = (cues: SubtitleCue[]) =>
+  cues.filter((c) => c.text.trim().length > 0 && c.endMs > c.startMs)
+
+function stamp(msTotal: number, msSep: string): string {
+  const t = ms(msTotal)
+  const h = String(Math.floor(t / 3600000)).padStart(2, '0')
+  const m = String(Math.floor((t % 3600000) / 60000)).padStart(2, '0')
+  const s = String(Math.floor((t % 60000) / 1000)).padStart(2, '0')
+  const f = String(t % 1000).padStart(3, '0')
+  return `${h}:${m}:${s}${msSep}${f}`
+}
+
+export function buildSrt(cues: SubtitleCue[]): string {
+  return validCues(cues)
+    .map((c, i) => `${i + 1}\n${stamp(c.startMs, ',')} --> ${stamp(c.endMs, ',')}\n${c.text.trim()}\n`)
+    .join('\n')
+}
+
+export function buildVtt(cues: SubtitleCue[]): string {
+  const body = validCues(cues)
+    .map((c) => `${stamp(c.startMs, '.')} --> ${stamp(c.endMs, '.')}\n${c.text.trim()}\n`)
+    .join('\n')
+  return `WEBVTT\n\n${body}`
+}
 
 // 원본(비디오) + 더빙 오디오 큐들 → 재더빙 mp4. 원본 오디오 드롭(-map 0:v 만), 비디오 무손실 복사.
 // background: 음원분리(G-280 fal Demucs)로 얻은 배경음/효과음 스템들. 있으면 원본 대사 대신 이 stem 위에 더빙을 얹는다.
@@ -36,6 +65,7 @@ export async function mixAndMux(
   source: Blob,
   cues: DubCue[],
   background: Blob[] = [],
+  subtitles: SubtitleCue[] = [],
   onProgress?: (ratio: number) => void,
 ): Promise<Blob> {
   if (cues.length === 0) throw new Error('더빙 트랙이 없어요.')
@@ -44,10 +74,14 @@ export async function mixAndMux(
 
   const SRC = 'source.mp4'
   const OUT = 'out.mp4'
+  const SUBS = 'subs.srt'
+  const srt = buildSrt(subtitles)
+  const withSubs = srt.trim().length > 0
   const recNames = cues.map((_, i) => `rec${i}.webm`)
   const bgNames = background.map((_, j) => `bg${j}.mp3`)
   try {
     await ffmpeg.writeFile(SRC, await fetchFile(source))
+    if (withSubs) await ffmpeg.writeFile(SUBS, new TextEncoder().encode(srt))
     for (let j = 0; j < background.length; j++) {
       await ffmpeg.writeFile(bgNames[j], await fetchFile(background[j]))
     }
@@ -80,12 +114,16 @@ export async function mixAndMux(
     }
 
     // -shortest 미사용: 비디오 전체 길이 유지(더빙이 짧으면 뒤는 배경음/무음).
+    // 자막(SRT)은 마지막 입력으로 append → 기존 오디오 filter 인덱스 불변, mov_text 소프트 스트림으로 mux.
+    const subIdx = 1 + B + cues.length
     await ffmpeg.exec([
       '-i', SRC,
       ...bgNames.flatMap((n) => ['-i', n]),
       ...recNames.flatMap((n) => ['-i', n]),
+      ...(withSubs ? ['-i', SUBS] : []),
       '-filter_complex', filter,
       '-map', '0:v', '-map', '[dub]',
+      ...(withSubs ? ['-map', `${subIdx}:s`, '-c:s', 'mov_text', '-metadata:s:s:0', 'language=kor'] : []),
       '-c:v', 'copy', '-c:a', 'aac',
       OUT,
     ])
@@ -100,6 +138,7 @@ export async function mixAndMux(
     currentProgress = null
     await ffmpeg.deleteFile(SRC).catch(() => {})
     await ffmpeg.deleteFile(OUT).catch(() => {})
+    if (withSubs) await ffmpeg.deleteFile(SUBS).catch(() => {})
     for (const n of bgNames) await ffmpeg.deleteFile(n).catch(() => {})
     for (const n of recNames) await ffmpeg.deleteFile(n).catch(() => {})
   }

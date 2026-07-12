@@ -155,6 +155,8 @@ async function startCompositing() {
 
 > ponytail: P1은 ffmpeg.wasm 우선, 비용 절감. Egress는 P2.
 
+> **as-built(V-10 자막, 2026-07-12):** 합성 시 세그먼트(`translated_text ?? text`)를 SRT 로 변환해 **mp4 내장 `mov_text` 소프트 자막 스트림**으로 mux(`src/lib/ffmpeg.ts` `buildSrt`+`-c:s mov_text`), 미리보기 `<video>` 는 동일 소스의 WebVTT `<track>`. 번인(`-vf subtitles`)은 wasm 코어 libass 부재 + `-c:v copy` 포기(전체 재인코딩) 대가로 기각 — 번인 필요 시 서버측(Egress P2)으로 승급. 세그먼트 편집은 `update-dub-segment-text`(API-SURFACE 참조).
+
 ### 4. 진행률 추적
 
 ```typescript
