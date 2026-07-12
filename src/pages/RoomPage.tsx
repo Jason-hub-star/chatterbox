@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent as ReactTouchEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type TouchEvent as ReactTouchEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl } from '@/lib/rooms'
 import { useRoomRecording } from '@/features/room/useRoomRecording'
-import { applyRoleEvent, isRoleEvent, pruneRoleMap, roleOf, type RoleMap } from '@/features/script/roleMap'
+import { useRoomMembers } from '@/features/room/useRoomMembers'
+import { useScriptSync } from '@/features/script/useScriptSync'
 import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
 import { useStageStore } from '@/stores/stageStore'
 import { useVgenStore } from '@/stores/vgenStore'
-import { fetchRoomMembers, fetchRoomHostId } from '@/lib/dub'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { useInterior } from '@/pages/lobby/useInterior'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
@@ -33,9 +33,8 @@ import { applyVodSync, readVodSyncState, setVodSyncPublisher } from '@/features/
 import DirectorNotesTab from '@/features/room/DirectorNotesTab'
 import ChatNotesTab from '@/features/room/ChatNotesTab'
 import HostConsole from '@/features/room/HostConsole'
-import CampfireGlyph from '@/components/shared/CampfireGlyph'
 import Modal from '@/components/shared/Modal'
-import { SEED_SCRIPTS } from '@/features/script/cues'
+import RoomJoinGate from '@/features/room/RoomJoinGate'
 import RoomShell from '@/features/room/RoomShell'
 import RoomTopBar from '@/features/room/RoomTopBar'
 import RoomBottomBar from '@/features/room/RoomBottomBar'
@@ -65,10 +64,8 @@ export default function RoomPage() {
   const [kicked, setKicked] = useState(false)
   const [kickReason, setKickReason] = useState<string | null>(null) // 서버발 강퇴 사유(room-authority 'kicked') — 표시는 kicked 게이트
   // 잠금방: join-public-room 이 "Room is locked" 로 거부하면 비번 입력 단계로. 입장 성공 시 roomLocked=true.
+  // (비번 입력 폼의 로컬 상태는 RoomJoinGate 소유 — R-커밋 분리)
   const [roomLocked, setRoomLocked] = useState(false)
-  const [passwordInput, setPasswordInput] = useState('')
-  const [pwPhaseBusy, setPwPhaseBusy] = useState(false)
-  const [pwPhaseErr, setPwPhaseErr] = useState<string | null>(null)
 
   // 취소 버튼(트랙 B)이 진행 중 join fetch 를 끊을 수 있게 컨트롤러를 ref 로 노출.
   const joinAbortRef = useRef<AbortController | null>(null)
@@ -139,7 +136,6 @@ export default function RoomPage() {
   }, [])
 
   // 연습 방(LOB-10): 시스템 호스트라 아무도 host 가 아님 — 대본 진행권을 참가자 전원에게(서버도 동일 예외).
-  const isPracticeRef = useRef(false)
   const [isPractice, setIsPractice] = useState(false)
   // 방 메타(이름·장르): 상단바에 표시
   const [roomName, setRoomName] = useState('')
@@ -153,8 +149,7 @@ export default function RoomPage() {
         .eq('id', roomId)
         .maybeSingle()
       if (!cancelled && data) {
-        setIsPractice(!!data.is_practice)
-        isPracticeRef.current = !!data.is_practice
+        setIsPractice(!!data.is_practice) // 연습 방 ref 동기는 useScriptSync 내부
         setRoomName(data.title || '')
         setRoomGenre(data.genre || '')
       }
@@ -164,29 +159,40 @@ export default function RoomPage() {
     }
   }, [roomId])
 
-  // 대본 텔레프롬프터: 호스트가 진행한 cue_index 를 수신 → 전원이 같은 위치를 본다.
-  const [cueIndex, setCueIndex] = useState(0)
-  // 역할 클레임 맵(ROOM-14): 쓰기 경로는 서버 릴레이 수신뿐(자기 액션도 서버 echo 로 반영 → 전 클라 순서 일치).
-  const [roleMap, setRoleMap] = useState<RoleMap>({})
-  const handleScriptRole = useCallback((payload: unknown) => {
-    if (!isRoleEvent(payload)) return // 형태 방어(변조 페이로드 드롭)
-    setRoleMap((m) => applyRoleEvent(m, payload))
-  }, [])
-  // 대본 모드(ROOM-14): 서버 진실(rooms.script_mode) — 입장 시 로드 + room-authority 로 실시간 동기.
-  const [scriptMode, setScriptModeLocal] = useState<'rehearsal' | 'performance'>('performance')
-  // handleCue 는 stable 콜백이라 ref 로 현재 모드를 읽는다(연습 방 ref 와 동형).
-  const scriptModeRef = useRef(scriptMode)
-  useEffect(() => { scriptModeRef.current = scriptMode }, [scriptMode])
-  // 수신 방어: 다른 씬 메시지 무시 + cueIndex 범위 클램프(변조·스테일·멀티씬 대비).
-  const handleCue = useCallback((p: { sceneId: string; cueIndex: number }) => {
-    // 본공연: 진행자는 호스트뿐 — 호스트는 자기 진행이 소스(로컬 갱신)라 서버 self-echo 를 무시해 회귀 방지(SEC-5).
-    // 연습 방·리허설: 전원이 진행자 — 호스트도 남의 진행을 받아야 하므로 스킵 없음(자기 echo 는 같은 값 → 멱등).
-    // (2026-07-09 프로드 2탭 E2E 가 잡은 버그: 리허설에서 배우 진행이 호스트에 영원히 미반영 → 모드 조건 추가.)
-    if (!isPracticeRef.current && scriptModeRef.current !== 'rehearsal' && useRoomStore.getState().mySlotIndex === 0) return
-    const sc = SEED_SCRIPTS[0]
-    if (p.sceneId !== sc.id) return
-    setCueIndex(Math.max(0, Math.min(sc.cues.length - 1, p.cueIndex)))
-  }, [])
+  // ── R-커밋 허브: 스토어 파생(연결·좌석·호스트) → 멤버 명단 동기 → 대본 동기 훅.
+  //    훅 배선(useScriptSync·useRoomMembers)이 아래 useLiveKitRoom 옵션·bg 복원 effect 보다 먼저 서야 한다(TDZ).
+  const connectionState = useRoomStore((s) => s.connectionState)
+  const participants = useRoomStore((s) => s.participants)
+  // 관전 모드(서버 진실): 무대에서 내 좌석·카메라·마이크가 없다 — SelfAvatar 미마운트로 웹캠 요청 자체가 없음.
+  const isViewer = useRoomStore((s) => s.myRole) === 'viewer'
+  const micEnabled = useRoomStore((s) => s.micEnabled)
+  const mutedByHost = useRoomStore((s) => s.mutedByHost)
+  const error = useRoomStore((s) => s.error)
+  const connected = connectionState === 'CONNECTED'
+  const mySlotIndex = useRoomStore((s) => s.mySlotIndex)
+  // 호스트 판정은 rooms.host_id(서버 진실) 우선 — 호스트 이양 시 이 값 갱신으로 새 호스트가 컨트롤을 얻는다.
+  // hostId 로드 전(초기)엔 기존 slot 프록시로 폴백(2인 경로 무변화). 서버는 host_id 로 권한 재검증.
+  const isHost = hostId != null && appUserId != null ? hostId === appUserId : mySlotIndex === 0
+
+  // 멤버 명단 동기(아바타·좌석·음소거·배우·호스트 authId·손들기) — useRoomMembers 분리(R-커밋).
+  const [raiseHandRefetch, setRaiseHandRefetch] = useState(0) // raise_hand/promoted broadcast → 재조회 카운터
+  const members = useRoomMembers({ roomId, joined: joinPhase === 'ready', raiseHandRefetch })
+
+  // 대본 동기(cue·역할 클레임·리허설 모드) — useScriptSync 분리(R-커밋). sendCue 는 useLiveKitRoom 반환이라 ref 브리지.
+  const sendCueRef = useRef<(sceneId: string, cueIndex: number) => Promise<void>>(() => Promise.resolve())
+  const bridgedSendCue = useCallback((sceneId: string, cueIndex: number) => sendCueRef.current(sceneId, cueIndex), [])
+  const scriptSync = useScriptSync({
+    roomId,
+    connected,
+    memberKey: members.memberKey,
+    isHost,
+    isViewer,
+    isPractice,
+    myIdentity,
+    actorIds: members.actorIds,
+    sendCue: bridgedSendCue,
+  })
+  const { applyServerScriptMode } = scriptSync // effect/콜백 deps 용 안정 참조
 
   // 무대 배경 초기 로드(HOST-04·05): 입장 후(멤버 RLS) rooms.background_url 을 읽어 이미 설정된 배경을 반영.
   // 이후 변경은 room-authority bg_change 로 실시간 동기. 방 이탈 시 초기화(다음 방 배경 잔상 방지).
@@ -204,7 +210,7 @@ export default function RoomPage() {
         const row = data as { background_url?: string | null; script_mode?: string; current_mode?: string }
         useStageStore.getState().setBackground(row.background_url ?? null)
         // 대본 모드 초기 동기(ROOM-14) — 이후 변경은 room-authority script_mode 로.
-        if (row.script_mode === 'rehearsal' || row.script_mode === 'performance') setScriptModeLocal(row.script_mode)
+        applyServerScriptMode(row.script_mode)
         // 진행 모드 복원(G-261, late joiner) — setMode 는 조용(배너 없음). 이후 변경은 mode_change broadcast 로.
         if (row.current_mode === 'vgen' || row.current_mode === 'dub') useStageStore.getState().setMode(row.current_mode)
       }
@@ -214,7 +220,7 @@ export default function RoomPage() {
       useStageStore.getState().setBackground(null)
       useStageStore.getState().setMode('normal') // 다음 방 모드 잔상 방지
     }
-  }, [joinPhase, roomId])
+  }, [joinPhase, roomId, applyServerScriptMode])
 
   // VGEN 공유재생(VGEN-04): 호스트가 방송한 jobId 로 각자 서명 URL 을 발급받아 센터 MainView 에 재생.
   const playSharedVgen = useCallback(async (jobId: string) => {
@@ -224,10 +230,6 @@ export default function RoomPage() {
       useStageStore.getState().setMainVideo(url, jobId)
     } catch { /* 접근 불가·미완성 → 무시(서버 get-vgen-url 이 멤버십·visibility 게이트) */ }
   }, [session])
-  // 손들기 큐(ROOM-20): 호스트가 보는 손든 관객 목록 + 본인 손들기 상태. raise_hand broadcast 수신 시 refetch 카운터로 재조회.
-  const [raisedHands, setRaisedHands] = useState<{ authId: string; userId: string; name: string | null }[]>([])
-  const [raiseHandRefetch, setRaiseHandRefetch] = useState(0)
-  const [handRaised, setHandRaised] = useState(false)
   const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
   const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
   // V-3 녹화: useRoomRecording 은 isHost(아래 파생) 뒤에 호출되므로 ref 브리지로 수신을 위임(TDZ 회피).
@@ -239,7 +241,7 @@ export default function RoomPage() {
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
     else if (msg.type === 'script_mode') {
       // 대본 모드 전환(ROOM-14, set-script-mode Edge 발). 호스트 자신도 echo 를 받지만 같은 값 → 멱등.
-      if (msg.mode === 'rehearsal' || msg.mode === 'performance') setScriptModeLocal(msg.mode)
+      applyServerScriptMode(msg.mode)
     }
     else if (msg.type === 'raise_hand') setRaiseHandRefetch((n) => n + 1) // 손든 관객 변동 → 큐 재조회(호스트 UI)
     else if (msg.type === 'vod_sync') {
@@ -277,31 +279,21 @@ export default function RoomPage() {
         setReconnectNonce((n) => n + 1)
       }
     }
-  }, [playSharedVgen])
+  }, [playSharedVgen, applyServerScriptMode])
 
-  // 노트 방장 강조(ROOM-17) + room-authority 발신자 검증(SEC-RA-1) — useLiveKitRoom 옵션보다 먼저 선언(TDZ 회피).
-  const [hostAuthId, setHostAuthId] = useState<string | null>(null)
   const { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave, getAudioTracks } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
-    onCue: handleCue,
+    onCue: scriptSync.handleCue,
     onRoomAuthority: handleRoomAuthority,
-    onScriptRole: handleScriptRole,
+    onScriptRole: scriptSync.handleScriptRole,
     enabled: joinPhase === 'ready',
     onKicked: () => setKicked(true),
     onAudioTrack: (track) => recAudioRef.current?.(track), // 녹화 믹스 — 녹화 중 오디오 증감 합류
     reconnectNonce,
-    hostIdentity: hostAuthId ?? undefined,
+    hostIdentity: members.hostAuthId ?? undefined, // room-authority 발신자 검증(SEC-RA-1)
   })
-
-  const connectionState = useRoomStore((s) => s.connectionState)
-  const participants = useRoomStore((s) => s.participants)
-  // 관전 모드(서버 진실): 무대에서 내 좌석·카메라·마이크가 없다 — SelfAvatar 미마운트로 웹캠 요청 자체가 없음.
-  const isViewer = useRoomStore((s) => s.myRole) === 'viewer'
-  const micEnabled = useRoomStore((s) => s.micEnabled)
-  const mutedByHost = useRoomStore((s) => s.mutedByHost)
-  const error = useRoomStore((s) => s.error)
-
-  const connected = connectionState === 'CONNECTED'
+  // 대본 진행 송신 브리지 — useScriptSync 가 훅 순서상 먼저 서므로 여기서 실제 sendCue 를 연결.
+  useEffect(() => { sendCueRef.current = sendCue }, [sendCue])
 
   // 라이브 경과 시간(클라이언트 타이머) — connected 시점부터 카운트.
   const connectedAtRef = useRef<number | null>(null)
@@ -338,59 +330,8 @@ export default function RoomPage() {
     }
   }, [participants])
 
-  // 참가자별 아바타: LiveKit identity(=auth uid)로 각 멤버의 avatar_url 을 찾는다.
-  // memberKey(정렬된 identity 문자열)로만 재조회 — participants 참조는 발화/메타 이벤트마다 바뀌므로
-  // 멤버 집합이 실제로 바뀔 때(입장/퇴장)에만 list-room-members 를 호출한다(불필요 재조회 방지).
-  // ponytail: 세션 중 아바타 변경 실시간 전파는 후속(현재는 멤버 변동 시 반영).
-  const memberKey = participants.map((p) => p.identity).sort().join(',')
-  const [memberAvatars, setMemberAvatars] = useState<Record<string, string | null>>({})
-  const [memberSlots, setMemberSlots] = useState<Record<string, number>>({})
-  const [mutedIdentities, setMutedIdentities] = useState<Set<string>>(new Set())
-  const [actorIds, setActorIds] = useState<Set<string>>(new Set()) // 배우만(호스트 역할 배정 후보 — 관전자 제외)
-  useEffect(() => {
-    if (joinPhase !== 'ready' || !session) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        // 참가자 변동(memberKey)마다 재실행 — 호스트 퇴장도 참가자 변동이므로 hostId 가 새 호스트로 갱신된다(A-FUNC-3 이양).
-        const [members, newHostId] = await Promise.all([
-          fetchRoomMembers(session.access_token, roomId),
-          fetchRoomHostId(roomId),
-        ])
-        if (cancelled) return
-        const avatars: Record<string, string | null> = {}
-        const slots: Record<string, number> = {}
-        const muted = new Set<string>()
-        const actorSet = new Set<string>()
-        const raised: { authId: string; userId: string; name: string | null; at: string }[] = []
-        for (const m of members) {
-          avatars[m.authId] = m.avatarUrl
-          slots[m.authId] = m.slotIndex // 절대좌석용(identity=auth uid)
-          if (m.mutedByHost) muted.add(m.authId)
-          if (m.role !== 'viewer') actorSet.add(m.authId) // 역할 배정 후보(ROOM-14)
-          if (m.raiseHandAt) raised.push({ authId: m.authId, userId: m.userId, name: m.displayName, at: m.raiseHandAt })
-        }
-        raised.sort((a, b) => a.at.localeCompare(b.at)) // 시간순(먼저 든 사람 위)
-        setMemberAvatars(avatars)
-        setMemberSlots(slots)
-        setMutedIdentities(muted)
-        setActorIds(actorSet)
-        setHostAuthId(members.find((m) => m.userId === newHostId)?.authId ?? null)
-        setRaisedHands(raised.map(({ authId, userId, name }) => ({ authId, userId, name })))
-        useRoomStore.getState().setRoomContext({ hostId: newHostId })
-        // mute 마운트 로드(A-FUNC-3): 새로고침 후에도 내 muted_by_host 를 서버 진실로 재동기(desync 제거).
-        const myAuthId = useUserStore.getState().user?.id
-        if (myAuthId) {
-          useRoomStore.getState().setMutedByHost(muted.has(myAuthId))
-          setHandRaised(raised.some((r) => r.authId === myAuthId)) // 내 손들기도 서버 진실로 동기(새로고침 desync 제거)
-          // 내 역할·좌석도 서버 진실로 동기 — 승격(ROOM-21) 재연결 시 cleanup reset() 후 myRole 복원(무대 등단 반영).
-          const mine = members.find((m) => m.authId === myAuthId)
-          if (mine) useRoomStore.getState().setRoomContext({ myRole: mine.role === 'viewer' ? 'viewer' : 'actor', mySlotIndex: mine.slotIndex })
-        }
-      } catch { /* 명단 조회 실패 → 기본 아바타 fallback + slot 미상은 임시배치 */ }
-    })()
-    return () => { cancelled = true }
-  }, [joinPhase, session, roomId, memberKey, raiseHandRefetch])
+  // 멤버 명단(아바타·좌석·음소거·호스트 authId·손들기)은 useRoomMembers 소유 — 여기선 파생만 사용.
+  const { memberAvatars, memberSlots, mutedIdentities, hostAuthId, raisedHands, handRaised, setHandRaised } = members
 
   const selfProjectUrl = resolveAvatarUrl(myAvatarUrl)
   const remoteProjectUrl = useCallback(
@@ -467,12 +408,6 @@ export default function RoomPage() {
     return () => { delete w.__reactionE2E }
   }, [sendReaction])
 
-  // 대본 진행 권한 = 호스트(생성자=slot 0). ponytail: 정확한 host_id 판정(현재 public_rooms 뷰는 host_id 제외).
-  const mySlotIndex = useRoomStore((s) => s.mySlotIndex)
-  // 호스트 판정은 rooms.host_id(서버 진실) 우선 — 호스트 이양 시 이 값 갱신으로 새 호스트가 컨트롤을 얻는다.
-  // hostId 로드 전(초기)엔 기존 slot 프록시로 폴백(2인 경로 무변화). 서버는 host_id 로 권한 재검증.
-  const isHost = hostId != null && appUserId != null ? hostId === appUserId : mySlotIndex === 0
-
   // V-3 인앱 녹화(ROOM-13): 동의 게이트→무대 합성 캡처→R2→작품. room-authority 수신·오디오 증감은 ref 브리지.
   const recording = useRoomRecording({ roomId, isHost, joined: joinPhase === 'ready', getAudioTracks })
   useEffect(() => {
@@ -514,76 +449,7 @@ export default function RoomPage() {
       clearInterval(id)
     }
   }, [isHost, sendRoomAuthority])
-  // 대본 진행권: 호스트 또는 연습 방/리허설 모드의 배우(서버 advance-script-cue 가 동일 규칙으로 재검증 — 관전자 403).
-  const canAdvanceCue = !isViewer && (isHost || isPractice || scriptMode === 'rehearsal')
-  const script = SEED_SCRIPTS[0]
-  const advanceCue = useCallback((delta: number) => {
-    const next = Math.max(0, Math.min(script.cues.length - 1, cueIndex + delta))
-    if (next === cueIndex) return
-    setCueIndex(next)
-    void sendCue(script.id, next) // 서버 릴레이 → 전 참가자 동기(호스트는 로컬 갱신·서버 echo 무시, SEC-5)
-  }, [cueIndex, sendCue, script])
-
-  // 호스트: 연결 직후 + 참가자 변동 시 현재 cue 를 재브로드캐스트.
-  // reliable DataChannel 은 첫 publishData 로 개설되며 그 메시지가 유실될 수 있어(모든 세션 첫 진행 유실),
-  // 연결 시 warm-up 겸 현재 상태를 흘려 채널을 연다. 겸사겸사 늦게 입장한 참가자도 현재 cue 로 동기.
-  const cueIndexRef = useRef(cueIndex)
-  useEffect(() => { cueIndexRef.current = cueIndex }, [cueIndex])
-  useEffect(() => {
-    if (!isHost || !connected) return
-    void sendCue(script.id, cueIndexRef.current)
-  }, [isHost, connected, memberKey, sendCue, script])
-
-  // 역할 맵 표시는 퇴장자 제외(렌더 파생 — set-state-in-effect 회피). 재입장자는 아래 재클레임으로 자가복구.
-  const liveRoleMap = useMemo(() => {
-    const present = new Set(participants.map((p) => p.identity))
-    return pruneRoleMap(roleMap, present)
-  }, [roleMap, participants])
-  const myScriptRole = roleOf(liveRoleMap, myIdentity)
-  // 내 클레임 재전송(ROOM-14 늦입장 동기 — cue warm-up 동형): 멤버 변동 시 자기 역할을 멱등 재클레임.
-  // 각자 자기 상태를 복구하므로 호스트 새로고침에도 전원 클레임이 살아남는다(호스트 전체맵 sync 방식의 회귀 회피).
-  const myScriptRoleRef = useRef(myScriptRole)
-  useEffect(() => { myScriptRoleRef.current = myScriptRole }, [myScriptRole])
-  useEffect(() => {
-    if (!connected || !session) return
-    const role = myScriptRoleRef.current
-    if (!role) return
-    void scriptRoleAction(session.access_token, roomId, { action: 'claim', role }).catch(() => { /* 다음 멤버 변동에 재시도 */ })
-  }, [connected, memberKey, roomId, session])
-
-  // 역할 클레임/해제/배정·모드 전환 콜백(ROOM-14). 본인 액션은 낙관 self-echo(리액션 동형) —
-  // 신규 참가자의 서버→클라 채널 첫 수신이 드롭될 수 있어(프로드 2탭 E2E 실측) 로컬 즉시 반영하고,
-  // 서버 echo 는 같은 값이라 멱등(경합은 서버 순서 LWW 로 수렴).
-  const claimRole = useCallback((role: string) => {
-    if (!session) return
-    const myName = useRoomStore.getState().participants.find((p) => p.isLocal)?.name ?? null
-    setRoleMap((m) => applyRoleEvent(m, { kind: 'set', role, authId: myIdentity, name: myName }))
-    void scriptRoleAction(session.access_token, roomId, { action: 'claim', role }).catch(() => toast.error(t('script.roleSyncFailed')))
-  }, [session, roomId, t, myIdentity])
-  const releaseRole = useCallback((role: string) => {
-    if (!session) return
-    setRoleMap((m) => applyRoleEvent(m, { kind: 'clear', role }))
-    void scriptRoleAction(session.access_token, roomId, { action: 'release', role }).catch(() => toast.error(t('script.roleSyncFailed')))
-  }, [session, roomId, t])
-  const assignRole = useCallback((role: string, targetAuthId: string | null) => {
-    if (!session) return
-    void scriptRoleAction(session.access_token, roomId, { action: 'assign', role, target_auth_id: targetAuthId }).catch(() => toast.error(t('script.roleSyncFailed')))
-  }, [session, roomId, t])
-  const toggleScriptMode = useCallback(() => {
-    if (!session) return
-    const prev = scriptMode
-    const next = prev === 'rehearsal' ? 'performance' : 'rehearsal'
-    setScriptModeLocal(next) // 낙관 반영(서버 echo 는 같은 값 → 멱등), 실패 시 롤백
-    setScriptMode(session.access_token, roomId, next).catch(() => {
-      setScriptModeLocal(prev)
-      toast.error(t('script.modeSyncFailed'))
-    })
-  }, [session, roomId, scriptMode, t])
-  // 배우 목록(호스트 배정 셀렉트 후보) — LiveKit 참가자 ∩ 배우(관전자 제외).
-  const actorOptions = useMemo(
-    () => participants.filter((p) => actorIds.has(p.identity)).map((p) => ({ identity: p.identity, name: p.name })),
-    [participants, actorIds],
-  )
+  // 대본 진행·역할 클레임·모드 전환은 useScriptSync 소유(R-커밋) — ScriptPanel 배선은 아래 leftDock.
 
   // 우측 패널 탭(주입식 블록): 채팅·DUB·VGen. 각 탭은 자족적 컴포넌트 — 셸은 전환만 담당.
   // ponytail: 대본 미러(script)·디렉터 노트(notes, ROOM-17)·사운드보드 탭은 후속(contracts/RightPanel.md 구현 현황).
@@ -630,7 +496,7 @@ export default function RoomPage() {
     } catch {
       setHandRaised(!next) // 실패 시 롤백
     }
-  }, [session, roomId, handRaised])
+  }, [session, roomId, handRaised, setHandRaised])
   // 무대 초대 수락(ROOM-21, 대상 관객) → viewer→actor 승격. promoted broadcast 로 재연결·좌석갱신 처리(여기선 낙관적 모달 닫기).
   const acceptStage = useCallback(async () => {
     if (!session) return
@@ -766,26 +632,19 @@ export default function RoomPage() {
   }
 
   // 잠금방 비번 입장(입장 단계 'password'). 성공 시 roomLocked=true(호스트면 콘솔에 잠금 상태 반영).
-  async function submitJoinPassword(e: React.FormEvent) {
-    e.preventDefault()
-    if (!session) return
-    setPwPhaseBusy(true)
-    setPwPhaseErr(null)
-    try {
-      const r = await joinRoomWithPassword(session.access_token, roomId, passwordInput)
-      useRoomStore.getState().setRoomContext({
-        currentRoomId: roomId,
-        myParticipantId: r.participant_id,
-        mySlotIndex: r.slot_index,
-        myRole: r.role === 'viewer' ? 'viewer' : 'actor',
-      })
-      setRoomLocked(true)
-      setJoinPhase('ready')
-    } catch {
-      setPwPhaseErr(t('room.wrongPassword'))
-      setPwPhaseBusy(false)
-    }
-  }
+  // 실패는 throw — RoomJoinGate 가 오류 표시·busy 해제를 소유(R-커밋).
+  const submitJoinPassword = useCallback(async (password: string) => {
+    if (!session) throw new Error('no session')
+    const r = await joinRoomWithPassword(session.access_token, roomId, password)
+    useRoomStore.getState().setRoomContext({
+      currentRoomId: roomId,
+      myParticipantId: r.participant_id,
+      mySlotIndex: r.slot_index,
+      myRole: r.role === 'viewer' ? 'viewer' : 'actor',
+    })
+    setRoomLocked(true)
+    setJoinPhase('ready')
+  }, [session, roomId])
 
   async function onLeave() {
     if (session) {
@@ -822,100 +681,18 @@ export default function RoomPage() {
     }
   }, [roomId, isViewer, isHost, createInvite, t])
 
-  if (joinPhase === 'joining') {
+  // 입장 게이트 4화면(joining/error/password/kicked) — RoomJoinGate 로 분리(R-커밋).
+  const gatePhase = kicked ? ('kicked' as const) : joinPhase !== 'ready' ? joinPhase : null
+  if (gatePhase) {
     return (
-      <main className="relative grid min-h-screen place-items-center overflow-hidden bg-stage-base text-stage-text-muted">
-        {joinBackdrop && (
-          <img src={joinBackdrop} alt="" aria-hidden="true" draggable={false} className="scene-veil select-none" />
-        )}
-        <div className="scene-veil-in relative flex flex-col items-center gap-4">
-          {/* 모닥불 글리프 — scale 은 레이아웃 박스를 안 키우므로 래퍼(h-28)로 겹침 방지 */}
-          <div className="grid h-28 w-28 place-items-center">
-            <div className="scale-[1.8]">
-              <CampfireGlyph />
-            </div>
-          </div>
-          <p role="status" aria-live="polite" className="text-base drop-shadow md:text-lg">{t('room.joining')}</p>
-          <button
-            onClick={() => { joinAbortRef.current?.abort(); navigate('/lobby', { replace: true }) }}
-            className="rounded-lg border border-stage-border bg-stage-base/60 px-4 py-2 text-sm text-stage-text-muted backdrop-blur hover:text-stage-text"
-          >
-            {t('room.joinCancel')}
-          </button>
-        </div>
-      </main>
-    )
-  }
-
-  if (joinPhase === 'error') {
-    return (
-      <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
-        <div className="text-center">
-          <p className="text-fire-hot" role="alert">{joinError}</p>
-          <button
-            onClick={() => navigate('/lobby', { replace: true })}
-            className="mt-4 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-          >
-            {t('room.backToLobby')}
-          </button>
-        </div>
-      </main>
-    )
-  }
-
-  if (joinPhase === 'password') {
-    return (
-      <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
-        <form onSubmit={submitJoinPassword} className="w-full max-w-xs px-6 text-center">
-          <p className="mb-4 text-sm text-stage-text-muted">{t('room.passwordPrompt')}</p>
-          <input
-            type="password"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            aria-label={t('room.passwordLabel')}
-            placeholder={t('room.passwordLabel')}
-            maxLength={64}
-            autoFocus
-            className="w-full rounded-lg border border-stage-border bg-transparent px-4 py-2 text-sm"
-          />
-          {pwPhaseErr && <p className="mt-2 text-xs text-fire-hot" role="alert">{pwPhaseErr}</p>}
-          <div className="mt-4 flex justify-center gap-2">
-            <button
-              type="submit"
-              disabled={pwPhaseBusy || !passwordInput}
-              className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-            >
-              {t('room.passwordSubmit')}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/lobby', { replace: true })}
-              className="rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-            >
-              {t('common.cancel')}
-            </button>
-          </div>
-        </form>
-      </main>
-    )
-  }
-
-  if (kicked) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
-        <div className="text-center">
-          <p className="text-fire-hot" role="alert">{t('host.kickedNotice')}</p>
-          {kickReason && (
-            <p className="mt-2 text-sm text-stage-text-muted">{t('host.kickReasonShown', { reason: kickReason })}</p>
-          )}
-          <button
-            onClick={() => navigate('/lobby', { replace: true })}
-            className="mt-4 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text-muted hover:text-stage-text"
-          >
-            {t('room.backToLobby')}
-          </button>
-        </div>
-      </main>
+      <RoomJoinGate
+        phase={gatePhase}
+        backdrop={joinBackdrop}
+        joinError={joinError}
+        kickReason={kickReason}
+        onCancel={() => { joinAbortRef.current?.abort(); navigate('/lobby', { replace: true }) }}
+        onSubmitPassword={submitJoinPassword}
+      />
     )
   }
 
@@ -928,20 +705,20 @@ export default function RoomPage() {
       <SessionInfoCard genre={roomGenre} elapsed={elapsed} connected={connected} />
       {connected && (
         <ScriptPanel
-          script={script}
-          cueIndex={cueIndex}
-          canAdvance={canAdvanceCue}
+          script={scriptSync.script}
+          cueIndex={scriptSync.cueIndex}
+          canAdvance={scriptSync.canAdvanceCue}
           isHost={isHost}
           isViewer={isViewer}
-          scriptMode={scriptMode}
-          roleMap={liveRoleMap}
+          scriptMode={scriptSync.scriptMode}
+          roleMap={scriptSync.liveRoleMap}
           myAuthId={myIdentity}
-          actors={actorOptions}
-          onClaim={claimRole}
-          onRelease={releaseRole}
-          onAssign={assignRole}
-          onToggleMode={toggleScriptMode}
-          onAdvance={advanceCue}
+          actors={scriptSync.actorOptions}
+          onClaim={scriptSync.claimRole}
+          onRelease={scriptSync.releaseRole}
+          onAssign={scriptSync.assignRole}
+          onToggleMode={scriptSync.toggleScriptMode}
+          onAdvance={scriptSync.advanceCue}
         />
       )}
     </div>
