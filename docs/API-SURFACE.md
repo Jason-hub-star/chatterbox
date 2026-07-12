@@ -56,6 +56,8 @@ tags: [hub, spec]
 | `POST /functions/v1/set-script-mode` | `Host` | `{ room_id, mode: 'rehearsal'\|'performance' }` | `{ ok: true, mode }` | Host 서버검증 → `rooms.script_mode` UPDATE → `room-authority` `script_mode` broadcast (ROOM-14) | [[ScriptPanel]] |
 | `POST /functions/v1/sync-script-role` | `Participant` | `{ room_id, action: 'claim'\|'release'\|'assign', role, target_auth_id? }` | `{ ok: true }` | claim/release=본인·활성 배우만, assign=호스트만 서버검증 → `script-role` reliable broadcast(수신측 서버발만 수락, ROOM-14) | [[ScriptPanel]] |
 | `POST /functions/v1/join-room-with-password` | `Auth` | `{ room_id, password }` | `{ room_id, participant_id, slot_index, role, rejoined? }` | 잠금방 PBKDF2 상수시간 대조 + **브루트포스 레이트리밋**(user·room 5회/5분, 정답 시 리셋, SEC-1) | [[SecurityPolicies]], [[LobbyPage]] |
+| `POST /functions/v1/create-poll` | `Host` | `{ room_id, question, options: string[] }` | `{ poll_id }` | Host 서버검증 → `polls` INSERT(질문 ≤200자·선택지 2~4개 각 ≤24자, 방당 활성 1개 — 중복 409) → `poll` 토픽 `poll_open` 서버 broadcast (ROOM-22) | [[MobileViewer]], [[DATA-SCHEMA]] |
+| `POST /functions/v1/set-poll-status` | `Host` | `{ room_id, poll_id, status: 'revealed'\|'closed' }` | `{ ok: true, counts?, total_votes? }` | Host 서버검증 → reveal 시 `poll_responses` 집계를 `polls.counts` 스냅샷 후 `poll_reveal` broadcast(그때만 percent 공개), close 시 `poll_close` broadcast (ROOM-22) | [[MobileViewer]], [[DATA-SCHEMA]] |
 
 ## VGEN & Credit APIs
 
@@ -124,7 +126,7 @@ tags: [hub, spec]
 | `POST /functions/v1/send-chat` | `Actor` or `Host` | `{ room_id, text, idempotency_key }` | `{ message_id, ok: true }` | Sanitize + slow mode + blocked words + rate-limit; insert `messages`; server-side broadcast over `chat`. Direct actor/host DataChannel publish forbidden | [[ChatPanel]], [[SecurityPolicies]] |
 | `POST /functions/v1/send-viewer-chat` | `Participant(role=viewer)` | `{ room_id, text, idempotency_key }` | `{ message_id, ok: true }` | Sanitize + rate-limit (≤2/s, ≤30/min per user); insert `messages`; broadcast via server-side DataChannel relay | [[MobileViewer]], [[SecurityPolicies]] |
 | `POST /functions/v1/send-viewer-reaction` | `Participant(role=viewer)` | `{ room_id, emoji, idempotency_key }` | `{ ok: true }` | Rate-limit (≤5/s per user); server-side DataChannel broadcast to room — viewer never gets `canPublishData` | [[MobileViewer]], [[SecurityPolicies]] |
-| `POST /functions/v1/submit-viewer-poll` | `Participant(role=viewer)` | `{ room_id, poll_id, choice_index, idempotency_key }` | `{ ok: true, total_votes }` | Upsert `poll_responses` (한 session당 1회); idempotency_key로 중복 방지 | [[MobileViewer]], [[DATA-SCHEMA]] |
+| `POST /functions/v1/submit-viewer-poll` | `Participant`(전 롤 — as-built 2026-07-12: ROOM-22 "viewer**도** 참여"라 actor/host 포함) | `{ room_id, poll_id, choice_index, idempotency_key }` | `{ ok: true, total_votes }` | Upsert `poll_responses` (1 poll 당 1인 1표 — PK 가 멱등 보장, `open` 동안 변경 허용); rate-limit(10/분); `poll` 토픽 `poll_vote`(총계만) 서버 broadcast | [[MobileViewer]], [[DATA-SCHEMA]] |
 
 ## OBS / Public Viewer APIs
 

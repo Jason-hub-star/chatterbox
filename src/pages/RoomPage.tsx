@@ -5,7 +5,7 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus } from '@/lib/rooms'
 import { useRoomRecording } from '@/features/room/useRoomRecording'
 import { useRoomMembers } from '@/features/room/useRoomMembers'
 import { useScriptSync } from '@/features/script/useScriptSync'
@@ -19,6 +19,7 @@ import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import Stage from '@/features/stage/Stage'
 import ReactionWheel from '@/features/reaction/ReactionWheel'
 import ReactionOverlay from '@/features/reaction/ReactionOverlay'
+import PollBar from '@/features/room/PollBar'
 import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import DubPanel from '@/features/dub/DubPanel'
 import VgenStatusTab from '@/features/vgen/VgenStatusTab'
@@ -530,6 +531,16 @@ export default function RoomPage() {
     if (!session) throw new Error('no session')
     await setChatPolicy(session.access_token, roomId, policy)
   }, [session, roomId])
+  // 관객 투표(ROOM-22) — 생성/전이는 서버(create-poll/set-poll-status)가 host 재검증 후 'poll' broadcast
+  // → 전원(호스트 포함) pollStore 반영. 투표 UI 는 무대 PollBar, 초기 동기는 PollBar fetch.
+  const createPollCb = useCallback(async (question: string, options: string[]) => {
+    if (!session) throw new Error('no session')
+    await createPoll(session.access_token, roomId, question, options)
+  }, [session, roomId])
+  const setPollStatusCb = useCallback(async (pollId: string, status: 'revealed' | 'closed') => {
+    if (!session) throw new Error('no session')
+    await setPollStatus(session.access_token, roomId, pollId, status)
+  }, [session, roomId])
   // 채팅 클리어/개별 숨김(HOST-11) — 성공 시 서버 'chat-mod' broadcast 가 전원(호스트 포함) 스토어에 반영.
   const clearChat = useCallback(async () => {
     if (!session) throw new Error('no session')
@@ -626,6 +637,8 @@ export default function RoomPage() {
           loadRecordings={loadRecordings}
           onPlayRecording={playRecording}
           recordingsNonce={recording.recordingsNonce}
+          onCreatePoll={createPollCb}
+          onSetPollStatus={setPollStatusCb}
         />
       ),
     })
@@ -756,6 +769,7 @@ export default function RoomPage() {
             onStopShare={stopShareVgen}
           />
           <ReactionOverlay slotOf={slotOf} />
+          <PollBar roomId={roomId} />
           <ModeBanner />
           {/* REC 배지(V-3) — 전원 고지(늦입장 포함). 라틴 'REC' 는 i18n 불요(하드코딩 허용 범위). */}
           {recording.recActive && (

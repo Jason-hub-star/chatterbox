@@ -128,6 +128,47 @@ export async function fetchMyBlockedAuthIds(): Promise<string[]> {
   return (data ?? []).map((r) => r.blocked_auth_id as string)
 }
 
+// 관객 투표(ROOM-22) — 생성/전이는 호스트 전용, 제출은 활성 참가자 전 롤(viewer 포함).
+// 라이브 동기는 'poll' 서버 릴레이(useLiveKitRoom → pollStore), 늦입장 초기값은 아래 fetch 2종.
+export const createPoll = (accessToken: string, roomId: string, question: string, options: string[]) =>
+  callFn<{ poll_id: string }>('create-poll', accessToken, { room_id: roomId, question, options })
+
+export const setPollStatus = (accessToken: string, roomId: string, pollId: string, status: 'revealed' | 'closed') =>
+  callFn<{ ok: boolean; counts?: number[]; total_votes?: number }>('set-poll-status', accessToken, { room_id: roomId, poll_id: pollId, status })
+
+export const submitPollVote = (accessToken: string, roomId: string, pollId: string, choiceIndex: number) =>
+  callFn<{ ok: boolean; total_votes: number }>('submit-viewer-poll', accessToken, { room_id: roomId, poll_id: pollId, choice_index: choiceIndex })
+
+// 활성 폴(open/revealed) — polls RLS 멤버 SELECT. 부분 unique 인덱스로 방당 최대 1행.
+export async function fetchActivePoll(roomId: string): Promise<{ id: string; question: string; options: string[]; status: 'open' | 'revealed'; counts: number[] | null } | null> {
+  const { data, error } = await supabase
+    .from('polls')
+    .select('id, question, options, status, counts')
+    .eq('room_id', roomId)
+    .neq('status', 'closed')
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) return null
+  return {
+    id: data.id as string,
+    question: data.question as string,
+    options: (data.options as string[] | null) ?? [],
+    status: data.status as 'open' | 'revealed',
+    counts: (data.counts as number[] | null) ?? null,
+  }
+}
+
+// 내 투표(RLS 본인 행만) — 재입장 시 선택 하이라이트 복원.
+export async function fetchMyPollChoice(pollId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('poll_responses')
+    .select('choice_index')
+    .eq('poll_id', pollId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data?.choice_index as number | undefined) ?? null
+}
+
 // 대본 큐 진행 서버 릴레이(SEC-5). 서버가 host 검증 후 방 전체 broadcast — 클라 직접 publish 의 진행권한 스푸핑·유실 제거.
 export const advanceScriptCueRelay = (accessToken: string, roomId: string, sceneId: string, cueIndex: number) =>
   callFn<{ ok: boolean }>('advance-script-cue', accessToken, { room_id: roomId, scene_id: sceneId, cue_index: cueIndex })

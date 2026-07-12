@@ -5,6 +5,7 @@ import type { RecentPerson, RoomRecordingItem } from '@/lib/rooms'
 import Modal from '@/components/shared/Modal'
 import { toast } from '@/hooks/useToast'
 import { STAGE_BACKGROUNDS } from '@/lib/stageBackgrounds'
+import { usePollStore } from '@/stores/pollStore'
 
 // 연결품질 점(6인 실증 — 참가자별 열화 즉시 파악). UI 최소: 행당 이모지 1개.
 const qualityDot = (q?: RoomParticipant['connectionQuality']): string =>
@@ -33,6 +34,8 @@ export default function HostConsole({
   loadRecordings,
   onPlayRecording,
   recordingsNonce,
+  onCreatePoll,
+  onSetPollStatus,
 }: {
   participants: RoomParticipant[]
   myIdentity: string
@@ -53,6 +56,8 @@ export default function HostConsole({
   loadRecordings: () => Promise<RoomRecordingItem[]> // V-3 다시보기 목록(ready, RLS 멤버)
   onPlayRecording: (id: string) => Promise<string> // presigned GET(서버 visibility 게이트)
   recordingsNonce: number // 녹화 완료 시 ++ → 목록 갱신
+  onCreatePoll: (question: string, options: string[]) => Promise<void> // ROOM-22 — 서버가 host 재검증·활성 1개 강제
+  onSetPollStatus: (pollId: string, status: 'revealed' | 'closed') => Promise<void> // reveal 시에만 percent 공개
 }) {
   const { t } = useTranslation()
   // 강퇴 확인: 2단 토글(계약 위반·오클릭 위험) → Modal 프리미티브(P-4, 포커스트랩·Esc·복귀).
@@ -147,6 +152,39 @@ export default function HostConsole({
   const fmtDuration = (ms: number | null): string => {
     const s = Math.round((ms ?? 0) / 1000)
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  }
+
+  // 관객 투표(ROOM-22) — 활성 폴 상태는 pollStore(릴레이+fetch 미러), 생성/전이는 서버 재검증.
+  const activePoll = usePollStore((s) => s.poll)
+  const [pollQ, setPollQ] = useState('')
+  const [pollOpts, setPollOpts] = useState(['', '', '', ''])
+  const [pollBusy, setPollBusy] = useState(false)
+  const [pollErr, setPollErr] = useState<string | null>(null)
+  const filledOpts = pollOpts.map((o) => o.trim()).filter(Boolean)
+  const doCreatePoll = async () => {
+    setPollErr(null)
+    setPollBusy(true)
+    try {
+      await onCreatePoll(pollQ.trim(), filledOpts)
+      setPollQ('')
+      setPollOpts(['', '', '', ''])
+    } catch {
+      setPollErr(t('host.pollCreateFailed'))
+    } finally {
+      setPollBusy(false)
+    }
+  }
+  const doPollStatus = async (status: 'revealed' | 'closed') => {
+    if (!activePoll) return
+    setPollErr(null)
+    setPollBusy(true)
+    try {
+      await onSetPollStatus(activePoll.id, status)
+    } catch {
+      setPollErr(t('host.pollActionFailed'))
+    } finally {
+      setPollBusy(false)
+    }
   }
 
   // 무대 배경(HOST-04·05)
@@ -446,6 +484,70 @@ export default function HostConsole({
           </button>
         </div>
         {chatErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{chatErr}</p>}
+      </section>
+
+      {/* 관객 투표(ROOM-22) — 활성 폴 없으면 생성 폼, 있으면 진행 상태 + 공개/종료. 투표 자체는 무대 PollBar. */}
+      <section>
+        <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.pollTitle')}</h3>
+        {activePoll ? (
+          <div className="rounded-lg border border-stage-border px-3 py-2">
+            <p className="text-sm">{activePoll.question}</p>
+            <p className="mt-1 text-xs text-stage-text-muted">
+              {t('poll.totalVotes', { count: activePoll.totalVotes })}
+              {activePoll.status === 'revealed' && ` · ${t('host.pollRevealed')}`}
+            </p>
+            <div className="mt-2 flex gap-2">
+              {activePoll.status === 'open' && (
+                <button
+                  onClick={() => void doPollStatus('revealed')}
+                  disabled={pollBusy}
+                  className="rounded bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40"
+                >
+                  {t('host.pollReveal')}
+                </button>
+              )}
+              <button
+                onClick={() => void doPollStatus('closed')}
+                disabled={pollBusy}
+                className="rounded border border-stage-border px-3 py-1.5 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+              >
+                {t('host.pollClose')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <input
+              value={pollQ}
+              onChange={(e) => setPollQ(e.target.value)}
+              maxLength={200}
+              aria-label={t('host.pollQuestionLabel')}
+              placeholder={t('host.pollQuestionPlaceholder')}
+              className="w-full rounded border border-stage-border bg-transparent px-3 py-1.5 text-sm"
+            />
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              {pollOpts.map((opt, i) => (
+                <input
+                  key={i}
+                  value={opt}
+                  onChange={(e) => setPollOpts((prev) => prev.map((p, j) => (j === i ? e.target.value : p)))}
+                  maxLength={24}
+                  aria-label={t('host.pollOptionLabel', { n: i + 1 })}
+                  placeholder={t('host.pollOptionLabel', { n: i + 1 })}
+                  className="min-w-0 rounded border border-stage-border bg-transparent px-2 py-1 text-xs"
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => void doCreatePoll()}
+              disabled={pollBusy || pollQ.trim().length === 0 || filledOpts.length < 2}
+              className="mt-2 rounded bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40"
+            >
+              {t('host.pollCreate')}
+            </button>
+          </>
+        )}
+        {pollErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{pollErr}</p>}
       </section>
 
       {/* 녹화 다시보기(V-3) — ready 녹화 목록 + 인라인 재생. 목록이 비면 섹션 자체를 숨긴다. */}

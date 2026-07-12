@@ -12,6 +12,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useNotesStore } from '@/stores/notesStore'
+import { usePollStore } from '@/stores/pollStore'
 import { useAudioStore, mixedVolume } from '@/stores/audioStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
 import { sendReactionRelay, advanceScriptCueRelay, sendChatRelay } from '@/lib/rooms'
@@ -260,6 +261,40 @@ export function useLiveKitRoom(
               }
             }
             useReactionStore.getState().addFloat(data.sender, data.emoji)
+          }
+        } catch { /* 잘못된 페이로드 무시 */ }
+        return
+      }
+      if (topic === 'poll') {
+        // ROOM-22 관객 투표: 서버발(create-poll/set-poll-status/submit-viewer-poll Edge)만 수락 —
+        // 클라 직접 publish 는 폴 위조 가능이라 드롭(SEC-5 동형). 이벤트가 멱등이라 rid dedupe 불요.
+        if (participant) return
+        try {
+          const data = JSON.parse(new TextDecoder().decode(payload))
+          const ps = usePollStore.getState()
+          if (
+            data?.type === 'poll_open' && typeof data.poll?.id === 'string' &&
+            typeof data.poll.question === 'string' && Array.isArray(data.poll.options)
+          ) {
+            ps.setPoll({
+              id: data.poll.id,
+              question: data.poll.question,
+              options: data.poll.options.filter((o: unknown): o is string => typeof o === 'string'),
+              status: 'open',
+              counts: null,
+              totalVotes: 0,
+              myChoice: null,
+            })
+          } else if (data?.type === 'poll_vote' && typeof data.poll_id === 'string' && typeof data.total_votes === 'number') {
+            ps.setTotalVotes(data.poll_id, data.total_votes)
+          } else if (data?.type === 'poll_reveal' && typeof data.poll_id === 'string' && Array.isArray(data.counts)) {
+            ps.reveal(
+              data.poll_id,
+              data.counts.filter((n: unknown): n is number => typeof n === 'number'),
+              typeof data.total_votes === 'number' ? data.total_votes : 0,
+            )
+          } else if (data?.type === 'poll_close' && typeof data.poll_id === 'string') {
+            ps.close(data.poll_id)
           }
         } catch { /* 잘못된 페이로드 무시 */ }
         return
