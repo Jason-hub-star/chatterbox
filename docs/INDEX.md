@@ -39,11 +39,11 @@ tags: [hub]
 | `ops/` | 운영 플레이북 (인시던트·CS·모더레이션·보안 운영·플랫폼 배포) | 5 |
 | `guides/` | 작성·개발 가이드, DoD | 3 |
 | `legal/` | 약관·개인정보·저작권·팬아트 (법무 검토 대기) | 6 |
-| `status/` | 상태판·인계(HANDOFF)·에이전트 운영·배턴 | 10 |
+| `status/` | 상태판·인계(HANDOFF)·에이전트 운영·배턴 | 7 |
 | `goals/` | 골 사다리(`GOAL-LADDER.md`)·골 브리프(6요소) | 1+ |
 | `research/` | 조사 원본 (보존) | 3 |
 | `reference/` | golden-path 코드 패턴·마케팅 자동화 이식본 | patterns/ 등 |
-| `archive/` | 결정 반영 완료된 조사·리뷰 스냅샷 (STACK-COMPARE 4종·FORWARD-REVIEW·BOUNDARY 등) | 7 |
+| `archive/` | 결정 반영 완료된 조사·리뷰·상태 스냅샷 (STACK-COMPARE 4종·BUILD-QUEUE·REVIEW-LOG·룸 인계·flecto-reference/ 등) | 10 |
 | `archive/landing/` | 구 snack-web 랜딩 문서 (사이트는 운영 중, 스택 레거시 — 새 플랫폼의 마케팅 입구로 흡수 예정) | 6 |
 | `assets/` `meeting/` `overview/` | 도구·뷰(HTML)·에셋 — 에이전트 온보딩 대상 아님 | — |
 
@@ -89,6 +89,10 @@ tags: [hub]
 ### design/ — 디자인 SSOT
 
 `DESIGN-TOKENS.md`(색·모션 토큰) · `DESIGN-DIRECTION.md`(비주얼 컨셉·룸 존 스펙) · `scene-prompts.md`(씬 에셋 SSOT) · `WORLD-SYSTEM.md`(월드 아키텍처) · `ROOM-REDESIGN-2026-07.md`(룸 리디자인 as-built) · `UX-GAPS-AND-PATTERNS.md` · `uiux-distilled.md`(UX 원칙 48).
+
+### guides/ — 가이드
+
+`DEFINITION-OF-DONE.md` · `DEVELOPMENT-GUIDE.md` · `OAUTH-SETUP.md`(카카오·구글 간편인증 켜기 — 코드 완료, 콘솔 3곳 설정+`VITE_OAUTH_PROVIDERS` 플래그만 잔여).
 
 ### status/ — 상태·인계·에이전트 운영
 
