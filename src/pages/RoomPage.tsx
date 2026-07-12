@@ -11,6 +11,7 @@ import { useRoomMembers } from '@/features/room/useRoomMembers'
 import { useScriptSync } from '@/features/script/useScriptSync'
 import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
+import { startBgm, stopBgm } from '@/lib/sound'
 import { useStageStore } from '@/stores/stageStore'
 import { useVgenStore } from '@/stores/vgenStore'
 import { resolveAvatarUrl } from '@/lib/avatars'
@@ -194,6 +195,13 @@ export default function RoomPage() {
     sendCue: bridgedSendCue,
   })
   const { applyServerScriptMode } = scriptSync // effect/콜백 deps 용 안정 참조
+
+  // G6 U-2 BGM: 입장(연결) 동안만 3곡 순환 재생 — 자산·순환·autoplay 게이트는 lib/sound.ts 소유.
+  useEffect(() => {
+    if (!connected) return
+    startBgm()
+    return () => stopBgm()
+  }, [connected])
 
   // 무대 배경 초기 로드(HOST-04·05): 입장 후(멤버 RLS) rooms.background_url 을 읽어 이미 설정된 배경을 반영.
   // 이후 변경은 room-authority bg_change 로 실시간 동기. 방 이탈 시 초기화(다음 방 배경 잔상 방지).

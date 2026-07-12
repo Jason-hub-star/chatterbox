@@ -6,7 +6,8 @@ import AudioMixerPanel from '@/features/room/AudioMixerPanel'
 import { useAudioStore, mixedVolume } from '@/stores/audioStore'
 import { useRoomStore, type RoomParticipant } from '@/stores/roomStore'
 
-// ROOM-08 음량 믹서: mixedVolume 순수식 + 패널(마스터·참가자 슬라이더 → 스토어 반영, 원격 없음 안내).
+// ROOM-08 음량 믹서: mixedVolume 순수식 + 패널(마스터·BGM·참가자 슬라이더 → 스토어 반영, 원격 없음 안내).
+// 슬라이더 순서 = [master, bgm, ...remotes] (G6 U-2 에서 BGM 추가).
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const p = (identity: string, isLocal = false): RoomParticipant => ({
@@ -38,7 +39,7 @@ describe('AudioMixerPanel', () => {
   let root: Root | null = null
 
   beforeEach(() => {
-    useAudioStore.setState({ masterVolume: 1, participantVolumes: {} })
+    useAudioStore.setState({ masterVolume: 1, participantVolumes: {}, bgmVolume: 0.25 })
     useRoomStore.setState({ participants: [p('me', true), p('alice'), p('bob')] })
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -53,22 +54,24 @@ describe('AudioMixerPanel', () => {
     act(() => useRoomStore.getState().reset())
   })
 
-  it('원격 참가자 수만큼 슬라이더(로컬 제외) + 마스터', () => {
+  it('원격 참가자 수만큼 슬라이더(로컬 제외) + 마스터 + BGM', () => {
     const sliders = container.querySelectorAll('input[type="range"]')
-    expect(sliders.length).toBe(3) // master + alice + bob
+    expect(sliders.length).toBe(4) // master + bgm + alice + bob
   })
 
-  it('참가자 슬라이더 → participantVolumes, 마스터 → masterVolume', () => {
+  it('참가자 슬라이더 → participantVolumes, 마스터 → masterVolume, BGM → bgmVolume', () => {
     const sliders = container.querySelectorAll<HTMLInputElement>('input[type="range"]')
-    setRange(sliders[1], '0.3') // alice
+    setRange(sliders[2], '0.3') // alice
     expect(useAudioStore.getState().participantVolumes.alice).toBeCloseTo(0.3)
     setRange(sliders[0], '0.5') // master
     expect(useAudioStore.getState().masterVolume).toBeCloseTo(0.5)
+    setRange(sliders[1], '0.7') // bgm
+    expect(useAudioStore.getState().bgmVolume).toBeCloseTo(0.7)
   })
 
   it('원격 없음 → 안내 문구', () => {
     act(() => useRoomStore.setState({ participants: [p('me', true)] }))
-    expect(container.querySelectorAll('input[type="range"]').length).toBe(1) // master 만
+    expect(container.querySelectorAll('input[type="range"]').length).toBe(2) // master + bgm
     expect(container.textContent).toContain('없어요')
   })
 })

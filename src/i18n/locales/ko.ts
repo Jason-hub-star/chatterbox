@@ -504,6 +504,7 @@ export const ko: Record<string, string> = {
   "stage.mixerOpen": "음량 믹서 열기",
   "stage.mixerTitle": "음량 믹서",
   "stage.mixerMaster": "전체 볼륨",
+  "stage.mixerBgm": "배경 음악",
   "stage.mixerNoRemote": "조절할 다른 참가자가 없어요.",
   "stage.mixerParticipant": "{{name}} 볼륨",
   "reaction.wheelLabel": "리액션 휠",

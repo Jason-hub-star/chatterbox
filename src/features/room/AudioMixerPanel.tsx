@@ -2,15 +2,17 @@ import { useTranslation } from 'react-i18next'
 import { useRoomStore } from '@/stores/roomStore'
 import { useAudioStore } from '@/stores/audioStore'
 
-// ROOM-08 음량 믹서 — 하단바 🎧(open/onClose controlled prop, RoomPage 소유) → 마스터 + 원격 참가자별 슬라이더.
-// 로컬 전용: 스토어에만 쓰고, 실제 적용은 useLiveKitRoom 의 스토어 구독 브리지가 담당.
-// 계약 대비 편차: BGM 슬라이더(기능 부재)·업링크 헬스체크 defer — audioStore ponytail 주석 참조.
+// ROOM-08 음량 믹서 — 하단바 🎧(open/onClose controlled prop, RoomPage 소유) → 마스터 + BGM + 원격 참가자별 슬라이더.
+// 로컬 전용: 스토어에만 쓰고, 실제 적용은 useLiveKitRoom(원격 트랙)·lib/sound.ts(BGM) 구독 브리지가 담당.
+// 계약 대비 편차: 업링크 헬스체크 defer — audioStore ponytail 주석 참조.
 export default function AudioMixerPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()
   const participants = useRoomStore((s) => s.participants)
   const masterVolume = useAudioStore((s) => s.masterVolume)
+  const bgmVolume = useAudioStore((s) => s.bgmVolume)
   const participantVolumes = useAudioStore((s) => s.participantVolumes)
   const setMasterVolume = useAudioStore((s) => s.setMasterVolume)
+  const setBgmVolume = useAudioStore((s) => s.setBgmVolume)
   const setParticipantVolume = useAudioStore((s) => s.setParticipantVolume)
   const remotes = participants.filter((p) => !p.isLocal)
 
@@ -44,6 +46,20 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
           value={masterVolume}
           onChange={(e) => setMasterVolume(Number(e.target.value))}
           aria-label={t('stage.mixerMaster')}
+          className="mt-1 w-full accent-fire-amber"
+        />
+      </label>
+
+      <label className="mt-2 block text-[11px] text-stage-text-muted">
+        {t('stage.mixerBgm')} · {Math.round(bgmVolume * 100)}%
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={bgmVolume}
+          onChange={(e) => setBgmVolume(Number(e.target.value))}
+          aria-label={t('stage.mixerBgm')}
           className="mt-1 w-full accent-fire-amber"
         />
       </label>

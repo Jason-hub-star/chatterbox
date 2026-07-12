@@ -6,6 +6,8 @@ import StageSlot from './StageSlot'
 import MainView from './MainView'
 import { SLOTS, SLOT_PX, seatParticipants } from './stageLayout'
 import { useStageStore } from '@/stores/stageStore'
+import GlowMotes from '@/components/shared/GlowMotes'
+import { STAGE_BACKGROUNDS } from '@/lib/stageBackgrounds'
 
 // 원형 무대(경로 B): 센터 프레임을 6석이 3쌍(상/중/하 × 좌·우)으로 둘러싼다(DESIGN-DIRECTION §6.1).
 // 좌석 배정 = DB slot_index 절대좌석(seatParticipants) → 입퇴장에 좌석 불변·전 클라 일치. active-speaker 는 앞으로(StageSlot).
@@ -50,6 +52,9 @@ export default function Stage({
 }: Props) {
   const slotPx = useSlotPx()
   const backgroundUrl = useStageStore((s) => s.backgroundUrl)
+  // G6 U-1 파티클 프리셋(데이터 주도): 배경 행의 particle 선언 — 미선언·none 배경 = motes 기본값이라
+  // 신규 맵 매핑 누락 경로 없음. 호스트가 맵 바꾸면 backgroundUrl 리렌더로 실시간 전환.
+  const particle = (backgroundUrl && STAGE_BACKGROUNDS.find((b) => b.url === backgroundUrl)?.particle) || 'motes'
   // 최대 6석(§6.4; 8인 배치는 defer). slot_index 절대좌석 — key=identity 라 재배치돼도 캔버스 보존.
   const seats = seatParticipants(participants, slotOf, SLOTS.length)
 
@@ -59,11 +64,13 @@ export default function Stage({
       {/* 무대 씬(방장 선택) = 무대 전체 배경으로 선명하게(단일 렌더 — 센터 중복 제거). 아바타 가독 위해 살짝 어둡게. */}
       {backgroundUrl && (
         <div
-          className="pointer-events-none absolute inset-0 rounded-xl bg-cover bg-center opacity-90"
+          className="stage-pan pointer-events-none absolute inset-0 rounded-xl bg-cover bg-center opacity-90"
           style={{ backgroundImage: `url(${backgroundUrl})` }}
           aria-hidden
         />
       )}
+      {/* G6 U-1 파티클(좌석 뒤 레이어) — campfire=불씨 상승, 그 외=저밀도 홀씨. reduced-motion 가드는 GlowMotes 내장. */}
+      {particle !== 'none' && <GlowMotes preset={particle} count={particle === 'embers' ? 36 : 18} />}
       <div className="relative grid h-full grid-cols-[1fr_1.9fr_1fr] grid-rows-[1fr_1.9fr_1fr] gap-2">
         {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 씬 배경이 비치는 히어로 placeholder. */}
         <MainView isHost={isHost} onStop={onStopShare} />

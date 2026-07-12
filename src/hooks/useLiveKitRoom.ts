@@ -15,6 +15,7 @@ import { useNotesStore } from '@/stores/notesStore'
 import { usePollStore } from '@/stores/pollStore'
 import { useAudioStore, mixedVolume } from '@/stores/audioStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
+import { playSfx } from '@/lib/sound'
 import { sendReactionRelay, advanceScriptCueRelay, sendChatRelay } from '@/lib/rooms'
 import { sanitizeChatInput } from '@/lib/chatSanitize'
 import { toast } from '@/hooks/useToast'
@@ -148,7 +149,10 @@ export function useLiveKitRoom(
     room.on(RoomEvent.ConnectionStateChanged, (s) => {
       setConnectionState(mapConnState(s))
     })
-    room.on(RoomEvent.ParticipantConnected, refreshParticipants)
+    room.on(RoomEvent.ParticipantConnected, () => {
+      playSfx('join') // G6 U-2 입장 차임 — 화면 밖에서도 합류 인지
+      refreshParticipants()
+    })
     room.on(RoomEvent.ParticipantDisconnected, refreshParticipants)
     room.on(RoomEvent.ActiveSpeakersChanged, refreshParticipants)
     room.on(RoomEvent.ConnectionQualityChanged, refreshParticipants) // 참가자별 열화 반영(6인 실증)
@@ -261,6 +265,7 @@ export function useLiveKitRoom(
               }
             }
             useReactionStore.getState().addFloat(data.sender, data.emoji)
+            playSfx('pop') // G6 U-2 — rid dedupe 통과분만(내 발사는 아래 self-echo 에서 1회)
           }
         } catch { /* 잘못된 페이로드 무시 */ }
         return
@@ -285,6 +290,7 @@ export function useLiveKitRoom(
               totalVotes: 0,
               myChoice: null,
             })
+            playSfx('pollOpen') // G6 U-2 — 투표 개시 알림
           } else if (data?.type === 'poll_vote' && typeof data.poll_id === 'string' && typeof data.total_votes === 'number') {
             ps.setTotalVotes(data.poll_id, data.total_votes)
           } else if (data?.type === 'poll_reveal' && typeof data.poll_id === 'string' && Array.isArray(data.counts)) {
@@ -293,6 +299,7 @@ export function useLiveKitRoom(
               data.counts.filter((n: unknown): n is number => typeof n === 'number'),
               typeof data.total_votes === 'number' ? data.total_votes : 0,
             )
+            playSfx('pollReveal') // G6 U-2 — 결과 공개 알림
           } else if (data?.type === 'poll_close' && typeof data.poll_id === 'string') {
             ps.close(data.poll_id)
           }
@@ -526,6 +533,7 @@ export function useLiveKitRoom(
     const rid = crypto.randomUUID()
     seenReactionsRef.current.add(rid) // 서버가 본인에게도 broadcast → 내 self-echo 를 dedupe
     useReactionStore.getState().addFloat(room.localParticipant.identity, emoji) // 즉시 self-echo(왕복 지연 체감 제거)
+    playSfx('pop') // G6 U-2 — 서버 echo 는 rid dedupe 로 드롭되므로 여기서 1회
     // 릴레이 실패 = 내 float 만 뜨고 남들에겐 안 감 → 침묵 대신 알림(cue 릴레이와 동일 패턴).
     void sendReactionRelay(token, roomId, emoji, rid).catch(() => {
       toast.error(i18n.t('room.reactionSyncFailed'))

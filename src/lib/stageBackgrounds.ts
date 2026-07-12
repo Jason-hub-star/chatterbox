@@ -5,11 +5,12 @@ export interface StageBackground {
   id: string
   url: string // '' = 배경 없음(기본 무대)
   labelKey: string
+  particle?: 'embers' | 'motes' | 'none' // G6 U-1 파티클 프리셋(데이터 주도) — 미선언 = motes 기본
 }
 
 export const STAGE_BACKGROUNDS: StageBackground[] = [
   { id: 'none', url: '', labelKey: 'stage.bg.none' },
-  { id: 'campfire', url: '/scenes/room-stage/campfire-forest.webp', labelKey: 'stage.bg.campfire' },
+  { id: 'campfire', url: '/scenes/room-stage/campfire-forest.webp', labelKey: 'stage.bg.campfire', particle: 'embers' },
   { id: 'theater', url: '/scenes/lobby-interiors/theater.webp', labelKey: 'stage.bg.theater' },
   { id: 'teahouse', url: '/scenes/lobby-interiors/teahouse.webp', labelKey: 'stage.bg.teahouse' },
   { id: 'workshop', url: '/scenes/lobby-interiors/workshop.webp', labelKey: 'stage.bg.workshop' },

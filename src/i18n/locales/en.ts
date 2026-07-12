@@ -504,6 +504,7 @@ export const en: Record<string, string> = {
   'stage.mixerOpen': 'Open volume mixer',
   'stage.mixerTitle': 'Volume mixer',
   'stage.mixerMaster': 'Master volume',
+  'stage.mixerBgm': 'Background music',
   'stage.mixerNoRemote': 'No other participants to adjust.',
   'stage.mixerParticipant': '{{name}} volume',
   'reaction.wheelLabel': 'Reaction wheel',

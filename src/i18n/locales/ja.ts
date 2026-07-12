@@ -504,6 +504,7 @@ export const ja: Record<string, string> = {
   'stage.mixerOpen': '音量ミキサーを開く',
   'stage.mixerTitle': '音量ミキサー',
   'stage.mixerMaster': 'マスター音量',
+  'stage.mixerBgm': 'BGM音量',
   'stage.mixerNoRemote': '調整できる他の参加者がいません。',
   'stage.mixerParticipant': '{{name}} の音量',
   'reaction.wheelLabel': 'リアクションホイール',

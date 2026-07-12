@@ -301,3 +301,12 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .cb-mode-banner { transform: translate(-50%, 0); }
 }
+
+/* G6 U-1 무대 백드롭 바람 팬 — 정지 원화에 느린 켄 번스(60s 왕복). 클리핑은 stage-area overflow-hidden. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes stage-pan {
+    from { transform: scale(1) translateX(0); }
+    to { transform: scale(1.05) translateX(1.2%); }
+  }
+  .stage-pan { animation: stage-pan 60s ease-in-out infinite alternate; }
+}
