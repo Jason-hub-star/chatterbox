@@ -54,9 +54,9 @@ git status --porcelain
 | state/flow | 상태머신, Edge Function 로직 | `docs/state-machines/*.md`, 관련 `docs/specs/*.md` | 연관 `docs/contracts/*.md` |
 | automation/prompt | 스킬, 훅, 운영 루틴 | `docs/status/AGENT-OPS.md` | `.claude/skills/*/SKILL.md` |
 | design/token | UI 토큰, 애니메이션 | `docs/design/DESIGN-TOKENS.md` | 관련 contracts |
-| config/infra | env, build, 배포 | `docs/PLATFORM-ARCHITECTURE.md`, `docs/VITE-CONFIG.md` | `docs/DEPLOY.md`, `docs/DEPLOY-PLATFORM.md` |
+| config/infra | env, build, 배포 | `docs/PLATFORM-ARCHITECTURE.md`, `docs/specs/VITE-CONFIG.md` | `docs/archive/landing/DEPLOY.md`, `docs/ops/DEPLOY-PLATFORM.md` |
 
-> **주의**: `docs/PROJECT-STATUS.md`는 **랜딩 페이지(snack-web) 전용**이다. ChatterBox 앱 자체의 구현 진행상황은 `docs/GAP-MATRIX.md`(진행 로그 + GAP 상태)와 `npm run docs:health`가 담당한다. 둘을 혼동하지 말 것.
+> **주의**: `docs/status/PROJECT-STATUS.md`는 **랜딩 페이지(snack-web) 전용**이다. ChatterBox 앱 자체의 구현 진행상황은 `docs/GAP-MATRIX.md`(진행 로그 + GAP 상태)와 `npm run docs:health`가 담당한다. 둘을 혼동하지 말 것.
 
 ### Step 4: 필수 문서 누락 판정
 

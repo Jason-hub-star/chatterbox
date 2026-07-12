@@ -157,7 +157,7 @@ room.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
 
 ### 3.1 개요 (우리 설계와의 연결)
 
-우리 설계([WebRTC.md](../state-machines/WebRTC.md) § DataChannel Multiplexing)에 정의된 4개 토픽:
+우리 설계([WebRTC.md](../../state-machines/WebRTC.md) § DataChannel Multiplexing)에 정의된 4개 토픽:
 
 | 토픽 | Reliable | Freq | Payload | 역할 |
 |------|----------|------|---------|------|
@@ -362,7 +362,7 @@ function handleBlendshape(payload: Uint8Array, participant: Participant) {
 
 ### 4.1 토큰 만료 5분 전 갱신 (자동)
 
-우리 설계([livekit-edge-fn.md](../specs/livekit-edge-fn.md) § 7.2)에 따라:
+우리 설계([livekit-edge-fn.md](../../specs/livekit-edge-fn.md) § 7.2)에 따라:
 
 ```typescript
 import { useEffect, useState } from 'react';
@@ -418,7 +418,7 @@ export function useTokenRefresh(
 
 ### 4.2 재연결 시 prepareConnection() 활용
 
-토큰 갱신 후 재연결 순서([WebRTC.md](../state-machines/WebRTC.md) § H2):
+토큰 갱신 후 재연결 순서([WebRTC.md](../../state-machines/WebRTC.md) § H2):
 
 ```typescript
 async function reconnectWithTokenRefresh(
@@ -631,14 +631,14 @@ grep -r "DataPacket_Kind" node_modules/livekit-client/src/
 
 | 설계 명세 | SDK 구현 | 상태 |
 |----------|---------|------|
-| **토큰 발급** ([livekit-edge-fn.md](../specs/livekit-edge-fn.md)) | Edge Function에서 `AccessToken(api_key, secret)` 생성 후 JWT 반환 | ✅ |
-| **4개 DataChannel 토픽** ([WebRTC.md](../state-machines/WebRTC.md)) | `publishData(..., { topic: 'room-authority' \| 'script-cue' \| 'chat' \| 'blendshape' })` | ✅ |
+| **토큰 발급** ([livekit-edge-fn.md](../../specs/livekit-edge-fn.md)) | Edge Function에서 `AccessToken(api_key, secret)` 생성 후 JWT 반환 | ✅ |
+| **4개 DataChannel 토픽** ([WebRTC.md](../../state-machines/WebRTC.md)) | `publishData(..., { topic: 'room-authority' \| 'script-cue' \| 'chat' \| 'blendshape' })` | ✅ |
 | **Reliable 채널** (script-cue, chat, room-authority) | `reliable: true` + `topic` | ✅ |
 | **Unreliable 채널** (blendshape 30Hz) | `reliable: false` + `topic: 'blendshape'` | ✅ |
-| **토큰 갱신 H2 순서** ([livekit-edge-fn.md](../specs/livekit-edge-fn.md) § 7.2) | `prepareConnection(url, newToken)` → `disconnect()` → `connect(url, newToken)` | ✅ |
-| **토큰 철회 웹훅** ([livekit-edge-fn.md](../specs/livekit-edge-fn.md) § 6.3) | 웹훅 리스너는 서버(Supabase) 구현, 클라이언트는 `Realtime 구독 + 10s 폴링` | ✅ |
-| **ICE 타임아웃 30s** ([WebRTC.md](../state-machines/WebRTC.md) § G-98) | 클라이언트 로직으로 구현 (SDK는 기본 제공 X, 커스텀 타이머 필요) | ⚠️ 구현 필요 |
-| **재정렬 버퍼** (blendshape seq 역전) | SDK는 제공 X, 수신측 핸들러에서 구현 필요 ([WebRTC.md](../state-machines/WebRTC.md) § 3) | ⚠️ 구현 필요 |
+| **토큰 갱신 H2 순서** ([livekit-edge-fn.md](../../specs/livekit-edge-fn.md) § 7.2) | `prepareConnection(url, newToken)` → `disconnect()` → `connect(url, newToken)` | ✅ |
+| **토큰 철회 웹훅** ([livekit-edge-fn.md](../../specs/livekit-edge-fn.md) § 6.3) | 웹훅 리스너는 서버(Supabase) 구현, 클라이언트는 `Realtime 구독 + 10s 폴링` | ✅ |
+| **ICE 타임아웃 30s** ([WebRTC.md](../../state-machines/WebRTC.md) § G-98) | 클라이언트 로직으로 구현 (SDK는 기본 제공 X, 커스텀 타이머 필요) | ⚠️ 구현 필요 |
+| **재정렬 버퍼** (blendshape seq 역전) | SDK는 제공 X, 수신측 핸들러에서 구현 필요 ([WebRTC.md](../../state-machines/WebRTC.md) § 3) | ⚠️ 구현 필요 |
 
 ---
 
@@ -646,7 +646,7 @@ grep -r "DataPacket_Kind" node_modules/livekit-client/src/
 
 - [ ] `package.json`에서 `livekit-client` 버전 확인 (^2.19.0 권장)
 - [ ] `.env`에 `VITE_LIVEKIT_URL` (wss://...) 설정
-- [ ] Supabase Edge Function에서 토큰 발급 확인 ([livekit-edge-fn.md](../specs/livekit-edge-fn.md))
+- [ ] Supabase Edge Function에서 토큰 발급 확인 ([livekit-edge-fn.md](../../specs/livekit-edge-fn.md))
 - [ ] `room.on(RoomEvent.DataReceived, ...)` 리스너에서 4개 토픽 처리 구현
 - [ ] blendshape 발행 시 `reliable: false` 설정 (고주기용)
 - [ ] 토큰 갱신 타이머 설정 (5분 전, TTL 10분 기준)

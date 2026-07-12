@@ -1,5 +1,6 @@
 <!-- opencode: 2026-06-30 - snack-web 문서를 ChatterBox로 가져오면서 랜딩/채터박스/공용 경계를 표시. Coded with OpenCode; high-cost model review recommended. -->
 <!-- claude: 2026-07-01 - docs/snack-web 래퍼 폴더를 제거하고 docs/ 루트로 평탄화. 아래 경로는 모두 docs/snack-web/ 접두사 없이 읽는다. -->
+<!-- claude: 2026-07-12 - G1 문서 리팩토링으로 대체됨(archive/landing/ 폴더가 경계를 표현, 지도는 docs/INDEX.md). 본문 경로는 재편 이전 기준 — 역사 보존용. -->
 
 # snack-web 문서 이관 경계 (Boundary)
 
@@ -26,14 +27,14 @@
 | `docs/legal/` | **Shared** | 서비스 전체 법률/정책 문서 |
 | `docs/INDEX.md` | **Shared** | snack-web 전체 문서 지도(양쪽 모두 포함) |
 | `README.md` | **Landing** | VTuber 메이커 제품 랜딩 페이지 설명 |
-| `docs/FRONTEND-MAP.md` | **Landing** | 랜딩 기술 스택/섹션/SSOT 지도 |
-| `docs/PROJECT-STATUS.md` | **Landing** | 랜딩 페이지 프로젝트 상태 |
-| `docs/CONTENT-GUIDE.md` | **Landing** | 랜딩 카피/텍스트 수정 가이드 |
-| `docs/DEPLOY.md` | **Landing** | Vercel 랜딩 배포 절차 |
-| `docs/FLECTO-80-PLAN.md` | **Landing** | flecto 톤 맞춤 6 Phase 계획 |
-| `docs/FLECTO-90-PLAN.md` | **Landing** | 인터랙티브 UI 계획 |
-| `docs/INTERACTION-PLAN.md` | **Landing** | 인터랙션+자산 슬롯 계획 |
-| `docs/UI-REFERENCE-LANDING.md` | **Landing** | 랜딩 UI 레퍼런스/컴포넌트 |
+| `docs/archive/landing/FRONTEND-MAP.md` | **Landing** | 랜딩 기술 스택/섹션/SSOT 지도 |
+| `docs/status/PROJECT-STATUS.md` | **Landing** | 랜딩 페이지 프로젝트 상태 |
+| `docs/archive/landing/CONTENT-GUIDE.md` | **Landing** | 랜딩 카피/텍스트 수정 가이드 |
+| `docs/archive/landing/DEPLOY.md` | **Landing** | Vercel 랜딩 배포 절차 |
+| `docs/archive/landing/FLECTO-80-PLAN.md` | **Landing** | flecto 톤 맞춤 6 Phase 계획 |
+| `docs/archive/landing/FLECTO-90-PLAN.md` | **Landing** | 인터랙티브 UI 계획 |
+| `docs/archive/landing/INTERACTION-PLAN.md` | **Landing** | 인터랙션+자산 슬롯 계획 |
+| `docs/design-references/UI-REFERENCE-LANDING.md` | **Landing** | 랜딩 UI 레퍼런스/컴포넌트 |
 
 ---
 
@@ -41,51 +42,51 @@
 
 ### ChatterBox 전용
 
-- `docs/DEVELOPMENT-GUIDE.md`
-- `docs/VITE-CONFIG.md`
+- `docs/guides/DEVELOPMENT-GUIDE.md`
+- `docs/specs/VITE-CONFIG.md`
 - `docs/MILESTONES.md`
 - `docs/CODING-CONVENTIONS.md`
-- `docs/INCIDENT-PLAYBOOK.md`
-- `docs/SUPPORT-PLAYBOOK.md`
-- `docs/MODERATION-OPS.md`
-- `docs/SECURITY-OPS.md`
+- `docs/ops/INCIDENT-PLAYBOOK.md`
+- `docs/ops/SUPPORT-PLAYBOOK.md`
+- `docs/ops/MODERATION-OPS.md`
+- `docs/ops/SECURITY-OPS.md`
 - `docs/FEATURE-SPEC.md`
 - `docs/PLATFORM-ARCHITECTURE.md`
-- `docs/PLATFORM-RESEARCH-SYNC.md`
-- `docs/DESIGN-DIRECTION.md`
+- `docs/plan/PLATFORM-RESEARCH-SYNC.md`
+- `docs/design/DESIGN-DIRECTION.md`
 - `docs/DATA-SCHEMA.md`
 - `docs/STORE-DEPENDENCY-MATRIX.md`
 - `docs/FEATURE-CONTRACT-MAP.md`
 - `docs/API-SURFACE.md`
 - `docs/GAP-MATRIX.md`
 - `docs/CONTRACT-HEALTH.md`
-- `docs/SECURITY-P0-REVIEW.md`
-- `docs/RUNTIME-HARDENING-REVIEW.md`
-- `docs/UI-REFERENCE-PLATFORM.md`
-- `docs/PLATFORM-REFERENCE-GAP-MAP.md`
-- `docs/ONBOARDING-FLOW.md`
-- `docs/COST-ESTIMATE.md`
-- `docs/PITCH-READINESS.md`
-- `docs/PRODUCT-READINESS.md`
-- `docs/DEFINITION-OF-DONE.md`
-- `docs/IMPLEMENTATION-ORDER.md`
-- `docs/STACK-COMPARE-AVATAR-RUNTIME.md`
-- `docs/STACK-COMPARE-VIDEOGEN.md`
-- `docs/STACK-COMPARE-ROUTER.md`
-- `docs/STACK-COMPARE-REALTIME.md`
-- `docs/DEPLOY-PLATFORM.md`
+- `docs/specs/security/SECURITY-P0-REVIEW.md`
+- `docs/specs/security/RUNTIME-HARDENING-REVIEW.md`
+- `docs/design-references/UI-REFERENCE-PLATFORM.md`
+- `docs/research/PLATFORM-REFERENCE-GAP-MAP.md`
+- `docs/specs/ONBOARDING-FLOW.md`
+- `docs/plan/COST-ESTIMATE.md`
+- `docs/plan/PITCH-READINESS.md`
+- `docs/plan/PRODUCT-READINESS.md`
+- `docs/guides/DEFINITION-OF-DONE.md`
+- `docs/plan/IMPLEMENTATION-ORDER.md`
+- `docs/archive/STACK-COMPARE-AVATAR-RUNTIME.md`
+- `docs/archive/STACK-COMPARE-VIDEOGEN.md`
+- `docs/archive/STACK-COMPARE-ROUTER.md`
+- `docs/archive/STACK-COMPARE-REALTIME.md`
+- `docs/ops/DEPLOY-PLATFORM.md`
 
 ### 랜딩 전용
 
 - `README.md`
-- `docs/FRONTEND-MAP.md`
-- `docs/PROJECT-STATUS.md`
-- `docs/CONTENT-GUIDE.md`
-- `docs/DEPLOY.md`
-- `docs/FLECTO-80-PLAN.md`
-- `docs/FLECTO-90-PLAN.md`
-- `docs/INTERACTION-PLAN.md`
-- `docs/UI-REFERENCE-LANDING.md`
+- `docs/archive/landing/FRONTEND-MAP.md`
+- `docs/status/PROJECT-STATUS.md`
+- `docs/archive/landing/CONTENT-GUIDE.md`
+- `docs/archive/landing/DEPLOY.md`
+- `docs/archive/landing/FLECTO-80-PLAN.md`
+- `docs/archive/landing/FLECTO-90-PLAN.md`
+- `docs/archive/landing/INTERACTION-PLAN.md`
+- `docs/design-references/UI-REFERENCE-LANDING.md`
 
 ### 양쪽 공용
 

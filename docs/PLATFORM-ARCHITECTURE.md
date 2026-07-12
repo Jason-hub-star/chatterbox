@@ -1116,7 +1116,7 @@ LiveKit 월 비용 ≈ $0.001/분 × 분당 참가자 시간
 
 - `snack-web/docs/state-machines/_INDEX.md`
 - `snack-web/docs/DATA-SCHEMA.md`
-- `snack-web/docs/PLATFORM-RESEARCH-SYNC.md`
+- `snack-web/docs/plan/PLATFORM-RESEARCH-SYNC.md`
 
 ---
 

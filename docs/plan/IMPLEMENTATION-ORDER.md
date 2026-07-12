@@ -41,9 +41,9 @@ ChatterBox는 **세로(vertical) 슬라이스**로 쌓는다. 한 기능을 `DB 
 
 | ID | 항목 | 문서 | 상태 | 확인 |
 |---|---|---|---|---|
-| G-01 | LiveKit 토큰 발급 Edge Function | [[livekit-edge-fn]] | ✓ DONE | [확인](specs/livekit-edge-fn.md) |
-| G-02 | models 테이블 + Supabase 스키마 | [[supabase-auth]] §6 | ✓ DONE | [확인](specs/supabase-auth.md) |
-| G-03 | rig JSON 포맷 스펙 | [[rig-format]] | ✓ DONE | [확인](specs/rig-format.md) |
+| G-01 | LiveKit 토큰 발급 Edge Function | [[livekit-edge-fn]] | ✓ DONE | [확인](../specs/livekit-edge-fn.md) |
+| G-02 | models 테이블 + Supabase 스키마 | [[supabase-auth]] §6 | ✓ DONE | [확인](../specs/supabase-auth.md) |
+| G-03 | rig JSON 포맷 스펙 | [[rig-format]] | ✓ DONE | [확인](../specs/rig-format.md) |
 
 **확인 방법:** `npm run docs:health` → "GAP-MATRIX G-01/02/03" 행의 상태가 모두 DONE 표시
 

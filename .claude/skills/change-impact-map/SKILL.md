@@ -22,9 +22,9 @@ version: 2
 ## Inputs
 
 - requested change
-- `docs/IMPLEMENTATION-ORDER.md` (Feature 의존성 DAG)
+- `docs/plan/IMPLEMENTATION-ORDER.md` (Feature 의존성 DAG)
 - `docs/PLATFORM-ARCHITECTURE.md`
-- `docs/GAP-MATRIX.md` (현재 진행상황 — `docs/PROJECT-STATUS.md`는 랜딩페이지 전용이므로 앱 변경 영향 판단엔 쓰지 않는다)
+- `docs/GAP-MATRIX.md` (현재 진행상황 — `docs/status/PROJECT-STATUS.md`는 랜딩페이지 전용이므로 앱 변경 영향 판단엔 쓰지 않는다)
 
 ## Steps
 

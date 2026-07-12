@@ -17,11 +17,11 @@ npm run dev      # http://localhost:3000
 
 | 하고 싶은 것 | 파일 |
 |---|---|
-| 글자(카피)·브랜드명 수정 | `src/content/content.ts` → 가이드 `docs/CONTENT-GUIDE.md` |
+| 글자(카피)·브랜드명 수정 | `src/content/content.ts` → 가이드 `docs/archive/landing/CONTENT-GUIDE.md` |
 | 색·폰트·모션 | `design/DESIGN-TOKENS.md` → `tailwind.config.ts` / `src/lib/motion.ts` |
 | 섹션 구조 | `src/components/sections/` |
 | 공용 UI(버튼·카드 등) | `src/components/ui/` |
-| 배포 | `docs/DEPLOY.md` |
+| 배포 | `docs/archive/landing/DEPLOY.md` |
 
 ## 폴더
 
@@ -37,4 +37,4 @@ src/
   lib/               motion 토큰 · cn()
 ```
 
-상태: `docs/PROJECT-STATUS.md`
+상태: `docs/status/PROJECT-STATUS.md`

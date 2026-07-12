@@ -15,7 +15,7 @@ version: 2
 
 - 사용자가 "문서 업데이트"를 요청한다.
 - `docs/status/AGENT-OPS.md`의 `## § 현재 열린 이슈` 표가 긴 작업 로그처럼 쌓이고 있다.
-- 랜딩페이지 작업이면 `docs/PROJECT-STATUS.md`가 같은 증상을 보일 때.
+- 랜딩페이지 작업이면 `docs/status/PROJECT-STATUS.md`가 같은 증상을 보일 때.
 - 해소된 GAP, 폐기된 실험, 오래된 Phase가 상단 상태판에 남아 있다.
 
 ## Rules
@@ -30,7 +30,7 @@ version: 2
 1. 현재 상태 문서를 읽는다:
    - `docs/status/AGENT-OPS.md` (§ 현재 열린 이슈)
    - `docs/GAP-MATRIX.md` (진행 로그, GAP 상태)
-   - 랜딩페이지 작업이면 `docs/PROJECT-STATUS.md`
+   - 랜딩페이지 작업이면 `docs/status/PROJECT-STATUS.md`
 2. `npm run docs:health` 출력과 대조해 실제로 바뀐 사실을 확인한다.
 3. 해당 상태판을 얇은 대시보드로 재작성한다: 현재 Phase, 열린 이슈(≤5), 다음 액션, 검증 명령.
 4. 상세 내용은 `docs/GAP-MATRIX.md`의 `## 진행 로그`에 옮긴다(N차 분석 신설이 필요하면 새 섹션으로).

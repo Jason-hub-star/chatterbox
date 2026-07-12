@@ -43,10 +43,10 @@ npm run docs:health      # staleness·고아 파일·크기 경고
 
 ### 2. 앱 구현 Phase 확인
 
-- 파일: `docs/IMPLEMENTATION-ORDER.md`(Phase 정의·의존 순서) + `docs/GAP-MATRIX.md`(GAP 상태)
+- 파일: `docs/plan/IMPLEMENTATION-ORDER.md`(Phase 정의·의존 순서) + `docs/GAP-MATRIX.md`(GAP 상태)
 - 현재 구현 Phase 확인 (Phase 0 미착수 → Phase 1 인증 순서)
 - `⏳`/`BLOCKED` 항목이 블로킹 상태인지 확인
-- 주의: `docs/PROJECT-STATUS.md`는 **랜딩 페이지(snack-web) 전용**이며 앱 구현 Phase와 무관하다 — 혼동 금지
+- 주의: `docs/status/PROJECT-STATUS.md`는 **랜딩 페이지(snack-web) 전용**이며 앱 구현 Phase와 무관하다 — 혼동 금지
 
 ### 3. GAP-MATRIX 상위 TODO 3개
 

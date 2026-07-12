@@ -9,7 +9,7 @@ version: 1
 
 # cf-pages-deploy-verify
 
-Vite SPA(ChatterBox 앱)를 Cloudflare Pages 에 **추측 없이** 올리고 **실렌더로 검증**하는 하네스. `vercel-deploy-verify`의 CF판 — Vercel(랜딩)과 별개로 앱 SPA는 CF Pages 에 산다. SSOT: `docs/DEPLOY-PLATFORM.md`.
+Vite SPA(ChatterBox 앱)를 Cloudflare Pages 에 **추측 없이** 올리고 **실렌더로 검증**하는 하네스. `vercel-deploy-verify`의 CF판 — Vercel(랜딩)과 별개로 앱 SPA는 CF Pages 에 산다. SSOT: `docs/ops/DEPLOY-PLATFORM.md`.
 
 백엔드(Supabase Edge·LiveKit)는 이미 프로덕션이므로, 프론트만 올리면 **완전 기능 동작**(앱은 `livekit-token` 응답 `server_url` 로 LiveKit 연결). 검증은 성역 — 이 스킬은 배포를 *싸게 안전하게* 반복하게만 한다.
 
@@ -99,6 +99,6 @@ curl -sS -o /dev/null -w "deep=%{http_code}\n" "$U/rooms/x-nonexistent"   # 200 
 
 ## 관련
 
-- `docs/DEPLOY-PLATFORM.md` — 배포 SSOT(릴리스 블로커·CI/CD Actions)
+- `docs/ops/DEPLOY-PLATFORM.md` — 배포 SSOT(릴리스 블로커·CI/CD Actions)
 - `supabase-slice-verify` — 2탭 룸 E2E 템플릿·Edge Function 통합테스트(상보)
 - 메모리 `frontend-cf-pages-deploy` — URL·계정·재배포 명령

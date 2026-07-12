@@ -114,7 +114,7 @@ Next.js 14 (App Router) · Tailwind 3 · cva · framer-motion · TypeScript.
    npm create vite@latest ChatterBox -- --template react-ts
    ```
    - Supabase 프로젝트 연결, `app_config` 로드, Realtime 확인 → Phase 0 AC 통과
-   - 상세 레시피: `docs/VITE-CONFIG.md`, 마일스톤 기준: `docs/MILESTONES.md`
+   - 상세 레시피: `docs/specs/VITE-CONFIG.md`, 마일스톤 기준: `docs/MILESTONES.md`
 5. ★ **랜딩 콘텐츠 리프레시 + TheaterPreview 섹션** (보류 — [[SCOUT]] 인계)
    - P0: `src/content/locales/ko.ts` 연기 플랫폼 반영
    - P1: `src/components/sections/theater-preview/` React 변환

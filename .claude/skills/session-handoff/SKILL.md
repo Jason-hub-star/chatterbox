@@ -31,7 +31,7 @@ version: 2
 2. `read first` 순서를 1~3개 적는다.
 3. blocker와 unfinished decisions를 적는다.
 4. 다시 시작할 때 돌릴 첫 verify를 적는다 (`npm run docs:check` 등).
-5. 결과를 `docs/status/AGENT-OPS.md`의 `## § 현재 열린 이슈` 표에 남긴다 (랜딩페이지 작업이면 `docs/PROJECT-STATUS.md`에 남긴다 — 둘은 서로 다른 프로젝트 스코프이므로 섞지 않는다).
+5. 결과를 `docs/status/AGENT-OPS.md`의 `## § 현재 열린 이슈` 표에 남긴다 (랜딩페이지 작업이면 `docs/status/PROJECT-STATUS.md`에 남긴다 — 둘은 서로 다른 프로젝트 스코프이므로 섞지 않는다).
 
 ## Outputs
 

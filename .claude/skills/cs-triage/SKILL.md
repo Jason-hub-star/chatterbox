@@ -131,7 +131,7 @@ Step 5 — AGENT-OPS.md 갱신
 
 ## 참조 문서
 
-- `docs/SUPPORT-PLAYBOOK.md` — FAQ 스크립트
-- `docs/INCIDENT-PLAYBOOK.md` — P0 대응 절차
+- `docs/ops/SUPPORT-PLAYBOOK.md` — FAQ 스크립트
+- `docs/ops/INCIDENT-PLAYBOOK.md` — P0 대응 절차
 - `docs/GAP-MATRIX.md` — 기능 로드맵
 - `docs/status/AGENT-OPS.md` — 운영 진입문서 (배턴 갱신 위치)

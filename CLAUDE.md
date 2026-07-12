@@ -37,7 +37,7 @@ ChatterBox/
 - 새 최상위 폴더 추가/이동 전 `docs/PLATFORM-ARCHITECTURE.md` §12를 먼저 갱신한다. 코드가 문서보다 먼저 바뀌면 다음 세션이 구조를 못 찾는다.
 - `features/*` 폴더는 컴포넌트 1~2개면 만들지 않는다 (§12.1) — `components/`에 직접 배치.
 - `stores/index.ts` barrel export 금지 (circular import 위험, §12.3).
-- import alias `@/` = `src/` (`vite.config.ts` 설정 예정, `docs/VITE-CONFIG.md` 참조).
+- import alias `@/` = `src/` (`vite.config.ts` 설정 예정, `docs/specs/VITE-CONFIG.md` 참조).
 
 ## 검증 명령
 
@@ -45,7 +45,8 @@ ChatterBox/
 npm run docs:check       # 계약서-코드 정합성
 npm run docs:check:strict
 npm run docs:drift       # 백로그 probe ↔ 코드 드리프트(STALE/REGRESSION — 자동 [x] 없음, 표식만)
-npm run check:all        # 게이트 일괄(tsc·lint·test·build·docs:check·docs:drift)
+npm run docs:links       # docs/ 상대 md 링크 무결성(G1 리팩토링 검증 표면)
+npm run check:all        # 게이트 일괄(tsc·lint·test·build·docs:check·docs:drift·docs:links)
 npm run docs:health      # GAP 상태 카운트 + 건강도
 npm run docs:overview    # platform-overview.html 갱신
 npm run check:responsive # 반응형 DoD 게이트(360/768/1440 오버플로) — playwright-core 임시설치·dev 서버 필요

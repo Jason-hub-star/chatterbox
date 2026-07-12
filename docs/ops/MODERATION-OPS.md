@@ -314,7 +314,7 @@ ORDER BY week DESC;
 - **처리**: 협찬 표기 누락 시 운영 공지 후 7일 내 수정 요청. 불응 시 콘텐츠 비공개 가능
 
 #### B. AI 활용 명시
-- **AI 생성 콘텐츠**: [TERMS-OF-SERVICE.md § 5.2.1](TERMS-OF-SERVICE.md#521-ai-생성-콘텐츠-공개-시-표시-의무) 참조
+- **AI 생성 콘텐츠**: [TERMS-OF-SERVICE.md § 5.2.1](../legal/TERMS-OF-SERVICE.md#521-ai-생성-콘텐츠-공개-시-표시-의무) 참조
   - `[AI생성]` 태그 강력 권장 (public/members_only 배포 시)
 - **AI 더빙/보이스변환**: AI 기술 사용 여부 설명에 명시
   - 목적: 청취자가 자연 음성인지 AI 음성인지 구분 가능하게 함

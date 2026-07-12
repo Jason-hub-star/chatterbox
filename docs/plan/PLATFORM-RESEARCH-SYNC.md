@@ -64,8 +64,8 @@ tags: [guide]
 | 문서 | 읽음 | 핵심 내용 |
 |---|---|---|
 | `snack-web/README.md` | ✅ | 랜딩 페이지 개요 |
-| `snack-web/docs/PROJECT-STATUS.md` | ✅ | 현재 랜딩 페이지 상태 |
-| `snack-web/docs/FRONTEND-MAP.md` | ✅ | 프론트엔드 스택·섹션·SSOT 지도 |
+| `snack-web/docs/status/PROJECT-STATUS.md` | ✅ | 현재 랜딩 페이지 상태 |
+| `snack-web/docs/archive/landing/FRONTEND-MAP.md` | ✅ | 프론트엔드 스택·섹션·SSOT 지도 |
 | `snack-web/src/app/page.tsx` | ✅ | 현재 랜딩 페이지 섹션 구성 |
 | `snack-web/src/content/content.ts` | ✅ | 텍스트 SSOT |
 | `snack-web/src/content/assets.ts` | ✅ | 미디어 자산 SSOT |
@@ -297,5 +297,5 @@ tags: [guide]
 - `Vtube/docs/ref/AUTORIG-BBW-SKIN-001.md`
 - `Vtube/docs/status/SCOUT.md`
 - `Vtube/docs/research/LIVE2D-MODEL-GUIDE.md`
-- `snack-web/docs/FRONTEND-MAP.md`
-- `snack-web/docs/PROJECT-STATUS.md`
+- `snack-web/docs/archive/landing/FRONTEND-MAP.md`
+- `snack-web/docs/status/PROJECT-STATUS.md`

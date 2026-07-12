@@ -1,6 +1,6 @@
 // VideoGenProvider: 영상생성 공급사 추상화(성역 — 공급사 종료/소송 대비 어댑터).
 // MVP = Seedance 2.0 Fast 1개. 폴백(Kling/Luma)은 slice2.
-// SSOT: docs/STACK-COMPARE-VIDEOGEN.md §2 · docs/specs/VgenCostAnalysis.md
+// SSOT: docs/archive/STACK-COMPARE-VIDEOGEN.md §2 · docs/specs/VgenCostAnalysis.md
 // 주: 실제 fal 모델 문자열은 서버(VGEN_MODEL_ID env)에서 관리 — 여기선 표시/비용 산정용 메타만.
 
 export interface VideoGenProvider {
