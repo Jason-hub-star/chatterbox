@@ -70,6 +70,10 @@
   - 미치환 잔여: `advance-script-cue`(select 필드·활성체크 상이 — 브리프 계약대로 제외), 조인 경유 변형(dub 계열)은 후속.
   - 배포/푸시 안 함(골 경계). 라이브 반영은 치환 8함수 `functions deploy` 필요.
 
+- **2026-07-12 Claude Code(Fable 5) — 패스 2: 재발 방지 게이트 추가(재현됨).**
+  - `tests/unit/edgeHostGuard.test.ts` 신설 — `"Not host"` 계약 리터럴은 `_shared/supa.ts`(requireHostRoom)에서만 허용, Edge 함수 인라인 복사 부활 시 test red. 정당 변형은 사유와 함께 ALLOW 등재(현재 sync-script-role 1건 — 호스트체크가 assign 액션 조건부라 통째 치환 불가, 스캔이 놓친 9번째 후보를 게이트 설계 중 발견·판정).
+  - test 133/133(+2). "Room not found"+"Room ended"만 쓰는 참가자 게이트 10함수는 별도 체인(후속 골 후보 — requireActiveRoom)으로 오탐 없이 구분됨.
+
 ## 범위 제외 (후속 골 후보)
 
 - RoomPage(1065줄) 분해 — 다음 룸 기능 세션에서 부위별.
