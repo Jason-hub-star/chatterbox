@@ -41,7 +41,7 @@ tags: [hub]
 | `legal/` | 약관·개인정보·저작권·팬아트 (법무 검토 대기) | 6 |
 | `status/` | 상태판·인계(HANDOFF)·에이전트 운영·배턴 | 7 |
 | `goals/` | 골 사다리(`GOAL-LADDER.md`)·골 브리프(6요소) | 1+ |
-| `research/` | 조사 원본 (보존) | 3 |
+| `research/` | 조사 원본 (보존) | 4 |
 | `reference/` | golden-path 코드 패턴·마케팅 자동화 이식본 | patterns/ 등 |
 | `archive/` | 결정 반영 완료된 조사·리뷰·상태 스냅샷 (STACK-COMPARE 4종·BUILD-QUEUE·REVIEW-LOG·룸 인계·flecto-reference/ 등) | 10 |
 | `archive/landing/` | 구 snack-web 랜딩 문서 (사이트는 운영 중, 스택 레거시 — 새 플랫폼의 마케팅 입구로 흡수 예정) | 6 |
