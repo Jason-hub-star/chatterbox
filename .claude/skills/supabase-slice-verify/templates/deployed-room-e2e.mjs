@@ -43,6 +43,8 @@ async function loginJoin(context, email, sink) {
   page.on('console', (m) => { if (m.type() === 'error' && !benign.test(m.text())) sink.push(m.text().slice(0, 160)) })
   page.on('pageerror', (e) => { if (!benign.test(String(e))) sink.push('PAGEERROR: ' + String(e).slice(0, 160)) })
   await page.goto(`${BASE}/rooms/${roomId}`, { waitUntil: 'domcontentloaded' })
+  // [함정 18] 소셜우선 로그인 — 이메일 폼은 [이메일로 로그인] 클릭 후에만 열린다(즉시 fill 은 20s 타임아웃).
+  await page.click('text=이메일로 로그인', { timeout: 20000 })
   await page.waitForSelector('input[type=email]', { timeout: 20000 })
   sawLoginGate = true // 미인증으로 보호 라우트 → 로그인 폼 노출
   await page.fill('input[type=email]', email); await page.fill('input[type=password]', PW)

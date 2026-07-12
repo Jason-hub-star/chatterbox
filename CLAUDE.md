@@ -44,6 +44,8 @@ ChatterBox/
 ```bash
 npm run docs:check       # 계약서-코드 정합성
 npm run docs:check:strict
+npm run docs:drift       # 백로그 probe ↔ 코드 드리프트(STALE/REGRESSION — 자동 [x] 없음, 표식만)
+npm run check:all        # 게이트 일괄(tsc·lint·test·build·docs:check·docs:drift)
 npm run docs:health      # GAP 상태 카운트 + 건강도
 npm run docs:overview    # platform-overview.html 갱신
 npm run check:responsive # 반응형 DoD 게이트(360/768/1440 오버플로) — playwright-core 임시설치·dev 서버 필요

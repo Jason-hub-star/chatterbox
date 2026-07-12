@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:responsive": "node scripts/check-responsive.mjs",
+    "check:all": "npm run type-check && npm run lint && npm run test && npm run build && npm run docs:check && npm run docs:drift",
     "docs:check": "node scripts/check-contract-docs.mjs .",
     "docs:check:strict": "node scripts/check-contract-docs.mjs . --strict",
     "docs:drift": "node scripts/check-backlog-drift.mjs",
