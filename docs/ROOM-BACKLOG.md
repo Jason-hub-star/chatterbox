@@ -4,7 +4,7 @@ tags: [status, backlog]
 
 <!--
   2026-07-11 - 룸 페이지 SSOT 대조 전수 스캔(하이쿠 2기 + 메인 직접 검증) 산출물.
-  /goal docs/ROOM-BACKLOG.md 로 소비한다 — §0 체크리스트가 소스.
+  /backlog docs/ROOM-BACKLOG.md 로 소비한다 — §0 체크리스트가 소스.
   각 행 끝의 probe 주석(형식: "probe: 상대경로 :: 정규식", 정규식 생략 시 파일 존재만)은
   scripts/check-backlog-drift.mjs 가 읽어 STALE(구현 흔적 있는데 미체크)·REGRESSION(체크됐는데
   흔적 소실)을 감지한다. 자동 [x] 전환은 하지 않는다 — 검증(실측) 없는 체크 금지, 스크립트는 표식만.
@@ -21,7 +21,7 @@ tags: [status, backlog]
 
 - [x] **V-1 채팅 모더레이션 묶음** (HOST-09 슬로우모드·HOST-10 금칙어·HOST-11 클리어/숨김) — 구현(2026-07-11): rooms 정책 컬럼+`audit_logs` 마이그(`20260711170000`)·`set-chat-policy`/`moderate-chat` Edge(soft delete+감사+`chat-mod` broadcast)·send-chat 서버 강제(400 banned_word/429 slow_mode·호스트 면제)·HostConsole 정책 UI+클리어 Modal·ChatPanel 호스트 숨김. **실측**: 통합 18/18(로컬+프로드)·deno 3/3·게이트 그린 · ✅ 프로드 배포+2탭 E2E(hide 라이브 전파, 2026-07-12). <!-- probe: supabase/functions/moderate-chat/index.ts -->
 - [x] **V-2 신고/차단** — 구현(2026-07-12 · 스펙 정정: `reporting-logging-feedback.md` §16.2 차단=**개인 경험 필터**라 livekit-token 입장 게이트 가정 폐기): 마이그 `20260711180000`(moderation_reports 운영 큐·user_blocks+blocked_auth_id 비정규화·본인 SELECT RLS)·`create-report`(3/분+20/시·발신자/본문 서버 확정 스냅샷·audit)·`create-block`/`delete-block`(멱등)·ChatPanel 접힘/펼침·신고 모달(+동시 차단)·차단 해제. **실측**: 통합 19/19(로컬+프로드)·deno 3/3·게이트 그린 · ✅ 프로드 배포+2탭 E2E(차단 접힘, 2026-07-12). <!-- probe: supabase/functions/create-report/index.ts -->
-- [ ] **V-3 인앱 녹화·다시보기 (ROOM-13)** — 방식 확정(GOAL-g3 §0): 아바타는 비디오트랙이 아니라 Egress 기본 컴포지트 불가 → **클라 캔버스 합성 녹화(P1)**·Egress custom template 은 P2 승급. **백엔드 완료(2026-07-12)**: 마이그 `20260712120000`(recordings+room_artifacts·RLS·보존 cron)+Edge 5종(start/consent/upload/complete/url — 동의 게이트 §11.1.1) 통합 **17/17**·deno 5/5. 잔여: 프론트 C(무대 합성 레코더)·D(동의 모달·⏺ 배선·REC·재생)·배포 라이브 실측. <!-- probe: src/features/stage/stageRecorder.ts -->
+- [ ] **V-3 인앱 녹화·다시보기 (ROOM-13)** — 방식 확정(GOAL-g3 §0): 아바타는 비디오트랙이 아니라 Egress 기본 컴포지트 불가 → **클라 캔버스 합성 녹화(P1)**·Egress custom template 은 P2 승급. **백엔드 완료(2026-07-12)**: 마이그 `20260712120000`(recordings+room_artifacts·RLS·보존 cron)+Edge 5종(start/consent/upload/complete/url — 동의 게이트 §11.1.1) 통합 **17/17**·deno 5/5. **C 레코더 완료(2026-07-12)**: `stageRecorder.ts`(좌석 캔버스 rAF 합성+원형 클립·WebAudio 믹스·webm) + 좌석 preserveDrawingBuffer 활성. 잔여: D(동의 모달·⏺ 배선·REC·재생)·배포 라이브 실측. <!-- probe: src/pages/RoomPage.tsx :: startStageRecorder -->
 - [ ] **V-4 로컬 백업 녹화 (ROOM-23)** — 참가자별 MediaRecorder chunk + IndexedDB(`DubRecorder.tsx:11` defer와 공유 기반).
 - [ ] **V-5 관객 투표/폴 (ROOM-22)** — 코드 0건(grep 실측). <!-- probe: src/features/room/PollPanel.tsx -->
 - [ ] **V-6 방장 이양 명시 UI + HOST-02 화면 비활성화** — 서버 승계(leave-room)·음소거만 존재.

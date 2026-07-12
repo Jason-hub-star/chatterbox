@@ -48,5 +48,5 @@ version: 1
 
 ## 관련
 
-- `cf-pages-deploy-verify`(③ 상세) · `supabase-slice-verify`(로컬 하네스·E2E 템플릿) · `/goal`(백로그 소스·배포 게이트)
+- `cf-pages-deploy-verify`(③ 상세) · `supabase-slice-verify`(로컬 하네스·E2E 템플릿) · `/backlog`(백로그 소스·배포 게이트)
 - 메모리: `rtk-grep-secret-leak` · `deployed-fn-drift` · `chatterbox-e2e-traps`

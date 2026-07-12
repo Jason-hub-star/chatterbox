@@ -62,7 +62,7 @@ tags: [hub]
 | `PLATFORM-ARCHITECTURE.md` | SPA 아키텍처 + §12 폴더구조 | **설계** |
 | `CODING-CONVENTIONS.md` | 네이밍·store 패턴·DoD 게이트(§6.1) | **설계 (구현 입력)** |
 | `MILESTONES.md` | Phase 0~4 Acceptance Criteria (배포 게이트) | **설계 (진행 기준)** |
-| `DOGFOOD-AUDIT-2026-07.md` | 도그푸딩 감사 백로그 (`/goal` 소스·drift 대상) | **설계 (백로그)** |
+| `DOGFOOD-AUDIT-2026-07.md` | 도그푸딩 감사 백로그 (`/backlog` 소스·drift 대상) | **설계 (백로그)** |
 | `ROOM-BACKLOG.md` | 룸 미구현 인덱스 (트랙 V/U·probe 회귀감시·drift 대상) | **설계 (룸 백로그)** |
 | `CONTRACT-HEALTH.md` | 계약 문서망 건강 리포트 (`docs:health` 산출) | **SSOT (계약 건강)** |
 
