@@ -1,5 +1,5 @@
 ---
-name: ship-live
+name: bepo
 description: 구현 완료 슬라이스를 프로덕션에 올리고 라이브로 실증한 뒤 문서·커밋까지 닫는 일괄 마감 절차 — db push(서울 pooler)·함수 deploy(재시도·실측)·CF Pages·프로드 통합/2탭 E2E·백로그 §0/GAP/drift 문서 마감. "배포하고 라이브테스트", "라이브로 올려", "페이즈 마감", "배포 몰아치기" 요청 시.
 user_invocable: true
 tags: [deploy, verify, docs, release]
@@ -7,7 +7,7 @@ trigger: "슬라이스/페이즈 완료분을 프로드 반영+라이브 검증+
 version: 1
 ---
 
-# ship-live — 배포 → 라이브 실증 → 문서 마감 일괄
+# bepo — 배포 → 라이브 실증 → 문서 마감 일괄
 
 전제: 구현 + 로컬 실측(`supabase-slice-verify`)이 끝난 상태. **배포·커밋·push 는 주인님 승인 후에만** — 이 스킬은 승인 이후의 실행 순서와 함정을 고정한다. 검증은 성역: 각 단계의 "성공"은 실측(psql·functions list·PASS 카운트)으로만 주장한다.
 
