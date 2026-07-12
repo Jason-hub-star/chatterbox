@@ -275,3 +275,38 @@ export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
     isPractice: (r.is_practice as boolean) ?? false,
   }))
 }
+
+// ---- V-3 인앱 녹화(ROOM-13, GOAL-g3) — 동의 게이트·presign·마감·재생. 서버가 host/참가자 재검증. ----
+
+export const startRoomRecording = (accessToken: string, roomId: string) =>
+  callFn<{ ok: boolean; recording_id: string; all_consented: boolean }>('start-room-recording', accessToken, { room_id: roomId })
+
+export const recordRecordingConsent = (accessToken: string, recordingId: string, consented: boolean) =>
+  callFn<{ ok: boolean; all_consented: boolean }>('record-recording-consent', accessToken, { recording_id: recordingId, consented })
+
+// all_consented 게이트(412 consent_required) 통과 시 recording 전이 + R2 presign PUT(1h).
+export const createRecordingUpload = (accessToken: string, recordingId: string) =>
+  callFn<{ ok: boolean; upload_url: string; storage_key: string }>('create-room-recording-upload', accessToken, { recording_id: recordingId })
+
+export const completeRoomRecording = (
+  accessToken: string,
+  recordingId: string,
+  extra: { cancel?: boolean; duration_ms?: number; file_size_bytes?: number },
+) => callFn<{ ok: boolean; status: string }>('complete-room-recording', accessToken, { recording_id: recordingId, ...extra })
+
+export const getRecordingUrl = (accessToken: string, recordingId: string) =>
+  callFn<{ ok: boolean; url: string; duration_ms: number | null }>('get-recording-url', accessToken, { recording_id: recordingId })
+
+// 방 녹화 목록(HostConsole 다시보기) — RLS(멤버 SELECT) 직접 조회.
+export interface RoomRecordingItem { id: string; created_at: string; duration_ms: number | null }
+export async function fetchRoomRecordings(roomId: string): Promise<RoomRecordingItem[]> {
+  const { data, error } = await supabase
+    .from('recordings')
+    .select('id, created_at, duration_ms')
+    .eq('room_id', roomId)
+    .eq('status', 'ready')
+    .order('created_at', { ascending: false })
+    .limit(10)
+  if (error) throw new Error(error.message)
+  return (data ?? []) as RoomRecordingItem[]
+}

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import type { RecordingPhase } from './useRoomRecording'
 
 interface Props {
   isViewer: boolean
@@ -14,6 +15,9 @@ interface Props {
   onToggleMixer: () => void
   onTogglePip: () => void
   onLeave: () => void
+  // V-3 녹화(호스트만 노출 — 서버가 host 재검증). phase 별 라벨/동작은 useRoomRecording 상태기계.
+  recordPhase?: RecordingPhase
+  onToggleRecord?: () => void
 }
 
 export default function RoomBottomBar({
@@ -30,8 +34,20 @@ export default function RoomBottomBar({
   onToggleMixer,
   onTogglePip,
   onLeave,
+  recordPhase = 'idle',
+  onToggleRecord,
 }: Props) {
   const { t } = useTranslation()
+
+  // 녹화 버튼 phase 별 표기(아이콘·라벨·색). uploading 은 진행 중이라 클릭 불가.
+  const REC_LABEL: Record<RecordingPhase, { icon: string; key: string; cls: string }> = {
+    idle: { icon: '⏺', key: 'room.ctrlRecord', cls: 'border-stage-border text-stage-text-muted hover:text-stage-text' },
+    consentPending: { icon: '⏳', key: 'room.ctrlRecordPending', cls: 'border-fire-amber text-fire-amber' },
+    recording: { icon: '⏹', key: 'room.ctrlRecordStop', cls: 'border-fire-hot text-fire-hot' },
+    uploading: { icon: '⏫', key: 'room.ctrlRecordUploading', cls: 'border-stage-border text-stage-text-muted' },
+    uploadFailed: { icon: '⚠️', key: 'room.ctrlRecordRetry', cls: 'border-fire-hot text-fire-hot' },
+  }
+  const rec = REC_LABEL[recordPhase]
 
   return (
     <div className="flex items-center justify-center gap-2 px-4 py-3 sm:gap-3">
@@ -91,15 +107,19 @@ export default function RoomBottomBar({
         <span className="hidden sm:inline">{t('room.ctrlHeadphone')}</span>
       </button>
 
-      {/* 녹음 → defer(Egress 엔진 부재) — 비활성 '준비 중', 가짜 녹화 금지 */}
-      <button
-        disabled
-        className="flex items-center gap-1.5 rounded-lg border border-stage-border/40 px-3 py-1.5 text-[10px] font-semibold text-stage-text-muted/40 sm:px-4 sm:py-2 sm:text-xs"
-        title={t('room.ctrlRecordSoon')}
-      >
-        <span>⏺</span>
-        <span className="hidden sm:inline">{t('room.ctrlRecord')}</span>
-      </button>
+      {/* 무대 녹화(V-3, 호스트 전용) — 동의 게이트→합성 캡처→R2 업로드. 상태기계는 useRoomRecording. */}
+      {onToggleRecord && (
+        <button
+          data-record-button={recordPhase}
+          onClick={onToggleRecord}
+          disabled={!connected || recordPhase === 'uploading'}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm ${rec.cls}`}
+          title={t(rec.key)}
+        >
+          <span className={recordPhase === 'recording' ? 'animate-pulse' : undefined}>{rec.icon}</span>
+          <span className="hidden sm:inline">{t(rec.key)}</span>
+        </button>
+      )}
 
       {/* 아바타/카메라 → self PiP 미리보기 토글(배우 전용 — 관전자는 트래킹 없음) */}
       {!isViewer && (

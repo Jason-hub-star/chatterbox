@@ -40,7 +40,8 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
     let created: RigAvatar | null = null
     const mount = mountRef.current
     if (mount) {
-      RigAvatar.create(mount, { projectUrl, size })
+      // preserveDrawingBuffer: 무대 녹화(stageRecorder)가 좌석 캔버스를 drawImage 로 합성 — 꺼져 있으면 검은 프레임.
+      RigAvatar.create(mount, { projectUrl, size, preserveDrawingBuffer: true })
         .then((av) => {
           if (cancelled) {
             av.destroy()

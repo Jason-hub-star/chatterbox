@@ -59,6 +59,8 @@ export function useLiveKitRoom(
     enabled?: boolean
     // 호스트 강퇴(HOST-01): 서버 removeParticipant → Disconnected(PARTICIPANT_REMOVED) 로 통지.
     onKicked?: () => void
+    // 녹화 믹스(V-3): 구독/발행되는 오디오 트랙을 흘려준다 — 녹화 중 입장·마이크 재개도 믹스에 합류.
+    onAudioTrack?: (track: MediaStreamTrack) => void
     // 값이 바뀌면 재연결(새 토큰 발급) — viewer→actor 승격 시 canPublish=true 토큰으로 갈아끼운다(ROOM-21).
     reconnectNonce?: number
     // room-authority 클라 발행(vod_sync/vgen_*)의 발신자 검증용 — 방 호스트 identity(=auth uid, SEC-RA-1).
@@ -95,6 +97,10 @@ export function useLiveKitRoom(
   useEffect(() => {
     onScriptRoleRef.current = opts?.onScriptRole
   }, [opts?.onScriptRole])
+  const onAudioTrackRef = useRef(opts?.onAudioTrack)
+  useEffect(() => {
+    onAudioTrackRef.current = opts?.onAudioTrack
+  }, [opts?.onAudioTrack])
   const lastSentRef = useRef(0)
   const seqRef = useRef(0)
   const lastReactionRef = useRef(0)
@@ -173,9 +179,16 @@ export function useLiveKitRoom(
           if (participant instanceof RemoteParticipant) {
             participant.setVolume(mixedVolume(useAudioStore.getState(), participant.identity))
           }
+          // 녹화 믹스(V-3): 녹화 중 새로 합류한 원격 오디오도 흘림(레코더가 없으면 no-op).
+          if (track.mediaStreamTrack) onAudioTrackRef.current?.(track.mediaStreamTrack)
         }
       },
     )
+    // 녹화 믹스(V-3): 내 마이크가 (재)발행될 때도 흘림 — 녹화 시작 시 마이크 off 였다가 켠 경우.
+    room.on(RoomEvent.LocalTrackPublished, (pub) => {
+      const mst = pub.track?.mediaStreamTrack
+      if (pub.kind === Track.Kind.Audio && mst) onAudioTrackRef.current?.(mst)
+    })
     room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
       track.detach().forEach((el) => el.remove())
     })
@@ -488,5 +501,22 @@ export function useLiveKitRoom(
     await roomRef.current?.disconnect()
   }, [])
 
-  return { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave }
+  // 녹화 믹스(V-3): 현재 시점의 오디오 트랙 스냅샷(내 마이크 + 구독된 원격 전원) — 녹화 시작 입력.
+  // 이후 증감은 onAudioTrack 콜백이 담당(스냅샷+스트리밍 조합으로 유실 0).
+  const getAudioTracks = useCallback((): MediaStreamTrack[] => {
+    const room = roomRef.current
+    if (!room) return []
+    const tracks: MediaStreamTrack[] = []
+    const mic = room.localParticipant.getTrackPublication(Track.Source.Microphone)?.track?.mediaStreamTrack
+    if (mic) tracks.push(mic)
+    room.remoteParticipants.forEach((p) => {
+      p.audioTrackPublications.forEach((pub) => {
+        const t = pub.track?.mediaStreamTrack
+        if (t) tracks.push(t)
+      })
+    })
+    return tracks
+  }, [])
+
+  return { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave, getAudioTracks }
 }

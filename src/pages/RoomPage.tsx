@@ -5,7 +5,8 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, scriptRoleAction, setScriptMode, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl } from '@/lib/rooms'
+import { useRoomRecording } from '@/features/room/useRoomRecording'
 import { applyRoleEvent, isRoleEvent, pruneRoleMap, roleOf, type RoleMap } from '@/features/script/roleMap'
 import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
@@ -229,7 +230,10 @@ export default function RoomPage() {
   const [handRaised, setHandRaised] = useState(false)
   const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
   const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number }) => {
+  // V-3 녹화: useRoomRecording 은 isHost(아래 파생) 뒤에 호출되므로 ref 브리지로 수신을 위임(TDZ 회피).
+  const recAuthorityRef = useRef<((msg: { type: string; recording_id?: string; all_consented?: boolean }) => void) | null>(null)
+  const recAudioRef = useRef<((track: MediaStreamTrack) => void) | null>(null)
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; recording_id?: string; all_consented?: boolean }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
@@ -261,6 +265,9 @@ export default function RoomPage() {
     else if (msg.type === 'stage_invite') {
       // 무대 초대(ROOM-21) — 대상 본인만 수락 모달, 다른 참가자는 무시.
       if (msg.target_auth_id === useUserStore.getState().user?.id) setStageInvite(true)
+    } else if (msg.type.startsWith('recording_')) {
+      // V-3 녹화 이벤트(consent/consent_update/started/done) — useRoomRecording 에 위임.
+      recAuthorityRef.current?.(msg)
     } else if (msg.type === 'promoted') {
       setRaiseHandRefetch((n) => n + 1) // 전원 좌석 갱신(승격자 새 slot 반영)
       if (msg.auth_id === useUserStore.getState().user?.id) {
@@ -274,13 +281,14 @@ export default function RoomPage() {
 
   // 노트 방장 강조(ROOM-17) + room-authority 발신자 검증(SEC-RA-1) — useLiveKitRoom 옵션보다 먼저 선언(TDZ 회피).
   const [hostAuthId, setHostAuthId] = useState<string | null>(null)
-  const { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave } = useLiveKitRoom(roomId, {
+  const { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave, getAudioTracks } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
     onCue: handleCue,
     onRoomAuthority: handleRoomAuthority,
     onScriptRole: handleScriptRole,
     enabled: joinPhase === 'ready',
     onKicked: () => setKicked(true),
+    onAudioTrack: (track) => recAudioRef.current?.(track), // 녹화 믹스 — 녹화 중 오디오 증감 합류
     reconnectNonce,
     hostIdentity: hostAuthId ?? undefined,
   })
@@ -464,6 +472,19 @@ export default function RoomPage() {
   // 호스트 판정은 rooms.host_id(서버 진실) 우선 — 호스트 이양 시 이 값 갱신으로 새 호스트가 컨트롤을 얻는다.
   // hostId 로드 전(초기)엔 기존 slot 프록시로 폴백(2인 경로 무변화). 서버는 host_id 로 권한 재검증.
   const isHost = hostId != null && appUserId != null ? hostId === appUserId : mySlotIndex === 0
+
+  // V-3 인앱 녹화(ROOM-13): 동의 게이트→무대 합성 캡처→R2→작품. room-authority 수신·오디오 증감은 ref 브리지.
+  const recording = useRoomRecording({ roomId, isHost, joined: joinPhase === 'ready', getAudioTracks })
+  useEffect(() => {
+    recAuthorityRef.current = recording.onAuthorityMessage
+    recAudioRef.current = recording.onAudioTrack
+  }, [recording.onAuthorityMessage, recording.onAudioTrack])
+  // HostConsole 녹화 다시보기 — RLS(멤버) 목록 + presigned GET(서버 visibility 게이트).
+  const loadRecordings = useCallback(() => fetchRoomRecordings(roomId), [roomId])
+  const playRecording = useCallback(async (id: string): Promise<string> => {
+    if (!session) throw new Error('no session')
+    return (await getRecordingUrl(session.access_token, id)).url
+  }, [session])
 
   // G-261 호스트 관찰자: VGEN 생성 시작/종료를 방 모드로 승격(set-room-mode → 서버 broadcast → 전원 반영).
   // RoomPage 에만 배선 — VgenStatusTab/VgenPromptPanel 은 스튜디오(공방)에서도 재사용되므로 방 의미론은 여기서만.
@@ -736,6 +757,9 @@ export default function RoomPage() {
           onClearChat={clearChat}
           initialLocked={roomLocked}
           initialMuted={mutedIdentities}
+          loadRecordings={loadRecordings}
+          onPlayRecording={playRecording}
+          recordingsNonce={recording.recordingsNonce}
         />
       ),
     })
@@ -956,6 +980,16 @@ export default function RoomPage() {
           />
           <ReactionOverlay slotOf={slotOf} />
           <ModeBanner />
+          {/* REC 배지(V-3) — 전원 고지(늦입장 포함). 라틴 'REC' 는 i18n 불요(하드코딩 허용 범위). */}
+          {recording.recActive && (
+            <span
+              role="status"
+              data-rec-badge
+              className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-fire-hot backdrop-blur-sm"
+            >
+              <span aria-hidden className="h-2 w-2 animate-pulse rounded-full bg-fire-hot" /> REC
+            </span>
+          )}
           {/* U-0 온보딩 데드엔드: 혼자 입장 시 빈 무대 안내 + 초대 CTA(F-3 공유 재사용). */}
           {connected && participants.length === 1 && (
             <button
@@ -1027,6 +1061,8 @@ export default function RoomPage() {
         }
       }}
       onLeave={onLeave}
+      recordPhase={isHost ? recording.phase : undefined}
+      onToggleRecord={isHost ? () => void recording.toggleRecording() : undefined}
     />
   )
 
@@ -1039,6 +1075,27 @@ export default function RoomPage() {
         rightDock={rightDockContent}
         bottomBar={bottomBarContent}
       />
+
+      {/* 녹화 동의 모달(V-3·§11.1.1) — 닫기(Esc)도 거절로 기록(무응답 방치 방지, 호스트는 취소 가능). */}
+      {recording.consentRequest && (
+        <Modal title={t('room.recConsentTitle')} onClose={() => void recording.respondConsent(false)}>
+          <p className="mt-2 text-sm text-stage-text-muted">{t('room.recConsentBody')}</p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => void recording.respondConsent(true)}
+              className="flex-1 rounded-lg bg-fire-amber px-3 py-2 text-sm font-semibold text-stage-base"
+            >
+              {t('room.recConsentAccept')}
+            </button>
+            <button
+              onClick={() => void recording.respondConsent(false)}
+              className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted"
+            >
+              {t('room.recConsentDecline')}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* 무대 초대 수락 모달(ROOM-21) — 대상 관객 본인만. 수락 시 viewer→actor 승격 + 재연결. */}
       {stageInvite && (

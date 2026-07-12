@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
-import type { RecentPerson } from '@/lib/rooms'
+import type { RecentPerson, RoomRecordingItem } from '@/lib/rooms'
 import Modal from '@/components/shared/Modal'
 import { toast } from '@/hooks/useToast'
 import { STAGE_BACKGROUNDS } from '@/lib/stageBackgrounds'
@@ -30,6 +30,9 @@ export default function HostConsole({
   onClearChat,
   initialLocked,
   initialMuted,
+  loadRecordings,
+  onPlayRecording,
+  recordingsNonce,
 }: {
   participants: RoomParticipant[]
   myIdentity: string
@@ -47,6 +50,9 @@ export default function HostConsole({
   onClearChat: () => Promise<void> // HOST-11 — 서버 'chat-mod' broadcast 가 전원 스토어 클리어
   initialLocked: boolean
   initialMuted?: Set<string>
+  loadRecordings: () => Promise<RoomRecordingItem[]> // V-3 다시보기 목록(ready, RLS 멤버)
+  onPlayRecording: (id: string) => Promise<string> // presigned GET(서버 visibility 게이트)
+  recordingsNonce: number // 녹화 완료 시 ++ → 목록 갱신
 }) {
   const { t } = useTranslation()
   // 강퇴 확인: 2단 토글(계약 위반·오클릭 위험) → Modal 프리미티브(P-4, 포커스트랩·Esc·복귀).
@@ -115,6 +121,32 @@ export default function HostConsole({
     } finally {
       setClearBusy(false)
     }
+  }
+
+  // 녹화 다시보기(V-3) — ready 목록 + 인라인 재생(presign 15분).
+  const [recs, setRecs] = useState<RoomRecordingItem[]>([])
+  const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null)
+  const [recBusy, setRecBusy] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    loadRecordings()
+      .then((list) => { if (!cancelled) setRecs(list) })
+      .catch(() => { /* 목록 실패 — 섹션 비표시로 강등 */ })
+    return () => { cancelled = true }
+  }, [loadRecordings, recordingsNonce])
+  const playRec = async (id: string) => {
+    setRecBusy(id)
+    try {
+      setPlaying({ id, url: await onPlayRecording(id) })
+    } catch {
+      toast.error(t('host.recordingsPlayFailed'))
+    } finally {
+      setRecBusy(null)
+    }
+  }
+  const fmtDuration = (ms: number | null): string => {
+    const s = Math.round((ms ?? 0) / 1000)
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
   }
 
   // 무대 배경(HOST-04·05)
@@ -415,6 +447,34 @@ export default function HostConsole({
         </div>
         {chatErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{chatErr}</p>}
       </section>
+
+      {/* 녹화 다시보기(V-3) — ready 녹화 목록 + 인라인 재생. 목록이 비면 섹션 자체를 숨긴다. */}
+      {recs.length > 0 && (
+        <section>
+          <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.recordingsTitle')}</h3>
+          <ul className="space-y-1.5">
+            {recs.map((r) => (
+              <li key={r.id} className="flex items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1 truncate text-xs text-stage-text-muted">
+                  {new Date(r.created_at).toLocaleString()} · {fmtDuration(r.duration_ms)}
+                </span>
+                <button
+                  onClick={() => void playRec(r.id)}
+                  disabled={recBusy === r.id}
+                  className="shrink-0 rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+                >
+                  {t('host.recordingsPlay')}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {playing && (
+            <video key={playing.id} src={playing.url} controls autoPlay className="mt-2 w-full rounded-lg border border-stage-border">
+              <track kind="captions" />
+            </video>
+          )}
+        </section>
+      )}
 
       {/* 참가자 관리 */}
       <section>
