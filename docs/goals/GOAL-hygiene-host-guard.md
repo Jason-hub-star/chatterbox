@@ -74,6 +74,11 @@
   - `tests/unit/edgeHostGuard.test.ts` 신설 — `"Not host"` 계약 리터럴은 `_shared/supa.ts`(requireHostRoom)에서만 허용, Edge 함수 인라인 복사 부활 시 test red. 정당 변형은 사유와 함께 ALLOW 등재(현재 sync-script-role 1건 — 호스트체크가 assign 액션 조건부라 통째 치환 불가, 스캔이 놓친 9번째 후보를 게이트 설계 중 발견·판정).
   - test 133/133(+2). "Room not found"+"Room ended"만 쓰는 참가자 게이트 10함수는 별도 체인(후속 골 후보 — requireActiveRoom)으로 오탐 없이 구분됨.
 
+- **2026-07-12 Claude Code(Fable 5) — 패스 3: 배포 + 프로드 실측(재현됨). 골 완전 종결.**
+  - 주인님 승인(ㄱ) → 치환 8함수 `functions deploy` 8/8(owfcrolbvikkqrotmleq, config.toml `verify_jwt=false` 상속).
+  - **프로드 프로브 24/24 PASS**(같은 스크립트, 프로드 URL·키). 1차 실행은 supabase-js 간헐 행업(UND_ERR_HEADERS_TIMEOUT, 기지 패턴)으로 중단 → 재실행 성공. 1차 잔재(probe 유저2·방2)는 REST 직행으로 삭제·잔재 0 실측.
+  - main 푸시 완료(aa35859·ec62fab·1a1b9fc — 23046f0 G3와 함께). 소스-배포본 드리프트 없음.
+
 ## 범위 제외 (후속 골 후보)
 
 - RoomPage(1065줄) 분해 — 다음 룸 기능 세션에서 부위별.
