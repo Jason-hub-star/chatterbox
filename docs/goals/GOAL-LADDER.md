@@ -16,7 +16,7 @@ tags: [status, goals]
 |---|---|---|---|---|
 | G1 | 문서 리팩토링 | docs/ 루트 md ≤15, archive/·ops/·plan/ 재편, INDEX 폴더 1:1 | `docs:check`+`docs:drift` 그린 + 참조 링크 무결성 0 깨짐 | **DONE**(2026-07-12: 루트 52→14·이동 37+1·경로 재작성 61터치·`docs:links` 신설 — check PASS·drift 12행 0/0·links 0 broken·기존 깨진 링크 11도 수리) |
 | G2 | F-패스 퀵픽스 | F-1 닉네임·F-3 링크공유·F-4 쇼츠생성 라벨·F-5 채팅 아이콘·F-6 노트→채팅 통합·F-7 방분위기 제거 + U-0 4건 (F-2 라이브 중복은 재현 시) | `check:all` + 실렌더 스모크(닉네임·토스트·휠 키보드) | **DONE**(2026-07-12: F-1=livekit-token name←display_name 근본수정 · **F-2 재현·수정**(🔴 이모지+CSS 점 이중=i18n서 제거) · F-3 호스트 초대링크 승격 · F-4/F-5 라벨 3언어 · F-6 ChatNotesTab 세그먼트 통합(탭 5→4) · F-7 mood 제거 · U-0 4건은 재감사서 기구현 판명(stale)+혼자입장 초대칩 신규 — check:all 그린(131/131)·deno clean·**실렌더 스모크 8/8**. ⏳ 배포 대기: livekit-token(F-1)+CF Pages) |
-| G3 | V-3 인앱 녹화 | Egress→Storage→작품함 e2e, 하단바 ⏺ 실배선 | 통합테스트 + 프로드 라이브 녹화 1건 실측(ship-live) | PENDING |
+| G3 | V-3 인앱 녹화 | 전원 동의→무대 녹화→R2→작품 재생 e2e, ⏺ 실배선 (방식: 클라 캔버스 합성 P1 — GOAL-g3 §0) | 통합테스트 + 프로드 라이브 녹화 1건 실측(ship-live) | **ACTIVE**(A 스키마+B Edge5 완료 — 통합 17/17·deno 5/5·마이그 로컬 실측. 잔여 C 레코더·D UI·E 배포) |
 | G4 | V-10 자막편집(더빙) | STT 세그먼트 편집 UI→합성 산출물 자막 반영 | 통합 + 산출물 실측(vtt/번인 ffprobe) | PENDING |
 | G5 | V-5 관객 투표 | 생성→투표→집계 2탭 동기(뷰어 포함) | 통합 + 2탭 E2E | PENDING |
 | G6 | U-무대몰입 | U-2 앰비언트+SFX(SoundManager 공유) → U-1 파티클+배경 바람 모션 | 실렌더 + reduced-motion 가드 + autoplay 게이트 실측 | PENDING |
