@@ -1,7 +1,7 @@
 // invite-to-stage: 호스트가 손든 관객을 무대로 초대한다(ROOM-21, G-154). 아직 승격 아님 —
 // 대상에게 수락 모달을 띄우는 room-authority stage_invite broadcast(대상 본인만 반응). 수락은 accept-stage-invite.
 // SSOT: contracts/HostConsole.md §G-154. MUST NOT: 손들기(raise_hand_at) 없이 초대·대상 동의 없이 강제 승격.
-import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
+import { getAppUser, json, isUuid, cors, requireHostRoom } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
 Deno.serve(async (req) => {
@@ -23,11 +23,8 @@ Deno.serve(async (req) => {
   if (!isUuid(target_user_id)) return json({ error: "Invalid target_user_id" }, 400);
 
   // 호스트 검증(서버 확정)
-  const { data: room } = await user.service
-    .from("rooms").select("id, host_id, status").eq("id", room_id).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status === "ended") return json({ error: "Room ended" }, 409);
-  if (room.host_id !== user.userId) return json({ error: "Not host" }, 403);
+  const gate = await requireHostRoom(user.service, room_id, user.userId);
+  if (!gate.ok) return gate.res;
 
   // 대상 = 손든 활성 viewer 여야 초대 가능(손들기 선행·viewer 만). users.auth_id 는 수신측 본인 판별용.
   const { data: target } = await user.service

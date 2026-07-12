@@ -3,7 +3,7 @@
 // 입력: { room_id, background_url }  — '' 또는 공백이면 배경 해제(null 저장).
 // 보안(성역): 호출자 == rooms.host_id 서버 검증 + background_url 은 우리 '/scenes/' 에셋만(임의 URL·SSRF·traversal 차단).
 // set-room-password 와 동형 패턴 + send-reaction 처럼 room-authority 서버 릴레이(수신측이 서버발만 신뢰).
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, requireHostRoom } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
 // 우리 public 씬 에셋 경로만 허용(절대 URL·traversal 차단).
@@ -31,11 +31,8 @@ Deno.serve(async (req) => {
   if (!isSafeBackgroundUrl(url)) return json({ error: "Invalid background_url" }, 400);
 
   // 방 존재 + 호스트 검증(서버가 진짜 권한 확정 — 클라 게이트는 표시용)
-  const { data: room } = await service
-    .from("rooms").select("id, host_id, status").eq("id", roomId).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status === "ended") return json({ error: "Room ended" }, 409);
-  if (room.host_id !== userId) return json({ error: "Not host" }, 403);
+  const gate = await requireHostRoom(service, roomId, userId);
+  if (!gate.ok) return gate.res;
 
   // '' → null(배경 해제). DB 반영 후 방 전체 broadcast(수신측 stageStore.setBackground).
   const stored = url === "" ? null : url;

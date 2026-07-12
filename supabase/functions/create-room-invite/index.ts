@@ -1,7 +1,7 @@
 // create-room-invite: 호스트가 초대링크 발급(LOB-05). SSOT: contracts/LobbyPage.md §초대링크 · DATA-SCHEMA §1.2.2
 // 원문 코드(128-bit hex)는 이 응답에서 1회만 노출 — DB엔 SHA-256 해시만. URL 조립은 클라(origin은 클라가 안다).
 // role: 'actor'(기본) | 'viewer'(관전 초대, Phase 4 — 잠금방도 관전 가능해지는 유일한 문).
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, requireHostRoom, type HostRoom } from "../_shared/supa.ts";
 import { inviteCodeHash } from "../_shared/inviteCode.ts";
 
 Deno.serve(async (req) => {
@@ -32,11 +32,9 @@ Deno.serve(async (req) => {
     ? body.expires_h
     : 72;
 
-  const { data: room } = await service
-    .from("rooms").select("id, host_id, status, title").eq("id", body.room_id).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status === "ended") return json({ error: "Room ended" }, 409);
-  if (room.host_id !== userId) return json({ error: "Not host" }, 403);
+  const gate = await requireHostRoom(service, body.room_id, userId, "title");
+  if (!gate.ok) return gate.res;
+  const room = gate.room as HostRoom & { title: string | null };
 
   if (invitedUserId) {
     const { data: target } = await service

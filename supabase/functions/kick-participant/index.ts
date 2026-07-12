@@ -8,7 +8,7 @@
 //
 // 보안(성역): 호출자 == rooms.host_id 를 서버가 검증. 클라는 target_identity(=auth uid)만 넘긴다
 //   — 클라가 가진 유일 식별자가 LiveKit identity(=auth uid)이므로(room_participants.id 는 클라 미보유).
-import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
+import { getAppUser, json, isUuid, cors, requireHostRoom } from "../_shared/supa.ts";
 import { roomServiceClient, sendDataTo } from "../_shared/livekit.ts";
 
 Deno.serve(async (req) => {
@@ -33,11 +33,8 @@ Deno.serve(async (req) => {
   if (target_identity === user.authId) return json({ error: "Cannot kick self" }, 400);
 
   // (1) 방 존재 + 호스트 검증
-  const { data: room } = await user.service
-    .from("rooms").select("id, host_id, status").eq("id", room_id).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status === "ended") return json({ error: "Room ended" }, 409);
-  if (room.host_id !== user.userId) return json({ error: "Not host" }, 403);
+  const gate = await requireHostRoom(user.service, room_id, user.userId);
+  if (!gate.ok) return gate.res;
 
   // (2) target identity(auth uid) → users.id
   const { data: target } = await user.service

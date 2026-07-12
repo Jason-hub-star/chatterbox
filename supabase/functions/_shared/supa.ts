@@ -58,6 +58,26 @@ export async function getAppUser(
   return { ok: true, user: { authId: user.id, userId: appUser.id, email: appUser.email, service } };
 }
 
+export type HostRoom = { id: string; host_id: string; status: string } & Record<string, unknown>;
+
+// 방 존재 + 호스트 검증 공통 체인(Room not found 404 → Room ended 409 → Not host 403).
+// 호스트 게이트 함수는 인라인 복사 대신 반드시 이걸 쓴다 — 응답 계약(status·문구)의 단일 지점.
+// extraCols: 함수별 추가 컬럼(예: "title"). 통과 시 room 행 반환, 실패 시 {res} 로 즉시 응답.
+export async function requireHostRoom(
+  service: SupabaseClient,
+  roomId: string,
+  userId: string,
+  extraCols = "",
+): Promise<{ ok: true; room: HostRoom } | { ok: false; res: Response }> {
+  const cols = extraCols ? `id, host_id, status, ${extraCols}` : "id, host_id, status";
+  const { data } = await service.from("rooms").select(cols).eq("id", roomId).single();
+  const room = data as unknown as HostRoom | null;
+  if (!room) return { ok: false, res: json({ error: "Room not found" }, 404) };
+  if (room.status === "ended") return { ok: false, res: json({ error: "Room ended" }, 409) };
+  if (room.host_id !== userId) return { ok: false, res: json({ error: "Not host" }, 403) };
+  return { ok: true, room };
+}
+
 // 간단 UUID 형식 검증(입력 방어).
 export function isUuid(v: unknown): v is string {
   return typeof v === "string" &&

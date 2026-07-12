@@ -7,7 +7,7 @@
 //       (mutePublishedTrack 은 트랙 sid 가 필요 — canPublish 토글이 더 적은 코드로 재발행까지 막는다)
 //
 // 보안(성역): 호출자 == rooms.host_id 서버 검증. 클라는 target_identity(=auth uid)만 넘긴다.
-import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
+import { getAppUser, json, isUuid, cors, requireHostRoom } from "../_shared/supa.ts";
 import { roomServiceClient } from "../_shared/livekit.ts";
 
 Deno.serve(async (req) => {
@@ -31,11 +31,8 @@ Deno.serve(async (req) => {
   if (target_identity === user.authId) return json({ error: "Cannot mute self" }, 400);
 
   // (1) 방 존재 + 호스트 검증
-  const { data: room } = await user.service
-    .from("rooms").select("id, host_id, status").eq("id", room_id).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status === "ended") return json({ error: "Room ended" }, 409);
-  if (room.host_id !== user.userId) return json({ error: "Not host" }, 403);
+  const gate = await requireHostRoom(user.service, room_id, user.userId);
+  if (!gate.ok) return gate.res;
 
   // (2) target identity(auth uid) → users.id
   const { data: target } = await user.service
