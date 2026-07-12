@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
   // (1) 프로필 매핑 auth_id → users.id
   const { data: appUser } = await service
-    .from("users").select("id").eq("auth_id", user.id).is("deleted_at", null).single();
+    .from("users").select("id, display_name").eq("auth_id", user.id).is("deleted_at", null).single();
   if (!appUser) return json({ error: "No profile" }, 403);
 
   // (2) 방 존재 + 종료 아님
@@ -79,7 +79,8 @@ Deno.serve(async (req) => {
     Deno.env.get("LIVEKIT_API_SECRET")!,
     {
       identity: user.id,
-      name: user.email ?? user.id,
+      // F-1(2026-07-12): participant.name = 닉네임 — 무대 이름칩·노트·믹서·로컬 에코가 전부 이 값을 읽는다.
+      name: appUser.display_name ?? user.email ?? user.id,
       ttl: 600, // 10분. 만료 없는 토큰 금지.
       metadata: JSON.stringify({ token_version: part.token_version }),
     },

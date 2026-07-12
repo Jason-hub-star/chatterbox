@@ -30,6 +30,7 @@ import FloatingSelfMonitor from '@/features/room/FloatingSelfMonitor'
 import AudioMixerPanel from '@/features/room/AudioMixerPanel'
 import { applyVodSync, readVodSyncState, setVodSyncPublisher } from '@/features/stage/vodSync'
 import DirectorNotesTab from '@/features/room/DirectorNotesTab'
+import ChatNotesTab from '@/features/room/ChatNotesTab'
 import HostConsole from '@/features/room/HostConsole'
 import CampfireGlyph from '@/components/shared/CampfireGlyph'
 import Modal from '@/components/shared/Modal'
@@ -702,11 +703,16 @@ export default function RoomPage() {
     useStageStore.getState().clearMainVideo()
   }, [sendRoomAuthority])
 
+  // F-6: 노트는 채팅 탭 안 세그먼트로 통합(탭 5→4) — ChatNotesTab 이 둘 다 마운트 유지.
   const tabs: RightPanelTab[] = [
-    { id: 'chat', label: t('room.chat'), render: () => <ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} blockedAuthIds={blockedAuthIds} onSubmitReport={submitReport} onUnblock={unblock} /> },
+    { id: 'chat', label: t('room.tabChat'), render: () => (
+      <ChatNotesTab
+        chat={<ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} blockedAuthIds={blockedAuthIds} onSubmitReport={submitReport} onUnblock={unblock} />}
+        notes={<DirectorNotesTab connected={connected} hostAuthId={hostAuthId} onSend={sendNote} />}
+      />
+    ) },
     { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },
     { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} onShare={shareVgen} /> },
-    { id: 'notes', label: t('room.tabNotes'), render: () => <DirectorNotesTab connected={connected} hostAuthId={hostAuthId} onSend={sendNote} /> },
   ]
   if (isHost) {
     tabs.push({
@@ -778,14 +784,19 @@ export default function RoomPage() {
     navigate('/lobby', { replace: true })
   }
 
-  // 상단바 액션: 링크 공유(클립보드 복사)
-  const handleShareLink = useCallback(() => {
-    const url = `${window.location.origin}/rooms/${roomId}${isViewer ? '?watch=1' : ''}`
-    navigator.clipboard.writeText(url).then(
-      () => toast.success(t('room.linkCopied')),
-      () => toast.error(t('room.linkCopyFailed')),
-    )
-  }, [roomId, isViewer, t])
+  // 상단바 액션: 링크 공유 — 호스트는 초대코드 링크(비공개 방·온보딩 경로 유효, ROOM-REDESIGN "초대 상단 승격" 해소),
+  // 그 외는 방 URL 직행(공개 방). F-3(2026-07-12).
+  const handleShareLink = useCallback(async () => {
+    try {
+      const url = isHost
+        ? `${window.location.origin}/lobby?invite=${await createInvite('actor')}`
+        : `${window.location.origin}/rooms/${roomId}${isViewer ? '?watch=1' : ''}`
+      await navigator.clipboard.writeText(url)
+      toast.success(t('room.linkCopied'))
+    } catch {
+      toast.error(t('room.linkCopyFailed'))
+    }
+  }, [roomId, isViewer, isHost, createInvite, t])
 
   if (joinPhase === 'joining') {
     return (
@@ -945,6 +956,16 @@ export default function RoomPage() {
           />
           <ReactionOverlay slotOf={slotOf} />
           <ModeBanner />
+          {/* U-0 온보딩 데드엔드: 혼자 입장 시 빈 무대 안내 + 초대 CTA(F-3 공유 재사용). */}
+          {connected && participants.length === 1 && (
+            <button
+              type="button"
+              onClick={handleShareLink}
+              className="absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full border border-stage-border bg-stage-panel/90 px-3 py-1.5 text-xs text-stage-text-muted backdrop-blur-sm transition-colors hover:border-fire-amber/60 hover:text-stage-text"
+            >
+              💌 {t('room.soloInviteHint')}
+            </button>
+          )}
           {/* G-64 Self-PiP — 관전자는 트래킹이 없어 미노출. */}
           {!isViewer && (
             <FloatingSelfMonitor projectUrl={selfProjectUrl} open={pipOpen} onClose={() => setPipOpen(false)} />
@@ -965,11 +986,7 @@ export default function RoomPage() {
       <div className="min-h-0 flex-1">
         <RightPanel tabs={tabs} />
       </div>
-      <EmoteConsoleCard
-        speaking={participants.some((p) => p.isSpeaking)}
-        onReaction={sendReaction}
-        disabled={!connected}
-      />
+      <EmoteConsoleCard onReaction={sendReaction} disabled={!connected} />
     </div>
   )
 
