@@ -32,7 +32,7 @@ tags: [status, backlog]
 
 ### 트랙 U — UIUX (V 안정 후 1패스)
 
-- [x] **U-1 씬 대화형 레이어 (ROOM-26) — G6 범위(파티클+바람 팬) 완료** (2026-07-13) — GlowMotes preset(`stageBackgrounds.particle` 데이터 주도: campfire=불씨·기본=홀씨, 신규 맵 미선언 안전) + 백드롭 `stage-pan` 켄 번스(reduced-motion 정지). 실렌더 E2E 픽셀 시간변화·reduced-motion 빈 캔버스 실측. **PNG 파츠 클릭/호버 인터랙션은 defer**(씬 레이어 승격 시 — `stageBackgrounds.ts:3` ponytail). <!-- probe: src/components/shared/GlowMotes.tsx :: preset -->
+- [x] **U-1 씬 대화형 레이어 (ROOM-26) — G6 범위(바람 팬) 완료** (2026-07-13) — 백드롭 `stage-pan` 켄 번스(reduced-motion 정지, 실렌더 실측). **불씨 파티클은 배포 후 주인님 실사용 판정("가짜같음")으로 제거**(2026-07-13 — GlowMotes preset·stageBackgrounds.particle 되돌림), 대체 방향 = 원화 불 위치 앵커의 빛 일렁임(재설계 중). **PNG 파츠 클릭/호버 인터랙션은 defer**(씬 레이어 승격 시). <!-- probe: src/index.css :: stage-pan -->
 - [x] **U-2 앰비언트/BGM (ROOM-27)** (2026-07-13) — BGM 3곡 순환(`lib/sound.ts` — HTMLAudioElement 계약 MUST·배경 디커플·autoplay 게이트) + SFX 3계열(이모트 팝·투표 오픈/공개·입장 차임) + `audioStore.bgmVolume`(0.25 기본·localStorage)+믹서 BGM 슬라이더(`AudioMixerPanel.tsx:7` defer 마감). 실렌더 E2E 15/15(게이트·슬라이더→volume·릴레이 발화 3계열). <!-- probe: src/lib/sound.ts :: BGM_PLAYLIST -->
 - [ ] **U-3 배속 조절 (ROOM-18/G-29)** — 컨트롤 바 0.5x~2x.
 - [ ] **U-4 무대 폴리시** — 슬롯 드래그 재배치·정밀 좌표·glow 연결선(`stageLayout.ts:3`).
