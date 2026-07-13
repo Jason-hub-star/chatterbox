@@ -6,6 +6,20 @@ tags: [fsm]
 
 # 2. Onboarding State Machine
 
+## 구현 현황 (as-built · 2026-07-13)
+
+> 이 문서는 **설계 상한(ceiling)** 이다. 아래 표/다이어그램은 의도된 풀 플로우고, 현재 구현은 **최소 슬라이스**만 실현했다. 다음 세션은 이 섹션을 먼저 읽어라.
+
+**실현됨 (G-ONB, 커밋 `1b099e4`):**
+- `OnboardingGuide`(`src/features/onboarding/OnboardingGuide.tsx`) — 로비(`LobbyPage`) 위 Modal 2단: 환영 → 장르 선택(`ROOM_GENRES`, `preferred_genres` 기록) → 완료. 별도 `/onboarding/*` 라우트·GREEN_ROOM 게이트 통합·INTRO 영상은 **없음**.
+- 노출 게이트: `userStore.onboardingStep ∈ {'intro','genre'}` 일 때만. 완료/건너뛰기 → `completeOnboarding()` 이 `onboarding_step='done'`(+선택 장르) 직접 UPDATE(users_update_own, 새 Edge 없음).
+- 신규 가입자 진입: `handle_new_user` 트리거가 **가입 시** `onboarding_step='intro'` 로 심는다(마이그 `20260713170000`).
+
+**설계와의 의도적 divergence (중요):**
+- 설계는 `step=NULL` = "신규 유저 → INTRO"(아래 전이표·라우트가드 `INTRO guard: step===null`). **as-built 는 `step=NULL` = 기존/레거시 유저 → 가이드 미노출**로 뒤집었다. 이유: 기존 322명 유저가 전부 `onboarding_step=NULL`(컬럼 미소비 상태)이라, NULL=신규 로 잡으면 전원에게 가이드가 폭격된다. backfill 마이그 대신 "신규만 트리거로 intro" 로 우회 — 기존 유저 무영향(psql 실측 322명 NULL 유지).
+- 따라서 아래 **전이표의 `step=NULL` 행들은 설계 의도이며 as-built 아님**. 라우트가드 기반 풀 플로우(트랙 A/B/revisit·GREEN_ROOM 5게이트·speaker/face 검증·analytics 이벤트·Settings "온보딩 다시보기" G-57)는 **미구현(defer)**.
+- OAuth 신규유저: 현 prod OAuth 미설정이라 무영향. 설정 시 첫 로그인 intro 세팅은 후속(트리거는 email/OAuth 무관하게 auth.users INSERT 시 발화하므로 실은 커버됨 — 재검증 후속).
+
 ## State Diagram
 
 ```
