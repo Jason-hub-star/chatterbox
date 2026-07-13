@@ -4,7 +4,7 @@ state: ACTIVE
 last_daily: null
 last_weekly_security: null
 last_cs_sweep: null
-open_issues: 3
+open_issues: 2
 ---
 
 # AGENT-OPS — ChatterBox 자율 에이전트 운영 진입문서
@@ -226,7 +226,7 @@ SecurityPolicies.md의 구현 체크리스트 `[ ]` 항목을 스캔:
 | ID | 분류 | 내용 | 발견일 | 상태 |
 |---|---|---|---|---|
 | ISS-04 | CS·버그_일반 | poon995(잡 `5529ea2c`) 아바타 입술 소실 — **근본원인 확정**: AUTORIG 생성 `mouth_state_small/mid` 립 안료 누락 → MouthOpenY 0.245~0.47 밴드(발화 중)에서 입술 소실 발현(상태×각도 매트릭스 실렌더 재현). **P1 완료(2026-07-13)**: closed_master 크로스페이드(0.30→0.60) 프로드 반영+백업(`project.pre-lipfix.json`)·실렌더 검증. **P2 완료**: `scripts/qa-mouth-lips.mjs` 립 안료 연속성 게이트(deploy·publish 배선, poon995 표본 FAIL 실측)+`scripts/render-mouth-matrix.mjs` 승격. **P3+bepo 완료(2026-07-13)**: `create-feedback` 창구 프로드 개통(의상실 [문제 알리기]·진단번들 opt-in·90일 purge — 실증 16/16, 스펙 §16.6·GAP 로그 참조). 잔여: 입 상태 자산 재생성(정공, Vtube 몫) 후 poon995 회신. 메모리 `mouth-state-lip-qa-gap` | 2026-07-13 | OPEN |
-| ISS-05 | 보안 지뢰(선제) | **`users.is_admin` 셀프 승격 가능** — `users_update_own` UPDATE 정책에 컬럼 제한이 없어 유저가 PostgREST 로 자기 행의 `is_admin=true` 갱신 가능(2026-07-13 정책 qual 실측). **오늘은 무해**: is_admin 을 믿는 배선이 0(정책·Edge·프론트 전무, GM 열람의 실체는 service_role 로컬 키). 단 인앱 GM/어드민 콘솔에서 is_admin 을 배선하는 순간 P0 권한상승 — **배선 전에** 컬럼 화이트리스트 grant(또는 is_admin 변경차단 trigger)부터. 짝 도구: `scripts/whois-avatar.mjs`(GM 전용 CLI, service key 필요) | 2026-07-13 | OPEN |
+| ISS-05 | 보안 지뢰(선제·해소) | **`users.is_admin` 셀프 승격 자물쇠 설치 완료(2026-07-13).** 마이그 `20260713150000_guard_is_admin.sql` — is_admin 만 막는 BEFORE UPDATE 트리거(authenticated/anon 이 값 변경 시 42501; service_role·postgres 통과). 프로드 실증 6/6. **어드민 콘솔 UI 는 defer 유지**(GM 1인 → `scripts/whois-avatar.mjs`+psql CLI 로 운영). 착수 트리거: P1=유저 유입 시 CLI status 전이, P2=모더레이터 2인/신고↑ 시 G-47 `/admin/reports` 구현(is_admin 배선은 이 자물쇠 위에서만). 골 `docs/goals/GOAL-admin-selfpromo-lock.md` | 2026-07-13 | RESOLVED |
 | ISS-01 | 스킬 정리 | `doc-health-audit`(ChatterBox 정본)과 `doc-health-check`(Vtube 이식본)가 3기준 진단 목적 중복. 코딩 착수 후 어느 쪽이 더 잘 맞는지 드러나면 나머지를 `docs/archive/`로 이동 | 2026-07-01 | OPEN |
 | ISS-03 | 골 사다리 인계 | **8골 사다리(`docs/goals/GOAL-LADDER.md` = 상태 SSOT) 전량 DONE(2026-07-13 완주).** G7 U-연출 마감=네온 On Air(red→green, 주인님 시안 판정 B)+U-3 배속 rate 3단 동기+F-8 대극장 무대 원화 채택(로컬 15/15 ×2·배포판 13/13·bepo 라이브). G8 하네스 템플릿화=4종(backlog-drift-probe·deploy-verify-close·goal-backlog-ladder·supabase-slice-verify) → `jason-agent-harness-template` 이관·REGISTRY 등재·check-harness PASS. **잔여(골 밖 판정 2건):** ①로비 구름 속도 상향(2.7배) 육안 ②SFX 4종 청취. 다음 방향 후보: eastern 광장 아트·P2 방=방장·도그푸딩 2차. read first: ①GOAL-LADDER(전 DONE) ②GAP-MATRIX 진행 로그 2026-07-13. blocker: none. | 2026-07-13 | HANDOFF |
 | ISS-02 | 이모트 기능화·인계 | Phase 1–6 완료·push(하단바 배선·모닥불 기본배경·로드아웃 피커·우도크 이모트 콘솔·**옐로 Lottie 8종+EmoteGlyph** `83c965a`, 게이트 130/130·인룸 E2E 7/7). "`npx skills` 블로커"는 **rtk npx 재작성 오판** — 절대경로 `/opt/homebrew/bin/npx` 로 우회(text-to-lottie 스킬 설치 `f7014a1`, 파이프라인은 `emote-lottie` 스킬로 고정). **배포 완료(2026-07-12)**: 프론트 CF=G3-E bepo 동편 라이브, create-room Edge=V-7a 전 함수 재배포로 커버 — Phase 7 소진. 남음: SSOT 백로그 기록 여부만. 인계=[HANDOFF-EMOTE-LOTTIE-2026-07.md](./HANDOFF-EMOTE-LOTTIE-2026-07.md) | 2026-07-10 | HANDOFF |
