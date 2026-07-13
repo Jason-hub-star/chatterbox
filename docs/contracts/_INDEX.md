@@ -226,7 +226,7 @@ type RoomAuthorityType =
   | 'chat_clear'       // HOST-11 — 채팅 전체 클리어 { before_timestamp }
   | 'mode_change'      // G-261 — set-room-mode Edge 서버발 { new_mode, changed_at_ms, changed_by_host_id } (as-built: vgen_mode_*/dub_mode_* 를 통합 대체)
   | 'kicked'           // HOST-01 — 강퇴 사유, 서버발 destinationIdentities(대상만) { reason }
-  | 'vod_sync';        // ROOM-01 — 메인뷰 타임라인 동기 { position_ms, playing, at_ms } (호스트 발행 + 5s 하트비트)
+  | 'vod_sync';        // ROOM-01 — 메인뷰 타임라인 동기 { position_ms, playing, at_ms, rate } (호스트 발행 + 5s 하트비트 · rate 는 U-3 배속 2026-07-13 후행 추가 — 구 페이로드 수신 시 1 폴백)
 ```
 
 새 타입을 추가할 때는 위 union에 실제 타입명을 한 줄 추가하고 중앙 dispatcher switch case도 함께 추가한다. `NEW_TYPE` 같은 placeholder 문자열은 허용 타입에 넣지 않는다.

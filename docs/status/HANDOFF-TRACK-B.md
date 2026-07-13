@@ -28,7 +28,7 @@ tags: [status]
 | **Realtime 갱신** | `hooks/useRealtimeRow(table,col,value,onChange)` — DUB 2구독 배선됨(수동 새로고침 버튼 이미 제거) | B는 로딩 스켈레톤/부드러운 전환만. 필요 시 다른 화면에도 동형 확장. |
 | **뷰어 권한** | `stores/roomStore.myRole`(actor·viewer) + `lib/roomPermissions.roomPermissions(role)`(`{canPublish}`) | 뷰어모드 RoomView·MobileViewer의 **컨트롤 노출 판정**에 이 헬퍼 사용(마이크·표정 버튼 숨김 등). 규칙 하드코딩 금지 — 헬퍼 경유. |
 | **i18n 키 구조** | `i18n/coverage.missingKeys(ko, target)` / `orphanKeys` + `tests/unit/i18nCoverage.test.ts`(en/ja ⊆ ko 가드) | `missingKeys(ko, en)`/`(ko, ja)`로 **번역 대기 목록** 뽑아 en/ja 채우기. 오펀 가드 테스트가 오타 키를 막아줌. |
-| **조인 타임아웃/취소** | `lib/edgeFn.callFn(..., {signal})` — 15s 타임아웃 + 외부 `signal` 지원 | ~~취소 버튼~~ **완료(2026-07-08)** — `joinRoom` signal 관통 + RoomPage 취소 고스트 버튼 + `CampfireGlyph`(모닥불 대기, spritegen 교체 seam) + "모닥불에 다가가는 중…" 카피(실렌더 4/4). **잔여:** 조인 에러 단계 인라인 재시도 버튼. |
+| **조인 타임아웃/취소** | `lib/edgeFn.callFn(..., {signal})` — 15s 타임아웃 + 외부 `signal` 지원 | ~~취소 버튼~~ **완료(2026-07-08)** — `joinRoom` signal 관통 + RoomPage 취소 고스트 버튼 + 대기 글리프 + 진입 카피(실렌더 4/4). **글리프 교체(G7 2026-07-13):** `CampfireGlyph`(모닥불) → `NeonOnAir.tsx`(네온 On Air, 로딩 red 지지직→입장 green `entering` phase, spritegen 교체 seam 유지). **잔여:** 조인 에러 단계 인라인 재시도 버튼. |
 | **인증 복구** | `userStore.requestPasswordReset/resendVerification/updatePassword` + `/reset` 페이지(기능만) | LoginPage 비번찾기·RegisterPage 재전송·`ResetPasswordPage`의 **스타일링**(현재 최소 폼). |
 
 ## 2. 트랙 B 백로그 (DOGFOOD-AUDIT §0 트랙 B)

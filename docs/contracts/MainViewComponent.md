@@ -12,6 +12,8 @@ tags: [contract]
 
 > **(2026-07-10 ROOM-01 타임라인 동기)** 구현: 호스트 video = 타임라인 진실 — play/pause/seeked 발행 + 5s 하트비트(`room-authority` `{ type:'vod_sync', position_ms, playing, at_ms }`, 늦은 입장 ≤5s 수렴), 비호스트는 드리프트 >200ms 시크 보정(`features/stage/vodSync.ts` 순수 계산+버스, 경계 유닛 5). 편차: 비호스트 스크럽 허용(하트비트가 복귀 — §Scrubber 잠금은 forward)·발신자 시계 기준(기기 간 시계 오차=상수 오프셋, NTP식 추정 defer). 2탭 ±200ms 실측은 배포 후.
 
+> **(2026-07-13 U-3 배속 동기 — G7)** `vod_sync` 페이로드에 `rate` 추가(구 페이로드 수신은 1 폴백·형태검증 0<r≤4). 호스트 = 배속 3칩(1x/1.5x/2x, 공유 중지 옆) — 클릭은 `video.playbackRate` 설정만, 발행은 `ratechange` 리스너 단일 경로(z-5 Control Bar 배속 항목의 as-built). 비호스트 = `playbackRate` 반영 + 드리프트 보정식 경과항 ×rate(`vodTargetMs`, 단위테스트). **끝 강제시크 가드**: 재연결 늦배달 stale 메시지의 과속 외삽 target 이 `duration−250ms` 이상이면 시크 스킵 — 끝 시크→`onEnded` 자동 clear 로 뷰어 공유가 영구 소멸하는 엣지 방지(다음 fresh 이벤트/하트비트가 보정). 실증: 로컬 2탭 15/15 ×2(드리프트 수렴 6/5ms)·프로드 번들 마커.
+
 ## Props Interface
 
 ```typescript
