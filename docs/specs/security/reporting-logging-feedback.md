@@ -60,6 +60,16 @@ tags: [spec]
 - ❌ 운영자 조치 후 audit_logs 누락
 - ❌ 신고 대상 사용자에게 reporter_user_id 노출
 
+### 16.6 인앱 피드백/문의 (ISS-04 창구, 2026-07-13)
+
+신고(§16.1 = 타인 대상 운영 큐)와 분리된 "내 경험의 문제" 접수 채널. 구현: `feedback` 테이블 + Edge `create-feedback` + 의상실 [문제 알리기] 모달(`FeedbackModal`).
+
+- 쓰기는 Edge 전용(INSERT 정책 0) — category 화이트리스트(avatar·room·audio·other)·description 1~1000자·rate limit 2/분+10/시를 서버가 강제.
+- **진단 번들은 opt-in** — 클라 임의 구조를 그대로 저장하지 않고 서버가 화이트리스트 키만 재구성: `avatar_job_id`(uuid 검증)·`avatar_url`·`user_agent`·`app_url` (각 ≤300자). 업로드 원본 이미지·이메일 등 미포함, 동의 UI가 수집 항목을 제출 전 그대로 표시한다.
+- 조회는 RLS 본인 행만(`feedback_select_own`) — 접수번호(id 앞 8자)·상태(received→investigating→fixed→closed) 추적 UI.
+- 보존 90일: `purge_old_feedback()`(DEFINER, 3-role revoke) + pg_cron `feedback-purge-90d`(04:20).
+- 접수 시 `audit_logs` `feedback_created`(meta 는 category·has_diag 만 — diag 본문 미복제).
+
 ---
 
 ## 17. Error Logging PII 필터링 정책 + 로그 보존 기간 (G-125)

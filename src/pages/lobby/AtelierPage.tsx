@@ -5,6 +5,7 @@ import { fetchAvatarPresets, resolveAvatarUrl, thumbUrlFor, type AvatarPreset } 
 import AvatarPreview from '@/features/avatar/AvatarPreview'
 import SelfAvatar from '@/features/stage/SelfAvatar'
 import CommissionCorner from '@/features/avatar/CommissionCorner'
+import FeedbackModal from '@/components/shared/FeedbackModal'
 import { useAvatarJobs } from '@/features/avatar/useAvatarJobs'
 import InteriorShell from '@/pages/lobby/InteriorShell'
 
@@ -138,6 +139,7 @@ export default function AtelierPage() {
   const [trying, setTrying] = useState<string | null>(null) // 입어보는 중(미저장) projectUrl
   const [seen, setSeen] = useState<string[]>(readSeen)
   const [wizardOpen, setWizardOpen] = useState(false) // 커미션 위저드 — 패널·옷장 버튼 공유
+  const [feedbackOpen, setFeedbackOpen] = useState(false) // 문제 알리기(ISS-04 창구)
 
   useEffect(() => {
     let cancelled = false
@@ -291,9 +293,17 @@ export default function AtelierPage() {
         <section className="md:col-start-3 md:row-start-1 md:min-h-0">
           <div className="interior-panel md:h-full md:overflow-y-auto">
             <CommissionCorner jobs={jobs} onSubmit={submit} wizardOpen={wizardOpen} onWizardToggle={setWizardOpen} />
+            <button
+              type="button"
+              onClick={() => setFeedbackOpen(true)}
+              className="mt-3 w-full rounded-lg border border-stage-border py-1.5 text-[11px] text-stage-text-muted transition hover:text-stage-text"
+            >
+              {t('feedback.button')}
+            </button>
           </div>
         </section>
       </div>
+      {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} avatarJobId={myAvatars[0]?.jobId} />}
     </InteriorShell>
   )
 }

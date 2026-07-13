@@ -4,7 +4,7 @@ state: ACTIVE
 last_daily: null
 last_weekly_security: null
 last_cs_sweep: null
-open_issues: 1
+open_issues: 2
 ---
 
 # AGENT-OPS — ChatterBox 자율 에이전트 운영 진입문서
@@ -225,6 +225,7 @@ SecurityPolicies.md의 구현 체크리스트 `[ ]` 항목을 스캔:
 
 | ID | 분류 | 내용 | 발견일 | 상태 |
 |---|---|---|---|---|
+| ISS-04 | CS·버그_일반 | poon995(잡 `5529ea2c`) 아바타 입술 소실 — **근본원인 확정**: AUTORIG 생성 `mouth_state_small/mid` 립 안료 누락 → MouthOpenY 0.245~0.47 밴드(발화 중)에서 입술 소실 발현(상태×각도 매트릭스 실렌더 재현). **P1 완료(2026-07-13)**: closed_master 크로스페이드(0.30→0.60) 프로드 반영+백업(`project.pre-lipfix.json`)·실렌더 검증. **P2 완료**: `scripts/qa-mouth-lips.mjs` 립 안료 연속성 게이트(deploy·publish 배선, poon995 표본 FAIL 실측)+`scripts/render-mouth-matrix.mjs` 승격. **P3+bepo 완료(2026-07-13)**: `create-feedback` 창구 프로드 개통(의상실 [문제 알리기]·진단번들 opt-in·90일 purge — 실증 16/16, 스펙 §16.6·GAP 로그 참조). 잔여: 입 상태 자산 재생성(정공, Vtube 몫) 후 poon995 회신. 메모리 `mouth-state-lip-qa-gap` | 2026-07-13 | OPEN |
 | ISS-01 | 스킬 정리 | `doc-health-audit`(ChatterBox 정본)과 `doc-health-check`(Vtube 이식본)가 3기준 진단 목적 중복. 코딩 착수 후 어느 쪽이 더 잘 맞는지 드러나면 나머지를 `docs/archive/`로 이동 | 2026-07-01 | OPEN |
 | ISS-03 | 골 사다리 인계 | **8골 사다리(`docs/goals/GOAL-LADDER.md` = 상태 SSOT) — G1~G5 DONE(G5=관객 투표: 프로드 통합 26/26·배포판 클릭스루 11/11 — 배포 완료).** 다음: G6 U-무대몰입 — entrypoint=GOAL-LADDER G6 행 근거 매트릭스(`contracts/AudioMixer.md` BGM=HTMLAudioElement MUST·파티클=GlowMotes 확장·SFX=EmoteGlyph 재생 훅·reduced-motion 관례 8곳·autoplay 첫 제스처 게이트 필수). read first: ①GOAL-LADDER ②GAP-MATRIX 진행 로그 2026-07-12 최상단. blocker: none. 유의: 룸 360px 가로 오버플로는 선재 이슈(트랙 B) · 재입장 직후 relay 유실 창은 warm-up/재fetch 수렴. first verify: `npm run check:all` | 2026-07-12 | HANDOFF |
 | ISS-02 | 이모트 기능화·인계 | Phase 1–6 완료·push(하단바 배선·모닥불 기본배경·로드아웃 피커·우도크 이모트 콘솔·**옐로 Lottie 8종+EmoteGlyph** `83c965a`, 게이트 130/130·인룸 E2E 7/7). "`npx skills` 블로커"는 **rtk npx 재작성 오판** — 절대경로 `/opt/homebrew/bin/npx` 로 우회(text-to-lottie 스킬 설치 `f7014a1`, 파이프라인은 `emote-lottie` 스킬로 고정). **배포 완료(2026-07-12)**: 프론트 CF=G3-E bepo 동편 라이브, create-room Edge=V-7a 전 함수 재배포로 커버 — Phase 7 소진. 남음: SSOT 백로그 기록 여부만. 인계=[HANDOFF-EMOTE-LOTTIE-2026-07.md](./HANDOFF-EMOTE-LOTTIE-2026-07.md) | 2026-07-10 | HANDOFF |

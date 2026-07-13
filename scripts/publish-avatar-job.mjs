@@ -43,6 +43,15 @@ const badPart = (project.parts ?? []).find((p) => !String(p.source_path).startsW
 if (badPart) throw new Error(`source_path 규약 위반: ${badPart.source_path}`)
 console.log(`검증 OK — parts ${project.parts.length}`)
 
+// 입 상태 QA 게이트(ISS-04 클래스) — 발화 중 입술 소실 자산을 발행 전 차단. 비상 우회: QA_MOUTH_SKIP=1
+try {
+  const { execFileSync } = await import('node:child_process')
+  execFileSync('node', [join(root, 'scripts/qa-mouth-lips.mjs'), PUB], { stdio: 'inherit' })
+} catch {
+  if (process.env.QA_MOUTH_SKIP === '1') console.warn('⚠️ QA_MOUTH_SKIP=1 — 입 상태 QA 실패 무시하고 발행 계속')
+  else throw new Error('입 상태 QA 게이트 실패 — 자산 재생성 또는 QA_MOUTH_SKIP=1(비상)')
+}
+
 const up = async (local, path, contentType) => {
   const { error } = await admin.storage.from('avatars').upload(path, readFileSync(local), { contentType, upsert: true })
   if (error) throw new Error(`${path}: ${error.message}`)

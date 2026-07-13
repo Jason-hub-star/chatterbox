@@ -15,7 +15,8 @@
 // 키: 환경변수 SUPABASE_URL·SERVICE_ROLE_KEY, 없으면 프로젝트 .env(VITE_SUPABASE_URL·SUPABASE_SERVICE_ROLE_KEY) 자동 로드.
 // ⚠️ 프로덕션 Storage 에 씀. service_role 키 필요.
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -58,6 +59,17 @@ const paths = [...new Set(project.parts.map((p) => p.source_path))]
 const missing = paths.filter((rel) => !existsSync(join(rigDir, rel)))
 if (missing.length) { console.error(`❌ 누락 parts: ${missing.slice(0, 8).join(', ')}`); process.exit(1) }
 console.log(`parts 검증: ${paths.length}개 존재 ✓`)
+
+// 입 상태 QA 게이트(ISS-04 클래스) — 발화 중 입술 소실 자산을 배포 전 차단(병합본 기준 판정).
+// 게이트 내부가 states 모드 아님/무안료 화풍은 스스로 보류한다. 비상 우회: QA_MOUTH_SKIP=1
+const qaTmp = join(rigDir, '.qa-project.json')
+writeFileSync(qaTmp, JSON.stringify(project))
+try {
+  execFileSync('node', [join(dirname(fileURLToPath(import.meta.url)), 'qa-mouth-lips.mjs'), rigDir, '--project', qaTmp], { stdio: 'inherit' })
+} catch {
+  if (process.env.QA_MOUTH_SKIP !== '1') { console.error('❌ 입 상태 QA 게이트 실패 — 자산 재생성 또는 QA_MOUTH_SKIP=1(비상)'); process.exit(1) }
+  console.warn('⚠️ QA_MOUTH_SKIP=1 — 입 상태 QA 실패 무시하고 배포 계속')
+} finally { rmSync(qaTmp, { force: true }) }
 
 // 3) 업로드
 const up = async (key, body, ct) => {
