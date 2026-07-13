@@ -45,7 +45,8 @@
 - 2026-07-13 Claude Code(Fable) — **패스 1 완주**: A 네온(NeonOnAir+entering 경유+i18n 3언어, campfire 삭제) → B rate(vodSync ×rate·MainView 3칩/ratechange 단일 발행/applier·relay 하위호환 검증·단위테스트) → C 후보(주인님 콜 2회: 과녁=무대 전용 대극장 확정+프롬프트 승인 — gpt-image-2 세이프티 오탐 400→gpt-image-1 66s, 계보 `~/Documents/채터박스/v2/theater_stage_v1.png`) → D 검증: `check:all` exit 0(테스트 138/138) · E2E **15/15 ×2연속**(방 2개 실측 — 네온 red 지지직/green 경유/reduce 정지·2탭 rate 2x→1x 왕복·드리프트 수렴 6/5ms·후보 배경 실렌더·360px 오버플로 0) · 번들 시크릿 감사 0·DEV 훅 프로드 부재 실측.
 - 하네스 함정(신규 4): ①테스트 영상 5s 는 onEnded 자동 clear 로 대기 중 소멸 → 10분 저부하 H.264 ②헤드리스 SwiftShader 의 2x 소프트디코드 스톨이 외삽 드리프트를 오염 → 드리프트는 1x 수렴치로 측정 ③재연결 stale 메시지 과속 외삽 → **제품 가드 추가**(끝 강제시크 스킵 — MainView) ④room 진입 후 waitForFunction 불안정 → evaluate 폴링.
 - 4분류: **재현됨** = §2 전 어서션. **근사됨** = "2x 유지 중 절대 드리프트 ≤200ms"는 헤드리스 디코드 한계로 rate 왕복 후 수렴 드리프트(6/5ms)+단위식(×rate)으로 대체 실증. **막힘** = 없음. **불확실** = 실기기 2x 장시간 드리프트(bepo 프로드 판정 때 확인 권장).
-- 골 밖 잔여: F-8 후보 채택 취향 판정(채택 시 stageBackgrounds theater 항목 교체+webp 커밋) · bepo.
+- 골 밖 잔여: F-8 후보 채택 취향 판정(채택 시 stageBackgrounds theater 항목 교체+webp 커밋) · ~~bepo~~.
+- 2026-07-13 bepo 완료: CF Pages `index-BCXYszum.js`(별칭 전파 실측·curl 3종 200·시크릿 감사 0·미채택 후보 dist 제외) + **배포판 E2E 13/13**(번들 마커 5 + 네온 red→green→방·reduce·2탭·360px 0). rate 상호작용은 로컬 15/15 ×2 실증분 유지(DEV 훅 프로드 부재 관례). 부수: `~/Documents/채터박스/v2` 계보 폴더 재편(README 인덱스·참조 3곳 갱신 — 주인님 지시).
 
 ## 참조 문서
 - `docs/goals/GOAL-LADDER.md` G7 행 · `docs/design/DESIGN-TOKENS.md`(fire-hot #ff4500·spring-green #56f09f) · `src/features/stage/vodSync.ts` 헤더 주석(±200ms AC) · 시안: scratchpad `u6-mockups.html`(판정 B)

@@ -50,7 +50,7 @@ deep contrast between warm gold and deep blue, inspired by Makoto Shinkai films
 | `lobby-street-day` | 로비 — 입장 영상이 도착하는 **서양 판타지** 상점가(아이레벨·무인물·문양 간판·고래/어군) | morning | **v2 생성·적용 완료(2026-07-08)** — edits+splash 레퍼런스(화풍 고정)·WebP 555KB `public/scenes/lobby-street/day.webp`·실렌더 확인. v1(한자 간판)은 폐기 |
 | `lobby-street-night` | 〃 같은 거리의 밤(랜턴·야광 고래/물고기) | night | 초안 등재·생성 대기(콜 게이트) |
 | `theater-stage` | 방 무대 배경 — **무대 전용 대극장**(객석 최전열 시점 빈 무대·풋라이트·성좌 배경막). stageBackgrounds 'theater' 가 로비 매표소 원화를 재사용하던 "무대 전용 아트는 후속" 부채(F-8) 해소용 | western | **후보 생성(2026-07-13)** — 화풍고정 edits, gpt-image-2 세이프티 오탐 400→gpt-image-1 폴백 66s. 계보 `~/Documents/채터박스/v2/theater_stage_v1.png` + webp 후보 `public/scenes/room-stage/theater-stage.webp`(미커밋) — **채택 취향 판정 대기**(채택 시 stageBackgrounds 항목 교체) |
-| `world-panorama` | ~~인앱 랜딩~~ → **인앱 랜딩 폐지**(마케팅은 외부 snack-web 담당). 생성본은 snack-web 랜딩 히어로 이관 후보(`~/Documents/채터박스/v2/world_panorama.png`) | — | 생성 완료·미사용 |
+| `world-panorama` | ~~인앱 랜딩~~ → **인앱 랜딩 폐지**(마케팅은 외부 snack-web 담당). 생성본은 snack-web 랜딩 히어로 이관 후보(`~/Documents/채터박스/v2/unused/world_panorama.png`) | — | 생성 완료·미사용 |
 | ~~`lobby-lantern-night`~~ | → `lobby-street-*` 로 대체(입장 영상 도착 지점과 서사 연속) | — | 폐기 |
 
 > 앱 진입 = 게임 런처식: `/` 는 세션 기반 리다이렉트(로그인↔로비), 첫 화면은 LoL식 로그인.
