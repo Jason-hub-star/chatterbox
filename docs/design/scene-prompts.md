@@ -49,6 +49,7 @@ deep contrast between warm gold and deep blue, inspired by Makoto Shinkai films
 | `login-splash` (eastern) | **동양(eastern) 월드 로그인** — 묶은머리 여인 뒷모습, **한복(韓服) 차림**(중국 한푸 아님·주인님 정정), 빨간 유지우산(비단·분홍 꽃·새 문양), 특정 국가 무표기 범동양 야경(처마·기와·홍등, 한·일·중 블렌드), 밤하늘 발광 동양 용, 하늘바다 물고기·보름달. 청보라+금 랜턴. | eastern | **생성·적용 완료(2026-07-09)** — gpt-image-2 → fal ESRGAN 2x → `login-splash/eastern.webp`(3072×2048·757KB). 시간축 아님, **월드축**([[WORLD-SYSTEM.md]]). 구 "중국풍" 초안은 한복·범동양으로 대체 |
 | `lobby-street-day` | 로비 — 입장 영상이 도착하는 **서양 판타지** 상점가(아이레벨·무인물·문양 간판·고래/어군) | morning | **v2 생성·적용 완료(2026-07-08)** — edits+splash 레퍼런스(화풍 고정)·WebP 555KB `public/scenes/lobby-street/day.webp`·실렌더 확인. v1(한자 간판)은 폐기 |
 | `lobby-street-night` | 〃 같은 거리의 밤(랜턴·야광 고래/물고기) | night | 초안 등재·생성 대기(콜 게이트) |
+| `theater-stage` | 방 무대 배경 — **무대 전용 대극장**(객석 최전열 시점 빈 무대·풋라이트·성좌 배경막). stageBackgrounds 'theater' 가 로비 매표소 원화를 재사용하던 "무대 전용 아트는 후속" 부채(F-8) 해소용 | western | **후보 생성(2026-07-13)** — 화풍고정 edits, gpt-image-2 세이프티 오탐 400→gpt-image-1 폴백 66s. 계보 `~/Documents/채터박스/v2/theater_stage_v1.png` + webp 후보 `public/scenes/room-stage/theater-stage.webp`(미커밋) — **채택 취향 판정 대기**(채택 시 stageBackgrounds 항목 교체) |
 | `world-panorama` | ~~인앱 랜딩~~ → **인앱 랜딩 폐지**(마케팅은 외부 snack-web 담당). 생성본은 snack-web 랜딩 히어로 이관 후보(`~/Documents/채터박스/v2/world_panorama.png`) | — | 생성 완료·미사용 |
 | ~~`lobby-lantern-night`~~ | → `lobby-street-*` 로 대체(입장 영상 도착 지점과 서사 연속) | — | 폐기 |
 

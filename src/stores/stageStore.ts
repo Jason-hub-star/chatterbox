@@ -40,3 +40,9 @@ export const useStageStore = create<StageStore>((set) => ({
     bannerTimer = setTimeout(() => set({ bannerMode: null }), 2400)
   },
 }))
+
+// E2E 전용 DEV 훅(프로드 번들 제외 — __streamAvatar 관례): 2탭 rate 동기 하네스가 공유영상을 직접 주입.
+if (import.meta.env.DEV) {
+  ;(window as unknown as Record<string, unknown>).__setMainVideo = (url: string) =>
+    useStageStore.getState().setMainVideo(url, 'e2e')
+}

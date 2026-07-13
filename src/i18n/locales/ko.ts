@@ -117,7 +117,8 @@ export const ko: Record<string, string> = {
   "reset.failed": "비밀번호 변경에 실패했어요. 재설정 링크가 만료됐을 수 있어요.",
 
   // --- room/lobby/settings(방·로비·설정) ---
-  "room.joining": "모닥불에 다가가는 중…", // 마비노기 모닥불 컨셉(방=모닥불) — 주인님 목업 검수 채택
+  "room.joining": "온에어 준비 중…", // 네온 On Air 컨셉(빨강 지지직→입장 초록) — 주인님 시안 판정 채택
+  "room.entering": "온에어! 입장합니다",
   "room.joinCancel": "입장 취소",
   "room.joinError": "방 입장에 실패했어요.",
   "room.backToLobby": "로비로 돌아가기",
@@ -484,6 +485,7 @@ export const ko: Record<string, string> = {
   "stage.mainView": "메인 뷰",
   "stage.sharedVideo": "공유 영상",
   "stage.stopShare": "공유 중지",
+  "stage.rate": "재생 배속 {{rate}}배",
   "stage.emptySlot": "빈 자리",
   "stage.webcamAriaLabel": "웹캠 (내 얼굴)",
   "stage.selfLabel": "나",

@@ -7,13 +7,15 @@ export interface VodSyncState {
   positionMs: number
   playing: boolean
   atMs: number // 발신 시각(발신자 시계)
+  rate: number // 재생 배속(U-3, 호스트 진실 1/1.5/2) — 경과 보정·비호스트 playbackRate 동기
 }
 
 export const VOD_DRIFT_TOLERANCE_MS = 200
+export const VOD_RATES = [1, 1.5, 2] as const // 호스트 배속 3단(주인님 판정 2026-07-13)
 
-// 수신 시점의 목표 위치: 재생 중이면 발신 후 경과분을 더한다(일시정지면 그대로).
+// 수신 시점의 목표 위치: 재생 중이면 발신 후 경과분 × 배속을 더한다(일시정지면 그대로).
 export const vodTargetMs = (s: VodSyncState, nowMs: number): number =>
-  s.positionMs + (s.playing ? Math.max(0, nowMs - s.atMs) : 0)
+  s.positionMs + (s.playing ? Math.max(0, nowMs - s.atMs) * s.rate : 0)
 
 export const vodNeedsSeek = (currentMs: number, targetMs: number): boolean =>
   Math.abs(currentMs - targetMs) > VOD_DRIFT_TOLERANCE_MS

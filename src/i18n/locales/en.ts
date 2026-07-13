@@ -117,7 +117,8 @@ export const en: Record<string, string> = {
   'reset.failed': 'Password change failed. The reset link may have expired.',
 
   // --- room/lobby/settings ---
-  'room.joining': 'Approaching the campfire…',
+  'room.joining': 'Warming up to go on air…',
+  'room.entering': 'On air! Entering the stage',
   'room.joinCancel': 'Cancel joining',
   'room.joinError': 'Failed to join the room.',
   'room.backToLobby': 'Back to lobby',
@@ -484,6 +485,7 @@ export const en: Record<string, string> = {
   'stage.mainView': 'Main view',
   'stage.sharedVideo': 'Shared video',
   'stage.stopShare': 'Stop sharing',
+  'stage.rate': 'Playback speed {{rate}}x',
   'stage.emptySlot': 'Empty seat',
   'stage.webcamAriaLabel': 'Webcam (my face)',
   'stage.selfLabel': 'Me',

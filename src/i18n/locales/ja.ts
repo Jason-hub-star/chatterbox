@@ -117,7 +117,8 @@ export const ja: Record<string, string> = {
   'reset.failed': 'パスワードの変更に失敗しました。再設定リンクの有効期限が切れている可能性があります。',
 
   // --- room/lobby/settings ---
-  'room.joining': '焚き火に近づいています…',
+  'room.joining': 'オンエア準備中…',
+  'room.entering': 'オンエア！入場します',
   'room.joinCancel': '入室をキャンセル',
   'room.joinError': '入室に失敗しました。',
   'room.backToLobby': 'ロビーに戻る',
@@ -484,6 +485,7 @@ export const ja: Record<string, string> = {
   'stage.mainView': 'メインビュー',
   'stage.sharedVideo': '共有動画',
   'stage.stopShare': '共有を停止',
+  'stage.rate': '再生速度 {{rate}}倍',
   'stage.emptySlot': '空席',
   'stage.webcamAriaLabel': 'ウェブカメラ（自分の顔）',
   'stage.selfLabel': '自分',

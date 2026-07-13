@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CampfireGlyph from '@/components/shared/CampfireGlyph'
+import NeonOnAir from '@/components/shared/NeonOnAir'
 
-// 입장 게이트 4화면(R-커밋: RoomPage 에서 순수 이동) — joining 로딩 / error / password 입력 / kicked.
+// 입장 게이트(R-커밋: RoomPage 에서 순수 이동) — joining/entering 로딩·입장 / error / password 입력 / kicked.
 // 비밀번호 입력의 로컬 상태(입력·busy·오류)는 이 컴포넌트 소유, 서버 검증은 onSubmitPassword(실패 시 throw).
 interface Props {
-  phase: 'joining' | 'error' | 'password' | 'kicked'
+  phase: 'joining' | 'entering' | 'error' | 'password' | 'kicked'
   backdrop?: string // 조인 대기 백드롭(분장실과 같은 대극장 원화 — 시각 연속)
   joinError: string | null
   kickReason: string | null
@@ -19,26 +19,27 @@ export default function RoomJoinGate({ phase, backdrop, joinError, kickReason, o
   const [pwBusy, setPwBusy] = useState(false)
   const [pwErr, setPwErr] = useState<string | null>(null)
 
-  if (phase === 'joining') {
+  if (phase === 'joining' || phase === 'entering') {
+    const entering = phase === 'entering'
     return (
       <main className="relative grid min-h-screen place-items-center overflow-hidden bg-stage-base text-stage-text-muted">
         {backdrop && (
           <img src={backdrop} alt="" aria-hidden="true" draggable={false} className="scene-veil select-none" />
         )}
         <div className="scene-veil-in relative flex flex-col items-center gap-4">
-          {/* 모닥불 글리프 — scale 은 레이아웃 박스를 안 키우므로 래퍼(h-28)로 겹침 방지 */}
-          <div className="grid h-28 w-28 place-items-center">
-            <div className="scale-[1.8]">
-              <CampfireGlyph />
-            </div>
-          </div>
-          <p role="status" aria-live="polite" className="text-base drop-shadow md:text-lg">{t('room.joining')}</p>
-          <button
-            onClick={onCancel}
-            className="rounded-lg border border-stage-border bg-stage-base/60 px-4 py-2 text-sm text-stage-text-muted backdrop-blur hover:text-stage-text"
-          >
-            {t('room.joinCancel')}
-          </button>
+          <NeonOnAir entering={entering} />
+          <p role="status" aria-live="polite" className="text-base drop-shadow md:text-lg">
+            {t(entering ? 'room.entering' : 'room.joining')}
+          </p>
+          {/* 입장 확정 뒤(entering) 취소는 무의미 — 죽은 클릭 방지로 숨김 */}
+          {!entering && (
+            <button
+              onClick={onCancel}
+              className="rounded-lg border border-stage-border bg-stage-base/60 px-4 py-2 text-sm text-stage-text-muted backdrop-blur hover:text-stage-text"
+            >
+              {t('room.joinCancel')}
+            </button>
+          )}
         </div>
       </main>
     )

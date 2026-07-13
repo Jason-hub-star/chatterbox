@@ -61,7 +61,7 @@ export default function RoomPage() {
 
   // 입장 단계: LiveKit 연결 전에 반드시 room_participants 행을 만든다(멱등).
   // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 성공 후에만 연결(enabled).
-  const [joinPhase, setJoinPhase] = useState<'joining' | 'ready' | 'error' | 'password'>('joining')
+  const [joinPhase, setJoinPhase] = useState<'joining' | 'entering' | 'ready' | 'error' | 'password'>('joining')
   const [joinError, setJoinError] = useState<string | null>(null)
   const [kicked, setKicked] = useState(false)
   const [kickReason, setKickReason] = useState<string | null>(null) // 서버발 강퇴 사유(room-authority 'kicked') — 표시는 kicked 게이트
@@ -71,6 +71,18 @@ export default function RoomPage() {
 
   // 취소 버튼(트랙 B)이 진행 중 join fetch 를 끊을 수 있게 컨트롤러를 ref 로 노출.
   const joinAbortRef = useRef<AbortController | null>(null)
+
+  // 입장 연출(U-6): join 성공 → 네온 green 'entering' 을 잠깐 경유 후 ready. reduced-motion=즉시.
+  const enterWithGreen = useCallback((isStale?: () => boolean) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setJoinPhase('ready')
+      return
+    }
+    setJoinPhase('entering')
+    window.setTimeout(() => {
+      if (!isStale?.()) setJoinPhase('ready')
+    }, 650)
+  }, [])
   useEffect(() => {
     if (!session || !roomId) return
     let cancelled = false
@@ -92,7 +104,7 @@ export default function RoomPage() {
           mySlotIndex: r.slot_index,
           myRole: r.role === 'viewer' ? 'viewer' : 'actor',
         })
-        setJoinPhase('ready')
+        enterWithGreen(() => cancelled)
       } catch (e) {
         if (cancelled) return
         if (e instanceof DOMException && e.name === 'AbortError') return // 사용자 취소 — 내비게이션이 처리(에러 화면 금지)
@@ -244,7 +256,7 @@ export default function RoomPage() {
   // V-3 녹화: useRoomRecording 은 isHost(아래 파생) 뒤에 호출되므로 ref 브리지로 수신을 위임(TDZ 회피).
   const recAuthorityRef = useRef<((msg: { type: string; recording_id?: string; all_consented?: boolean }) => void) | null>(null)
   const recAudioRef = useRef<((track: MediaStreamTrack) => void) | null>(null)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; recording_id?: string; all_consented?: boolean }) => {
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; rate?: number; recording_id?: string; all_consented?: boolean }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
@@ -259,7 +271,9 @@ export default function RoomPage() {
         typeof msg.position_ms === 'number' && Number.isFinite(msg.position_ms) && msg.position_ms >= 0 &&
         typeof msg.at_ms === 'number' && Number.isFinite(msg.at_ms)
       ) {
-        applyVodSync({ positionMs: msg.position_ms, playing: msg.playing === true, atMs: msg.at_ms })
+        // rate 는 후행 추가(U-3) — 구 페이로드 하위호환 1 폴백 + 형태검증(0<r≤4)
+        const rate = typeof msg.rate === 'number' && Number.isFinite(msg.rate) && msg.rate > 0 && msg.rate <= 4 ? msg.rate : 1
+        applyVodSync({ positionMs: msg.position_ms, playing: msg.playing === true, atMs: msg.at_ms, rate })
       }
     }
     else if (msg.type === 'mode_change') {
@@ -447,11 +461,11 @@ export default function RoomPage() {
   useEffect(() => {
     if (!isHost) return
     setVodSyncPublisher((s) => {
-      void sendRoomAuthority({ type: 'vod_sync', position_ms: s.positionMs, playing: s.playing, at_ms: s.atMs })
+      void sendRoomAuthority({ type: 'vod_sync', position_ms: s.positionMs, playing: s.playing, at_ms: s.atMs, rate: s.rate })
     })
     const id = setInterval(() => {
       const s = readVodSyncState()
-      if (s) void sendRoomAuthority({ type: 'vod_sync', position_ms: s.positionMs, playing: s.playing, at_ms: s.atMs })
+      if (s) void sendRoomAuthority({ type: 'vod_sync', position_ms: s.positionMs, playing: s.playing, at_ms: s.atMs, rate: s.rate })
     }, 5000)
     return () => {
       setVodSyncPublisher(null)
@@ -664,8 +678,8 @@ export default function RoomPage() {
       myRole: r.role === 'viewer' ? 'viewer' : 'actor',
     })
     setRoomLocked(true)
-    setJoinPhase('ready')
-  }, [session, roomId])
+    enterWithGreen()
+  }, [session, roomId, enterWithGreen])
 
   async function onLeave() {
     if (session) {
@@ -702,7 +716,7 @@ export default function RoomPage() {
     }
   }, [roomId, isViewer, isHost, createInvite, t])
 
-  // 입장 게이트 4화면(joining/error/password/kicked) — RoomJoinGate 로 분리(R-커밋).
+  // 입장 게이트(joining/entering/error/password/kicked) — RoomJoinGate 로 분리(R-커밋).
   const gatePhase = kicked ? ('kicked' as const) : joinPhase !== 'ready' ? joinPhase : null
   if (gatePhase) {
     return (
