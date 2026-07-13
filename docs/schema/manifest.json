@@ -1,0 +1,13 @@
+{
+  "legacySnapshot": "docs/archive/DATA-SCHEMA-legacy-2026-07-12.md",
+  "sourceSha256": "c5c4515eebe3eff6ef13dccbb4964b8c67af7f893ef45516c519a085e989ec50",
+  "modules": [
+    "00-introduction.md",
+    "01-core-tables.md",
+    "02-content-and-economy.md",
+    "03-safety-social-engagement.md",
+    "04-livekit-protocol.md",
+    "05-storage-access-indexes.md",
+    "06-types-migration-pending.md"
+  ]
+}

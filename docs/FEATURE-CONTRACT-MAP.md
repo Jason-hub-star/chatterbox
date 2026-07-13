@@ -24,7 +24,7 @@ tags: [hub]
 |---|---|---|---|
 | `AUTH-01`, `AUTH-02`, `AUTH-03`, `AUTH-02b`, `AUTH-02c` | `contracts/AuthPage.md`, `contracts/AgeGate.md`, `contracts/LobbyPage.md`, `contracts/GreenRoom.md` | `state-machines/Auth.md`, `state-machines/Onboarding.md`, `specs/supabase-auth.md`, `DATA-SCHEMA.md` | 계약 있음. Discord/X OAuth는 Supabase provider 확장 |
 | `AUTH-04`, `AUTH-05`, `AUTH-06` | `contracts/SettingsPage.md` | `state-machines/Auth.md`, `DATA-SCHEMA.md §users.deleted_at`, `docs/legal/DATA-EXPORT.md` | 계약 있음. 로그인 후 보안/계정 탭에서 처리 |
-| `AUTH-07` | candidate: `contracts/TwoFactorAuth.md` | `DATA-SCHEMA.md §mfa_secrets`, `Supabase MFA API` | P1 DRAFT. TOTP 기반 2FA, 크리에이터/호스트 대상 우선 |
+| `AUTH-07` | candidate: `contracts/TwoFactorAuth.md` | candidate: `mfa_secrets` schema, `Supabase MFA API` | P1 DRAFT. TOTP 기반 2FA, 크리에이터/호스트 대상 우선 |
 | `ONBOARDING-01`, `ONBOARDING-02`, `ONBOARDING-03` | `contracts/AuthPage.md` | `ONBOARDING-FLOW.md`, `state-machines/Onboarding.md`, `DATA-SCHEMA.md §users.onboarding_step/preferred_genres` | 계약 있음. ONBOARDING-01은 CinematicIntro, ONBOARDING-02는 GenreSelector, ONBOARDING-03은 dev skip flag |
 | `PROFILE-01`, `PROFILE-02`, `PROFILE-03` | `contracts/ProfilePage.md`, `contracts/SettingsPage.md` | `DATA-SCHEMA.md §users.bio/profile_visibility/notification_prefs` | 계약 있음. 알림 설정은 PROFILE-03과 SET-14 공유 |
 | `PROFILE-04`, `PROFILE-05` | `contracts/FriendSystem.md` | `DATA-SCHEMA.md §friendships`, `Supabase Realtime presence` | **코어 구현(2026-07-10)** — 친구/팔로우/공연시작 알림 + 로비 LoL식 패널·presence(FriendSystem as-built). 잔여: 차단 UI·프로필 페이지(defer) |
@@ -40,9 +40,9 @@ tags: [hub]
 | `ROOM-05`, `ROOM-06`, `ROOM-07`, `ROOM-08`, `ROOM-09` | `contracts/HostConsole.md`, `contracts/ScriptPanel.md`, `contracts/AudioMixer.md`, `contracts/TimedTurnsProgressBar.md` | `state-machines/HostAuthority.md`, `state-machines/Script.md`, `DATA-SCHEMA.md §scripts` | 계약 있음. ROOM-08 은 AudioMixer as-built(마스터+참가자, BGM defer) |
 | `ROOM-11`, `ROOM-12`, `ROOM-13`, `ROOM-23` | `contracts/ParticipantSlot.md`, `contracts/AudioMixer.md`, `contracts/SettingsPage.md`, `contracts/DubRecorder.md` | `state-machines/Participant.md`, `state-machines/WebRTC.md`, `DATA-SCHEMA.md §recordings/dub_tracks`, `API-SURFACE.md` | 계약 있음. ROOM-23은 로컬 chunk 백업 후 R2 업로드 |
 | `ROOM-14`, `ROOM-15` | `contracts/ScriptPanel.md`, `contracts/HostConsole.md` | `state-machines/Script.md`, `DATA-SCHEMA.md §scripts` | 계약 있음 |
-| `ROOM-16` | `contracts/SceneBackground.md`, `contracts/MainViewComponent.md`, `contracts/HostConsole.md` | `DESIGN-DIRECTION.md`, `DATA-SCHEMA.md §scene_assets` | 계약 있음 |
+| `ROOM-16` | `contracts/SceneBackground.md`, `contracts/MainViewComponent.md`, `contracts/HostConsole.md` | `DESIGN-DIRECTION.md`, `DATA-SCHEMA.md §1.7 scenes` | 계약 있음 |
 | `ROOM-17` | `contracts/RightPanel.md`, `contracts/ChatPanel.md` | `DATA-SCHEMA.md §messages`, `contracts/_INDEX.md DataChannel 타입 레지스트리` | 계약 있음 |
-| `ROOM-18`, `RT-05` | `contracts/MainViewComponent.md`, `contracts/VgenExport.md`, `contracts/SceneBackground.md` | `DATA-SCHEMA.md §media_assets`, `state-machines/WebRTC.md` | 계약 있음 |
+| `ROOM-18`, `RT-05` | `contracts/MainViewComponent.md`, `contracts/VgenExport.md`, `contracts/SceneBackground.md` | `DATA-SCHEMA.md §1.8 vgen_jobs · §1.22 room_artifacts`, `state-machines/WebRTC.md` | 계약 있음 |
 | `ROOM-25` | `contracts/NetworkStatusIndicator.md` | `specs/NetworkAdaptiveQuality.md`, `LiveKit ConnectionQuality` | P1 DRAFT. 우상단 고정 인디케이터, 3단계 품질 표시 |
 | `ROOM-26`, `ROOM-27` | `contracts/SceneBackground.md`, `contracts/HostConsole.md`, `contracts/AudioMixer.md` | `DATA-SCHEMA.md §scenes.layers_json/ambient_sound_id`, `PLATFORM-REFERENCE-GAP-MAP.md §1 씬 이벤트` | 계약 있음. ROOM-26은 PNG 레이어 클릭/호버+파티클·사운드 트리거, ROOM-27은 앰비언트 사운드 ON/OFF |
 | `ROOM-19` | `contracts/ChatPanel.md`, `contracts/ChatOverlay.md`, `contracts/ReactionWheel.md` | `DATA-SCHEMA.md §messages`, `contracts/_INDEX.md DataChannel 타입 레지스트리`, `RUNTIME-HARDENING-REVIEW.md H13` | 계약 있음. 채팅 반응은 `chat` 채널 `message_type='reaction'`. **액터 라이브 리액션(우클릭 휠)은 별도 구현** `contracts/ReactionWheel.md` — 전용 `reaction` 토픽(chat 아님)·비영속 부동·reliable+rid dedupe(구현됨) |
