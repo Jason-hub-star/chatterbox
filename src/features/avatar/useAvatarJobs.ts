@@ -7,6 +7,7 @@ import {
   createAvatarJob,
   fetchMyAvatarJobs,
   subscribeToAvatarJob,
+  sha256Hex,
 } from '@/lib/avatarJobs'
 import type { AvatarJob } from '@/types/avatarJob'
 
@@ -19,8 +20,10 @@ export function useAvatarJobs() {
   const pushToast = useToastStore((s) => s.push)
   const [jobs, setJobs] = useState<AvatarJob[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [reused, setReused] = useState(false) // 디덥 캐시 히트 인지 배너(§6). 새 제출/닫기로 해제.
   const unsubRef = useRef<(() => void) | null>(null)
   const statusRef = useRef(new Map<string, string>())
+  const dismissReused = useCallback(() => setReused(false), [])
 
   const upsert = useCallback(
     (job: AvatarJob) => {
@@ -63,25 +66,36 @@ export function useAvatarJobs() {
     }
   }, [watch])
 
-  // PNG 제출 → 업로드 → 잡 생성 → 구독. fire-and-forget: 접수 즉시 낙관적 카드 표시.
+  // PNG 제출 → 해시 → 업로드 → 잡 생성 → 구독. fire-and-forget: 접수 즉시 낙관적 카드 표시.
+  // 디덥 히트면 서버가 status='done' 을 즉시 반환 → 구독 없이 완료 처리 + 재사용 배너(§6).
   const submit = useCallback(
     async (file: File) => {
       if (!session) throw new Error(t('atelier.orderFailedToast'))
+      setReused(false)
+      const hash = await sha256Hex(file)
       const key = await uploadAvatarPng(file)
-      const { job_id, status } = await createAvatarJob(session.access_token, key)
+      const { job_id, status, result_project_url } = await createAvatarJob(session.access_token, key, hash)
+      const isCache = status === 'done'
       upsert({
         id: job_id,
         userId: '',
         status,
-        phase: null,
-        resultProjectUrl: null,
+        phase: isCache ? 'finishing' : null,
+        resultProjectUrl: result_project_url ?? null,
         error: null,
         createdAt: new Date().toISOString(),
+        cached: isCache,
       })
-      watch(job_id)
+      if (isCache) {
+        // 이미-done row 는 Realtime 이 안 오므로 반환값으로 완결. 재사용 인지 신호(배너+캐시 토스트).
+        setReused(true)
+        pushToast('success', t('atelier.commissionReused'))
+      } else {
+        watch(job_id)
+      }
     },
-    [session, t, upsert, watch],
+    [session, t, upsert, watch, pushToast],
   )
 
-  return { jobs, loaded, submit }
+  return { jobs, loaded, submit, reused, dismissReused }
 }

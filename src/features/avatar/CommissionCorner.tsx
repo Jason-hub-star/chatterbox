@@ -19,6 +19,12 @@ const PHASE_KEY: Record<(typeof PHASES)[number], string> = {
 const MAX_BYTES = 10 * 1024 * 1024 // 버킷 file_size_limit(마이그)과 미러
 const MIN_PX = 512
 
+// 경과 분(대기 UX): 스테퍼가 phase PATCH(6~10분 간격) 사이 멈춰 보이는 걸 보완 — 살아있는 카운터.
+const elapsedMinutesSince = (iso: string): number => {
+  const ms = Date.now() - new Date(iso).getTime()
+  return ms > 0 ? Math.floor(ms / 60000) : 0
+}
+
 // 클라 선검증(PNG·10MB·최소 512px). 실패 시 i18n 키 반환, 통과 시 null.
 async function validatePng(file: File): Promise<string | null> {
   if (file.type !== 'image/png') return 'atelier.validatePng'
@@ -37,10 +43,58 @@ async function validatePng(file: File): Promise<string | null> {
   }
 }
 
+// 유휴 패널·위저드 공용(대기 UX): 잘 되는/실패하는 그림 가이드. 우측 유휴 여백을 준비 정보로 채운다.
+function UploadGuide() {
+  const { t } = useTranslation()
+  return (
+    <div className="rounded-lg border border-stage-border bg-stage-base/40 p-3 text-xs">
+      <p className="font-semibold text-spring-green">{t('atelier.guideGoodTitle')}</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-stage-text-muted">
+        <li>{t('atelier.guideGood1')}</li>
+        <li>{t('atelier.guideGood2')}</li>
+      </ul>
+      <p className="mt-2 font-semibold text-fire-hot">{t('atelier.guideBadTitle')}</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-stage-text-muted">
+        <li>{t('atelier.guideBad1')}</li>
+        <li>{t('atelier.guideBad2')}</li>
+      </ul>
+    </div>
+  )
+}
+
+// 제작 흐름 3스텝 프레이밍(대기 UX): 25~40분을 "장인 커미션"으로 프레이밍해 유휴 패널을 채운다.
+function HowItWorks() {
+  const { t } = useTranslation()
+  const steps = [t('atelier.howItWorks1'), t('atelier.howItWorks2'), t('atelier.howItWorks3')]
+  return (
+    <div className="rounded-lg border border-stage-border bg-stage-base/40 p-3">
+      <p className="text-xs font-semibold">{t('atelier.howItWorksTitle')}</p>
+      <ol className="mt-1.5 space-y-1">
+        {steps.map((s, i) => (
+          <li key={i} className="flex items-center gap-2 text-xs text-stage-text-muted">
+            <span
+              aria-hidden
+              className="grid h-4 w-4 shrink-0 place-items-center rounded-full border border-stage-border text-[10px]"
+            >
+              {i + 1}
+            </span>
+            {s}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 function OrderCard({ job }: { job: AvatarJob }) {
   const { t } = useTranslation()
   const idx = job.phase ? PHASES.indexOf(job.phase) : -1
   const progress = job.status === 'queued' || idx < 0 ? null : (idx + 0.5) / PHASES.length
+  const [elapsedMin, setElapsedMin] = useState(() => elapsedMinutesSince(job.createdAt))
+  useEffect(() => {
+    const id = setInterval(() => setElapsedMin(elapsedMinutesSince(job.createdAt)), 30_000)
+    return () => clearInterval(id)
+  }, [job.createdAt])
   return (
     <div className="rounded-lg border border-stage-border bg-stage-base/50 p-3">
       <p className="text-xs text-stage-text-muted">{t('atelier.commissionEta')}</p>
@@ -65,7 +119,7 @@ function OrderCard({ job }: { job: AvatarJob }) {
                   state === 'done'
                     ? 'border-fire-amber/60 text-fire-amber'
                     : state === 'current'
-                      ? 'border-fire-amber text-fire-amber'
+                      ? 'border-fire-amber text-fire-amber motion-safe:animate-pulse'
                       : 'border-stage-border'
                 }`}
               >
@@ -76,8 +130,14 @@ function OrderCard({ job }: { job: AvatarJob }) {
           )
         })}
       </ol>
-      <div className="mt-2">
+      <div className="mt-2 space-y-1">
+        {job.status === 'running' && (
+          <div aria-hidden className="h-0.5 overflow-hidden rounded-full bg-stage-border/60">
+            <div className="progress-indet h-full w-2/5 rounded-full" />
+          </div>
+        )}
         <ProgressBar value={progress} />
+        <p className="text-right text-[10px] text-stage-text-muted">{t('atelier.elapsed', { min: elapsedMin })}</p>
       </div>
     </div>
   )
@@ -162,18 +222,7 @@ function UploadWizard({ onClose, onSubmit }: { onClose: () => void; onSubmit: (f
           </p>
         )}
 
-        <div className="rounded-lg border border-stage-border bg-stage-base/40 p-3 text-xs">
-          <p className="font-semibold text-spring-green">{t('atelier.guideGoodTitle')}</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-stage-text-muted">
-            <li>{t('atelier.guideGood1')}</li>
-            <li>{t('atelier.guideGood2')}</li>
-          </ul>
-          <p className="mt-2 font-semibold text-fire-hot">{t('atelier.guideBadTitle')}</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-stage-text-muted">
-            <li>{t('atelier.guideBad1')}</li>
-            <li>{t('atelier.guideBad2')}</li>
-          </ul>
-        </div>
+        <UploadGuide />
 
         <p className="text-xs text-stage-text-muted">{t('atelier.commissionDesc')}</p>
 
@@ -205,11 +254,15 @@ export default function CommissionCorner({
   onSubmit,
   wizardOpen,
   onWizardToggle,
+  reused,
+  onDismissReused,
 }: {
   jobs: AvatarJob[]
   onSubmit: (file: File) => Promise<void>
   wizardOpen: boolean
   onWizardToggle: (open: boolean) => void
+  reused: boolean
+  onDismissReused: () => void
 }) {
   const { t } = useTranslation()
   const active = jobs.find((j) => j.status === 'queued' || j.status === 'running')
@@ -222,6 +275,26 @@ export default function CommissionCorner({
       <p className="mt-0.5 text-xs text-stage-text-muted">{t('atelier.commissionDesc')}</p>
 
       <div className="mt-2 space-y-2">
+        {/* 디덥 캐시 히트 인지 배너(§6) — 같은 그림 재주문이 33분 없이 즉시 완성됐음을 알린다. */}
+        {reused && (
+          <div className="rounded-lg border border-spring-green/40 bg-spring-green/10 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold text-spring-green">✨ {t('atelier.reusedTitle')}</p>
+                <p className="mt-1 text-xs text-stage-text-muted">{t('atelier.reusedHint')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={onDismissReused}
+                aria-label={t('common.close')}
+                className="shrink-0 text-stage-text-muted hover:text-stage-text"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         {active && <OrderCard job={active} />}
 
         {lastFailed && (
@@ -233,13 +306,18 @@ export default function CommissionCorner({
         )}
 
         {!active && (
-          <button
-            type="button"
-            onClick={() => onWizardToggle(true)}
-            className="w-full rounded-lg border border-fire-amber/60 bg-fire-amber/10 px-3 py-1.5 text-xs font-semibold text-fire-amber hover:bg-fire-amber/20"
-          >
-            {lastFailed ? t('atelier.retryUpload') : t('atelier.commissionNew')}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => onWizardToggle(true)}
+              className="w-full rounded-lg border border-fire-amber/60 bg-fire-amber/10 px-3 py-1.5 text-xs font-semibold text-fire-amber hover:bg-fire-amber/20"
+            >
+              {lastFailed ? t('atelier.retryUpload') : t('atelier.commissionNew')}
+            </button>
+            {/* 유휴 여백 채우기(대기 UX): 주문 전 준비 정보 — 제작 흐름 + 잘 되는/실패 그림 가이드. */}
+            <HowItWorks />
+            <UploadGuide />
+          </>
         )}
       </div>
 

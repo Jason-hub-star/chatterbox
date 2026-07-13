@@ -7,6 +7,11 @@
 
 import { cors, json, getAppUser, isSafeObjectKey } from "../_shared/supa.ts";
 
+// 콘텐츠-해시 디덥 캐시 버전(레버 ④). 파이프라인이 결정론적이라 같은 PNG=같은 rig 이므로 재주문을
+// 33분 연산 없이 캐시로 즉시 반환한다. Vtube 가 파이프라인을 개선하면 이 상수만 올려 전체 캐시 무효화
+// (클라 재배포 불요). rig schema_version 은 출력 포맷 버전이라 알고리즘 개선엔 안 바뀔 수 있어 별도로 둔다.
+const RIG_CACHE_VERSION = 1;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -15,7 +20,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { userId, authId, service } = auth.user;
 
-  let body: { object_key?: unknown };
+  let body: { object_key?: unknown; input_hash?: unknown; force_regen?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -28,6 +33,43 @@ Deno.serve(async (req) => {
   const key = body.object_key;
   if (!isSafeObjectKey(key, authId, ["uploads"])) {
     return json({ error: "Invalid object_key" }, 400);
+  }
+
+  // 콘텐츠-해시 디덥(레버 ④): 클라가 보낸 raw sha256 에 캐시버전을 접두해 조회 키를 만든다.
+  const rawHash = typeof body.input_hash === "string" ? body.input_hash : null;
+  if (rawHash !== null && !/^[0-9a-f]{64}$/.test(rawHash)) {
+    return json({ error: "Invalid input_hash" }, 400);
+  }
+  const cacheKey = rawHash ? `${rawHash}:v${RIG_CACHE_VERSION}` : null;
+  const forceRegen = body.force_regen === true; // 운영용 이스케이프(결정론상 유저엔 무의미 — UI 미노출)
+
+  // 캐시 히트면 33분 연산·크레딧·레이트리밋·Modal spawn 전부 스킵하고 done-row 즉시 반환(본인 스코프).
+  if (cacheKey && !forceRegen) {
+    const { data: hit } = await service
+      .from("avatar_jobs")
+      .select("result_project_url")
+      .eq("user_id", userId)
+      .eq("input_hash", cacheKey)
+      .eq("status", "done")
+      .not("result_project_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (hit?.result_project_url) {
+      // 캐시 done-row INSERT — result_project_url 은 원본 잡 폴더를 공유(중복 저장 0, in-place 수정 자동 전파).
+      const { data: cached, error: cErr } = await service.from("avatar_jobs").insert({
+        user_id: userId,
+        status: "done",
+        phase: "finishing",
+        input_object_key: key,
+        input_hash: cacheKey,
+        result_project_url: hit.result_project_url,
+        provider: "cache",
+        completed_at: new Date().toISOString(),
+      }).select("id").single();
+      if (cErr || !cached) return json({ error: "잡 생성 실패", detail: cErr?.message }, 500);
+      return json({ job_id: cached.id, status: "done", result_project_url: hit.result_project_url }, 200);
+    }
   }
 
   // 레이트리밋(SEC-AVJ-1): 사용자당 10회/시간 — Modal GPU 비용 무한호출·잡 스팸 차단(check_rate_limit RPC 재사용).
@@ -45,6 +87,7 @@ Deno.serve(async (req) => {
     user_id: userId,
     status: "queued",
     input_object_key: key,
+    input_hash: cacheKey, // 완료 시 다음 재주문이 이 해시로 캐시 히트(null 이면 디덥 미참여)
     provider: "modal",
   }).select("id").single();
   if (insErr || !job) {

@@ -14,7 +14,14 @@ function mapJob(r: Record<string, unknown>): AvatarJob {
     resultProjectUrl: (r.result_project_url as string | null) ?? null,
     error: (r.error as string | null) ?? null,
     createdAt: r.created_at as string,
+    cached: r.provider === 'cache',
   }
+}
+
+// 파일 바이트 SHA-256 → 64-hex. 콘텐츠-해시 디덥 키(레버 ④) — 같은 그림 재주문을 서버가 즉시 캐시 반환.
+export async function sha256Hex(file: File): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', await file.arrayBuffer())
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 // 업로드 PNG → avatar-uploads 버킷 `<authUid>/uploads/<uuid>.png`. 반환 = object key(엣지에 넘김).
@@ -29,10 +36,11 @@ export async function uploadAvatarPng(file: File): Promise<string> {
   return key
 }
 
-// 리깅 잡 트리거 → Modal 웹엔드포인트 spawn(엣지 경유).
-export const createAvatarJob = (accessToken: string, objectKey: string) =>
-  callFn<{ job_id: string; status: AvatarJobStatus }>(
-    'create-avatar-job', accessToken, { object_key: objectKey },
+// 리깅 잡 트리거 → Modal 웹엔드포인트 spawn(엣지 경유). inputHash 있으면 디덥 히트 시 status='done'
+// + result_project_url 을 즉시 반환(33분 연산 스킵).
+export const createAvatarJob = (accessToken: string, objectKey: string, inputHash?: string) =>
+  callFn<{ job_id: string; status: AvatarJobStatus; result_project_url?: string }>(
+    'create-avatar-job', accessToken, { object_key: objectKey, input_hash: inputHash },
   )
 
 // 내 잡 목록(재진입 — 탭 닫았다 와도 진행 중/완료 잡이 보임).

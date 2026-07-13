@@ -10,4 +10,5 @@ export interface AvatarJob {
   resultProjectUrl: string | null
   error: string | null
   createdAt: string
+  cached: boolean // provider==='cache' — 콘텐츠-해시 디덥으로 즉시 반환된 재사용 잡(레버 ④)
 }

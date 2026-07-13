@@ -129,7 +129,7 @@ export default function AtelierPage() {
   const { t } = useTranslation()
   const avatarUrl = useUserStore((s) => s.avatarUrl)
   const setMyAvatar = useUserStore((s) => s.setMyAvatar)
-  const { jobs, loaded: jobsLoaded, submit } = useAvatarJobs()
+  const { jobs, loaded: jobsLoaded, submit, reused, dismissReused } = useAvatarJobs()
   const mirrorSize = useMirrorSize()
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -292,7 +292,7 @@ export default function AtelierPage() {
         {/* 우: 커미션 공방 — 주문서·진행 스텝 상시 패널 */}
         <section className="md:col-start-3 md:row-start-1 md:min-h-0">
           <div className="interior-panel md:h-full md:overflow-y-auto">
-            <CommissionCorner jobs={jobs} onSubmit={submit} wizardOpen={wizardOpen} onWizardToggle={setWizardOpen} />
+            <CommissionCorner jobs={jobs} onSubmit={submit} wizardOpen={wizardOpen} onWizardToggle={setWizardOpen} reused={reused} onDismissReused={dismissReused} />
             <button
               type="button"
               onClick={() => setFeedbackOpen(true)}

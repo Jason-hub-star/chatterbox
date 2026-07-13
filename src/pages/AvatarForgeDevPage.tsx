@@ -46,7 +46,7 @@ export default function AvatarForgeDevPage() {
       const key = await uploadAvatarPng(file)
       const { job_id } = await createAvatarJob(session.access_token, key)
       unsubRef.current?.()
-      setJob({ id: job_id, userId: '', status: 'running', phase: 'analyzing', resultProjectUrl: null, error: null, createdAt: '' })
+      setJob({ id: job_id, userId: '', status: 'running', phase: 'analyzing', resultProjectUrl: null, error: null, createdAt: '', cached: false })
       unsubRef.current = subscribeToAvatarJob(job_id, setJob)
     } catch (e) {
       setErr(String(e instanceof Error ? e.message : e))
