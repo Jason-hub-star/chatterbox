@@ -129,8 +129,8 @@ body {
     from { transform: translateX(-5%); }
     to { transform: translateX(5%); }
   }
-  .hub-cloud { animation: cloud-drift 110s ease-in-out infinite alternate; }
-  .hub-cloud-b { animation-duration: 160s; animation-delay: -60s; } /* 두 층 위상 어긋남 — 기계적 왕복 은폐 */
+  .hub-cloud { animation: cloud-drift 40s ease-in-out infinite alternate; }
+  .hub-cloud-b { animation-duration: 60s; animation-delay: -22s; } /* 두 층 위상 어긋남 — 기계적 왕복 은폐 */
 }
 .hub-spot {
   z-index: 2;
