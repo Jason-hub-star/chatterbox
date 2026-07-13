@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/useToast'
 import { acceptInvite, fetchPublicRooms, verifyInviteCode, type LobbyRoom } from '@/lib/rooms'
 import NotificationBell from '@/components/shared/NotificationBell'
+import AvatarForgePill from '@/features/avatar/AvatarForgePill'
 import LanguageToggle from '@/components/shared/LanguageToggle'
 import FriendsButton from '@/components/shared/FriendsButton'
 import HubMap from '@/components/shared/HubMap'
@@ -180,6 +181,8 @@ export default function LobbyPage() {
             반응형 렌더는 컴포넌트 내부(중복 마운트 = Realtime 채널 재구독 크래시). */}
         <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
           <h1 className="mr-auto text-2xl font-bold md:hidden">{t('lobby.title')}</h1>
+          {/* 전역 진행 pill(대기 UX): 아바타 제작 중이면 광장에서도 보이고, 클릭하면 의상실로. 활성 잡 없으면 null. */}
+          <AvatarForgePill />
           {/* 설정 이관(P0, 트랙 2): 의상실 v5 에서 제거된 언어·로그아웃을 광장 칩 클러스터로 — 별도 설정 패널 없이 배선만. */}
           {/* 친구(PROFILE-04, LoL식 로비 상시): 벨 옆 팝오버 — IA 결정(ROADMAP §찻집). */}
           <FriendsButton />

@@ -435,6 +435,7 @@ export const ja: Record<string, string> = {
   'atelier.howItWorks1': '絵を1枚アップロード',
   'atelier.howItWorks2': '職人が25〜40分で裁断・リギング',
   'atelier.howItWorks3': '完成すると衣装室と鏡に掛かります',
+  'atelier.forgePill': 'アバター制作中',
   'atelier.phaseAnalyzing': '分析・原画',
   'atelier.phaseCutting': '裁断',
   'atelier.phaseRigging': 'リギング・表情',

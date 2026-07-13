@@ -435,6 +435,7 @@ export const en: Record<string, string> = {
   'atelier.howItWorks1': 'Upload one picture',
   'atelier.howItWorks2': 'The artisan cuts & rigs it (25–40 min)',
   'atelier.howItWorks3': 'It lands in your wardrobe and mirror',
+  'atelier.forgePill': 'Making your avatar',
   'atelier.phaseAnalyzing': 'Analyze',
   'atelier.phaseCutting': 'Cut',
   'atelier.phaseRigging': 'Rig & expressions',

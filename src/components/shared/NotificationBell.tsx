@@ -17,6 +17,8 @@ interface Notif {
     room_id?: string // followed_creator_stream_start — 클릭 시 /rooms/:id/ready 직행
     requester_name?: string | null // friend_request
     name?: string | null // friend_accepted
+    job_id?: string // avatar_job_done|avatar_job_failed
+    result_project_url?: string | null
   }
   read_at: string | null
 }
@@ -86,6 +88,11 @@ export default function NotificationBell() {
       navigate(`/lobby?invite=${n.payload.invite_code}`)
       return
     }
+    // 아바타 완료/실패: 의상실로(거울에 NEW 배지·재주문 카드가 기다린다).
+    if (n.type === 'avatar_job_done' || n.type === 'avatar_job_failed') {
+      navigate('/lobby/atelier')
+      return
+    }
     // 팔로우 공연시작(PROFILE-05): 방 상태 재검증 후 분기(UX-2, 델타 감사) — 종료/만석이면 데드엔드 대신 안내.
     if (n.type === 'followed_creator_stream_start' && typeof n.payload.room_id === 'string') {
       const { data } = await supabase
@@ -109,6 +116,9 @@ export default function NotificationBell() {
     if (n.type === 'friend_request') return t('notif.friendRequest', { name: n.payload.requester_name ?? '?' })
     if (n.type === 'friend_accepted') return t('notif.friendAccepted', { name: n.payload.name ?? '?' })
     if (n.type === 'followed_creator_stream_start') return t('notif.streamStart', { host, room })
+    // 아바타 포지(대기 UX) — 완료/실패, 클릭 시 의상실로.
+    if (n.type === 'avatar_job_done') return t('notif.avatarJobDone')
+    if (n.type === 'avatar_job_failed') return t('notif.avatarJobFailed')
     return n.type
   }
 

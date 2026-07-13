@@ -18,10 +18,11 @@ created: 2026-07-09
 > **상태(2026-07-09)**:
 > - ✅ **수령/렌더 반쪽 증명됨** — 서버 리그를 `avatars/<id>/` 에 발행하면 네이티브 `RigAvatar`(AvatarPreview·SelfAvatar·방)가 그대로 로드·렌더·웹캠 구동(미미 서버본 실증).
 > - ✅ **배선 코드 완료·검증** — 마이그 `avatar_jobs`, 엣지 `create-avatar-job`, 클라 `lib/avatarJobs.ts`, dev 라우트 `/atelier-forge` (type-check·lint 통과).
-> - ✅ **의상실 커미션 UI 승격 완료(2026-07-09)** — `features/avatar/CommissionCorner.tsx`+`useAvatarJobs.ts`+AtelierPage 입어보기. 아래 대기 UX 원칙 ①~⑤ 전부 구현(전역 알림만 defer). 마이그 push 완료(avatar_jobs·avatar-uploads 10MB/png). seed-and-drive E2E 17/17.
+> - ✅ **의상실 커미션 UI 승격 완료(2026-07-09)** — `features/avatar/CommissionCorner.tsx`+`useAvatarJobs.ts`+AtelierPage 입어보기. 아래 대기 UX 원칙 ①~⑤ 전부 구현(전역 알림·진행은 2026-07-13 대기 UX 사다리로 닫음 — 아래 참조). 마이그 push 완료(avatar_jobs·avatar-uploads 10MB/png). seed-and-drive E2E 17/17.
 > - ✅ **자동 트리거 배포 완료(2026-07-09)** — Modal `chatterbox-rig` deploy(submit 웹엔드포인트) + `vtube-supabase` 시크릿 + supabase secrets(MODAL_ENDPOINT_URL·MODAL_TRIGGER_SECRET) + 엣지 `create-avatar-job` 배포 + 프론트 CF Pages. 스모크: 엣지 무인증 401·Modal 무시크릿 401. 배포판 E2E 통과.
 > - ✅ **첫 실런($2) 완료(2026-07-11)** — GPU 전 구간 성공·발행만 Modal 볼륨 스테일로 실패 → 워커 수정(reload+재시도)·구조 발행으로 잡 완결(306592e7). 실패 시 리그는 볼륨에 생존 — 재결제 없이 `scripts/publish-avatar-job.mjs`로 발행(절차는 Vtube 스킬 `chatterbox-avatar-forge` 함정표). 실패 에러 원문은 UI 비노출(`atelier.commissionFailedHint`).
 > - 📌 **미학 품질은 자동 게이트 불가 실측(2026-07-11)** — 취향 수준 비례 드리프트("입 높음")는 기하 지표·VLM 심판 모두 정상 판정. 예방 주 채널 = 수령 루프(미리보기 후 보정/재주문 훅, 트랙 B 백로그). **후속 반전**: "입이 딴 데서 열림"의 진범은 형제 키폼 소실(구조 결함) — Vtube 증류가 자동수복하고 rig_health 게이트가 차단(모델 불문 로직, 상세는 Vtube 스킬 `chatterbox-avatar-forge` 함정표). 306592e7은 수복판 재발행 완료.
+> - ✅ **대기 UX 사다리 완료·프로드 배포(2026-07-13)** — 전역 알림 defer 해제(uiux #20·#22 준수): ①완료 알림 배선(`avatar_jobs` done/failed→`notifications` AFTER UPDATE 트리거→`NotificationBell`, 프로드 트리거 실측 PASS) ②전역 진행 pill(`AvatarForgePill` 광장 헤더, 로비 돌아다녀도 "제작 중" 노출) ③스텝 생기(경과시간 + 현단계 펄스 + phase내 indeterminate — 가짜 스피너 아님) ④유휴 여백 채우기(제작흐름 3스텝 + 업로드 가이드 상시). CommissionCorner OrderCard·`AvatarForgePill`·`NotificationBell`·마이그 `20260713180000_avatar_job_notify.sql`.
 
 ## UI/UX 빌더가 알아야 할 것 (바로 쓰는 계약)
 

@@ -435,6 +435,7 @@ export const ko: Record<string, string> = {
   "atelier.howItWorks1": "그림 1장을 올려요",
   "atelier.howItWorks2": "장인이 25~40분간 재단·리깅해요",
   "atelier.howItWorks3": "완성되면 옷장과 거울에 걸려요",
+  "atelier.forgePill": "아바타 제작 중",
   "atelier.phaseAnalyzing": "분석·원화",
   "atelier.phaseCutting": "재단",
   "atelier.phaseRigging": "리깅·표현",
