@@ -103,8 +103,9 @@ export default function HubMap({ blocks, roomsCount, onDest, fullscreen = false 
               델타가 거의 0이라(실측) 어둡히기 방향. img 직후 레이어 = 모트·가로등을 그늘이 못 덮는다. */}
           {block.sky && (
             <>
-              <span className="hub-cloud absolute" style={{ top: `${block.sky.t}%`, height: `${block.sky.h}%` }} aria-hidden />
-              <span className="hub-cloud hub-cloud-b absolute" style={{ top: `${block.sky.t}%`, height: `${block.sky.h}%` }} aria-hidden />
+              {/* mood 스위치: 밤/어두운 리스킨은 .hub-cloud--night 프리셋(첫 밤 원화 캘리브 때 CSS 추가). */}
+              <span className={`hub-cloud absolute${block.mood === 'night' ? ' hub-cloud--night' : ''}`} style={{ top: `${block.sky.t}%`, height: `${block.sky.h}%` }} aria-hidden />
+              <span className={`hub-cloud hub-cloud-b absolute${block.mood === 'night' ? ' hub-cloud--night' : ''}`} style={{ top: `${block.sky.t}%`, height: `${block.sky.h}%` }} aria-hidden />
             </>
           )}
           <GlowMotes count={14} />

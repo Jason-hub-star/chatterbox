@@ -104,7 +104,10 @@ body {
 }
 /* 하늘 구름 그늘 드리프트 — 밝은 낮 하늘을 아주 느리게 지나는 구름 그림자(multiply).
    밝은 원화엔 screen(밝히기) 델타가 거의 0이라(픽셀 diff 실측) 어둡히기 방향. 밴드=manifest plazaSky.
-   reduced-motion = 그늘 유지·드리프트만 정지. */
+   reduced-motion = 그늘 유지·드리프트만 정지.
+   맵별 관리: 좌표=구도(Composition) 데이터·세기/블렌드=여기 프리셋 1곳(맵 데이터에 숫자 흩뿌리기 금지).
+   ponytail: 기본 = day(multiply). 밤/어두운 리스킨은 assets.plazaMood:'night' → `.hub-cloud--night`
+   프리셋(screen 빛 방향)을 **그 원화 픽셀 diff 캘리브로** 추가 — 캘리브 없는 추측 수치 금지라 지금은 비워둔다. */
 .hub-cloud {
   left: -30%;
   width: 160%;

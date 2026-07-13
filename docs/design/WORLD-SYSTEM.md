@@ -16,6 +16,7 @@
 - **월드 = 최상위 완결 묶음**: `{ loginSplash, plaza, interiors{4관} }` + accent + category. 한 월드는 내부적으로 일관 → "세계관이 이어진다"를 구조가 보장.
 - **좌표는 아트에서 분리** (`Composition` = `plazaShops`% + `interiorAnchors`%): 같은 구도 **리스킨**(밤·업스케일)은 좌표 공유, **새 구도**만 캘리브 1회. 이것이 무한 확장의 핵심 — *코드는 무한, 아트는 월드당 1패스*(정직한 천장).
 - **`resolveWorld(id)`**: 월드 에셋 + 구도 좌표를 컴포넌트 소비형태로 조립. **표면별 폴백** — 월드에 특정 표면 에셋이 없으면 DEFAULT(`western`)로 그 표면만 폴백(구도까지 함께 = 좌표 정합 보존). 미지 id 도 DEFAULT.
+- **앰비언트 연출("원화의 빛을 움직인다") 2층 관리**: **어디** = 구도 데이터(`plazaLamps` 등화구·`plazaSky` 하늘 밴드 — 리스킨 공유), **얼마나·어떤 블렌드** = `index.css` 프리셋 1곳(`.hub-lamp`·`.hub-cloud`, 맵 데이터에 숫자 분산 금지 — 취향 튜닝이 1파일로 끝나야 함). 둘을 잇는 스위치가 `assets.plazaMood`(`SceneMood`, 미선언=`day`) — 무드는 좌표와 달리 **리스킨마다 달라서** 에셋 메타 소속. 블렌드 방향 원칙(픽셀 diff 실측): 밝은 하늘=multiply 그늘 / 어두운 원화=screen 빛. 무대 쪽 대응물은 `stageBackgrounds.fireGlow`(맵 행별 % 앵커, 미선언=글로우 0).
 
 ## 선택·우선순위 (SSOT: `src/stores/worldStore.ts`)
 
@@ -51,5 +52,6 @@ effectiveWorld = room ?? personal ?? DEFAULT('western')
 ## 확장 절차 (새 월드 추가)
 
 1. 아트 생성(`scene-prompts.md` 화풍고정 + `hub-map-pipeline` 스킬) → `public/scenes/**/<world>.webp` + 썸네일.
-2. `WORLDS` 에 1줄 등재(assets 경로 + composition + accent + category). 리스킨이면 기존 Composition 참조, 새 구도면 캘리브 후 신규 Composition.
+2. `WORLDS` 에 1줄 등재(assets 경로 + composition + accent + category). 리스킨이면 기존 Composition 참조, 새 구도면 캘리브 후 신규 Composition(가로등 `plazaLamps`·하늘 `plazaSky` 앵커 포함).
+2-1. 밤/어두운 광장이면 `assets.plazaMood: 'night'` 1줄 + `index.css`에 `.hub-cloud--night` 프리셋을 **그 원화 픽셀 diff 캘리브로** 추가(현재 미존재 — 첫 밤 원화 때 작성).
 3. i18n `world.<id>` 라벨 ko/en/ja. → 갤러리 자동 노출.

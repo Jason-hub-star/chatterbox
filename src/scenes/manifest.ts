@@ -21,6 +21,7 @@ export interface HubBlock {
   shops: HubShop[]
   lamps?: PlazaLamp[] // 가로등 상시 점등 글로우(원화 등화구 % 좌표)
   sky?: SkyBand // 하늘 구름 그늘 드리프트 밴드(원화 하늘 % 구간)
+  mood?: SceneMood // 원화 무드(기본 day) — 앰비언트 CSS 프리셋 스위치
 }
 
 // 광장 가로등(원화에 그려진 등의 위치에 빛 웅덩이를 얹는 앵커) — r = 글로우 지름(컨테이너 너비 %).
@@ -35,6 +36,10 @@ export interface SkyBand {
   t: number
   h: number
 }
+
+// 원화 무드 — 앰비언트 연출의 블렌드 방향을 정한다(밝은 하늘=multiply 그늘 / 어두운 하늘=screen 빛, 픽셀 diff 실측 원칙).
+// 좌표(Composition)와 달리 **리스킨마다 다르다** → 에셋 메타로 assets 에 소속. CSS 프리셋(.hub-cloud--night 등) 스위치용.
+export type SceneMood = 'day' | 'night'
 
 // 내부 씬: anchor 는 원화 속 오브젝트에 UI 를 정박하는 % 박스("살아있는 앵커").
 export interface InteriorScene {
@@ -67,6 +72,7 @@ export interface World {
     loginSplash?: string
     loginVideo?: string
     plaza?: string
+    plazaMood?: SceneMood // 광장 원화 무드(미선언=day) — 밤/어두운 리스킨은 'night' 1줄 + CSS 프리셋 캘리브
     interiors?: Partial<Record<HubDest, string>>
     thumb: string // 갤러리 썸네일(다운스케일 ~15KB)
   }
@@ -186,7 +192,7 @@ export function resolveWorld(id: WorldId): ResolvedWorld {
       video: splashSrc.assets.loginVideo, // 월드에 영상 없으면 undefined → 인트로 연출 스킵
     },
     plaza: {
-      blocks: [{ hero: (plazaSrc.assets.plaza ?? fb.assets.plaza)!, shops: plazaSrc.composition.plazaShops, lamps: plazaSrc.composition.plazaLamps, sky: plazaSrc.composition.plazaSky }],
+      blocks: [{ hero: (plazaSrc.assets.plaza ?? fb.assets.plaza)!, shops: plazaSrc.composition.plazaShops, lamps: plazaSrc.composition.plazaLamps, sky: plazaSrc.composition.plazaSky, mood: plazaSrc.assets.plazaMood ?? 'day' }],
     },
     interiors,
   }
