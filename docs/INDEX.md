@@ -31,6 +31,7 @@ tags: [hub]
 | (루트) | 게이트·스크립트가 무는 핵심 SSOT | 14 |
 | `contracts/` | 컴포넌트 계약 (Props/Store/DataChannel/금지) → `contracts/_INDEX.md` | 38 |
 | `state-machines/` | 상태머신 전환표·엣지케이스 → `state-machines/_INDEX.md` | 13 |
+| `schema/` | DATA-SCHEMA 모듈 (기존 § 참조는 루트 허브에서 라우팅) → `schema/_INDEX.md` | 7 |
 | `specs/` | 구현 입력 스펙 (LiveKit·rig·auth·미디어·테스트·온보딩·빌드설정) | 22 |
 | `specs/security/` | 보안 스펙·리뷰 게이트 (SecurityPolicies 연계) | 8 |
 | `design/` | 디자인 SSOT (토큰·씬·월드·룸 리디자인·디자인 방향) | 8 |
@@ -40,7 +41,7 @@ tags: [hub]
 | `guides/` | 작성·개발 가이드, DoD | 3 |
 | `legal/` | 약관·개인정보·저작권·팬아트 (법무 검토 대기) | 6 |
 | `status/` | 상태판·인계(HANDOFF)·에이전트 운영·배턴 | 7 |
-| `goals/` | 골 사다리(`GOAL-LADDER.md`)·골 브리프(6요소) | 1+ |
+| `goals/` | 골 사다리(`GOAL-LADDER.md` 영구 인덱스)·활성 브리프 · 완료 브리프는 `goals/archive/` | 1+ |
 | `research/` | 조사 원본 (보존) | 4 |
 | `reference/` | golden-path 코드 패턴·마케팅 자동화 이식본 | patterns/ 등 |
 | `archive/` | 결정 반영 완료된 조사·리뷰·상태 스냅샷 (STACK-COMPARE 4종·BUILD-QUEUE·REVIEW-LOG·룸 인계·flecto-reference/ 등) | 10 |
@@ -57,7 +58,7 @@ tags: [hub]
 | `FEATURE-CONTRACT-MAP.md` | Feature ID → 계약서·상태머신·스키마 역색인 | **SSOT (구현 라우팅)** |
 | `STORE-DEPENDENCY-MATRIX.md` | 계약서별 store read/write·canonical 필드명 | **SSOT (store 경계)** |
 | `API-SURFACE.md` | Edge Function/RPC 경계 — endpoint·auth·side effect | **SSOT (API 경계)** |
-| `DATA-SCHEMA.md` | CREATE TABLE refs + DataChannel 프로토콜 + PENDING | **설계 (구현 입력)** |
+| `DATA-SCHEMA.md` | 스키마 허브 → `schema/` 모듈, DataChannel 프로토콜, PENDING | **설계 (구현 입력)** |
 | `GAP-MATRIX.md` | 스펙 갭 감시판 + 진행 로그 | **설계 (진행추적)** |
 | `PLATFORM-ARCHITECTURE.md` | SPA 아키텍처 + §12 폴더구조 | **설계** |
 | `CODING-CONVENTIONS.md` | 네이밍·store 패턴·DoD 게이트(§6.1) | **설계 (구현 입력)** |
@@ -70,7 +71,7 @@ tags: [hub]
 
 ## 검증 명령 (문서망)
 
-`npm run docs:check`(계약 정합) · `docs:check:strict` · `docs:drift`(백로그 probe STALE/REGRESSION) · `docs:links`(상대 md 링크 무결성) · `docs:health`(건강 리포트).
+`npm run docs:check`(계약·스키마 분할 정합) · `docs:check:strict` · `docs:schema`(스키마 무손실·참조 교차검증) · `docs:drift`(백로그 probe STALE/REGRESSION) · `docs:links`(상대 md 링크 무결성) · `docs:health`(건강 리포트).
 
 ## 주요 폴더 상세
 
@@ -100,7 +101,7 @@ tags: [hub]
 
 ### goals/ — 골 사다리
 
-`GOAL-LADDER.md`(8골 상태판·승인 게이트·defer 대장) · `GOAL-g*.md`(골별 6요소 브리프, 골 착수 시 생성).
+`GOAL-LADDER.md`(8골 상태판 + 사다리 밖 스몰윈 표·승인 게이트·defer 대장 — **영구 인덱스**) · 활성 `GOAL-*.md`(골별 6요소 브리프) · 완료(배포 종결) 브리프는 `goals/archive/`(§7 감사추적 보존).
 
 ## 구현 독서목록 — Feature ID 로 진입
 

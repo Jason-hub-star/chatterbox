@@ -4,7 +4,8 @@ tags: [status, goals]
 
 <!--
   GOAL-LADDER.md — 2026-07-12 승인된 골 사다리(8골)의 상태판.
-  각 골의 6요소 상세는 GOAL-g*.md 브리프(대형 골만 두껍게, 스몰윈은 얇게).
+  각 골의 6요소 상세는 GOAL-*.md 브리프(대형 골만 두껍게, 스몰윈은 얇게).
+  완료(배포까지 종결)된 골 브리프는 archive/ 로 이관 — 이 표가 영구 인덱스(§7 감사추적은 archive 보존).
   규칙(골 프롬프트 계약): 유닛당 골 1개 · 승인 게이트는 골 경계 · Constraints 에
   "이전 골 검증 표면 green 유지" 누적 · 완료 판정은 주장 아닌 증거(실행 명령·실측).
   상태: PENDING → ACTIVE → DONE(증거 요약 1줄) / BLOCKED(사유).
@@ -48,3 +49,20 @@ tags: [status, goals]
 ## defer 대장 (이번 사다리 밖)
 
 V-4 로컬 백업 녹화 · V-6 이양 UI · V-8 귓속말 · V-9 리허설 피드백 · U-4 드래그 재배치 · 라이트모드(기각 예정 — G1 에서 DOGFOOD 행 정리) · VGen 쇼츠 자막(G4 엔진 재사용) · 채팅 오버레이 버블 · 영상 스크러버.
+
+## 사다리 밖 스몰윈(standalone 골)
+
+사다리(G1~G8) 외 단발 골. 완료(배포까지 종결)는 `archive/` 로 이관, 활성은 `goals/` 유지. 이 표가 인덱스.
+
+| 골 | Outcome | 상태 | 브리프 |
+|---|---|---|---|
+| ambient-glow | 원화 광원 연출(무대 불 일렁임·로비 구름 그늘) | **DONE**(bepo 92f6199·999109a) | `archive/GOAL-ambient-glow.md` |
+| hygiene-host-guard | 호스트 권한 하드닝 | **DONE**(2026-07-12 종결) | `archive/GOAL-hygiene-host-guard.md` |
+| admin-selfpromo-lock | `users.is_admin` 셀프승격 자물쇠(선제) | **DONE**(프로드 6/6·콘솔 UI defer) | `archive/GOAL-admin-selfpromo-lock.md` |
+| teleprompter-dock | 텔레프롬프터 좌 dock A안 위계(대사 지배) | **ACTIVE**(커밋 4730543·배포 대기) | `GOAL-teleprompter-dock.md` |
+
+## 완료 브리프 아카이브 (감사추적 보존)
+
+DONE 골 브리프는 `archive/` 에 §7 실행 기록과 함께 보존(이 문서가 SSOT 인덱스):
+- 사다리: `archive/GOAL-g3-room-recording.md` · `archive/GOAL-g7-ux-finish.md` · `archive/GOAL-g8-harness-template.md` (g1·g2·g4·g5·g6 은 스몰윈이라 브리프 없이 위 표 상태만).
+- standalone: `archive/GOAL-{ambient-glow, hygiene-host-guard, admin-selfpromo-lock}.md`.
