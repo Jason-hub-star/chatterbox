@@ -112,14 +112,14 @@ body {
   mix-blend-mode: multiply;
   filter: blur(10px);
   background:
-    radial-gradient(ellipse 14% 52% at 36% 42%, rgba(120, 140, 175, 0.26), transparent 70%),
-    radial-gradient(ellipse 18% 60% at 52% 58%, rgba(125, 145, 180, 0.21), transparent 72%),
-    radial-gradient(ellipse 12% 46% at 68% 34%, rgba(120, 140, 175, 0.23), transparent 70%);
+    radial-gradient(ellipse 14% 52% at 36% 42%, rgba(120, 140, 175, 0.42), transparent 70%),
+    radial-gradient(ellipse 18% 60% at 52% 58%, rgba(125, 145, 180, 0.34), transparent 72%),
+    radial-gradient(ellipse 12% 46% at 68% 34%, rgba(120, 140, 175, 0.38), transparent 70%);
 }
 .hub-cloud-b {
   background:
-    radial-gradient(ellipse 16% 55% at 26% 50%, rgba(120, 140, 175, 0.17), transparent 70%),
-    radial-gradient(ellipse 13% 48% at 60% 40%, rgba(125, 145, 180, 0.14), transparent 72%);
+    radial-gradient(ellipse 16% 55% at 26% 50%, rgba(120, 140, 175, 0.26), transparent 70%),
+    radial-gradient(ellipse 13% 48% at 60% 40%, rgba(125, 145, 180, 0.21), transparent 72%);
 }
 @media (prefers-reduced-motion: no-preference) {
   @keyframes cloud-drift {
