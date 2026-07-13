@@ -27,6 +27,12 @@ interface UserStore {
   creditBalance: number
   // appUserId: users.id(auth_id 아님). credits/vgen 등 users.id 참조용.
   appUserId: string | null
+  // 온보딩(G-ONB): 신규 가입자는 'intro'로 시작(handle_new_user 트리거), 기존 유저는 null(가이드 미노출).
+  // step ∈ {'intro','genre'} 에서만 OnboardingGuide 노출. 완료/건너뛰기 → 'done'.
+  onboardingStep: string | null
+  preferredGenres: string[]
+  // completeOnboarding: 온보딩 종료(+선택 장르 저장). users_update_own 로 본인 행 직접 update(비민감 컬럼).
+  completeOnboarding: (genres?: string[]) => Promise<void>
   // init: 저장된 세션 복원 + auth 변경 구독. supabase-js 가 localStorage 에 세션을 보존하므로 새로고침 후에도 유지.
   init: () => () => void
   login: (email: string, password: string) => Promise<boolean>
@@ -59,12 +65,18 @@ async function loadCredits(userId: string, set: (partial: Partial<UserStore>) =>
     .subscribe()
 }
 
-// 내 users 프로필(avatar_url + id) 로드 + 크레딧 로드. 실패해도 조용히 fallback.
+// 내 users 프로필(avatar_url + id + 온보딩) 로드 + 크레딧 로드. 실패해도 조용히 fallback.
 async function loadAvatarUrl(authId: string, set: (partial: Partial<UserStore>) => void) {
-  const { data } = await supabase.from('users').select('id, avatar_url').eq('auth_id', authId).maybeSingle()
+  const { data } = await supabase
+    .from('users')
+    .select('id, avatar_url, onboarding_step, preferred_genres')
+    .eq('auth_id', authId)
+    .maybeSingle()
   set({
     avatarUrl: (data?.avatar_url as string | null) ?? null,
     appUserId: (data?.id as string | undefined) ?? null,
+    onboardingStep: (data?.onboarding_step as string | null) ?? null,
+    preferredGenres: (data?.preferred_genres as string[] | null) ?? [],
   })
   if (data?.id) void loadCredits(data.id as string, set)
 }
@@ -78,6 +90,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
   avatarUrl: null,
   creditBalance: 0,
   appUserId: null,
+  onboardingStep: null,
+  preferredGenres: [],
 
   init: () => {
     supabase.auth.getSession().then(({ data }) => {
@@ -170,6 +184,16 @@ export const useUserStore = create<UserStore>((set, get) => ({
     if (error) return false
     set({ avatarUrl: url })
     return true
+  },
+
+  completeOnboarding: async (genres) => {
+    const authId = get().user?.id
+    // 낙관적 종료: DB 실패해도 이번 세션엔 가이드를 닫는다(재로그인 시 재시도 — 무해).
+    set({ onboardingStep: 'done', ...(genres ? { preferredGenres: genres } : {}) })
+    if (!authId) return
+    const patch: { onboarding_step: string; preferred_genres?: string[] } = { onboarding_step: 'done' }
+    if (genres && genres.length) patch.preferred_genres = genres
+    await supabase.from('users').update(patch).eq('auth_id', authId)
   },
 
   logout: async () => {

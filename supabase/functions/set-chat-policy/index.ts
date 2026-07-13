@@ -1,6 +1,6 @@
 // supabase/functions/set-chat-policy/index.ts
 // HOST-09 슬로우모드·HOST-10 금칙어 — rooms 정책 컬럼 UPDATE(호스트 전용). 강제는 send-chat 이 수행.
-import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
+import { getAppUser, json, isUuid, cors, requireHostRoom } from "../_shared/supa.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -39,10 +39,8 @@ Deno.serve(async (req) => {
   }
   if (Object.keys(updates).length === 0) return json({ error: "No fields" }, 400);
 
-  const { data: room } = await user.service
-    .from("rooms").select("id, host_id").eq("id", room_id).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.host_id !== user.userId) return json({ error: "Host only" }, 403);
+  const gate = await requireHostRoom(user.service, room_id, user.userId);
+  if (!gate.ok) return gate.res;
 
   const { data: updated, error } = await user.service
     .from("rooms").update(updates).eq("id", room_id)

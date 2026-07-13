@@ -2,7 +2,7 @@
 // HOST-11 채팅 숨김/클리어 — hard delete 금지(contracts/ChatPanel.md) → status='hidden' soft delete
 // + audit_logs 기록(운영 숨김 감사 필수) + 'chat-mod' broadcast(전 클라 라이브 반영, 호스트 포함).
 // broadcast 실패는 비치명(영속 진실=messages.status — 늦입장·새로고침 백필이 걸러줌) → ok:true 유지.
-import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
+import { getAppUser, json, isUuid, cors, requireHostRoom } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
 Deno.serve(async (req) => {
@@ -23,10 +23,8 @@ Deno.serve(async (req) => {
   if (!isUuid(room_id)) return json({ error: "Invalid room_id" }, 400);
   if (action !== "hide" && action !== "clear") return json({ error: "Invalid action" }, 400);
 
-  const { data: room } = await user.service
-    .from("rooms").select("id, host_id").eq("id", room_id).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.host_id !== user.userId) return json({ error: "Host only" }, 403);
+  const gate = await requireHostRoom(user.service, room_id, user.userId);
+  if (!gate.ok) return gate.res;
 
   let hiddenIds: string[] = [];
   if (action === "hide") {

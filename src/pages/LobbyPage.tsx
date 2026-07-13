@@ -9,6 +9,7 @@ import NotificationBell from '@/components/shared/NotificationBell'
 import LanguageToggle from '@/components/shared/LanguageToggle'
 import FriendsButton from '@/components/shared/FriendsButton'
 import HubMap from '@/components/shared/HubMap'
+import OnboardingGuide from '@/features/onboarding/OnboardingGuide'
 import { resolveWorld, type HubDest } from '@/scenes/manifest'
 import { useEffectiveWorld } from '@/stores/worldStore'
 
@@ -23,6 +24,8 @@ export default function LobbyPage() {
   const worldId = useEffectiveWorld()
   const scene = useMemo(() => resolveWorld(worldId), [worldId])
   const session = useUserStore((s) => s.session)
+  const onboardingStep = useUserStore((s) => s.onboardingStep)
+  const showOnboarding = onboardingStep === 'intro' || onboardingStep === 'genre'
   const navigate = useNavigate()
 
   const [rooms, setRooms] = useState<LobbyRoom[]>([])
@@ -223,6 +226,8 @@ export default function LobbyPage() {
           {t('hub.navSettings')}
         </button>
       </nav>
+
+      {showOnboarding && <OnboardingGuide />}
     </main>
   )
 }

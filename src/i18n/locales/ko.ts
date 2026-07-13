@@ -73,6 +73,13 @@ export const ko: Record<string, string> = {
   "dub.hostCompositeReady": "호스트가 완성본을 합성할 수 있어요.",
 
   // --- auth/진입(login·register) — 인앱 랜딩 폐지(snack-web 담당, 2026-07-08) ---
+  "onboarding.title": "채터박스에 오신 걸 환영해요!",
+  "onboarding.introBody": "PNG 한 장이 살아 움직이는 무대예요. 좋아하는 장르를 고르면 딱 맞는 방을 보여드릴게요.",
+  "onboarding.genreBody": "어떤 공연을 좋아하세요? (여러 개 선택 가능 · 나중에 바꿀 수 있어요)",
+  "onboarding.next": "다음",
+  "onboarding.skip": "건너뛰기",
+  "onboarding.done": "시작하기",
+  "onboarding.finishing": "저장 중…",
   "auth.strength.label": "비밀번호 강도",
   "auth.strength.weak": "약함",
   "auth.strength.fair": "보통",

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { useUserStore } from '@/stores/userStore'
 import { passwordIssue } from '@/lib/authValidation'
 import AuthShell from '@/components/shared/AuthShell'
+import PasswordStrengthBar from '@/components/shared/PasswordStrengthBar'
 
 // A-FUNC-2: 재설정 메일 링크 착지점. supabase-js 가 URL 의 복구 토큰으로 임시 세션을 세팅하면
 // updateUser({ password }) 로 새 비번을 확정한다. 강도 규칙은 가입과 동일(authValidation 공유).
@@ -51,6 +52,7 @@ export default function ResetPasswordPage() {
             className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
           />
           <span className="text-xs text-stage-text-muted">{t('register.passwordHint')}</span>
+          <PasswordStrengthBar password={password} />
         </label>
 
         <label className="block space-y-1">

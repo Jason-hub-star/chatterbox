@@ -5,6 +5,7 @@ import { useUserStore } from '@/stores/userStore'
 import { passwordIssue } from '@/lib/authValidation'
 import AuthShell from '@/components/shared/AuthShell'
 import OAuthButtons from '@/components/shared/OAuthButtons'
+import PasswordStrengthBar from '@/components/shared/PasswordStrengthBar'
 import { OAUTH_PROVIDERS } from '@/lib/oauth'
 
 // SSOT: contracts/AuthPage.md — RegisterPage. 이메일/비밀번호 가입만 (Phase 0).
@@ -126,6 +127,7 @@ export default function RegisterPage() {
                 className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
               />
               <span className="text-xs text-stage-text-muted">{t('register.passwordHint')}</span>
+              <PasswordStrengthBar password={password} />
             </label>
 
             <label className="block space-y-1">

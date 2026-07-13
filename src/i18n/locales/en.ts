@@ -73,6 +73,13 @@ export const en: Record<string, string> = {
   'dub.hostCompositeReady': 'The host can now composite the final cut.',
 
   // --- auth (login/register/reset) ---
+  'onboarding.title': 'Welcome to ChatterBox!',
+  'onboarding.introBody': 'A single PNG comes alive on stage. Pick the genres you like and we’ll show you the rooms that fit.',
+  'onboarding.genreBody': 'What kind of shows do you enjoy? (Pick as many as you like · change anytime)',
+  'onboarding.next': 'Next',
+  'onboarding.skip': 'Skip',
+  'onboarding.done': 'Get started',
+  'onboarding.finishing': 'Saving…',
   'auth.strength.label': 'Password strength',
   'auth.strength.weak': 'Weak',
   'auth.strength.fair': 'Fair',

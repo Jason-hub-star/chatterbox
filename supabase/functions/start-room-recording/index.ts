@@ -4,7 +4,7 @@
 // 호스트 동의는 시작 행위로 즉시 기록(ip_hash 포함). 나머지 참가자에겐 room-authority
 // 서버발 broadcast 로 동의 요청(수신측은 participant===undefined 만 신뢰 — SEC-RA-1 패턴).
 
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, requireHostRoom } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 import { hashIp, recomputeConsent } from "../_shared/recordingConsent.ts";
 
@@ -25,10 +25,8 @@ Deno.serve(async (req) => {
   if (!isUuid(body.room_id)) return json({ error: "Invalid room_id" }, 400);
   const roomId = body.room_id;
 
-  const { data: room } = await service
-    .from("rooms").select("id, host_id, status").eq("id", roomId).maybeSingle();
-  if (!room || room.status === "ended") return json({ error: "방을 찾을 수 없어요." }, 404);
-  if (room.host_id !== userId) return json({ error: "호스트만 녹화를 시작할 수 있어요." }, 403);
+  const gate = await requireHostRoom(service, roomId, userId);
+  if (!gate.ok) return gate.res;
 
   // 방당 활성 녹화 1개(중복 시작 방지)
   const { data: active } = await service

@@ -73,6 +73,13 @@ export const ja: Record<string, string> = {
   'dub.hostCompositeReady': 'ホストが完成版を合成できます。',
 
   // --- auth(ログイン・登録・リセット) ---
+  'onboarding.title': 'ChatterBox へようこそ！',
+  'onboarding.introBody': '一枚の PNG がステージで動き出します。好きなジャンルを選ぶと、ぴったりの部屋をご案内します。',
+  'onboarding.genreBody': 'どんな公演がお好きですか？（複数選択可・後で変更できます）',
+  'onboarding.next': '次へ',
+  'onboarding.skip': 'スキップ',
+  'onboarding.done': 'はじめる',
+  'onboarding.finishing': '保存中…',
   'auth.strength.label': 'パスワード強度',
   'auth.strength.weak': '弱い',
   'auth.strength.fair': '普通',
