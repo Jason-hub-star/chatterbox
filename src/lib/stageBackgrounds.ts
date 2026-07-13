@@ -20,7 +20,8 @@ export const STAGE_BACKGROUNDS: StageBackground[] = [
       { x: 49.2, y: 76.5, r: 16 }, // 바닥 빛 웅덩이(넓게·은은)
     ],
   },
-  { id: 'theater', url: '/scenes/lobby-interiors/theater.webp', labelKey: 'stage.bg.theater' },
+  // 무대 전용 대극장(F-8, 주인님 채택 2026-07-13) — 구 로비 매표소 원화 재사용을 교체. 계보 v2/masters/theater_stage_v1.png
+  { id: 'theater', url: '/scenes/room-stage/theater-stage.webp', labelKey: 'stage.bg.theater' },
   { id: 'teahouse', url: '/scenes/lobby-interiors/teahouse.webp', labelKey: 'stage.bg.teahouse' },
   { id: 'workshop', url: '/scenes/lobby-interiors/workshop.webp', labelKey: 'stage.bg.workshop' },
   { id: 'plaza', url: '/scenes/lobby-plaza/plaza-1.webp', labelKey: 'stage.bg.plaza' },
