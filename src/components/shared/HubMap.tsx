@@ -99,6 +99,14 @@ export default function HubMap({ blocks, roomsCount, onDest, fullscreen = false 
       >
         <div ref={camRef} className="hub-cam absolute inset-0">
           <img src={block.hero} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" />
+          {/* 하늘 구름 그늘 드리프트 — 밝은 하늘을 지나는 구름 그림자(multiply). 밝은 원화엔 screen 글로우
+              델타가 거의 0이라(실측) 어둡히기 방향. img 직후 레이어 = 모트·가로등을 그늘이 못 덮는다. */}
+          {block.sky && (
+            <>
+              <span className="hub-cloud absolute" style={{ top: `${block.sky.t}%`, height: `${block.sky.h}%` }} aria-hidden />
+              <span className="hub-cloud hub-cloud-b absolute" style={{ top: `${block.sky.t}%`, height: `${block.sky.h}%` }} aria-hidden />
+            </>
+          )}
           <GlowMotes count={14} />
           {/* 가로등 상시 점등 — 원화 등화구 좌표(manifest plazaLamps)에 빛 웅덩이. 스포트라이트 마스크
               아래 레이어라 호버 탈채 시 씬과 함께 자연스럽게 가라앉는다. reduced-motion = 점등 유지·숨쉬기만 정지. */}

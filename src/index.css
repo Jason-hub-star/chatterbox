@@ -102,6 +102,33 @@ body {
   }
   .hub-lamp { animation: lamp-breathe 3.4s ease-in-out infinite; }
 }
+/* 하늘 구름 그늘 드리프트 — 밝은 낮 하늘을 아주 느리게 지나는 구름 그림자(multiply).
+   밝은 원화엔 screen(밝히기) 델타가 거의 0이라(픽셀 diff 실측) 어둡히기 방향. 밴드=manifest plazaSky.
+   reduced-motion = 그늘 유지·드리프트만 정지. */
+.hub-cloud {
+  left: -30%;
+  width: 160%;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  filter: blur(10px);
+  background:
+    radial-gradient(ellipse 14% 52% at 36% 42%, rgba(120, 140, 175, 0.26), transparent 70%),
+    radial-gradient(ellipse 18% 60% at 52% 58%, rgba(125, 145, 180, 0.21), transparent 72%),
+    radial-gradient(ellipse 12% 46% at 68% 34%, rgba(120, 140, 175, 0.23), transparent 70%);
+}
+.hub-cloud-b {
+  background:
+    radial-gradient(ellipse 16% 55% at 26% 50%, rgba(120, 140, 175, 0.17), transparent 70%),
+    radial-gradient(ellipse 13% 48% at 60% 40%, rgba(125, 145, 180, 0.14), transparent 72%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cloud-drift {
+    from { transform: translateX(-5%); }
+    to { transform: translateX(5%); }
+  }
+  .hub-cloud { animation: cloud-drift 110s ease-in-out infinite alternate; }
+  .hub-cloud-b { animation-duration: 160s; animation-delay: -60s; } /* 두 층 위상 어긋남 — 기계적 왕복 은폐 */
+}
 .hub-spot {
   z-index: 2;
   pointer-events: none;
@@ -326,4 +353,27 @@ body {
     to { transform: scale(1.05) translateX(1.2%); }
   }
   .stage-pan { animation: stage-pan 60s ease-in-out infinite alternate; }
+}
+
+/* 무대 불 글로우 일렁임 — 원화 모닥불 위 빛 웅덩이(screen). 좌표=stageBackgrounds fireGlow(% 앵커).
+   백드롭 div 자식으로 렌더(Stage.tsx)라 켄 번스와 동승. reduced-motion = 점등 유지·플리커만 정지. */
+.stage-fire {
+  transform: translate(-50%, -50%);
+  width: var(--fr, 8%);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(closest-side, rgba(255, 190, 90, 0.5), rgba(255, 120, 30, 0.2) 55%, transparent 72%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* campfire-flick 의 불규칙 리듬 차용 — 균일 사인파는 기계적으로 읽힌다. translate 는 centering 이라 필수 포함. */
+  @keyframes fire-flick {
+    0%, 100% { opacity: 0.72; transform: translate(-50%, -50%) scale(0.96); }
+    27% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+    38% { opacity: 0.82; transform: translate(-50%, -50%) scale(0.98); }
+    62% { opacity: 0.94; transform: translate(-50%, -50%) scale(1.03); }
+    81% { opacity: 0.76; transform: translate(-50%, -50%) scale(0.97); }
+  }
+  .stage-fire { animation: fire-flick 2.6s ease-in-out infinite; }
 }

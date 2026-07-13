@@ -20,6 +20,7 @@ export interface HubBlock {
   hero: string
   shops: HubShop[]
   lamps?: PlazaLamp[] // 가로등 상시 점등 글로우(원화 등화구 % 좌표)
+  sky?: SkyBand // 하늘 구름 그늘 드리프트 밴드(원화 하늘 % 구간)
 }
 
 // 광장 가로등(원화에 그려진 등의 위치에 빛 웅덩이를 얹는 앵커) — r = 글로우 지름(컨테이너 너비 %).
@@ -27,6 +28,12 @@ export interface PlazaLamp {
   x: number
   y: number
   r: number
+}
+
+// 하늘 밴드(t=상단 %, h=높이 %) — 구름 그늘 드리프트(.hub-cloud)가 흐르는 구간. 구도 소속.
+export interface SkyBand {
+  t: number
+  h: number
 }
 
 // 내부 씬: anchor 는 원화 속 오브젝트에 UI 를 정박하는 % 박스("살아있는 앵커").
@@ -44,6 +51,7 @@ type Box = { l: number; t: number; w: number; h: number }
 interface Composition {
   plazaShops: HubShop[]
   plazaLamps?: PlazaLamp[] // 가로등 등화구 좌표(구도 소속 — 같은 구도 리스킨끼리 공유)
+  plazaSky?: SkyBand // 하늘 밴드(구도 소속 — cloud-calib 실렌더 캘리브)
   interiorAnchors: Partial<Record<HubDest, Record<string, Box>>>
 }
 
@@ -99,6 +107,8 @@ const WESTERN: Composition = {
     { x: 67.4, y: 59.5, r: 5 }, // 대장간 계단 가로등
     { x: 97.7, y: 34.5, r: 6 }, // 찻집 벽 랜턴(우)
   ],
+  // 하늘 구름 그늘 드리프트(주인님 승인 2026-07-13) — 상단 2~26%(대극장 돔·첨탑 위 트인 하늘, cloud-calib 실측).
+  plazaSky: { t: 2, h: 24 },
   interiorAnchors: {
     rooms: { posterBoard: { l: 2.5, t: 14, w: 27, h: 33 }, ticketBooth: { l: 64, t: 16, w: 33, h: 64 } },
     create: { bench: { l: 26, t: 55, w: 46, h: 38 }, model: { l: 50, t: 22, w: 32, h: 30 } },
@@ -176,7 +186,7 @@ export function resolveWorld(id: WorldId): ResolvedWorld {
       video: splashSrc.assets.loginVideo, // 월드에 영상 없으면 undefined → 인트로 연출 스킵
     },
     plaza: {
-      blocks: [{ hero: (plazaSrc.assets.plaza ?? fb.assets.plaza)!, shops: plazaSrc.composition.plazaShops, lamps: plazaSrc.composition.plazaLamps }],
+      blocks: [{ hero: (plazaSrc.assets.plaza ?? fb.assets.plaza)!, shops: plazaSrc.composition.plazaShops, lamps: plazaSrc.composition.plazaLamps, sky: plazaSrc.composition.plazaSky }],
     },
     interiors,
   }

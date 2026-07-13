@@ -5,11 +5,21 @@ export interface StageBackground {
   id: string
   url: string // '' = 배경 없음(기본 무대)
   labelKey: string
+  // 원화 속 불 위치 글로우 앵커(% 좌표, r=지름% — fire-calib 실렌더 캘리브). 미선언 = 글로우 없음.
+  fireGlow?: { x: number; y: number; r: number }[]
 }
 
 export const STAGE_BACKGROUNDS: StageBackground[] = [
   { id: 'none', url: '', labelKey: 'stage.bg.none' },
-  { id: 'campfire', url: '/scenes/room-stage/campfire-forest.webp', labelKey: 'stage.bg.campfire' },
+  {
+    id: 'campfire',
+    url: '/scenes/room-stage/campfire-forest.webp',
+    labelKey: 'stage.bg.campfire',
+    fireGlow: [
+      { x: 48.8, y: 68.5, r: 9 }, // 불꽃 본체 코어
+      { x: 49.2, y: 76.5, r: 16 }, // 바닥 빛 웅덩이(넓게·은은)
+    ],
+  },
   { id: 'theater', url: '/scenes/lobby-interiors/theater.webp', labelKey: 'stage.bg.theater' },
   { id: 'teahouse', url: '/scenes/lobby-interiors/teahouse.webp', labelKey: 'stage.bg.teahouse' },
   { id: 'workshop', url: '/scenes/lobby-interiors/workshop.webp', labelKey: 'stage.bg.workshop' },

@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useState, type CSSProperties, type RefObject } from 'react'
 import type { RoomParticipant } from '@/stores/roomStore'
 import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import SelfAvatar from './SelfAvatar'
@@ -6,6 +6,7 @@ import StageSlot from './StageSlot'
 import MainView from './MainView'
 import { SLOTS, SLOT_PX, seatParticipants } from './stageLayout'
 import { useStageStore } from '@/stores/stageStore'
+import { STAGE_BACKGROUNDS } from '@/lib/stageBackgrounds'
 
 // 원형 무대(경로 B): 센터 프레임을 6석이 3쌍(상/중/하 × 좌·우)으로 둘러싼다(DESIGN-DIRECTION §6.1).
 // 좌석 배정 = DB slot_index 절대좌석(seatParticipants) → 입퇴장에 좌석 불변·전 클라 일치. active-speaker 는 앞으로(StageSlot).
@@ -62,7 +63,17 @@ export default function Stage({
           className="stage-pan pointer-events-none absolute inset-0 rounded-xl bg-cover bg-center opacity-90"
           style={{ backgroundImage: `url(${backgroundUrl})` }}
           aria-hidden
-        />
+        >
+          {/* 불 글로우 일렁임 — 원화 불 위치(% 앵커)에 빛 웅덩이. 백드롭의 **자식**이라 켄 번스(stage-pan)와
+              함께 움직인다(형제면 팬 때 어긋남). 코어(i0)는 빠르게, 웅덩이(i1~)는 느리게 숨쉰다. */}
+          {STAGE_BACKGROUNDS.find((b) => b.url === backgroundUrl)?.fireGlow?.map((p, i) => (
+            <span
+              key={`fire-${i}`}
+              className="stage-fire absolute"
+              style={{ left: `${p.x}%`, top: `${p.y}%`, '--fr': `${p.r}%`, animationDuration: `${2.6 + i * 2.6}s` } as CSSProperties}
+            />
+          ))}
+        </div>
       )}
       <div className="relative grid h-full grid-cols-[1fr_1.9fr_1fr] grid-rows-[1fr_1.9fr_1fr] gap-2">
         {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 씬 배경이 비치는 히어로 placeholder. */}
