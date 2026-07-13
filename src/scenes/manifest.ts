@@ -19,6 +19,14 @@ export interface HubShop {
 export interface HubBlock {
   hero: string
   shops: HubShop[]
+  lamps?: PlazaLamp[] // 가로등 상시 점등 글로우(원화 등화구 % 좌표)
+}
+
+// 광장 가로등(원화에 그려진 등의 위치에 빛 웅덩이를 얹는 앵커) — r = 글로우 지름(컨테이너 너비 %).
+export interface PlazaLamp {
+  x: number
+  y: number
+  r: number
 }
 
 // 내부 씬: anchor 는 원화 속 오브젝트에 UI 를 정박하는 % 박스("살아있는 앵커").
@@ -35,6 +43,7 @@ type Box = { l: number; t: number; w: number; h: number }
 // 구도 패밀리 = % 좌표만(아트 무관). 같은 구도 리스킨끼리 공유(밤·업스케일 등).
 interface Composition {
   plazaShops: HubShop[]
+  plazaLamps?: PlazaLamp[] // 가로등 등화구 좌표(구도 소속 — 같은 구도 리스킨끼리 공유)
   interiorAnchors: Partial<Record<HubDest, Record<string, Box>>>
 }
 
@@ -78,6 +87,17 @@ const WESTERN: Composition = {
     { dest: 'create', box: { l: 71.5, t: 41, w: 11, h: 24 }, cores: [{ x: 45, y: 66 }] }, // 공방
     { dest: 'social', box: { l: 83.5, t: 28, w: 14.5, h: 35 }, cores: [{ x: 45, y: 58 }] }, // 찻집
     { dest: 'practice', box: { l: 78, t: 64, w: 21, h: 31 }, cores: [{ x: 55, y: 45 }] }, // 야외 연습 무대
+  ],
+  // 가로등 상시 점등(주인님 지시 2026-07-13) — 실렌더 캘리브 2회(lamp-calib 하네스)로 등화구 정착 확인.
+  plazaLamps: [
+    { x: 2.9, y: 31, r: 7 }, // 아치 벽 대형 랜턴(좌)
+    { x: 7.7, y: 58.5, r: 6 }, // 대극장 계단 쌍등
+    { x: 28.2, y: 56.8, r: 4 }, // 극장 측벽 브래킷등
+    { x: 31.7, y: 57.5, r: 4 }, // 의상실 앞 랜턴
+    { x: 34.3, y: 74.2, r: 6 }, // 광장 중앙 쌍팔 가로등
+    { x: 55.7, y: 56.5, r: 4 }, // 본관 계단 앞 가로등
+    { x: 67.4, y: 59.5, r: 5 }, // 대장간 계단 가로등
+    { x: 97.7, y: 34.5, r: 6 }, // 찻집 벽 랜턴(우)
   ],
   interiorAnchors: {
     rooms: { posterBoard: { l: 2.5, t: 14, w: 27, h: 33 }, ticketBooth: { l: 64, t: 16, w: 33, h: 64 } },
@@ -156,7 +176,7 @@ export function resolveWorld(id: WorldId): ResolvedWorld {
       video: splashSrc.assets.loginVideo, // 월드에 영상 없으면 undefined → 인트로 연출 스킵
     },
     plaza: {
-      blocks: [{ hero: (plazaSrc.assets.plaza ?? fb.assets.plaza)!, shops: plazaSrc.composition.plazaShops }],
+      blocks: [{ hero: (plazaSrc.assets.plaza ?? fb.assets.plaza)!, shops: plazaSrc.composition.plazaShops, lamps: plazaSrc.composition.plazaLamps }],
     },
     interiors,
   }

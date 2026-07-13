@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import GlowMotes from '@/components/shared/GlowMotes'
 import type { HubBlock, HubDest } from '@/scenes/manifest'
@@ -100,6 +100,16 @@ export default function HubMap({ blocks, roomsCount, onDest, fullscreen = false 
         <div ref={camRef} className="hub-cam absolute inset-0">
           <img src={block.hero} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" />
           <GlowMotes count={14} />
+          {/* 가로등 상시 점등 — 원화 등화구 좌표(manifest plazaLamps)에 빛 웅덩이. 스포트라이트 마스크
+              아래 레이어라 호버 탈채 시 씬과 함께 자연스럽게 가라앉는다. reduced-motion = 점등 유지·숨쉬기만 정지. */}
+          {block.lamps?.map((p, i) => (
+            <span
+              key={`lamp-${i}`}
+              className="hub-lamp absolute"
+              style={{ left: `${p.x}%`, top: `${p.y}%`, '--lr': `${p.r}%`, animationDelay: `${(i % 4) * 0.8}s` } as CSSProperties}
+              aria-hidden
+            />
+          ))}
           {block.shops.map(
             (s) =>
               OFF_DESTS.has(s.dest) && (

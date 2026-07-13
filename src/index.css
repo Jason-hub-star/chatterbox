@@ -85,6 +85,23 @@ body {
    함정: 스포트라이트(멀티플라이)는 씬 직속 형제(버튼 안이면 원화와 안 섞임). */
 .hub-scene { isolation: isolate; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45); }
 .hub-cam { transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1); will-change: transform; }
+/* 가로등 상시 점등 글로우 — 원화 등화구 위 빛 웅덩이(screen). reduced-motion 은 정적 점등(아래 no-preference 참조). */
+.hub-lamp {
+  transform: translate(-50%, -50%);
+  width: var(--lr, 6%);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(closest-side, rgba(255, 196, 100, 0.6), rgba(255, 140, 42, 0.22) 55%, transparent 72%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes lamp-breathe {
+    0%, 100% { opacity: 0.75; transform: translate(-50%, -50%) scale(0.96); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  }
+  .hub-lamp { animation: lamp-breathe 3.4s ease-in-out infinite; }
+}
 .hub-spot {
   z-index: 2;
   pointer-events: none;
