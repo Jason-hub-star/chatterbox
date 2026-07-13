@@ -29,7 +29,6 @@ import { supabase } from '@/lib/supabase'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import ModeBanner from '@/features/room/ModeBanner'
-import FloatingSelfMonitor from '@/features/room/FloatingSelfMonitor'
 import AudioMixerPanel from '@/features/room/AudioMixerPanel'
 import { applyVodSync, readVodSyncState, setVodSyncPublisher } from '@/features/stage/vodSync'
 import DirectorNotesTab from '@/features/room/DirectorNotesTab'
@@ -366,7 +365,6 @@ export default function RoomPage() {
   const [reactionOrigin, setReactionOrigin] = useState<{ x: number; y: number } | null>(null)
   const [reactionSticky, setReactionSticky] = useState(false) // 터치 개화는 sticky(탭 선택) 모드로 시작
   const [mixerOpen, setMixerOpen] = useState(false) // ROOM-08 음량 믹서 개방(하단바 🎧 소유)
-  const [pipOpen, setPipOpen] = useState(false)     // G-64 Self-PiP 개방(하단바 🎭 소유)
   const openReactionWheel = useCallback((e: MouseEvent) => {
     if (e.button !== 2) return
     e.preventDefault()
@@ -658,6 +656,9 @@ export default function RoomPage() {
           loadRecordings={loadRecordings}
           onPlayRecording={playRecording}
           recordingsNonce={recording.recordingsNonce}
+          connected={connected}
+          recordPhase={recording.phase}
+          onToggleRecord={() => void recording.toggleRecording()}
           onCreatePoll={createPollCb}
           onSetPollStatus={setPollStatusCb}
         />
@@ -811,12 +812,6 @@ export default function RoomPage() {
               💌 {t('room.soloInviteHint')}
             </button>
           )}
-          {/* G-64 Self-PiP — 관전자는 트래킹이 없어 미노출. */}
-          {!isViewer && (
-            <FloatingSelfMonitor projectUrl={selfProjectUrl} open={pipOpen} onClose={() => setPipOpen(false)} />
-          )}
-          {/* ROOM-08 음량 믹서 — 관전자 포함 전원(듣기 볼륨은 로컬 권리). */}
-          <AudioMixerPanel open={mixerOpen} onClose={() => setMixerOpen(false)} />
         </div>
       )}
       {reactionOrigin && (
@@ -848,7 +843,7 @@ export default function RoomPage() {
     />
   )
 
-  // 하단바: 마이크/손들기·리액션·나가기
+  // 하단바: 마이크·오디오(믹서)·나가기 — 리액션=무대 제스처, 손들기=가림, 아바타=무대 클릭 크게보기로 이관
   const bottomBarContent = (
     <RoomBottomBar
       isViewer={isViewer}
@@ -857,20 +852,10 @@ export default function RoomPage() {
       handRaised={handRaised}
       connected={connected}
       mixerOpen={mixerOpen}
-      pipOpen={pipOpen}
       onToggleMic={toggleMic}
       onToggleHand={toggleHand}
       onToggleMixer={() => setMixerOpen((v) => !v)}
-      onTogglePip={() => setPipOpen((v) => !v)}
-      onReaction={() => {
-        if (connected) {
-          const rect = document.querySelector('[data-stage-area]')?.getBoundingClientRect()
-          if (rect) {
-            setReactionSticky(true)
-            setReactionOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
-          }
-        }
-      }}
+      mixerSlot={<AudioMixerPanel open={mixerOpen} onClose={() => setMixerOpen(false)} />}
       onLeave={onLeave}
       recordPhase={isHost ? recording.phase : undefined}
       onToggleRecord={isHost ? () => void recording.toggleRecording() : undefined}

@@ -117,6 +117,17 @@ export function useLiveKitRoom(
       room.remoteParticipants.forEach((p) => p.setVolume(mixedVolume(s, p.identity)))
     })
   }, [])
+
+  // 마이크 입력 기기 전환(ROOM-08 오디오 통합): 믹서 드롭다운 선택 → 로컬 마이크 트랙 재발행.
+  // 초기 localStorage 값 자동적용은 defer(연결 후 사용자가 믹서에서 고르면 적용). 게인은 audioStore ponytail.
+  const micDeviceId = useAudioStore((s) => s.micDeviceId)
+  useEffect(() => {
+    const room = roomRef.current
+    if (!room || !micDeviceId) return
+    void room.switchActiveDevice('audioinput', micDeviceId).catch((e: unknown) => {
+      if (import.meta.env.DEV) console.warn('마이크 기기 전환 실패', e)
+    })
+  }, [micDeviceId])
   const {
     setConnectionState,
     setParticipants,

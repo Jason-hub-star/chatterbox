@@ -10,6 +10,8 @@ tags: [contract]
 
 > **as-built (2026-07-10, ROOM-08 MVP):** `stores/audioStore.ts`(masterVolume·participantVolumes·`mixedVolume`=곱·0~1 클램프) + `features/room/AudioMixerPanel.tsx`(무대 우상단 🎚 토글 → 마스터+원격 참가자 슬라이더, 관전자 포함 전원) + `useLiveKitRoom` 브리지(스토어 구독 → `RemoteParticipant.setVolume` 전체 적용, TrackSubscribed 시 저장 볼륨 즉시 적용=재구독 초기화 방지). 스토어는 SDK 미보유(컨벤션 §2). **계약 대비 defer(죽은 코드 방지):** BGM 채널(앱에 BGM 기능 자체 부재)·업링크 헬스 체크(§ROOM-04)·audioTrackPublished 개별 핸들러(TrackSubscribed 로 충분).
 
+> **as-built (2026-07-13, ROOM-08 오디오 통합):** 무대 우상단 고정 → **🎧 버튼 앵커 팝오버**(`RoomBottomBar` relative 래퍼 안 `absolute bottom-full`, 버튼 바로 위 개방·내부 스크롤). **마이크 입력 기기 선택** 추가(`audioStore.micDeviceId` + `enumerateDevices('audioinput')` → `useLiveKitRoom` 이 `room.switchActiveDevice('audioinput', id)` 배선; **마이크 게인은 ponytail defer** — Web Audio 체인 신규 필요). **BGM 온오프**(`audioStore.bgmEnabled` → `lib/sound.ts mixed()` 게이트: 끄면 슬라이더 볼륨 기억한 채 무음) — 위 "BGM 채널 부재" defer 해소(3곡 순환 + **곡 전환 2.5s 크로스페이드 디졸브**, `timeupdate` 트리거·`ended` 폴백). 라벨 이모지 중복 제거(값 이모지 + 아이콘 span 이중 → 라벨에서 제거).
+
 ## Props Interface
 
 ```typescript
@@ -34,6 +36,8 @@ interface AudioMixerProps {
 | `audioStore` | `masterVolume` | ✓ | ✓ | 마스터 볼륨 (0-1) |
 | `audioStore` | `participantVolumes` | ✓ | ✓ | 참가자별 볼륨 (dict) |
 | `audioStore` | `bgmVolume` | ✓ | ✓ | BGM 볼륨 (0-1) |
+| `audioStore` | `micDeviceId` | ✓ | ✓ | 선택 마이크 입력 기기 → `switchActiveDevice` |
+| `audioStore` | `bgmEnabled` | ✓ | ✓ | BGM 온오프(볼륨 기억·무음 게이트) |
 
 ## DataChannel 의존성
 

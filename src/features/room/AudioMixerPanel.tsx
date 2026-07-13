@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRoomStore } from '@/stores/roomStore'
 import { useAudioStore } from '@/stores/audioStore'
@@ -14,15 +15,28 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
   const setMasterVolume = useAudioStore((s) => s.setMasterVolume)
   const setBgmVolume = useAudioStore((s) => s.setBgmVolume)
   const setParticipantVolume = useAudioStore((s) => s.setParticipantVolume)
+  const micDeviceId = useAudioStore((s) => s.micDeviceId)
+  const setMicDeviceId = useAudioStore((s) => s.setMicDeviceId)
+  const bgmEnabled = useAudioStore((s) => s.bgmEnabled)
+  const setBgmEnabled = useAudioStore((s) => s.setBgmEnabled)
   const remotes = participants.filter((p) => !p.isLocal)
+
+  // 마이크 입력 기기 목록(패널 열릴 때 열거 — 룸은 이미 마이크 권한이라 label 채워짐). 게인은 defer(audioStore ponytail).
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([])
+  useEffect(() => {
+    if (!open) return
+    navigator.mediaDevices?.enumerateDevices?.()
+      .then((ds) => setMics(ds.filter((d) => d.kind === 'audioinput')))
+      .catch(() => {})
+  }, [open])
 
   if (!open) return null
 
   return (
     <div
       data-audio-mixer
-      // PiP 패널과 같은 기본 슬롯(top-14) — 동시 개방 시 겹치면 PiP 를 드래그로 치울 수 있어 수용(희귀 경로).
-      className="absolute right-2 top-14 z-30 w-56 rounded-lg border border-stage-border bg-stage-panel/95 p-3"
+      // 🎧 오디오 버튼 앵커 팝오버(RoomBottomBar 의 relative 래퍼 안) — 버튼 바로 위에 열린다. 내용 길면 내부 스크롤.
+      className="absolute bottom-full right-0 mb-2 z-40 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-stage-border bg-stage-panel/95 p-3 shadow-lg"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-stage-text">🎚 {t('stage.mixerTitle')}</h3>
@@ -35,6 +49,22 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
           ✕
         </button>
       </div>
+
+      {/* 내 마이크 입력 기기(ROOM-08 오디오 통합) — 선택 시 로컬 트랙 재발행(useLiveKitRoom switchActiveDevice). 게인은 defer. */}
+      <label className="mt-2 block text-[11px] text-stage-text-muted">
+        {t('stage.mixerMic')}
+        <select
+          value={micDeviceId ?? ''}
+          onChange={(e) => setMicDeviceId(e.target.value || null)}
+          className="mt-1 w-full rounded border border-stage-border bg-stage-elevated px-2 py-1 text-xs text-stage-text"
+          aria-label={t('stage.mixerMic')}
+        >
+          <option value="">{t('stage.mixerMicDefault')}</option>
+          {mics.map((m) => (
+            <option key={m.deviceId} value={m.deviceId}>{m.label || m.deviceId.slice(0, 8)}</option>
+          ))}
+        </select>
+      </label>
 
       <label className="mt-2 block text-[11px] text-stage-text-muted">
         {t('stage.mixerMaster')} · {Math.round(masterVolume * 100)}%
@@ -50,8 +80,21 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
         />
       </label>
 
-      <label className="mt-2 block text-[11px] text-stage-text-muted">
-        {t('stage.mixerBgm')} · {Math.round(bgmVolume * 100)}%
+      {/* 배경 음악(BGM) 온오프 + 볼륨 — 끄면 슬라이더 볼륨을 기억한 채 무음(audioStore bgmEnabled → lib/sound.ts). */}
+      <div className="mt-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-stage-text-muted">{t('stage.mixerBgm')} · {Math.round(bgmVolume * 100)}%</span>
+          <button
+            type="button"
+            onClick={() => setBgmEnabled(!bgmEnabled)}
+            aria-pressed={bgmEnabled}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+              bgmEnabled ? 'bg-fire-amber/20 text-fire-amber' : 'border border-stage-border text-stage-text-muted hover:text-stage-text'
+            }`}
+          >
+            {bgmEnabled ? t('stage.bgmOn') : t('stage.bgmOff')}
+          </button>
+        </div>
         <input
           type="range"
           min={0}
@@ -59,10 +102,11 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
           step={0.05}
           value={bgmVolume}
           onChange={(e) => setBgmVolume(Number(e.target.value))}
+          disabled={!bgmEnabled}
           aria-label={t('stage.mixerBgm')}
-          className="mt-1 w-full accent-fire-amber"
+          className="mt-1 w-full accent-fire-amber disabled:opacity-40"
         />
-      </label>
+      </div>
 
       {remotes.length === 0 ? (
         <p className="mt-3 text-[11px] text-stage-text-muted">{t('stage.mixerNoRemote')}</p>

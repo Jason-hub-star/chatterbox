@@ -26,12 +26,73 @@ let bgmEl: HTMLAudioElement | null = null
 let trackIdx = 0
 let unsubVolume: (() => void) | null = null
 let unlockListening = false
+let fading = false // 곡 전환 크로스페이드(디졸브) 중 — subscribe 볼륨 덮어쓰기 방지
+const BGM_FADE_MS = 2500 // 곡 전환 디졸브 길이(끝 이만큼 전부터 다음 곡과 교차)
 const sfxCache = new Map<SfxId, HTMLAudioElement>()
 const lastSfxAt = new Map<SfxId, number>()
 
 const mixed = () => {
   const s = useAudioStore.getState()
-  return Math.max(0, Math.min(1, s.masterVolume * s.bgmVolume))
+  return s.bgmEnabled ? Math.max(0, Math.min(1, s.masterVolume * s.bgmVolume)) : 0
+}
+
+// 볼륨 램프(rAF): 현재 볼륨 → to 로 ms 동안 선형. done 은 완료 콜백. rAF 타임스탬프로 경과 산정(Date.now 불요).
+function rampVolume(el: HTMLAudioElement, to: number, ms: number, done?: () => void) {
+  const from = el.volume
+  let start = 0
+  const step = (ts: number) => {
+    if (!start) start = ts
+    const k = ms <= 0 ? 1 : Math.min(1, (ts - start) / ms)
+    el.volume = Math.max(0, Math.min(1, from + (to - from) * k))
+    if (k < 1) requestAnimationFrame(step)
+    else done?.()
+  }
+  requestAnimationFrame(step)
+}
+
+// 다음 곡으로 크로스페이드(디졸브): 새 엘리먼트를 0볼륨으로 겹쳐 재생하며 현재 곡은 페이드아웃.
+// bgmEl 을 새 엘리먼트로 스왑(subscribe·mixed 대상 이관). 재생 거부 시 페이드 없이 즉시 스왑.
+function crossfadeToNext() {
+  const oldEl = bgmEl
+  if (!oldEl) return
+  fading = true
+  trackIdx = (trackIdx + 1) % BGM_PLAYLIST.length
+  const nextEl = new Audio(BGM_PLAYLIST[trackIdx])
+  nextEl.loop = false
+  nextEl.volume = 0
+  wireTrack(nextEl)
+  bgmEl = nextEl
+  if (import.meta.env.DEV) (window as unknown as { __bgm?: HTMLAudioElement | null }).__bgm = nextEl
+  nextEl
+    .play()
+    .then(() => {
+      rampVolume(nextEl, mixed(), BGM_FADE_MS, () => {
+        fading = false
+        if (bgmEl) bgmEl.volume = mixed() // 페이드 중 바뀐 볼륨·bgmEnabled 재동기(subscribe 가 fading 동안 건너뛴 값)
+      })
+      rampVolume(oldEl, 0, BGM_FADE_MS, () => { oldEl.pause(); oldEl.removeAttribute('src') })
+    })
+    .catch(() => {
+      fading = false
+      nextEl.volume = mixed()
+      oldEl.pause()
+      oldEl.removeAttribute('src')
+    })
+}
+
+// 곡별 리스너: 끝 BGM_FADE_MS 전 크로스페이드 시작(timeupdate). ended 는 백그라운드 폴백(timeupdate 못 받은 경우).
+function wireTrack(el: HTMLAudioElement) {
+  el.addEventListener('timeupdate', () => {
+    if (fading || el !== bgmEl || !el.duration) return
+    if (el.duration - el.currentTime <= BGM_FADE_MS / 1000) crossfadeToNext()
+  })
+  el.addEventListener('ended', () => {
+    if (fading || el !== bgmEl) return // 크로스페이드로 이미 넘어갔으면 무시
+    trackIdx = (trackIdx + 1) % BGM_PLAYLIST.length
+    el.src = BGM_PLAYLIST[trackIdx]
+    el.volume = mixed()
+    el.play().catch(() => { /* 순환 중 거부는 무시 */ })
+  })
 }
 
 // 제스처 전 자동재생 거부 → 첫 pointerdown 에서 1회 재시도(once). E2E 실측 지점(data 없음 — paused 로 판정).
@@ -55,15 +116,11 @@ export function startBgm() {
   trackIdx = Math.floor(Math.random() * BGM_PLAYLIST.length)
   const el = new Audio(BGM_PLAYLIST[trackIdx])
   el.loop = false
-  el.addEventListener('ended', () => {
-    trackIdx = (trackIdx + 1) % BGM_PLAYLIST.length
-    el.src = BGM_PLAYLIST[trackIdx]
-    el.play().catch(() => { /* 순환 중 거부는 무시(탭 백그라운드 등) */ })
-  })
+  wireTrack(el) // ended/timeupdate → 곡 순환 + 전환 크로스페이드(디졸브)
   el.volume = mixed()
   bgmEl = el
   unsubVolume = useAudioStore.subscribe(() => {
-    if (bgmEl) bgmEl.volume = mixed()
+    if (bgmEl && !fading) bgmEl.volume = mixed() // 페이드 중엔 램프가 볼륨 소유
   })
   if (import.meta.env.DEV) (window as unknown as { __bgm?: HTMLAudioElement | null }).__bgm = el // E2E 실측 훅(프로드 번들 제외)
   tryPlay(el)
@@ -72,6 +129,7 @@ export function startBgm() {
 export function stopBgm() {
   unsubVolume?.()
   unsubVolume = null
+  fading = false
   if (bgmEl) {
     bgmEl.pause()
     bgmEl.removeAttribute('src') // 버퍼 해제

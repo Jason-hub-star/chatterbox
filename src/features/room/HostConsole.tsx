@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 import type { RecentPerson, RoomRecordingItem } from '@/lib/rooms'
+import type { RecordingPhase } from './useRoomRecording'
+import { REC_LABEL } from './recordingLabels'
 import Modal from '@/components/shared/Modal'
 import { toast } from '@/hooks/useToast'
 import { STAGE_BACKGROUNDS } from '@/lib/stageBackgrounds'
@@ -36,6 +38,9 @@ export default function HostConsole({
   recordingsNonce,
   onCreatePoll,
   onSetPollStatus,
+  connected,
+  recordPhase,
+  onToggleRecord,
 }: {
   participants: RoomParticipant[]
   myIdentity: string
@@ -58,6 +63,9 @@ export default function HostConsole({
   recordingsNonce: number // 녹화 완료 시 ++ → 목록 갱신
   onCreatePoll: (question: string, options: string[]) => Promise<void> // ROOM-22 — 서버가 host 재검증·활성 1개 강제
   onSetPollStatus: (pollId: string, status: 'revealed' | 'closed') => Promise<void> // reveal 시에만 percent 공개
+  connected: boolean
+  recordPhase?: RecordingPhase // V-3 녹화 phase — 하단바에서 이관(idle 시작 진입은 콘솔, 하단바는 진행 상태만)
+  onToggleRecord?: () => void
 }) {
   const { t } = useTranslation()
   // 강퇴 확인: 2단 토글(계약 위반·오클릭 위험) → Modal 프리미티브(P-4, 포커스트랩·Esc·복귀).
@@ -549,6 +557,23 @@ export default function HostConsole({
         )}
         {pollErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{pollErr}</p>}
       </section>
+
+      {/* 무대 녹화 시작/중지(V-3) — 하단바에서 이관. idle 진입은 콘솔, 하단바는 진행 상태만. */}
+      {onToggleRecord && (
+        <section>
+          <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.recordTitle')}</h3>
+          <button
+            data-record-button={recordPhase}
+            onClick={onToggleRecord}
+            disabled={!connected || recordPhase === 'uploading'}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 ${REC_LABEL[recordPhase ?? 'idle'].cls}`}
+            title={t(REC_LABEL[recordPhase ?? 'idle'].key)}
+          >
+            <span className={recordPhase === 'recording' ? 'animate-pulse' : undefined}>{REC_LABEL[recordPhase ?? 'idle'].icon}</span>
+            <span>{t(REC_LABEL[recordPhase ?? 'idle'].key)}</span>
+          </button>
+        </section>
+      )}
 
       {/* 녹화 다시보기(V-3) — ready 녹화 목록 + 인라인 재생. 목록이 비면 섹션 자체를 숨긴다. */}
       {recs.length > 0 && (

@@ -1,8 +1,10 @@
 import { useEffect, useState, type CSSProperties, type RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import SelfAvatar from './SelfAvatar'
 import StageSlot from './StageSlot'
+import AvatarZoomOverlay from './AvatarZoomOverlay'
 import MainView from './MainView'
 import { SLOTS, SLOT_PX, seatParticipants } from './stageLayout'
 import { useStageStore } from '@/stores/stageStore'
@@ -49,10 +51,14 @@ export default function Stage({
   hostId,
   onStopShare,
 }: Props) {
+  const { t } = useTranslation()
   const slotPx = useSlotPx()
   const backgroundUrl = useStageStore((s) => s.backgroundUrl)
   // 최대 6석(§6.4; 8인 배치는 defer). slot_index 절대좌석 — key=identity 라 재배치돼도 캔버스 보존.
   const seats = seatParticipants(participants, slotOf, SLOTS.length)
+  // 아바타 크게보기(무대 클릭, 전원 대상). 원격은 registry 이동이라 확대 중 무대 슬롯을 비운다(placeholder). self 는 구독이라 무대 유지.
+  const [zoomed, setZoomed] = useState<string | null>(null)
+  const zoomedSeat = seats.find((p) => p?.identity === zoomed) ?? null
 
   return (
     <div className="relative h-full w-full">
@@ -80,9 +86,23 @@ export default function Stage({
         <MainView isHost={isHost} onStop={onStopShare} />
 
       {seats.map((p, i) => (
-        <StageSlot key={p ? p.identity : `empty-${i}`} col={SLOTS[i].col} row={SLOTS[i].row} speaking={p?.isSpeaking}>
+        <StageSlot
+          key={p ? p.identity : `empty-${i}`}
+          col={SLOTS[i].col}
+          row={SLOTS[i].row}
+          speaking={p?.isSpeaking}
+          onClick={p ? () => setZoomed(p.identity) : undefined}
+        >
           {p ? (
-            p.isLocal ? (
+            // 원격이 확대 중이면 무대 슬롯은 placeholder — registry sink 가 identity 당 1개라 확대창으로 이동한다.
+            p.identity === zoomed && !p.isLocal ? (
+              <div
+                className="grid place-items-center rounded-full border border-dashed border-stage-border text-[11px] text-stage-text-muted"
+                style={{ width: slotPx, height: slotPx }}
+              >
+                {t('stage.zoomedAway')}
+              </div>
+            ) : p.isLocal ? (
               <SelfAvatar
                 projectUrl={selfProjectUrl}
                 sendBlendshapes={sendBlendshapes}
@@ -103,6 +123,19 @@ export default function Stage({
         </StageSlot>
       ))}
       </div>
+      {zoomedSeat && (
+        <AvatarZoomOverlay
+          target={{
+            identity: zoomedSeat.identity,
+            name: zoomedSeat.name,
+            isLocal: zoomedSeat.isLocal,
+            isHost: !!hostId && zoomedSeat.identity === hostId,
+            projectUrl: zoomedSeat.isLocal ? selfProjectUrl : remoteProjectUrl(zoomedSeat.identity),
+          }}
+          remoteRegistry={remoteAvatars}
+          onClose={() => setZoomed(null)}
+        />
+      )}
     </div>
   )
 }
