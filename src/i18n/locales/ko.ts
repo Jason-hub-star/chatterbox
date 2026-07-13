@@ -73,6 +73,11 @@ export const ko: Record<string, string> = {
   "dub.hostCompositeReady": "호스트가 완성본을 합성할 수 있어요.",
 
   // --- auth/진입(login·register) — 인앱 랜딩 폐지(snack-web 담당, 2026-07-08) ---
+  "auth.strength.label": "비밀번호 강도",
+  "auth.strength.weak": "약함",
+  "auth.strength.fair": "보통",
+  "auth.strength.good": "좋음",
+  "auth.strength.strong": "강함",
   "login.title": "로그인",
   "login.email": "이메일",
   "login.password": "비밀번호",
@@ -157,11 +162,6 @@ export const ko: Record<string, string> = {
   "notes.inputLabel": "노트 입력",
   "notes.placeholder": "노트를 남기세요",
   "notes.send": "기록",
-  "room.infoTitle": "세션 정보",
-  "room.infoGenre": "장르",
-  "room.infoGenreNone": "일반",
-  "room.infoRuntime": "러닝 타임",
-  "room.infoLanguage": "언어",
   "room.emoteTitle": "이모트",
   "room.soundboardTitle": "사운드보드",
   "stage.directorTag": "감독",
@@ -461,7 +461,6 @@ export const ko: Record<string, string> = {
   "settings.home": "← 홈",
 
   // --- script(대본 텔레프롬프터) ---
-  "script.header": "대본 — {{title}}",
   "script.roleFree": "비어 있음",
   "script.claim": "맡기",
   "script.release": "내려놓기",
@@ -480,6 +479,10 @@ export const ko: Record<string, string> = {
   "script.fontSize": "글자 크기",
   "script.fontSmaller": "글자 작게",
   "script.fontLarger": "글자 크게",
+  "script.nextUp": "다음",
+  "script.fullScript": "전체 대본",
+  "script.me": "나",
+  "script.settings": "설정",
 
   // --- stage/avatar(무대·아바타) ---
   "stage.mainView": "메인 뷰",

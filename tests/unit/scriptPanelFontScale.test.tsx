@@ -44,6 +44,8 @@ function render() {
 
 const cueText = () => container.querySelector('[data-testid="current-cue"] p')!
 const fontButtons = () => container.querySelectorAll<HTMLButtonElement>('[role="group"] button')
+// A안: 글자 크기 컨트롤은 ⚙ 설정 드로어(기본 접힘) 안 — 클릭 검증 전 열어야 한다. 현재 대사 반영은 상시.
+const settingsToggle = () => container.querySelector<HTMLButtonElement>('button[aria-expanded]')!
 const click = (btn: HTMLButtonElement) => act(() => btn.dispatchEvent(new MouseEvent('click', { bubbles: true })))
 
 // vitest 워커의 globalThis.localStorage 가 Node 내장 스텁(clear 부재)에 가려질 수 있어 인메모리로 고정.
@@ -76,6 +78,7 @@ describe('ScriptPanel 개인 글자 크기', () => {
 
   it('A+ → lg(text-2xl) 확대 + localStorage 저장 + 상한에서 A+ 비활성', () => {
     render()
+    click(settingsToggle())
     const [smaller, larger] = fontButtons()
     click(larger)
     expect(cueText().classList.contains('text-2xl')).toBe(true)
@@ -86,6 +89,7 @@ describe('ScriptPanel 개인 글자 크기', () => {
 
   it('A− → sm(text-base) 축소 + 하한에서 A− 비활성', () => {
     render()
+    click(settingsToggle())
     const [smaller] = fontButtons()
     click(smaller)
     expect(cueText().classList.contains('text-base')).toBe(true)

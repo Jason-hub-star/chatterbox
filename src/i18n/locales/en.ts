@@ -73,6 +73,11 @@ export const en: Record<string, string> = {
   'dub.hostCompositeReady': 'The host can now composite the final cut.',
 
   // --- auth (login/register/reset) ---
+  'auth.strength.label': 'Password strength',
+  'auth.strength.weak': 'Weak',
+  'auth.strength.fair': 'Fair',
+  'auth.strength.good': 'Good',
+  'auth.strength.strong': 'Strong',
   'login.title': 'Log in',
   'login.email': 'Email',
   'login.password': 'Password',
@@ -157,11 +162,6 @@ export const en: Record<string, string> = {
   'notes.inputLabel': 'Note input',
   'notes.placeholder': 'Leave a note',
   'notes.send': 'Log',
-  'room.infoTitle': 'Session info',
-  'room.infoGenre': 'Genre',
-  'room.infoGenreNone': 'General',
-  'room.infoRuntime': 'Runtime',
-  'room.infoLanguage': 'Language',
   'room.emoteTitle': 'Emotes',
   'room.soundboardTitle': 'Soundboard',
   'stage.directorTag': 'Director',
@@ -461,7 +461,6 @@ export const en: Record<string, string> = {
   'settings.home': '← Home',
 
   // --- script (teleprompter) ---
-  'script.header': 'Script — {{title}}',
   'script.roleFree': 'Open',
   'script.claim': 'Claim',
   'script.release': 'Release',
@@ -480,6 +479,10 @@ export const en: Record<string, string> = {
   'script.fontSize': 'Font size',
   'script.fontSmaller': 'Smaller text',
   'script.fontLarger': 'Larger text',
+  'script.nextUp': 'Next',
+  'script.fullScript': 'Full script',
+  'script.me': 'Me',
+  'script.settings': 'Settings',
 
   // --- stage/avatar ---
   'stage.mainView': 'Main view',

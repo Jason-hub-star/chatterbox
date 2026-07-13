@@ -17,6 +17,8 @@ tags: [contract]
 
 > **(2026-07-10 ROOM-06 잔여) 개인 글자 크기 조절 구현** — 헤더 A−/A+ 3단계 폰트 스케일(현재 대사 text-base/lg/2xl·전체 대본 text-xs/sm/lg), `localStorage('cb.scriptFontScale')` persist·이상값 md 폴백. 기기 로컬 설정(다른 참가자 전파 없음). 렌더 테스트 5(`scriptPanelFontScale.test.tsx`).
 
+> **(2026-07-13 ROOM-06 A안 "무대용 위계") 텔레프롬프터 좌 dock 재편 — as-built:** 좁은 dock(clamp 216~256px)에서 셋업 chrome 가 대사와 동급이라 초점이 없던 문제(주인님 UIUX 지적) 해소 — **현재 대사를 지배 요소로**. 상시 노출 = **헤더 1줄(모드 태그 + 대본 제목) → 역할 칩 → 텔레프롬프터 포커스(★)**, 셋업은 **⚙ 설정(default 접힘)** 뒤로. **세션정보 카드 제거**(장르·러닝타임=상단바 중복·언어=본인 UI 설정 → 정보 손실 0). **모드**(리허설/본공연): 호스트=태그 토글·비호스트=읽기전용 라벨. **역할 = 칩**(내 역할 앰버 채움·탭=내려놓기 / 남=테두리 / 빈=파선·탭=맡기 / 관전자 정적). **현재 대사 포커스** = 신규 `features/script/TeleprompterFocus.tsx`(**배치 무관** — cue/역할/모드 로직 재작성 없이 C 무대 하단 전폭 오버레이로 승급 가능): `leading-relaxed` 로 크게, **긴 대사는 `max-h-[40vh] overflow-y-auto` 박스 내부 스크롤**(cue 변경 시 `scrollTop=0`), **다음 대사 faint 미리보기**(`script.nextUp`). **⚙ 설정**(`script.settings`, `localStorage('cb.scriptSettingsOpen')`) 안에 **개인 글자 크기(A−/A+)·호스트 역할 배정/해제·전체 대본**. 스케일 어휘는 `features/script/fontScale.ts` leaf 분리(`script.header` 접두는 제거 — 제목은 데이터). **cue 동기(SEC-5 서버릴레이)·역할 클레임·모드 전환 프로토콜 무변경** — 프레젠테이션·레이아웃만. **실증**: check:all 그린 + 실렌더 실측(240px 실폭 dock: **현재 대사 = 패널 70%**(cueH 376/panelH 534)·셋업 chrome 접힘시 부재·⚙ 펼치면 등장·가로 오버플로 0 @240/360·lg 초장문 박스 내부 스크롤). 렌더 테스트 `teleprompterFocus.test.tsx`(4) + `scriptPanelFontScale.test.tsx`(⚙ 경유 갱신). **C 승급 defer:** 무대 몰입 실사용 판정 후.
+
 ## Props Interface
 
 ```typescript

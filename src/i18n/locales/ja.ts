@@ -73,6 +73,11 @@ export const ja: Record<string, string> = {
   'dub.hostCompositeReady': 'ホストが完成版を合成できます。',
 
   // --- auth(ログイン・登録・リセット) ---
+  'auth.strength.label': 'パスワード強度',
+  'auth.strength.weak': '弱い',
+  'auth.strength.fair': '普通',
+  'auth.strength.good': '良い',
+  'auth.strength.strong': '強い',
   'login.title': 'ログイン',
   'login.email': 'メールアドレス',
   'login.password': 'パスワード',
@@ -157,11 +162,6 @@ export const ja: Record<string, string> = {
   'notes.inputLabel': 'ノート入力',
   'notes.placeholder': 'ノートを残す',
   'notes.send': '記録',
-  'room.infoTitle': 'セッション情報',
-  'room.infoGenre': 'ジャンル',
-  'room.infoGenreNone': '一般',
-  'room.infoRuntime': 'ランタイム',
-  'room.infoLanguage': '言語',
   'room.emoteTitle': 'エモート',
   'room.soundboardTitle': 'サウンドボード',
   'stage.directorTag': '監督',
@@ -461,7 +461,6 @@ export const ja: Record<string, string> = {
   'settings.home': '← ホーム',
 
   // --- script(台本テレプロンプター) ---
-  'script.header': '台本 — {{title}}',
   'script.roleFree': '空き',
   'script.claim': '担当する',
   'script.release': '外す',
@@ -480,6 +479,10 @@ export const ja: Record<string, string> = {
   'script.fontSize': '文字サイズ',
   'script.fontSmaller': '文字を小さく',
   'script.fontLarger': '文字を大きく',
+  'script.nextUp': '次',
+  'script.fullScript': '台本全体',
+  'script.me': '私',
+  'script.settings': '設定',
 
   // --- stage/avatar ---
   'stage.mainView': 'メインビュー',

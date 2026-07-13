@@ -40,7 +40,6 @@ import RoomJoinGate from '@/features/room/RoomJoinGate'
 import RoomShell from '@/features/room/RoomShell'
 import RoomTopBar from '@/features/room/RoomTopBar'
 import RoomBottomBar from '@/features/room/RoomBottomBar'
-import SessionInfoCard from '@/features/room/SessionInfoCard'
 import EmoteConsoleCard from '@/features/reaction/EmoteConsoleCard'
 
 // Phase 1B PoC → 우측 패널 셸 도입: 채팅·DUB·VGen 을 RightPanel 탭 블록으로 통합(contracts/RightPanel.md).
@@ -734,10 +733,9 @@ export default function RoomPage() {
   // 반응형: 태그는 장르 하나만(공간 제한)
   const roomTags = roomGenre ? [roomGenre] : []
 
-  // 좌도크: 세션정보 카드(상시) + 대본 패널(연결 후, ROOM-14) — R3 좌도크 카드 스택.
+  // 좌도크: 대본 텔레프롬프터(연결 후, ROOM-14/06) — 세션정보 카드는 상단바 중복이라 제거(2026-07-13).
   const leftDockContent = (
     <div className="flex flex-col gap-3">
-      <SessionInfoCard genre={roomGenre} elapsed={elapsed} connected={connected} />
       {connected && (
         <ScriptPanel
           script={scriptSync.script}
