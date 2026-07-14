@@ -4,7 +4,7 @@
 //
 // 접근제어(RLS 와 동형, Edge=service_role 이라 수동 확인): public | 본인(triggered_by) | members_only+방멤버.
 
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, isActiveParticipant } from "../_shared/supa.ts";
 import { presignGet } from "../_shared/r2.ts";
 
 const TTL_SEC = 3600;
@@ -32,9 +32,8 @@ Deno.serve(async (req) => {
 
   let allowed = job.visibility === "public" || job.triggered_by === userId;
   if (!allowed && job.visibility === "members_only") {
-    const { data: mem } = await service.from("room_participants")
-      .select("id").eq("room_id", job.room_id).eq("user_id", userId).neq("state", "left").maybeSingle();
-    allowed = !!mem;
+    // 강퇴자 차단 포함(SEC-KICK-2)
+    allowed = await isActiveParticipant(service, job.room_id, userId);
   }
   if (!allowed) return json({ error: "볼 수 있는 권한이 없어요." }, 403);
   if (!job.result_object_key) return json({ error: "아직 완성되지 않았어요." }, 404);

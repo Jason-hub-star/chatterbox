@@ -23,7 +23,34 @@ interface Props {
   isHost: boolean
   // 호스트 좌석 판정(rooms.host_id). identity(=auth uid)가 hostId 와 같으면 그 좌석이 호스트 — 앰버 링+크라운(§6.4).
   hostId?: string | null
+  // UX-STAGE-VIS: 호스트음소거 authId 집합(서버 진실·전 멤버) — 무대 슬롯에 🔇 배지. 연결저하는 participant.connectionQuality.
+  mutedIdentities: Set<string>
   onStopShare: () => void
+}
+
+// 무대 슬롯 상태 배지(UX-STAGE-VIS) — 콘솔 탭에만 있던 음소거·연결 상태를 무대에 노출.
+// 아이콘=비색상 신호(색상단독 회피) + aria-label. 정상(good/excellent/unknown)은 미표시로 무대 클린 유지.
+function SlotStatus({ muted, quality }: { muted: boolean; quality?: RoomParticipant['connectionQuality'] }) {
+  const { t } = useTranslation()
+  const conn =
+    quality === 'poor' ? { icon: '🔴', label: t('stage.statusConnPoor') }
+      : quality === 'lost' ? { icon: '❌', label: t('stage.statusConnLost') }
+        : null
+  if (!muted && !conn) return null
+  return (
+    <div className="pointer-events-none absolute right-1 top-1 z-20 flex gap-1">
+      {muted && (
+        <span className="grid h-5 w-5 place-items-center rounded-full bg-fire-hot/90 text-[11px] shadow" role="img" aria-label={t('stage.statusMuted')} title={t('stage.statusMuted')}>
+          🔇
+        </span>
+      )}
+      {conn && (
+        <span className="grid h-5 w-5 place-items-center rounded-full bg-stage-base/85 text-[11px] shadow" role="img" aria-label={conn.label} title={conn.label}>
+          {conn.icon}
+        </span>
+      )}
+    </div>
+  )
 }
 
 // 반응형 슬롯 크기(P-5): <480px 뷰포트는 88px — 3열(88×3+gap+패딩)이 360px 에 들어가 압착이 사라진다.
@@ -49,6 +76,7 @@ export default function Stage({
   remoteAvatars,
   isHost,
   hostId,
+  mutedIdentities,
   onStopShare,
 }: Props) {
   const { t } = useTranslation()
@@ -93,6 +121,7 @@ export default function Stage({
           speaking={p?.isSpeaking}
           onClick={p ? () => setZoomed(p.identity) : undefined}
         >
+          {p && <SlotStatus muted={mutedIdentities.has(p.identity)} quality={p.connectionQuality} />}
           {p ? (
             // 원격이 확대 중이면 무대 슬롯은 placeholder — registry sink 가 identity 당 1개라 확대창으로 이동한다.
             p.identity === zoomed && !p.isLocal ? (

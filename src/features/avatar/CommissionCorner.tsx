@@ -183,7 +183,9 @@ function UploadWizard({ onClose, onSubmit }: { onClose: () => void; onSubmit: (f
       pushToast('info', t('atelier.orderPlaced'))
       onClose()
     } catch (e) {
-      setErrMsg(e instanceof Error ? e.message : t('atelier.orderFailedToast'))
+      // UX-A11Y-1: 서버 원문(기술적·미번역 가능)을 그대로 노출하지 않고 로컬라이즈 일반 메시지로 — 원문은 콘솔에 보존(디버깅).
+      console.error('commission order failed:', e instanceof Error ? e.message : e)
+      setErrMsg(t('atelier.orderFailedToast'))
       setBusy(false)
     }
   }

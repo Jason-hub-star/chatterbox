@@ -28,7 +28,7 @@ export default function RightPanel({ tabs }: { tabs: RightPanelTab[] }) {
 
   return (
     <aside
-      className="flex max-h-[75vh] flex-col rounded-lg border border-stage-border lg:max-h-[calc(100vh-8rem)]"
+      className="flex max-h-[75vh] flex-col rounded-lg border border-stage-border sm:max-h-[80vh] md:max-h-[85vh] lg:max-h-[calc(100vh-8rem)]"
       aria-label={t('room.sidePanel')}
     >
       <div role="tablist" aria-label={t('room.sidePanel')} className="flex border-b border-stage-border">

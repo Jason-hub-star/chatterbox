@@ -2,7 +2,7 @@
 // SSOT: docs/contracts/DubCompositor.md §5 (다운로드), get-dub-source-url 패턴
 // 입력: { dub_session_id }  출력: { url, file_size_bytes, duration_ms }
 
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, isActiveParticipant } from "../_shared/supa.ts";
 import { presignGet } from "../_shared/r2.ts";
 
 const TTL_SEC = 3600;
@@ -30,15 +30,10 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!sess) return json({ error: "세션을 찾을 수 없어요." }, 404);
 
-  // 방 멤버만
-  const { data: me } = await service
-    .from("room_participants")
-    .select("id")
-    .eq("room_id", sess.room_id)
-    .eq("user_id", userId)
-    .neq("state", "left")
-    .maybeSingle();
-  if (!me) return json({ error: "방 참가자만 볼 수 있어요." }, 403);
+  // 방 멤버만(강퇴자 차단 포함, SEC-KICK-2)
+  if (!(await isActiveParticipant(service, sess.room_id, userId))) {
+    return json({ error: "방 참가자만 볼 수 있어요." }, 403);
+  }
 
   // 최신 ready output
   const { data: output } = await service

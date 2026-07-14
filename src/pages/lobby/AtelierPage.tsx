@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
-import { fetchAvatarPresets, resolveAvatarUrl, thumbUrlFor, type AvatarPreset } from '@/lib/avatars'
+import { fetchAvatarPresets, resolveAvatarUrl, thumbUrlFor, isValidAvatarUrl, type AvatarPreset } from '@/lib/avatars'
 import AvatarPreview from '@/features/avatar/AvatarPreview'
 import SelfAvatar from '@/features/stage/SelfAvatar'
 import CommissionCorner from '@/features/avatar/CommissionCorner'
@@ -160,7 +160,9 @@ export default function AtelierPage() {
   const myAvatars = useMemo<WardrobeEntry[]>(
     () =>
       jobs
-        .filter((j) => j.status === 'done' && j.resultProjectUrl)
+        // 유효한 `avatars/<id>/project.json` 절대 URL 만 통과 — 상대URL/정크 result_project_url
+        // (예: 지연-벤치 잔여물)은 렌더·저장·썸네일이 모두 깨지므로 옷장에서 제외(방어).
+        .filter((j) => j.status === 'done' && j.resultProjectUrl && isValidAvatarUrl(j.resultProjectUrl))
         .map((j) => ({
           id: j.id,
           jobId: j.id,
@@ -236,7 +238,7 @@ export default function AtelierPage() {
                   disabled={saving}
                   className="rounded-lg border border-fire-amber bg-fire-amber/15 px-3 py-1.5 text-xs font-semibold text-fire-amber disabled:opacity-50"
                 >
-                  {saving ? t('atelier.wearing') : t('atelier.wear')}
+                  {saving ? t('atelier.wearing') : failed ? t('atelier.wearRetry') : t('atelier.wear')}
                 </button>
               </>
             ) : (

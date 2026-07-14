@@ -41,7 +41,7 @@ export default function EmoteConsoleCard({ onReaction, disabled }: Props) {
             disabled={disabled}
             aria-label={s.label}
             title={s.label}
-            className="grid place-items-center rounded-lg border border-stage-border bg-stage-elevated/60 py-1.5 text-lg transition-colors hover:border-fire-amber/60 disabled:opacity-40"
+            className="grid min-h-[44px] place-items-center rounded-lg border border-stage-border bg-stage-elevated/60 py-1.5 text-lg transition-colors hover:border-fire-amber/60 disabled:opacity-40"
           >
             <EmoteGlyph id={s.id} emoji={s.emoji} size={24} />
           </button>

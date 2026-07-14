@@ -18,7 +18,7 @@ export default function StageSlot({ col, row, speaking = false, onClick, childre
       style={{ gridColumn: col, gridRow: row }}
       data-speaking={speaking ? 'true' : 'false'}
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-1 rounded-xl p-1 transition-all motion-reduce:transition-none ${
+      className={`relative flex flex-col items-center justify-center gap-1 rounded-xl p-1 transition-all motion-reduce:transition-none ${
         onClick ? 'cursor-pointer' : ''
       } ${
         speaking

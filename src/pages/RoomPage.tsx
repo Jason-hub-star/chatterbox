@@ -484,6 +484,9 @@ export default function RoomPage() {
     async (identity: string, muted: boolean) => {
       if (!session) return
       await setParticipantMute(session.access_token, roomId, identity, muted)
+      // UX-STAGE-VIS: 무대 mute 배지(mutedIdentities)를 서버 진실로 즉시 재동기 — 호스트 본인 화면 라이브 반영.
+      // (비호스트 클라의 라이브 전파는 mute broadcast 부재로 memberKey 변동까지 지연 — 기존 ceiling.)
+      setRaiseHandRefetch((n) => n + 1)
     },
     [session, roomId],
   )
@@ -787,6 +790,7 @@ export default function RoomPage() {
             remoteAvatars={remoteAvatars}
             isHost={isHost}
             hostId={hostId}
+            mutedIdentities={mutedIdentities}
             onStopShare={stopShareVgen}
           />
           <ReactionOverlay slotOf={slotOf} />
@@ -839,6 +843,7 @@ export default function RoomPage() {
       elapsed={elapsed}
       count={participants.length}
       capacity={6}
+      isViewer={isViewer}
       onShare={handleShareLink}
     />
   )

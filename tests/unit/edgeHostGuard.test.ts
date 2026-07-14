@@ -16,8 +16,8 @@ const ALLOW = new Set([
   // 조건부 호스트게이트: 리허설/연습 모드(is_practice·script_mode)면 활성 참가자도 진행 허용 —
   // 순수 호스트게이트 아니라 통째 치환 불가. 자체 404→409(ended)→403 체인 보유.
   'advance-script-cue',
-  // 멤버십 게이트("Not a participant") + host_id 는 슬로우모드 면제 판정용(게이트 아님).
-  'send-chat',
+  // (send-chat 은 SEC-KICK-1 에서 requireActiveParticipant 공유헬퍼로 이관 — from("rooms") 인라인 제거로
+  //  더는 시그니처에 안 걸림. host_id 는 슬로우모드 면제 판정용으로만 남음(게이트 아님) → ALLOW 불필요.)
   // 호스트체크가 action==='assign' 조건부(claim/release 는 참가자 권한) — 체인 통째 치환 불가.
   'sync-script-role',
 ])

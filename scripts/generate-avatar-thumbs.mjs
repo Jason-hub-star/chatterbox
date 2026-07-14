@@ -1,10 +1,11 @@
 // 아바타 정적 썸네일 생성·업로드 — 규약: Storage `avatars/<id>/thumb.png` (project.json 옆).
 // 옷장 타일은 이 파일을 <img>로 직접 쓴다(런타임 rig 렌더 없음 — 아바타 수와 무관하게 즉시 페인트).
 // 새 프리셋 배포(deploy-avatar.mjs) 후 이 스크립트를 1회 실행해 썸네일을 채운다.
-// 커미션(Modal 산출물)은 워커가 소스 PNG 축소본을 같은 규약으로 저장하는 게 목표 — 그전까진 타일 이름 폴백.
+// 커미션 아바타도 같은 규약(`avatars/<jobId>/project.json`)이라 jobId 를 인자로 주면 그대로 굽는다 —
+// publish-avatar-job.mjs 가 발행 직후 이 스크립트를 jobId 로 자동 호출(best-effort). Modal 워커 자동화는 후속.
 //
 // 요구사항: dev 서버(localhost:5173) 실행 중 + playwright-core(임시 설치, check:responsive 와 동일 캐빗).
-// 사용법: node scripts/generate-avatar-thumbs.mjs [id ...]   (id 생략 시 매니페스트 전체)
+// 사용법: node scripts/generate-avatar-thumbs.mjs [id|jobId ...]   (생략 시 매니페스트 프리셋 전체)
 
 import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'

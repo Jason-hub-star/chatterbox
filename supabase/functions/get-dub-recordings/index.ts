@@ -2,7 +2,7 @@
 // SSOT: docs/contracts/DubCompositor.md §3 (합성 입력), get-dub-source-url 패턴
 // 입력: { dub_session_id }  출력: { recordings: [{ track_id, start_time_ms, url }] }
 
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, isRoomHost } from "../_shared/supa.ts";
 import { presignGet } from "../_shared/r2.ts";
 
 const TTL_SEC = 3600;
@@ -30,15 +30,11 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!sess) return json({ error: "세션을 찾을 수 없어요." }, 404);
 
-  // 방 멤버만
-  const { data: me } = await service
-    .from("room_participants")
-    .select("id")
-    .eq("room_id", sess.room_id)
-    .eq("user_id", userId)
-    .neq("state", "left")
-    .maybeSingle();
-  if (!me) return json({ error: "방 참가자만 볼 수 있어요." }, 403);
+  // 호스트만(SEC-DUB-1·DubCompositor §1) — 합성용 전체 트랙 다운로드는 호스트 전용. 종료방도 허용(합성 후처리).
+  // 호스트는 강퇴 불가라 kick 우회 무관(isActiveParticipant 보다 좁은 게이트).
+  if (!(await isRoomHost(service, sess.room_id, userId))) {
+    return json({ error: "호스트만 내려받을 수 있어요." }, 403);
+  }
 
   const { data: tracks } = await service
     .from("dub_tracks")

@@ -5,7 +5,7 @@
 //   (수신측은 participant=undefined 인 '서버발'만 수락, sender 는 payload 신뢰).
 // SSOT: contracts/ReactionWheel.md · API-SURFACE (send-viewer-reaction 계열, actor/host 용).
 // SEC-RXN-1: 서버 rate-limit(check_rate_limit 30/분) = 클라 5/s 쓰로틀의 서버측 백스톱. 검열/allowlist 는 후속(ponytail).
-import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
+import { getAppUser, json, isUuid, cors, requireActiveParticipant } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
 Deno.serve(async (req) => {
@@ -32,18 +32,9 @@ Deno.serve(async (req) => {
     ? idempotency_key
     : crypto.randomUUID();
 
-  // 방 존재 + 종료 아님
-  const { data: room } = await user.service
-    .from("rooms").select("id, status").eq("id", room_id).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status === "ended") return json({ error: "Room ended" }, 409);
-
-  // 멤버십: 호출자가 활성 참가자여야 broadcast 가능(URL 해킹·비참가자 차단)
-  const { data: part } = await user.service
-    .from("room_participants").select("id")
-    .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
-    .maybeSingle();
-  if (!part) return json({ error: "Not a participant" }, 403);
+  // 방 + 활성 참가자 게이트(강퇴자 차단 포함, SEC-KICK-1). 리액션은 room 컬럼 불필요.
+  const gate = await requireActiveParticipant(user.service, room_id, user.userId);
+  if (!gate.ok) return gate.res;
 
   // 레이트리밋(SEC-RXN-1): 사용자당 30회/분 — broadcast 폭탄 방어(봇 자동발사 서버측 캡).
   const { data: rlOk } = await user.service.rpc("check_rate_limit", { p_key: `reaction:${user.userId}`, p_max: 30, p_window_sec: 60 });

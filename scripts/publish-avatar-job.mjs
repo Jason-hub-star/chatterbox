@@ -96,3 +96,15 @@ const patch = await fetch(`${URL}/rest/v1/avatar_jobs?id=eq.${jobId}`, {
 const rows = await patch.json()
 if (!patch.ok || !rows.length) throw new Error(`avatar_jobs PATCH 실패: ${patch.status} ${JSON.stringify(rows).slice(0, 200)}`)
 console.log(`잡 done 처리 완료 — ${publicUrl}`)
+
+// 썸네일 굽기(정적 thumb.png 규약 — 옷장 타일이 <img>로 직접 씀). rig 렌더가 필요(dev 서버 + playwright-core)
+// 라 best-effort: 실패해도 발행은 유효(아바타는 이미 라이브, 타일은 onError 이름 폴백). dev 서버 없으면
+// 안내만 남긴다 — 나중에 `node scripts/generate-avatar-thumbs.mjs <jobId>` 로 1회 수동 생성 가능.
+try {
+  const { execFileSync } = await import('node:child_process')
+  // timeout: 헤드리스 WebGL 렌더가 드물게 스톨해도(컨텍스트 누적) 발행 스크립트가 무한 대기하지 않게 120s 캡.
+  execFileSync('node', [join(root, 'scripts/generate-avatar-thumbs.mjs'), jobId], { stdio: 'inherit', timeout: 120_000 })
+  console.log(`썸네일 생성 완료 — avatars/${jobId}/thumb.png`)
+} catch {
+  console.warn(`⚠️ 썸네일 자동생성 스킵(dev 서버 필요/타임아웃) — 수동: node scripts/generate-avatar-thumbs.mjs ${jobId}`)
+}

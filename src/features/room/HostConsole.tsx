@@ -336,7 +336,7 @@ export default function HostConsole({
                 <span className="flex-1 truncate">{h.name ?? '?'}</span>
                 <button
                   onClick={() => void onInviteToStage(h.userId)}
-                  className="shrink-0 rounded border border-fire-amber px-2 py-1 text-xs text-fire-amber hover:bg-fire-amber/10"
+                  className="flex min-h-[44px] shrink-0 items-center rounded border border-fire-amber px-3 py-1 text-xs text-fire-amber hover:bg-fire-amber/10"
                 >
                   {t('host.inviteToStage')}
                 </button>

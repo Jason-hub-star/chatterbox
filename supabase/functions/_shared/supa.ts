@@ -78,6 +78,56 @@ export async function requireHostRoom(
   return { ok: true, room };
 }
 
+// 활성 참가자 여부 — state != 'left' AND 호스트 강퇴 아님. 강퇴자(is_disabled_by_host=true) 차단의 단일 지점.
+// SEC-KICK-1/2: kick 은 livekit 재입장(livekit-token)뿐 아니라 discrete Edge 액션(chat·reaction·데이터
+//   접근 등)도 막아야 모더레이션이 실효 — 멤버십을 보는 모든 호출처가 이 프리미티브를 쓴다.
+//   is_disabled_by_host 는 nullable(default false) → `is not true` 로 null=활성 처리(정상 참가자 오탐 방지).
+// 방 종료 여부는 보지 않음 — 종료된 방의 녹음/더빙 다운로드는 허용(getter 용). 종료 게이트가 필요한
+//   mutation(chat 등)은 아래 requireActiveParticipant 를 쓴다.
+export async function isActiveParticipant(
+  service: SupabaseClient,
+  roomId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await service
+    .from("room_participants").select("id")
+    .eq("room_id", roomId).eq("user_id", userId)
+    .neq("state", "left").not("is_disabled_by_host", "is", true)
+    .maybeSingle();
+  return !!data;
+}
+
+// 방 호스트 여부(rooms.host_id === userId) — 종료 여부 미검사(getter 용, 세션 후 합성 다운로드 허용).
+// SEC-DUB-1: get-dub-recordings 처럼 호스트 전용이지만 종료방 다운로드는 살려야 하는 getter 에 쓴다.
+//   종료 게이트가 필요한 host mutation 은 requireHostRoom(404→409→403) 을 쓴다.
+export async function isRoomHost(
+  service: SupabaseClient,
+  roomId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await service.from("rooms").select("host_id").eq("id", roomId).maybeSingle();
+  return !!data && (data as { host_id: string }).host_id === userId;
+}
+
+// 활성 참가자 게이트(방 존재/미종료 + isActiveParticipant) — mutation(발언·리액션 등) 용.
+// extraCols: 함수별 room 추가 컬럼(예: "chat_banned_words"). 통과 시 room 행 반환, 실패 시 {res} 즉시 응답.
+export async function requireActiveParticipant(
+  service: SupabaseClient,
+  roomId: string,
+  userId: string,
+  extraCols = "",
+): Promise<{ ok: true; room: HostRoom } | { ok: false; res: Response }> {
+  const cols = extraCols ? `id, host_id, status, ${extraCols}` : "id, host_id, status";
+  const { data } = await service.from("rooms").select(cols).eq("id", roomId).single();
+  const room = data as unknown as HostRoom | null;
+  if (!room) return { ok: false, res: json({ error: "Room not found" }, 404) };
+  if (room.status === "ended") return { ok: false, res: json({ error: "Room ended" }, 409) };
+  if (!(await isActiveParticipant(service, roomId, userId))) {
+    return { ok: false, res: json({ error: "Not a participant" }, 403) };
+  }
+  return { ok: true, room };
+}
+
 // 간단 UUID 형식 검증(입력 방어).
 export function isUuid(v: unknown): v is string {
   return typeof v === "string" &&

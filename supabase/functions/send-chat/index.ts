@@ -5,7 +5,7 @@
 //   수신측은 participant=undefined 인 '서버발'만 수락, sender/sender_name 은 payload(서버 확정) 신뢰.
 // slow mode(HOST-09)·금칙어(HOST-10)는 rooms 정책 컬럼(set-chat-policy)으로 여기서 강제. ponytail: note 영속(ROOM-17)은 후속.
 // broadcast 실패 시 INSERT 를 보상 삭제 후 502 — "성공=영속+전달" 원자 유지(재시도해도 중복 행 없음).
-import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
+import { getAppUser, json, isUuid, cors, requireActiveParticipant } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
 const MAX_MESSAGE_LENGTH = 500;
@@ -59,18 +59,10 @@ Deno.serve(async (req) => {
     ? body.rid
     : crypto.randomUUID();
 
-  // 방 존재 + 종료 아님
-  const { data: room } = await user.service
-    .from("rooms").select("id, status, host_id, chat_slow_mode_sec, chat_banned_words").eq("id", room_id).single();
-  if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status === "ended") return json({ error: "Room ended" }, 409);
-
-  // 멤버십: 활성 참가자(뷰어 포함)만 발언 가능(URL 해킹·비참가자 차단)
-  const { data: part } = await user.service
-    .from("room_participants").select("id")
-    .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
-    .maybeSingle();
-  if (!part) return json({ error: "Not a participant" }, 403);
+  // 방 + 활성 참가자 게이트(강퇴자 차단 포함, SEC-KICK-1) — 정책 컬럼 반환. 뷰어 포함 활성 멤버만 발언.
+  const gate = await requireActiveParticipant(user.service, room_id, user.userId, "chat_slow_mode_sec, chat_banned_words");
+  if (!gate.ok) return gate.res;
+  const room = gate.room;
 
   // 금칙어(HOST-10): 방별 목록 — 대소문자 무시 부분일치. sanitize 통과 텍스트 기준.
   const banned = (room.chat_banned_words ?? []) as string[];

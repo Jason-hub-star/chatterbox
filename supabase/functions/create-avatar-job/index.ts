@@ -72,9 +72,11 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 레이트리밋(SEC-AVJ-1): 사용자당 10회/시간 — Modal GPU 비용 무한호출·잡 스팸 차단(check_rate_limit RPC 재사용).
-  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `avatar-job:${userId}`, p_max: 10, p_window_sec: 3600 });
-  if (rlOk === false) return json({ error: "아바타 생성 요청이 너무 잦아요. 잠시 후 다시 시도해주세요." }, 429);
+  // 레이트리밋(SEC-AVJ-1·2): 사용자당 8회/일 — 캐시히트(위)는 계수 제외라 distinct 신규 생성만 카운트.
+  //   기존 10/시(=240/일)는 서로 다른 PNG 로 Modal GPU 일 총량을 과다소각 가능(SEC-AVJ-2) → 일일 캡으로 하향.
+  //   vgen(3/일)보다는 여유(아바타는 반복 시행 있는 1회성 제작) 두되 240→8 로 GPU 소각 상한을 30× 낮춘다.
+  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `avatar-job:${userId}`, p_max: 8, p_window_sec: 86400 });
+  if (rlOk === false) return json({ error: "오늘 아바타 생성 한도에 도달했어요. 내일 다시 시도해주세요." }, 429);
 
   const endpoint = Deno.env.get("MODAL_ENDPOINT_URL");
   const triggerSecret = Deno.env.get("MODAL_TRIGGER_SECRET");
