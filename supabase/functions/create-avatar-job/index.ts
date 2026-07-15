@@ -150,6 +150,24 @@ Deno.serve(async (req) => {
     return json({ error: "업로드 URL 생성 실패" }, 500);
   }
 
+  // Modal spawn보다 먼저 lease를 활성화한다. 매우 빠른 worker의 첫 heartbeat와 Edge의
+  // status PATCH가 경쟁하면 phase/call ID가 역행할 수 있기 때문이다. Edge가 중간에 죽어도
+  // watchdog이 이 초기 lease를 회수한다.
+  const initialLeaseExpiresAt = new Date(Date.now() + 75 * 60 * 1000).toISOString();
+  const { error: activateErr } = await service.from("avatar_jobs")
+    .update({
+      status: "running",
+      phase: "analyzing",
+      last_heartbeat_at: new Date().toISOString(),
+      lease_expires_at: initialLeaseExpiresAt,
+    })
+    .eq("id", job.id)
+    .eq("status", "queued");
+  if (activateErr) {
+    await service.rpc("refund_avatar_credit", { p_job_id: job.id });
+    return json({ error: "잡 활성화 실패" }, 500);
+  }
+
   // Modal 웹엔드포인트 spawn(트리거 시점 GPU 예약). 실패 = 잡 failed 기록.
   try {
     const resp = await fetch(endpoint, {
@@ -164,13 +182,18 @@ Deno.serve(async (req) => {
     });
     const data = await resp.json().catch(() => ({} as { call_id?: string }));
     if (!resp.ok) throw new Error(JSON.stringify(data).slice(0, 200));
-    await service.from("avatar_jobs")
-      .update({ status: "running", phase: "analyzing", provider_call_id: data.call_id ?? null })
+    // provider_call_id는 spawn 응답 뒤에만 알 수 있다. phase/lease는 변경하지 않아 worker가
+    // 이미 진행한 상태를 역행시키지 않는다.
+    const { error: callIdErr } = await service.from("avatar_jobs")
+      .update({
+        provider_call_id: data.call_id ?? null,
+      })
       .eq("id", job.id);
+    if (callIdErr) throw new Error(`provider_call_id 기록 실패: ${callIdErr.message}`);
     return json({ job_id: job.id, status: "running" }, 200);
   } catch (e) {
     await service.rpc("refund_avatar_credit", { p_job_id: job.id }); // 멱등 — 미차감(flag off)이면 no-op
-    await service.from("avatar_jobs").update({ status: "failed", error: "provider_error" }).eq("id", job.id);
+    await service.rpc("fail_avatar_job", { p_job_id: job.id, p_error_code: "provider_error" });
     return json({ error: "아바타 생성 요청 실패", detail: String(e).slice(0, 200) }, 502);
   }
 });
