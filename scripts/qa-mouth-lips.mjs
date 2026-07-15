@@ -41,16 +41,19 @@ const ampFailed = []
 {
   const fb = project.parts.find((p) => p.id === 'face_base')
   const opens = project.parts.filter((p) => /^mouth_(state_|open|wide)/.test(p.id) && Array.isArray(p.bbox))
-  // 유효 개구 = 렌더되는 최대 입높이: wide_grow/부품형은 메시 vertex_keyforms(ParamMouthOpenY)의 최대 y-extent,
-  //   없으면 정적 bbox 높이(states opacity 크로스페이드). 키폼 클램프 수정과 정합 — bbox만 보면 클램프 무시됨.
-  const effH = (p) => {
-    const vkl = (project.meshes || []).find((m) => m.part_id === p.id)?.vertex_keyforms
-    const vk = Array.isArray(vkl) ? vkl.find((e) => e?.parameter_id === 'ParamMouthOpenY') : null
-    if (vk?.keys?.length) return Math.max(...vk.keys.map((k) => { const ys = k.vertices.map((v) => v[1]); return Math.max(...ys) - Math.min(...ys) }))
+  // 렌더 개구 = base 메시 지오메트리(mesh.vertices) y-extent — 렌더러(rigMath keyformBaseVertices)가 이
+  //   base 지오메트리를 그린다(2026-07-16 실렌더 실증: base 123→68px 축소=입 작아짐, 키폼 압축은 무영향).
+  //   메시 없으면 스프라이트 bbox 폴백. 클램프 후 bbox(스프라이트)는 불변이라 base 메시가 렌더-정합 신호.
+  const baseH = (p) => {
+    const mesh = (project.meshes || []).find((m) => m.part_id === p.id)
+    if (mesh?.vertices?.length) {
+      const ys = mesh.vertices.map((v) => v[1])
+      return Math.max(...ys) - Math.min(...ys)
+    }
     return p.bbox[3]
   }
   if (fb?.bbox && opens.length) {
-    const faceH = fb.bbox[3], openH = Math.round(Math.max(...opens.map(effH)))
+    const faceH = fb.bbox[3], openH = Math.round(Math.max(...opens.map(baseH)))
     const ratio = openH / faceH
     const bad = ratio > AMP_MAX_RATIO
     console.log(`qa-mouth-lips: 입벌림 openH=${openH}/faceH=${faceH} = ${(ratio * 100).toFixed(1)}%${bad ? ` ❌ > ${(AMP_MAX_RATIO * 100).toFixed(0)}%` : ' ✓'}`)
