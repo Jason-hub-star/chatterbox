@@ -43,6 +43,21 @@ Deno.serve(async (req) => {
   const cacheKey = rawHash ? `${rawHash}:v${RIG_CACHE_VERSION}` : null;
   const forceRegen = body.force_regen === true; // 운영용 이스케이프(결정론상 유저엔 무의미 — UI 미노출)
 
+  // 인플라이트 잡(같은 user·이미지-해시, queued/running) 조회 — 조기반환 + INSERT 23505 백스톱 공용.
+  const findInflight = async () => {
+    if (!cacheKey) return null;
+    const { data } = await service
+      .from("avatar_jobs")
+      .select("id, status")
+      .eq("user_id", userId)
+      .eq("input_hash", cacheKey)
+      .in("status", ["queued", "running"])
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    return data;
+  };
+
   // 캐시 히트면 33분 연산·크레딧·레이트리밋·Modal spawn 전부 스킵하고 done-row 즉시 반환(본인 스코프).
   if (cacheKey && !forceRegen) {
     const { data: hit } = await service
@@ -72,6 +87,14 @@ Deno.serve(async (req) => {
     }
   }
 
+  // 인플라이트 디덥: 같은 그림이 이미 만들어지는 중(queued/running)이면 새 GPU spawn 대신 그 잡에 붙는다
+  //   (동시 중복 제출 이중과금 차단, 2026-07-15 실측). done-캐시 미스 뒤·rate-limit/spawn 전 — deduped 는
+  //   rate-limit 미계수(cache hit 과 동일 취급). DB 유니크(avatar_jobs_inflight_uniq)가 레이스까지 막음.
+  if (!forceRegen) {
+    const live = await findInflight();
+    if (live) return json({ job_id: live.id, status: live.status, deduped: true }, 200);
+  }
+
   // 레이트리밋(SEC-AVJ-1·2): 사용자당 8회/일 — 캐시히트(위)는 계수 제외라 distinct 신규 생성만 카운트.
   //   기존 10/시(=240/일)는 서로 다른 PNG 로 Modal GPU 일 총량을 과다소각 가능(SEC-AVJ-2) → 일일 캡으로 하향.
   //   vgen(3/일)보다는 여유(아바타는 반복 시행 있는 1회성 제작) 두되 240→8 로 GPU 소각 상한을 30× 낮춘다.
@@ -93,6 +116,12 @@ Deno.serve(async (req) => {
     provider: "modal",
   }).select("id").single();
   if (insErr || !job) {
+    // 유니크 위반(23505) = 조기반환 SELECT 통과 후 동시 레이스로 다른 요청이 방금 같은 in-flight 잡 생성
+    //   → 그 잡에 붙는다(레이스 백스톱). 그 외 INSERT 에러만 500.
+    if (insErr?.code === "23505") {
+      const live = await findInflight();
+      if (live) return json({ job_id: live.id, status: live.status, deduped: true }, 200);
+    }
     return json({ error: "잡 생성 실패", detail: insErr?.message }, 500);
   }
 
