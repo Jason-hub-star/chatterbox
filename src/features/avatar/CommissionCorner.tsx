@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/components/shared/Modal'
 import ProgressBar from '@/components/shared/ProgressBar'
 import { useToastStore } from '@/stores/toastStore'
+import { AVATAR_UPLOAD_MIME } from '@/lib/avatarJobs'
 import type { AvatarJob } from '@/types/avatarJob'
 
 // 커미션 코너(의상실) — 주문 버튼 + 업로드 위저드 모달 + 4스텝 주문서 카드 + 실패 재주문.
@@ -18,6 +19,8 @@ const PHASE_KEY: Record<(typeof PHASES)[number], string> = {
 }
 const MAX_BYTES = 10 * 1024 * 1024 // 버킷 file_size_limit(마이그)과 미러
 const MIN_PX = 512
+// 파일 인풋 accept = 허용 셋(avatarJobs.AVATAR_UPLOAD_MIME)과 단일 소스 — 버킷 MIME·검증과 3자 정합.
+const ACCEPT_MIME = Object.keys(AVATAR_UPLOAD_MIME).join(',')
 
 // 경과 분(대기 UX): 스테퍼가 phase PATCH(6~10분 간격) 사이 멈춰 보이는 걸 보완 — 살아있는 카운터.
 const elapsedMinutesSince = (iso: string): number => {
@@ -25,9 +28,10 @@ const elapsedMinutesSince = (iso: string): number => {
   return ms > 0 ? Math.floor(ms / 60000) : 0
 }
 
-// 클라 선검증(PNG·10MB·최소 512px). 실패 시 i18n 키 반환, 통과 시 null.
-async function validatePng(file: File): Promise<string | null> {
-  if (file.type !== 'image/png') return 'atelier.validatePng'
+// 클라 선검증(허용 포맷·10MB·최소 512px). 허용 셋 = avatarJobs.AVATAR_UPLOAD_MIME(버킷 MIME·3자 정합).
+// 재인코딩 없이 원본 그대로 업로드 — Modal 이 PIL 로 네이티브 디코드. 실패 시 i18n 키, 통과 시 null.
+async function validateImage(file: File): Promise<string | null> {
+  if (!(file.type in AVATAR_UPLOAD_MIME)) return 'atelier.validatePng'
   if (file.size > MAX_BYTES) return 'atelier.validateSize'
   const url = URL.createObjectURL(file)
   try {
@@ -157,11 +161,11 @@ function UploadWizard({ onClose, onSubmit }: { onClose: () => void; onSubmit: (f
     if (previewUrl) URL.revokeObjectURL(previewUrl)
   }, [previewUrl])
 
-  const accept = async (f: File | undefined) => {
+  const accept = useCallback(async (f: File | undefined) => {
     if (!f || busy) return
     setErrKey(null)
     setErrMsg(null)
-    const err = await validatePng(f)
+    const err = await validateImage(f)
     if (err) {
       setErrKey(err)
       return
@@ -171,7 +175,20 @@ function UploadWizard({ onClose, onSubmit }: { onClose: () => void; onSubmit: (f
       if (prev) URL.revokeObjectURL(prev)
       return URL.createObjectURL(f)
     })
-  }
+  }, [busy])
+
+  // 붙여넣기(Ctrl/Cmd+V): 클립보드 이미지 blob 을 기존 accept() 로 흘려보낸다(파일선택·드롭과 동일 경로).
+  // 위저드가 열린 동안만 window 리스너(조건부 마운트라 닫히면 cleanup) — 전역 붙여넣기 하이재킹 없음.
+  // accept 는 useCallback([busy]) 이라 busy 변할 때만 재구독 — ref 없이 최신 busy 반영(스테일 클로저 없음).
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.type.startsWith('image/'))
+      const f = item?.getAsFile()
+      if (f) void accept(f) // 이미지 없으면 no-op(텍스트 붙여넣기 비침습, preventDefault 안 함)
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [accept])
 
   const order = async () => {
     if (!file || busy) return
@@ -213,7 +230,7 @@ function UploadWizard({ onClose, onSubmit }: { onClose: () => void; onSubmit: (f
         <input
           ref={inputRef}
           type="file"
-          accept="image/png"
+          accept={ACCEPT_MIME}
           className="hidden"
           onChange={(e) => void accept(e.target.files?.[0])}
         />
