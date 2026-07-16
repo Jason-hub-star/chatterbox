@@ -25,7 +25,7 @@ interface Session {
   role_version: number
 }
 
-export default function DubPanel({ roomId }: { roomId: string }) {
+export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewer?: boolean }) {
   const { t } = useTranslation()
   const token = useUserStore((s) => s.session?.access_token)
   const [myId, setMyId] = useState<string | null>(null)
@@ -115,6 +115,11 @@ export default function DubPanel({ roomId }: { roomId: string }) {
         </h2>
       </div>
 
+      {/* R7 뷰어 안내: 관전자는 배정·녹음 참여가 없다 — 탭의 목적(진행 구경)을 1줄로 명시. */}
+      {isViewer && status && (
+        <p className="mt-2 text-xs text-stage-text-muted">{t('dub.viewerHint')}</p>
+      )}
+
       {error && <p className="mt-3 rounded bg-fire-hot/10 px-3 py-2 text-sm text-fire-hot" role="alert">{error}</p>}
 
       {/* 세션 없음 */}
@@ -194,8 +199,15 @@ export default function DubPanel({ roomId }: { roomId: string }) {
               {segments.map((seg) => {
                 const editsTranslation = showTranslation && !!seg.translated_text
                 const shownText = editsTranslation ? seg.translated_text! : seg.text
+                // R7 내 세그먼트 강조: 배정(호스트=선택값·비호스트=트랙 진실)이 나면 앰버 강조선+배지.
+                const mine = !!myId && (isHost
+                  ? assignedTo(seg.id) === myId
+                  : tracks.find((tr) => tr.startTimeMs === seg.start_ms)?.participantId === myId)
                 return (
-                <li key={seg.id} className="flex items-center gap-2">
+                <li key={seg.id} className={`flex items-center gap-2 ${mine ? 'rounded border-l-2 border-fire-amber bg-fire-amber/5 pl-1' : ''}`}>
+                  {mine && (
+                    <span aria-hidden className="shrink-0 text-[11px]" title={t('dub.mySegment')}>🎤</span>
+                  )}
                   <span className="w-14 shrink-0 text-xs text-stage-text-muted">
                     {(seg.start_ms / 1000).toFixed(1)}s
                   </span>

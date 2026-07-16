@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
   const { data: rows, error } = await service
     .from("room_participants")
-    .select("slot_index, role, muted_by_host, raise_hand_at, users(id, auth_id, display_name, avatar_url)")
+    .select("slot_index, role, muted_by_host, muted_until, raise_hand_at, users(id, auth_id, display_name, avatar_url)")
     .eq("room_id", roomId)
     .neq("state", "left")
     .order("slot_index", { ascending: true });
@@ -47,6 +47,9 @@ Deno.serve(async (req) => {
     const u = r.users as unknown as {
       id: string; auth_id: string; display_name: string | null; avatar_url: string | null;
     };
+    // R4 시간제 음소거: 만료 파생을 서버 단일 지점에서 — 소비처(배지·mutedByHost 동기)는 무변경.
+    const mutedActive = r.muted_by_host &&
+      (!r.muted_until || new Date(r.muted_until as string).getTime() > Date.now());
     return {
       user_id: u.id,
       auth_id: u.auth_id,
@@ -54,7 +57,8 @@ Deno.serve(async (req) => {
       avatar_url: u.avatar_url,
       slot_index: r.slot_index,
       role: r.role,
-      muted_by_host: r.muted_by_host,   // mute 마운트 로드(A-FUNC-3): 새로고침 후 desync 방지
+      muted_by_host: mutedActive,       // mute 마운트 로드(A-FUNC-3): 새로고침 후 desync 방지
+      muted_until: mutedActive ? r.muted_until : null, // 잔여 표시용(무기한·만료는 null)
       raise_hand_at: r.raise_hand_at,   // ROOM-20 손들기 큐(호스트 승인 대기). null = 손 안 듦
     };
   });

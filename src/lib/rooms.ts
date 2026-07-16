@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 // - 읽기(로비 목록)는 public_rooms 뷰 직접 SELECT (host_id/비밀번호 제외, host_display_name만).
 // SSOT: docs/API-SURFACE.md · docs/DATA-SCHEMA.md §1.2.0
 
-import { callFn } from '@/lib/edgeFn'
+import { callFn, FN_BASE } from '@/lib/edgeFn'
 import type { ChatMessage } from '@/stores/roomStore'
 
 export interface CreateRoomResult { room_id: string; participant_id: string; status: string }
@@ -39,6 +39,17 @@ export const joinRoomAsViewer = (accessToken: string, roomId: string, signal?: A
 
 export const leaveRoom = (accessToken: string, roomId: string) =>
   callFn<LeaveRoomResult>('leave-room', accessToken, { room_id: roomId })
+
+// R5 탭닫기 soft-leave(완화): pagehide 시 keepalive fetch — 페이지 소멸 후에도 브라우저가 완주.
+// sendBeacon 은 Authorization 헤더 불가라 fetch keepalive 사용. 서버는 already_left 멱등.
+export const leaveRoomKeepalive = (accessToken: string, roomId: string): void => {
+  void fetch(`${FN_BASE}/leave-room`, {
+    method: 'POST',
+    keepalive: true,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ room_id: roomId }),
+  }).catch(() => { /* 페이지 소멸 중 실패 — livekit-webhook(근본)이 회수 */ })
+}
 
 export interface KickResult { ok: boolean; kicked_identity: string; display_name: string | null }
 
@@ -184,11 +195,22 @@ export const scriptRoleAction = (
 export const setScriptMode = (accessToken: string, roomId: string, mode: 'rehearsal' | 'performance') =>
   callFn<{ ok: boolean; script_mode: string }>('set-script-mode', accessToken, { room_id: roomId, mode })
 
-export interface MuteResult { ok: boolean; muted: boolean; target_identity: string; display_name: string | null }
+export interface MuteResult { ok: boolean; muted: boolean; muted_until?: string | null; target_identity: string; display_name: string | null }
 
-// 호스트 음소거/해제 (HOST-08). 서버가 canPublish 를 토글 + muted_by_host 를 DB 에 기록.
-export const setParticipantMute = (accessToken: string, roomId: string, targetIdentity: string, muted: boolean) =>
-  callFn<MuteResult>('set-participant-mute', accessToken, { room_id: roomId, target_identity: targetIdentity, muted })
+// 호스트 음소거/해제 (HOST-08 + R4 시간제). durationSec(10~86400, 선택) 이 있으면 그 시각까지 —
+// 만료 판정·해제는 서버 파생(livekit-token·list-room-members·본인 만료 자가해제 호출).
+export const setParticipantMute = (accessToken: string, roomId: string, targetIdentity: string, muted: boolean, durationSec?: number) =>
+  callFn<MuteResult>('set-participant-mute', accessToken, { room_id: roomId, target_identity: targetIdentity, muted, ...(durationSec ? { duration_sec: durationSec } : {}) })
+
+// 호스트 방 설정 편집(RM-EDIT·GOAL-room-gaps R2). title/genre 부분 갱신 — 서버가 host 재검증·
+// create-room 동일 화이트리스트 적용 후 'room_update' broadcast(전원 상단바 갱신). genre '' = 제거.
+export const updateRoomSettings = (accessToken: string, roomId: string, settings: { title?: string; genre?: string }) =>
+  callFn<{ ok: boolean; title: string; genre: string | null }>('update-room-settings', accessToken, { room_id: roomId, ...settings })
+
+// 호스트 명시 이양(HOST-06 후반·GOAL-room-gaps R1). target = LiveKit identity(=auth uid), kick/mute 동형.
+// 서버가 host 검증 + 대상 활성 배우 검증 후 rooms.host_id 갱신 + room-authority 'host_change' broadcast.
+export const transferHost = (accessToken: string, roomId: string, targetIdentity: string) =>
+  callFn<{ ok: boolean; new_host_id: string }>('transfer-host', accessToken, { room_id: roomId, target_identity: targetIdentity })
 
 export interface SetPasswordResult { ok: boolean; is_locked: boolean }
 

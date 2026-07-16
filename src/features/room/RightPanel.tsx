@@ -10,6 +10,7 @@ import { useStageStore } from '@/stores/stageStore'
 export interface RightPanelTab {
   id: string
   label: string
+  badge?: number // R7: 비활성 탭 미확인 카운트(0/undefined = 미표시) — 셸은 렌더만, 계수는 주입측
   render: () => ReactNode
 }
 
@@ -47,6 +48,14 @@ export default function RightPanel({ tabs }: { tabs: RightPanelTab[] }) {
               }`}
             >
               {tab.label}
+              {!selected && !!tab.badge && (
+                <span
+                  className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-fire-amber px-1 text-[10px] font-bold leading-4 text-stage-base"
+                  aria-label={t('room.tabUnread', { count: tab.badge })}
+                >
+                  {tab.badge > 9 ? '9+' : tab.badge}
+                </span>
+              )}
             </button>
           )
         })}

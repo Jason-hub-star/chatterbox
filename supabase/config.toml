@@ -359,6 +359,11 @@ allow_dynamic_registration = false
 [functions.vgen-webhook]
 verify_jwt = false
 
+# livekit-webhook 은 LiveKit 서버 콜백 수신(R5) — Supabase JWT 를 안 보내므로 JWT 검증 끔.
+# 인증은 함수 내부 WebhookReceiver JWT 서명검증 단독(LIVEKIT_API_KEY/SECRET, vgen-webhook 동형).
+[functions.livekit-webhook]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

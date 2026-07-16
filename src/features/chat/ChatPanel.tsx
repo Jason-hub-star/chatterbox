@@ -23,10 +23,12 @@ export default function ChatPanel({
   onSubmitReport,
   onUnblock,
   guestLocked,
+  onGuestCta,
 }: {
   connected: boolean
   onSend: (text: string) => Promise<void> | void
   guestLocked?: boolean // LOB-07: 익명 게스트는 read-only — 입력 대신 로그인 안내(서버도 403으로 이중 차단)
+  onGuestCta?: () => void // R3: 게스트→로그인 전환(네비는 상위 위임 — onSend 와 동형, 라우터 비의존 유지)
   isHost?: boolean // HOST-11: 호스트에게만 메시지별 [숨김] 노출(서버 moderate-chat 이 진짜 권한 재검증)
   onHideMessage?: (id: string) => void
   blockedAuthIds?: Set<string> // V-2: 접힘 필터 키(auth id)
@@ -151,9 +153,19 @@ export default function ChatPanel({
         })}
       </ul>
       {guestLocked ? (
-        <p className="mt-2 rounded-lg border border-stage-border px-3 py-2 text-center text-xs text-stage-text-muted">
-          {t('guest.chatLocked')}
-        </p>
+        /* R3 게스트 전환 CTA: 안내만 있고 로그인 경로가 없던 데드엔드 해소 — 현 방 복귀는 상위(onGuestCta)가 처리. */
+        <div className="mt-2 rounded-lg border border-stage-border px-3 py-2 text-center">
+          <p className="text-xs text-stage-text-muted">{t('guest.chatLocked')}</p>
+          {onGuestCta && (
+            <button
+              type="button"
+              onClick={onGuestCta}
+              className="mt-1.5 rounded bg-fire-amber px-3 py-1 text-xs font-semibold text-stage-base"
+            >
+              {t('guest.chatLockedCta')}
+            </button>
+          )}
+        </div>
       ) : (
       <form onSubmit={submit} className="mt-2 flex gap-2">
         <input

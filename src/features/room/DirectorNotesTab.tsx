@@ -67,6 +67,8 @@ export default function DirectorNotesTab({ connected, hostAuthId, onSend, readOn
           )
         })}
       </div>
+      {/* R7 휘발성 고지: 노트는 세션 휘발(방 이탈 시 소멸) — 채팅과의 착각 방지. */}
+      <p className="mt-1 shrink-0 text-[10px] text-stage-text-muted">{t('notes.volatileHint')}</p>
       {!readOnly && (
       <form onSubmit={submit} className="mt-2 flex shrink-0 gap-1.5">
         <input

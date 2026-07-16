@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
-import type { RecentPerson, RoomRecordingItem } from '@/lib/rooms'
+import { ROOM_GENRES, type RecentPerson, type RoomRecordingItem } from '@/lib/rooms'
 import type { RecordingPhase } from './useRoomRecording'
 import { REC_LABEL } from './recordingLabels'
 import Modal from '@/components/shared/Modal'
@@ -19,10 +19,15 @@ const qualityDot = (q?: RoomParticipant['connectionQuality']): string =>
 export default function HostConsole({
   participants,
   myIdentity,
+  actorIds,
   onKick,
   onSetMute,
+  mutedUntil,
+  onTransferHost,
   onSetPassword,
   onSetBackground,
+  loadRoomSettings,
+  onUpdateRoomSettings,
   onCreateInvite,
   loadRecentPeople,
   onDirectInvite,
@@ -44,10 +49,15 @@ export default function HostConsole({
 }: {
   participants: RoomParticipant[]
   myIdentity: string
+  actorIds: Set<string> // 배우 authId 집합 — 이양 버튼은 배우에게만(뷰어 이양은 서버도 409)
   onKick: (identity: string, reason?: string) => Promise<void> // reason(선택, ≤200자) — 서버가 대상에게 통지
-  onSetMute: (identity: string, muted: boolean) => Promise<void>
+  onSetMute: (identity: string, muted: boolean, durationSec?: number) => Promise<void> // R4: durationSec=시간제(무기한은 미전달)
+  mutedUntil?: Record<string, string> // R4 시간제 만료 시각(authId→ISO) — 잔여 표시용
+  onTransferHost: (identity: string) => Promise<void> // R1 명시 이양 — 서버가 host·대상 배우 재검증
   onSetPassword: (password: string) => Promise<boolean>
   onSetBackground: (backgroundUrl: string) => Promise<void> // 무대 배경 교체/해제(HOST-04·05)
+  loadRoomSettings: () => Promise<{ title: string; genre: string }> // R2 초기값(loadChatPolicy 패턴)
+  onUpdateRoomSettings: (settings: { title: string; genre: string }) => Promise<void> // R2 — 서버 host 재검증·화이트리스트
   onCreateInvite: (role: 'actor' | 'viewer') => Promise<string> // 원문 invite_code 반환 — URL 조립·복사는 여기서
   loadRecentPeople: () => Promise<RecentPerson[]> // 최근 함께한 사람(LOB-08, 현재 방 참가자 제외)
   onDirectInvite: (userId: string) => Promise<void> // 지명 초대 = 1회권 + 상대 인앱 알림
@@ -79,6 +89,8 @@ export default function HostConsole({
   const isMutedNow = (identity: string): boolean =>
     mutedOverrides.has(identity) ? mutedOverrides.get(identity)! : (initialMuted?.has(identity) ?? false)
   const [muting, setMuting] = useState<string | null>(null)
+  // R4 시간제 음소거 길이(초) — 0=무기한. 이후 음소거 클릭에 적용(참가자 관리 섹션 공용 셀렉트).
+  const [muteDurationSec, setMuteDurationSec] = useState(0)
 
   // 방 비밀번호
   const [locked, setLocked] = useState(initialLocked)
@@ -195,6 +207,36 @@ export default function HostConsole({
     }
   }
 
+  // 방 설정 편집(R2) — 초기값은 로더(현재 상단바 상태), 저장은 서버 재검증 후 broadcast 로 전원 반영.
+  const [settingsTitle, setSettingsTitle] = useState('')
+  const [settingsGenre, setSettingsGenre] = useState('')
+  const [settingsBusy, setSettingsBusy] = useState(false)
+  const [settingsErr, setSettingsErr] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    loadRoomSettings()
+      .then((s) => {
+        if (!cancelled) {
+          setSettingsTitle(s.title)
+          setSettingsGenre(s.genre)
+        }
+      })
+      .catch(() => { /* 초기값 실패 — 빈 폼으로 강등(저장 시 서버가 재검증) */ })
+    return () => { cancelled = true }
+  }, [loadRoomSettings])
+  const saveSettings = async () => {
+    setSettingsErr(null)
+    setSettingsBusy(true)
+    try {
+      await onUpdateRoomSettings({ title: settingsTitle.trim(), genre: settingsGenre })
+      toast.success(t('host.settingsSaved'))
+    } catch {
+      setSettingsErr(t('host.settingsFailed'))
+    } finally {
+      setSettingsBusy(false)
+    }
+  }
+
   // 무대 배경(HOST-04·05)
   const [bgBusy, setBgBusy] = useState(false)
   const [bgErr, setBgErr] = useState<string | null>(null)
@@ -281,17 +323,41 @@ export default function HostConsole({
     }
   }
 
+  // 호스트 이양(R1) — 강퇴와 동형 확인 모달. 성공하면 이 탭 자체가 사라지므로(isHost 재파생) 모달 정리만.
+  const [transferTarget, setTransferTarget] = useState<{ identity: string; name: string } | null>(null)
+  const [transferBusy, setTransferBusy] = useState(false)
+  const doTransfer = async (identity: string) => {
+    setErr(null)
+    setTransferBusy(true)
+    try {
+      await onTransferHost(identity)
+      toast.success(t('host.transferDone'))
+    } catch {
+      setErr(t('host.transferFailed'))
+    } finally {
+      setTransferBusy(false)
+      setTransferTarget(null)
+    }
+  }
+
   const doMute = async (identity: string, next: boolean) => {
     setErr(null)
     setMuting(identity)
     try {
-      await onSetMute(identity, next)
+      await onSetMute(identity, next, next && muteDurationSec > 0 ? muteDurationSec : undefined)
       setMutedOverrides((prev) => new Map(prev).set(identity, next))
     } catch {
       setErr(t('host.muteFailed'))
     } finally {
       setMuting(null)
     }
+  }
+  // R4 잔여 표시: 시간제 음소거된 참가자의 만료 시각(HH:MM) — 서버 진실(mutedUntil) 파생.
+  const mutedUntilLabel = (identity: string): string | null => {
+    const iso = mutedUntil?.[identity]
+    if (!iso || !isMutedNow(identity)) return null
+    const d = new Date(iso)
+    return t('host.mutedUntil', { time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` })
   }
 
   const submitPassword = async (e: React.FormEvent) => {
@@ -345,6 +411,41 @@ export default function HostConsole({
           </ul>
         </section>
       )}
+
+      {/* 방 설정(R2) — 제목/장르 편집. 서버(update-room-settings)가 host 재검증·화이트리스트 후 전원 broadcast. */}
+      <section>
+        <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.settingsTitle')}</h3>
+        <input
+          value={settingsTitle}
+          onChange={(e) => setSettingsTitle(e.target.value)}
+          maxLength={80}
+          aria-label={t('host.settingsTitleLabel')}
+          placeholder={t('host.settingsTitleLabel')}
+          className="w-full rounded border border-stage-border bg-transparent px-3 py-1.5 text-sm"
+        />
+        <div className="mt-2 flex items-center gap-2">
+          <label htmlFor="room-genre" className="text-xs text-stage-text-muted">{t('lobby.genreLabel')}</label>
+          <select
+            id="room-genre"
+            value={settingsGenre}
+            onChange={(e) => setSettingsGenre(e.target.value)}
+            className="rounded border border-stage-border bg-transparent px-2 py-1 text-xs"
+          >
+            <option value="">{t('lobby.genreNone')}</option>
+            {ROOM_GENRES.map((g) => (
+              <option key={g} value={g}>{t(`lobby.genre.${g}`)}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => void saveSettings()}
+            disabled={settingsBusy || settingsTitle.trim().length === 0}
+            className="ml-auto rounded bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40"
+          >
+            {t('host.settingsSave')}
+          </button>
+        </div>
+        {settingsErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{settingsErr}</p>}
+      </section>
 
       {/* 무대 배경(HOST-04·05) — 기존 씬 에셋 재사용. 썸네일 그리드·전환 fade 폴리시는 트랙 B. */}
       <section>
@@ -606,6 +707,21 @@ export default function HostConsole({
       {/* 참가자 관리 */}
       <section>
         <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.consoleTitle')}</h3>
+        {/* R4 시간제 음소거 길이 — 이후 [음소거] 클릭에 적용(해제·기존 음소거엔 무영향). */}
+        <div className="mb-2 flex items-center gap-2">
+          <label htmlFor="mute-duration" className="text-xs text-stage-text-muted">{t('host.muteDuration')}</label>
+          <select
+            id="mute-duration"
+            value={muteDurationSec}
+            onChange={(e) => setMuteDurationSec(Number(e.target.value))}
+            className="rounded border border-stage-border bg-transparent px-2 py-1 text-xs"
+          >
+            <option value={0}>{t('host.muteDurationForever')}</option>
+            {[60, 300, 600, 1800].map((s) => (
+              <option key={s} value={s}>{t('host.muteDurationMin', { m: s / 60 })}</option>
+            ))}
+          </select>
+        </div>
         {err && <p className="mb-2 rounded bg-fire-hot/10 px-3 py-2 text-xs text-fire-hot" role="alert">{err}</p>}
         {others.length === 0 ? (
           <p className="text-sm text-stage-text-muted">{t('host.noOthers')}</p>
@@ -621,7 +737,12 @@ export default function HostConsole({
                   <span title={p.connectionQuality ?? 'unknown'} aria-label={`connection ${p.connectionQuality ?? 'unknown'}`}>
                     {qualityDot(p.connectionQuality)}
                   </span>
-                  <span className="flex-1 truncate">{p.name}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {p.name}
+                    {mutedUntilLabel(p.identity) && (
+                      <span className="ml-1 text-[10px] text-stage-text-muted">{mutedUntilLabel(p.identity)}</span>
+                    )}
+                  </span>
                   <button
                     onClick={() => void doMute(p.identity, !isMuted)}
                     disabled={muting === p.identity}
@@ -629,6 +750,14 @@ export default function HostConsole({
                   >
                     {muting === p.identity ? t('host.muting') : isMuted ? t('host.unmute') : t('host.mute')}
                   </button>
+                  {actorIds.has(p.identity) && (
+                    <button
+                      onClick={() => setTransferTarget({ identity: p.identity, name: p.name })}
+                      className="rounded border border-fire-amber/50 px-2 py-1 text-xs text-fire-amber hover:bg-fire-amber/10"
+                    >
+                      {t('host.transfer')}
+                    </button>
+                  )}
                   <button
                     onClick={() => { setKickReasonInput(''); setConfirming({ identity: p.identity, name: p.name }) }}
                     className="rounded border border-fire-hot/50 px-2 py-1 text-xs text-fire-hot hover:bg-fire-hot/10"
@@ -662,6 +791,24 @@ export default function HostConsole({
               {busy === confirming.identity ? t('host.kicking') : t('host.kickConfirm')}
             </button>
             <button onClick={() => setConfirming(null)} className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted">
+              {t('common.cancel')}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {transferTarget && (
+        <Modal title={t('host.transferConfirmTitle')} onClose={() => setTransferTarget(null)}>
+          <p className="mt-2 text-sm text-stage-text-muted">{t('host.transferConfirmBody', { name: transferTarget.name })}</p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => void doTransfer(transferTarget.identity)}
+              disabled={transferBusy}
+              className="flex-1 rounded-lg bg-fire-amber px-3 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+            >
+              {transferBusy ? t('host.transferring') : t('host.transferConfirm')}
+            </button>
+            <button onClick={() => setTransferTarget(null)} className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted">
               {t('common.cancel')}
             </button>
           </div>

@@ -122,6 +122,12 @@ export default function Stage({
           onClick={p ? () => setZoomed(p.identity) : undefined}
         >
           {p && <SlotStatus muted={mutedIdentities.has(p.identity)} quality={p.connectionQuality} />}
+          {/* R7 좌석 번호: 호스트 구두 지시("3번 좌석")·본인 좌석 인지용. 장식이라 aria-hidden. */}
+          {p && (
+            <span aria-hidden className="pointer-events-none absolute left-1 top-1 z-20 rounded bg-stage-base/70 px-1 text-[9px] tabular-nums text-stage-text-muted">
+              {t('stage.seatLabel', { n: i + 1 })}
+            </span>
+          )}
           {p ? (
             // 원격이 확대 중이면 무대 슬롯은 placeholder — registry sink 가 identity 당 1개라 확대창으로 이동한다.
             p.identity === zoomed && !p.isLocal ? (

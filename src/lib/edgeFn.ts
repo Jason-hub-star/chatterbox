@@ -1,6 +1,6 @@
 // Edge Function 호출 공용 헬퍼. rooms/dub/vgen 이 각자 복제하던 callFn 을 한 곳으로 통합.
 // A-FUNC-1: 15s 타임아웃(무한대기 제거) + 외부 취소 signal(취소 버튼은 트랙 B). SSOT: docs/API-SURFACE.md
-const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
+export const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1` // export: keepalive 등 raw fetch 호출부 공유(R5)
 const DEFAULT_TIMEOUT_MS = 15_000
 
 // 타임아웃 초과. 사용자 취소(AbortError)와 구분 — 호출부가 "네트워크 확인" 안내에 쓴다.

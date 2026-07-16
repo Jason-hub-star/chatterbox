@@ -5,7 +5,7 @@ import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus } from '@/lib/rooms'
+import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, transferHost, updateRoomSettings, leaveRoomKeepalive, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus } from '@/lib/rooms'
 import { useRoomRecording } from '@/features/room/useRoomRecording'
 import { useRoomMembers } from '@/features/room/useRoomMembers'
 import { useScriptSync } from '@/features/script/useScriptSync'
@@ -28,6 +28,7 @@ import ScriptPanel from '@/features/script/ScriptPanel'
 import { supabase } from '@/lib/supabase'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
+import { useRightPanelStore } from '@/stores/rightPanelStore'
 import ModeBanner from '@/features/room/ModeBanner'
 import AudioMixerPanel from '@/features/room/AudioMixerPanel'
 import { applyVodSync, readVodSyncState, setVodSyncPublisher } from '@/features/stage/vodSync'
@@ -254,7 +255,7 @@ export default function RoomPage() {
   // V-3 녹화: useRoomRecording 은 isHost(아래 파생) 뒤에 호출되므로 ref 브리지로 수신을 위임(TDZ 회피).
   const recAuthorityRef = useRef<((msg: { type: string; recording_id?: string; all_consented?: boolean }) => void) | null>(null)
   const recAudioRef = useRef<((track: MediaStreamTrack) => void) | null>(null)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; rate?: number; recording_id?: string; all_consented?: boolean }) => {
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; rate?: number; recording_id?: string; all_consented?: boolean; new_host_auth_id?: string; title?: string; genre?: string | null }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
@@ -263,6 +264,16 @@ export default function RoomPage() {
       applyServerScriptMode(msg.mode)
     }
     else if (msg.type === 'raise_hand') setRaiseHandRefetch((n) => n + 1) // 손든 관객 변동 → 큐 재조회(호스트 UI)
+    else if (msg.type === 'room_update') {
+      // 방 설정 편집(R2, update-room-settings Edge 발) — 전원 상단바 즉시 반영(서버가 최종값 전달).
+      if (typeof msg.title === 'string') setRoomName(msg.title)
+      if (msg.genre !== undefined) setRoomGenre(msg.genre ?? '')
+    }
+    else if (msg.type === 'host_change') {
+      // 호스트 명시 이양(R1, transfer-host Edge 발) — 전원 멤버 재조회로 hostId 재파생(isHost·왕관·콘솔 탭·vod publisher 전환).
+      setRaiseHandRefetch((n) => n + 1)
+      if (msg.new_host_auth_id === useUserStore.getState().user?.id) toast.success(t('host.transferReceived'))
+    }
     else if (msg.type === 'vod_sync') {
       // ROOM-01 동기: 적용자(applier)는 비호스트 MainView 만 등록 → 호스트/미재생 화면엔 no-op. 형태 검증 후 적용.
       if (
@@ -295,12 +306,13 @@ export default function RoomPage() {
       setRaiseHandRefetch((n) => n + 1) // 전원 좌석 갱신(승격자 새 slot 반영)
       if (msg.auth_id === useUserStore.getState().user?.id) {
         // 본인 승격 → actor 전환 + 재연결(새 토큰 canPublish=true). 수락 모달 닫기.
+        toast.success(t('room.stagePromoted')) // R7: 재연결·웹캠 권한 요청이 무고지로 진행되던 것 안내
         setStageInvite(false)
         useRoomStore.getState().setRoomContext({ myRole: 'actor', mySlotIndex: msg.slot_index ?? null })
         setReconnectNonce((n) => n + 1)
       }
     }
-  }, [playSharedVgen, applyServerScriptMode])
+  }, [playSharedVgen, applyServerScriptMode, t])
 
   const { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave, getAudioTracks } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
@@ -481,11 +493,57 @@ export default function RoomPage() {
     [session, roomId],
   )
   const mute = useCallback(
-    async (identity: string, muted: boolean) => {
+    async (identity: string, muted: boolean, durationSec?: number) => {
       if (!session) return
-      await setParticipantMute(session.access_token, roomId, identity, muted)
+      await setParticipantMute(session.access_token, roomId, identity, muted, durationSec)
       // UX-STAGE-VIS: 무대 mute 배지(mutedIdentities)를 서버 진실로 즉시 재동기 — 호스트 본인 화면 라이브 반영.
       // (비호스트 클라의 라이브 전파는 mute broadcast 부재로 memberKey 변동까지 지연 — 기존 ceiling.)
+      setRaiseHandRefetch((n) => n + 1)
+    },
+    [session, roomId],
+  )
+  // R5 탭닫기 soft-leave(완화): SPA 내 나가기는 onLeave 가 처리 — pagehide 는 리로드/탭닫기/브라우저 종료.
+  // 호스트는 제외: 리로드가 승계를 오발화하면 복귀 시 방장을 잃는다 — 호스트 공석은 livekit-webhook(근본,
+  // 재실 대조 포함)이 유예 만료 후 회수. bfcache 진입(persisted)도 스킵(복귀 가능 페이지를 left 처리 금지).
+  useEffect(() => {
+    if (joinPhase !== 'ready' || !session || isHost) return
+    const onPageHide = (e: PageTransitionEvent) => {
+      if (e.persisted) return
+      leaveRoomKeepalive(session.access_token, roomId)
+    }
+    window.addEventListener('pagehide', onPageHide)
+    return () => window.removeEventListener('pagehide', onPageHide)
+  }, [joinPhase, session, roomId, isHost])
+  // R4 시간제 음소거 자가해제: 내 muted_until 경과 시 서버에 해제 요청(서버가 만료 재검증) —
+  // canPublish 복원은 ParticipantPermissionsChanged 가 mutedByHost 를 자동으로 풀어준다.
+  const myMutedUntil = members.mutedUntil[myIdentity]
+  useEffect(() => {
+    if (!myMutedUntil || !session) return
+    const delay = Math.max(0, new Date(myMutedUntil).getTime() - Date.now()) + 1000 // 서버 시계 여유 1s
+    const timer = window.setTimeout(() => {
+      setParticipantMute(session.access_token, roomId, myIdentity, false)
+        .then(() => setRaiseHandRefetch((n) => n + 1))
+        .catch(() => { /* 만료 전 경합·네트워크 실패 — 재연결(livekit-token 파생)이 최종 해제 경로 */ })
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [myMutedUntil, session, roomId, myIdentity])
+  // 방 설정 편집(R2) — 성공 시 로컬 즉시 반영(서버 echo 는 같은 값 멱등, setRoomBackground 동형).
+  const saveRoomSettings = useCallback(
+    async (settings: { title: string; genre: string }) => {
+      if (!session) throw new Error('no session')
+      const r = await updateRoomSettings(session.access_token, roomId, settings)
+      setRoomName(r.title)
+      setRoomGenre(r.genre ?? '')
+    },
+    [session, roomId],
+  )
+  // HostConsole 방 설정 초기값 — 현재 상단바 상태를 그대로 급식(loadChatPolicy 패턴).
+  const loadRoomSettings = useCallback(async () => ({ title: roomName, genre: roomGenre }), [roomName, roomGenre])
+  // 호스트 명시 이양(R1) — 서버 검증·broadcast 후 본인도 즉시 재조회(broadcast echo 는 같은 갱신이라 멱등).
+  const transferHostCb = useCallback(
+    async (identity: string) => {
+      if (!session) throw new Error('no session')
+      await transferHost(session.access_token, roomId, identity)
       setRaiseHandRefetch((n) => n + 1)
     },
     [session, roomId],
@@ -526,8 +584,10 @@ export default function RoomPage() {
     try {
       await acceptStageInvite(session.access_token, roomId)
       setStageInvite(false)
-    } catch { /* 실패(정원 참 등) → 모달 유지 */ }
-  }, [session, roomId])
+    } catch {
+      toast.error(t('room.stageInviteFailed')) // R7: 정원 참 등 실패 무피드백 해소 — 모달은 유지(재시도 가능)
+    }
+  }, [session, roomId, t])
   // 호스트가 손든 관객을 무대로 초대(ROOM-21). 대상에게 수락 모달 broadcast(아직 승격 아님).
   const inviteToStageCb = useCallback(async (targetUserId: string) => {
     if (!session) return
@@ -623,15 +683,30 @@ export default function RoomPage() {
     useStageStore.getState().clearMainVideo()
   }, [sendRoomAuthority])
 
+  // R7 채팅 미읽음 뱃지: 채팅 탭 비활성 중 도착분 카운트 — 스토어 구독 콜백(이벤트)에서만 setState
+  // (믹서 브리지 패턴 동형·컴파일러 lint 의 렌더 ref/effect setState 제약 회피). 탭 복귀 시 0.
+  const [chatUnread, setChatUnread] = useState(0)
+  useEffect(() => {
+    const unsubMsg = useRoomStore.subscribe((s, prev) => {
+      if (s.messages.length > prev.messages.length && useRightPanelStore.getState().activeTab !== 'chat') {
+        setChatUnread((n) => n + (s.messages.length - prev.messages.length))
+      }
+    })
+    const unsubTab = useRightPanelStore.subscribe((s) => {
+      if (s.activeTab === 'chat') setChatUnread(0)
+    })
+    return () => { unsubMsg(); unsubTab() }
+  }, [])
+
   // F-6: 노트는 채팅 탭 안 세그먼트로 통합(탭 5→4) — ChatNotesTab 이 둘 다 마운트 유지.
   const tabs: RightPanelTab[] = [
-    { id: 'chat', label: t('room.tabChat'), render: () => (
+    { id: 'chat', label: t('room.tabChat'), badge: chatUnread, render: () => (
       <ChatNotesTab
-        chat={<ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} blockedAuthIds={blockedAuthIds} onSubmitReport={submitReport} onUnblock={unblock} guestLocked={session?.user.is_anonymous === true} />}
+        chat={<ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} blockedAuthIds={blockedAuthIds} onSubmitReport={submitReport} onUnblock={unblock} guestLocked={session?.user.is_anonymous === true} onGuestCta={() => navigate('/login', { state: { from: window.location.pathname + window.location.search } })} />}
         notes={<DirectorNotesTab connected={connected} hostAuthId={hostAuthId} onSend={sendNote} readOnly={isViewer} />}
       />
     ) },
-    { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },
+    { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} isViewer={isViewer} /> },
     { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} onShare={shareVgen} /> },
   ]
   if (isHost) {
@@ -642,10 +717,15 @@ export default function RoomPage() {
         <HostConsole
           participants={participants}
           myIdentity={myIdentity}
+          actorIds={members.actorIds}
           onKick={kick}
           onSetMute={mute}
+          mutedUntil={members.mutedUntil}
+          onTransferHost={transferHostCb}
           onSetPassword={changePassword}
           onSetBackground={changeBackground}
+          loadRoomSettings={loadRoomSettings}
+          onUpdateRoomSettings={saveRoomSettings}
           onCreateInvite={createInvite}
           loadRecentPeople={loadRecentPeople}
           onDirectInvite={directInvite}

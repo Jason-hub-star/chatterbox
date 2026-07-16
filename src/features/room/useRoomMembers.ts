@@ -16,6 +16,7 @@ export function useRoomMembers(opts: { roomId: string; joined: boolean; raiseHan
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string | null>>({})
   const [memberSlots, setMemberSlots] = useState<Record<string, number>>({})
   const [mutedIdentities, setMutedIdentities] = useState<Set<string>>(new Set())
+  const [mutedUntil, setMutedUntil] = useState<Record<string, string>>({}) // R4 시간제 만료(authId→ISO, 무기한 제외)
   const [actorIds, setActorIds] = useState<Set<string>>(new Set()) // 배우만(호스트 역할 배정 후보 — 관전자 제외)
   const [hostAuthId, setHostAuthId] = useState<string | null>(null) // 노트 방장 강조 + SEC-RA-1 발신자 검증
   const [raisedHands, setRaisedHands] = useState<{ authId: string; userId: string; name: string | null }[]>([])
@@ -35,12 +36,14 @@ export function useRoomMembers(opts: { roomId: string; joined: boolean; raiseHan
         const avatars: Record<string, string | null> = {}
         const slots: Record<string, number> = {}
         const muted = new Set<string>()
+        const untilMap: Record<string, string> = {}
         const actorSet = new Set<string>()
         const raised: { authId: string; userId: string; name: string | null; at: string }[] = []
         for (const m of members) {
           avatars[m.authId] = m.avatarUrl
           slots[m.authId] = m.slotIndex // 절대좌석용(identity=auth uid)
           if (m.mutedByHost) muted.add(m.authId)
+          if (m.mutedByHost && m.mutedUntil) untilMap[m.authId] = m.mutedUntil // R4 잔여 표시·자가해제 타이머
           if (m.role !== 'viewer') actorSet.add(m.authId) // 역할 배정 후보(ROOM-14)
           if (m.raiseHandAt) raised.push({ authId: m.authId, userId: m.userId, name: m.displayName, at: m.raiseHandAt })
         }
@@ -48,6 +51,7 @@ export function useRoomMembers(opts: { roomId: string; joined: boolean; raiseHan
         setMemberAvatars(avatars)
         setMemberSlots(slots)
         setMutedIdentities(muted)
+        setMutedUntil(untilMap)
         setActorIds(actorSet)
         setHostAuthId(members.find((m) => m.userId === newHostId)?.authId ?? null)
         setRaisedHands(raised.map(({ authId, userId, name }) => ({ authId, userId, name })))
@@ -66,5 +70,5 @@ export function useRoomMembers(opts: { roomId: string; joined: boolean; raiseHan
     return () => { cancelled = true }
   }, [joined, session, roomId, memberKey, raiseHandRefetch])
 
-  return { memberKey, memberAvatars, memberSlots, mutedIdentities, actorIds, hostAuthId, raisedHands, handRaised, setHandRaised }
+  return { memberKey, memberAvatars, memberSlots, mutedIdentities, mutedUntil, actorIds, hostAuthId, raisedHands, handRaised, setHandRaised }
 }
