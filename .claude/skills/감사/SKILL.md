@@ -1,5 +1,5 @@
 ---
-name: dogfood-audit
+name: 감사
 description: 플랫폼을 여러 사용자 페르소나(신규유저·호스트·뷰어/모바일·악성참가자·크레딧공격자·데이터절취)로 서브에이전트가 실제로 "써보게" 해서 보안취약점·UX마찰·누락기능·잘되는점을 발굴하고, uiux-distilled 원칙으로 UX 개선안까지 문서화하는 3단(정찰→페르소나 워커→종합) 도그푸딩 감사. "플랫폼 감사해줘", "여러 유저로 써봐", "도그푸딩", "보안+UX 같이 봐줘", "사용자 시뮬레이션", "보안취약점이랑 개선점 찾아줘" 요청에 발동.
 user_invocable: true
 tags: [security, ux, audit, dogfooding, persona, multi-agent, review, uiux]

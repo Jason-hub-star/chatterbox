@@ -19,6 +19,7 @@ import { readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { handleQaBypass } from './lib/qa-bypass-log.mjs'
 
 const [rigDir, id, name] = process.argv.slice(2)
 if (!rigDir || !id || !name) {
@@ -67,8 +68,7 @@ writeFileSync(qaTmp, JSON.stringify(project))
 try {
   execFileSync('node', [join(dirname(fileURLToPath(import.meta.url)), 'qa-mouth-lips.mjs'), rigDir, '--project', qaTmp], { stdio: 'inherit' })
 } catch {
-  if (process.env.QA_MOUTH_SKIP !== '1') { console.error('❌ 입 상태 QA 게이트 실패 — 자산 재생성 또는 QA_MOUTH_SKIP=1(비상)'); process.exit(1) }
-  console.warn('⚠️ QA_MOUTH_SKIP=1 — 입 상태 QA 실패 무시하고 배포 계속')
+  handleQaBypass({ id, stage: 'deploy' })
 } finally { rmSync(qaTmp, { force: true }) }
 
 // 3) 업로드

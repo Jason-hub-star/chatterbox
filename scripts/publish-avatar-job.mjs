@@ -12,6 +12,7 @@ import { createRequire } from 'node:module'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { handleQaBypass } from './lib/qa-bypass-log.mjs'
 import { dirname } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -48,8 +49,7 @@ try {
   const { execFileSync } = await import('node:child_process')
   execFileSync('node', [join(root, 'scripts/qa-mouth-lips.mjs'), PUB], { stdio: 'inherit' })
 } catch {
-  if (process.env.QA_MOUTH_SKIP === '1') console.warn('⚠️ QA_MOUTH_SKIP=1 — 입 상태 QA 실패 무시하고 발행 계속')
-  else throw new Error('입 상태 QA 게이트 실패 — 자산 재생성 또는 QA_MOUTH_SKIP=1(비상)')
+  handleQaBypass({ id: jobId, stage: 'publish' })
 }
 
 const up = async (local, path, contentType) => {

@@ -16,9 +16,9 @@ tags: [audit]
 
 ## §0. 최우선 구현 백로그 (하나씩 — 체크로 추적)
 
-> **2트랙 운영(트랙분리):** **A = 로직·보안·seam**(지금, `/backlog` 대상) · **B = UIUX 프레젠테이션**(나중, 스펙 대비 1회 패스). `/backlog`는 **트랙 A만** 민다. B는 A가 심어둔 seam 위에 스타일만 얹는다 → "나중 연결"이 "나중 재작성"이 되지 않게.
+> **2트랙 운영(트랙분리):** **A = 로직·보안·seam**(지금, `/다음` 대상) · **B = UIUX 프레젠테이션**(나중, 스펙 대비 1회 패스). `/다음`(구 /backlog)은 **트랙 A만** 민다. B는 A가 심어둔 seam 위에 스타일만 얹는다 → "나중 연결"이 "나중 재작성"이 되지 않게.
 
-### 트랙 A — 로직·보안·seam (지금 · `/backlog` 대상)
+### 트랙 A — 로직·보안·seam (지금 · `/다음` 대상)
 
 **A-P0 (보안 실침해)** — 재감사 2026-07-07 신규 2건(SEC-7·SEC-8): **수정+프로드 배포 완료 · 라이브 구멍 차단 실측.**
 - [x] **SEC-7** (High·재감사 신규) **크레딧 RPC 클라 직접호출 노출** — `deduct_credit`·`refund_credit`이 `revoke ... from public`만 해서 **anon/authenticated 는 여전히 EXECUTE 가능**(Supabase `alter default privileges ... grant execute on functions to anon, authenticated` 가 명시적 부여 → public revoke로 안 빠짐). 익스플로잇: 앱 anon 키로 `rpc/refund_credit(<본인 완료잡>)` → 소비한 유료 생성 무한 무료화 / `rpc/deduct_credit(<피해자>, 9999, ...)` → 타인 크레딧 고갈. **정수정:** 새 마이그 `20260707120000_lock_rpc_execute.sql` — `revoke ... from public, anon, authenticated`(= `join_room_as_participant` 패턴). service_role(Edge)은 default-priv 유지. **실측:** 격리 pg17.6.1.127(BEFORE auth=t → AFTER anon/auth=f·svc=t) + **프로드 배포 전 `deduct_credit`·`refund_credit` anon=t·auth=t(라이브 노출 확정) → 배포 후 anon=f·auth=f·svc=t(차단 확정)**. ✅ **프로드 배포 완료**(`supabase db push`, 2026-07-07). 마이그 파일 미커밋(커밋 승인 대기).

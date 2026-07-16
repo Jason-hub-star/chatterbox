@@ -1,5 +1,5 @@
 ---
-name: bepo
+name: 배포
 description: 구현 완료 슬라이스를 프로덕션에 올리고 라이브로 실증한 뒤 문서·커밋까지 닫는 일괄 마감 절차 — db push(서울 pooler)·함수 deploy(재시도·실측)·CF Pages·프로드 통합/2탭 E2E·백로그 §0/GAP/drift 문서 마감. "배포하고 라이브테스트", "라이브로 올려", "페이즈 마감", "배포 몰아치기" 요청 시.
 user_invocable: true
 tags: [deploy, verify, docs, release]
