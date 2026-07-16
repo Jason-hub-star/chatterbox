@@ -92,7 +92,9 @@ Deno.serve(async (req) => {
     // actor 발행, viewer 구독 전용. 호스트가 음소거(muted_by_host)한 참가자는 재연결해도 발행 불가(DB 권위).
     canPublish: part.role !== "viewer" && !part.muted_by_host,
     canSubscribe: true,
-    canPublishData: true,
+    // viewer 는 데이터채널 발행도 금지(API-SURFACE Mobile Viewer 규칙 — 채팅·리액션은 Edge 서버 릴레이 경유).
+    // 익명 게스트(LOB-07)도 viewer 라 이 한 줄로 read-only 가 LiveKit 레벨에서 완결된다.
+    canPublishData: part.role !== "viewer",
   });
 
   return json(

@@ -1,0 +1,289 @@
+{
+  "pageIntent": {
+    "type": "landing",
+    "confidence": 0.45,
+    "path": "/",
+    "title": "VRoid Hub",
+    "description": "VRoid Hubは、3Dキャラクターのための投稿・共有プラットフォームです。モデルデータをアップロードするだけでキャラクターが活き活きとアニメーションするプロフィールページを作成でき、利用条件と共にモデルデータを配布することもできます。登録した3Dモデルは、VRoid Hubと連携した各種VR/ARプラットフォームや3Dコンテンツ上で利用可能です",
+    "signals": [
+      {
+        "kind": "url",
+        "type": "landing",
+        "weight": 0.45,
+        "detail": "root-path"
+      }
+    ],
+    "alternates": [],
+    "needsSmart": true
+  },
+  "sectionRoles": {
+    "sections": [
+      {
+        "index": 0,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "人気のタグ",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 64
+        },
+        "buttonCount": 3,
+        "cardCount": 0,
+        "slots": {
+          "heading": "人気のタグ",
+          "subheadings": [
+            "VRoidStudio",
+            "BOOTH販売中",
+            "VRChat",
+            "オリジナル"
+          ],
+          "ctaCount": 3,
+          "lede": "キャラクターを登録\npixiv IDでログイン"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 1,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "人気のタグ",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {
+          "heading": "人気のタグ",
+          "subheadings": [
+            "VRoidStudio",
+            "BOOTH販売中",
+            "VRChat",
+            "オリジナル"
+          ],
+          "lede": "人気のタグVRoidStudioBOOTH販売中VRChatオリジナルコミッションショートヘア"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 2,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "人気のタグ",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {
+          "heading": "人気のタグ"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 3,
+        "tag": "section",
+        "role": "testimonials",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "注目のタグ",
+        "bounds": {
+          "x": 28,
+          "y": 644,
+          "w": 1224,
+          "h": 813.890625
+        },
+        "buttonCount": 12,
+        "cardCount": 0,
+        "slots": {
+          "heading": "注目のタグ",
+          "ctaCount": 12,
+          "lede": "注目のタグ\n#コミッション#ショートヘア#VRChat#VRoidStudio#BOOTH販売中#オリジナル"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 4,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "注目のモデル",
+        "bounds": {
+          "x": 28,
+          "y": 1553.890625,
+          "w": 1224,
+          "h": 462.78125
+        },
+        "buttonCount": 8,
+        "cardCount": 0,
+        "slots": {
+          "heading": "注目のモデル",
+          "ctaCount": 8,
+          "lede": "注目のモデル\nミルシア\nミルシア\nミルシア\nミルシア\n卯月たつみ\n3Dキャラクターなど\n春野恋【制作実績】\n春野恋【制作実績】\nしゆき\nシェリー\nシェリー\nmaddydead\n3Dキャラクター\nマリードール\nマリードール\nニバリス\n3Dキャラクター\nAxolotluwu\nAxolotluwu\nPink/black axolotl\nPink/black axolotl\nhi"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 5,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "連携アプリ",
+        "bounds": {
+          "x": 0,
+          "y": 2112.671875,
+          "w": 1280,
+          "h": 309
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {
+          "heading": "連携アプリ"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 6,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "イベント",
+        "bounds": {
+          "x": 28,
+          "y": 2477.671875,
+          "w": 1224,
+          "h": 320.3125
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {
+          "heading": "イベント",
+          "lede": "イベント\nモデル投稿企画 コーディネートチャレンジ「サマーコーデ」\n結果発表\nモデル投稿企画 コーディネートチャレンジ「ウィンターコーデ」\n結果発表\nモデル投稿企画 コーディネートチャレンジ「ハロウィンコーデ」\n結果発表\nバーチャルファッションデザインコンテスト\n結果発表\nラクキンARフォトコンテスト\n結果発表\nクラフトピア公式フォトコンテスト\n結果発表\n#ガリベンガーV公式フォトコンテスト\n結果発表\n夏に輝け！うちのこモデルコンテスト\n結果発表\n#バーチャル家スナ\n結果発表\nSMILE BLOOM PROJECT\n結果発表\n恋するバレンタイン\n結果発表\nあけおめ2020V\n結果発表\nきらきらクリスマス\n結果発表\n青春フォトグラフィー\n結果発表\nびっくりハロウィン\n結果発表"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 7,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "みんなの新着",
+        "bounds": {
+          "x": 28,
+          "y": 2893.984375,
+          "w": 1224,
+          "h": 742.65625
+        },
+        "buttonCount": 13,
+        "cardCount": 0,
+        "slots": {
+          "heading": "みんなの新着",
+          "ctaCount": 13
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 8,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "みんなの写真・動画",
+        "bounds": {
+          "x": 28,
+          "y": 3732.640625,
+          "w": 1224,
+          "h": 572
+        },
+        "buttonCount": 20,
+        "cardCount": 12,
+        "slots": {
+          "heading": "みんなの写真・動画",
+          "ctaCount": 20,
+          "lede": "みんなの写真・動画\nもっと見る\nZoé\nVRoidモバイル\nSunny\nVRoidモバイル\nSaras Wati\nVRoidモバイル\n微糖@BitterSweet\n微糖@BitterSweet\nRAVEN☮️🎨\nVRoid Hub\n暇72\nVRoidモバイル\nRandomia\nVRoidモバイル\nGuWoSch\nMike\nVRoidモバイル\nhecate464748\nItzel_973\nVRoidモバイル"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 9,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "VRoid Studio サンプルモデル",
+        "bounds": {
+          "x": 28,
+          "y": 4400.640625,
+          "w": 1224,
+          "h": 272
+        },
+        "buttonCount": 3,
+        "cardCount": 0,
+        "slots": {
+          "heading": "VRoid Studio サンプルモデル",
+          "ctaCount": 3,
+          "lede": "VRoid Studio サンプルモデル\nこの子を見る\nこの子を見る\nこの子を見る"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 10,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "キャラクターを作る",
+        "bounds": {
+          "x": 28,
+          "y": 4768.640625,
+          "w": 1224,
+          "h": 348
+        },
+        "buttonCount": 1,
+        "cardCount": 0,
+        "slots": {
+          "heading": "キャラクターを作る",
+          "ctaCount": 1,
+          "lede": "キャラクターを作る\nお気に入りがなければ、\n自分ですぐに作れます。"
+        },
+        "needsSmart": true
+      }
+    ],
+    "counts": {
+      "nav": 2,
+      "content": 4,
+      "testimonials": 1,
+      "hero": 4
+    },
+    "readingOrder": [
+      "nav",
+      "content",
+      "nav",
+      "testimonials",
+      "hero",
+      "content",
+      "content",
+      "hero",
+      "hero",
+      "content",
+      "hero"
+    ]
+  }
+}

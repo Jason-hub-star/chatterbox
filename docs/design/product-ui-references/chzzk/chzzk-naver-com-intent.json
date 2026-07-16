@@ -1,0 +1,414 @@
+{
+  "pageIntent": {
+    "type": "landing",
+    "confidence": 0.45,
+    "path": "/",
+    "title": "치지직 - CHZZK",
+    "description": "지금, 스트리밍이 시작됩니다. 치지직-",
+    "signals": [
+      {
+        "kind": "url",
+        "type": "landing",
+        "weight": 0.45,
+        "detail": "root-path"
+      }
+    ],
+    "alternates": [],
+    "needsSmart": true
+  },
+  "sectionRoles": {
+    "sections": [
+      {
+        "index": 0,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "치지직",
+        "bounds": {
+          "x": 0,
+          "y": 110,
+          "w": 1280,
+          "h": 60
+        },
+        "buttonCount": 4,
+        "cardCount": 6,
+        "slots": {
+          "heading": "치지직",
+          "ctaCount": 4,
+          "lede": "치지직\n게임\ne스포츠\nEWC🏆\n스포츠\n🏆월드컵\n엔터+\n월드컵 시청 이벤트 페이지로 이동\n검색\n로그인"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 1,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 155,
+          "y": 120,
+          "w": 249.46875,
+          "h": 40
+        },
+        "buttonCount": 0,
+        "cardCount": 4,
+        "slots": {
+          "lede": "게임\ne스포츠\nEWC🏆\n스포츠\n🏆월드컵\n엔터+"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 2,
+        "tag": "aside",
+        "role": "comparison",
+        "subrole": null,
+        "confidence": 0.7,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 170,
+          "w": 240,
+          "h": 630
+        },
+        "buttonCount": 6,
+        "cardCount": 37,
+        "slots": {
+          "ctaCount": 6,
+          "lede": "전체 방송\n인기 클립\n카테고리\n편성표\nNew\n팔로잉\n최대 3,109,208개\n치즈 무료 수확\n치즈팜\n인기 카테고리\n리그 오브 레전드\n345개 방송\n128,799\ntalk\n769개 방송\n38,681\n팰월드\n347개 방송\n32,396\n더보기\n다가오는 방송 일정\nLIVE\n그룹스테이지: Los Grandes vs JD Gaming"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 3,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 20,
+          "y": 174,
+          "w": 200,
+          "h": 259
+        },
+        "buttonCount": 0,
+        "cardCount": 6,
+        "slots": {
+          "lede": "전체 방송\n인기 클립\n카테고리\n편성표\nNew\n팔로잉\n최대 3,109,208개\n치즈 무료 수확\n치즈팜"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 4,
+        "tag": "a",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": null,
+        "bounds": {
+          "x": 20,
+          "y": 362,
+          "w": 200,
+          "h": 56
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {
+          "lede": "최대 3,109,208개\n치즈 무료 수확\n치즈팜"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 5,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 20,
+          "y": 433,
+          "w": 200,
+          "h": 213
+        },
+        "buttonCount": 3,
+        "cardCount": 9,
+        "slots": {
+          "ctaCount": 3,
+          "lede": "인기 카테고리\n리그 오브 레전드\n345개 방송\n128,799\ntalk\n769개 방송\n38,681\n팰월드\n347개 방송\n32,396\n더보기"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 6,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 20,
+          "y": 646,
+          "w": 200,
+          "h": 213
+        },
+        "buttonCount": 3,
+        "cardCount": 9,
+        "slots": {
+          "ctaCount": 3,
+          "lede": "다가오는 방송 일정\nLIVE\n그룹스테이지: Los Grandes vs JD Gaming"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 7,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 20,
+          "y": 859,
+          "w": 200,
+          "h": 111
+        },
+        "buttonCount": 0,
+        "cardCount": 8,
+        "slots": {
+          "lede": "파트너 스트리머\n새 창으로 열림\nLIVE\n텐코 시부키\nLIVE\n네클릿\nLIVE\n케인\nLIVE\n큐베 CuVee"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 8,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 20,
+          "y": 970,
+          "w": 200,
+          "h": 232
+        },
+        "buttonCount": 0,
+        "cardCount": 5,
+        "slots": {
+          "lede": "서비스 바로가기\n새 창으로 열림\n네이버 게임\ne스포츠\n오리지널 시리즈\nPC 게임\n치지직 라운지"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 9,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 180,
+          "w": 980,
+          "h": 92
+        },
+        "buttonCount": 2,
+        "cardCount": 19,
+        "slots": {
+          "ctaCount": 2
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 10,
+        "tag": "section",
+        "role": "comparison",
+        "subrole": null,
+        "confidence": 0.7,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 302,
+          "w": 980,
+          "h": 330
+        },
+        "buttonCount": 0,
+        "cardCount": 5,
+        "slots": {
+          "lede": "LIVE\n시청자\n62,480명\nGAM vs T1 - DK vs G2 | 그룹 2일차 | 리그오브레전드 | EWC 2026\nEWC 공식 채널A\n인증 마크\n스트리머 채널로 이동\n카테고리\n리그 오브 레전드\n라이브 엔드로 이동\nLIVE\n시청자\n148명\n[거상] 뉴비가이드 4일차 슬슬 고비오냐\n람썬\n스트리머 채널로 이동\n라이브 엔드로 이동\nLIVE\n시청자\n346명\n팝업 후기 구경 🎀\n비올레타 모네\n스트리머 채널로 이동\n라이브 엔드로 이동\nLIVE\n시청자\n582명\n드롭스\n[DPS:델타포스] 팀연습\n소우릎\n인증 마크\n스트리머 채널로 이동\n라이브 엔드로 이동"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 11,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 662,
+          "w": 980,
+          "h": 80
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {},
+        "needsSmart": true
+      },
+      {
+        "index": 12,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 772,
+          "w": 980,
+          "h": 367.484375
+        },
+        "buttonCount": 4,
+        "cardCount": 5,
+        "slots": {
+          "ctaCount": 4
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 13,
+        "tag": "section",
+        "role": "comparison",
+        "subrole": null,
+        "confidence": 0.7,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 1169.484375,
+          "w": 980,
+          "h": 253
+        },
+        "buttonCount": 2,
+        "cardCount": 6,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "[EWC] LoL 채널B 한국어 중계\nLIVE\n9,014명\n리그 오브 레전드\newc2026\n이스포츠월드컵\newc\nlol\n롤\nKC vs SEN - JDG vs ML | 그룹 2일차 | 리그오브레전드 | EWC 2026\nEWC 공식 채널B\n인증 마크\n채널로 이동\n방송 보러가기\n더보기"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 14,
+        "tag": "section",
+        "role": "comparison",
+        "subrole": null,
+        "confidence": 0.7,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 1452.484375,
+          "w": 980,
+          "h": 389.484375
+        },
+        "buttonCount": 4,
+        "cardCount": 9,
+        "slots": {
+          "ctaCount": 4
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 15,
+        "tag": "section",
+        "role": "comparison",
+        "subrole": null,
+        "confidence": 0.7,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 1871.96875,
+          "w": 980,
+          "h": 389.484375
+        },
+        "buttonCount": 4,
+        "cardCount": 9,
+        "slots": {
+          "ctaCount": 4
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 16,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 2291.453125,
+          "w": 980,
+          "h": 80
+        },
+        "buttonCount": 1,
+        "cardCount": 0,
+        "slots": {
+          "ctaCount": 1,
+          "lede": "월드컵 득점왕 과연 누가 될까요?\n궁금해요"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 17,
+        "tag": "footer",
+        "role": "footer",
+        "subrole": null,
+        "confidence": 0.95,
+        "heading": null,
+        "bounds": {
+          "x": 270,
+          "y": 2421.453125,
+          "w": 980,
+          "h": 292
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {
+          "lede": "네이버 이용약관네이버 게임 커뮤니티 가이드개인정보 처리방침광고 문의제휴 문의\n치지직 고객센터치지직 개발자 센터ⓒ NAVER Corp.\n네이버(주) 대표이사 : 최수연사업자등록번호 : 220-81-62517\n통신판매업 신고번호 : 제2006-경기성남-0692호사업자정보 확인\n주소 : 경기도 성남시 분당구 정자일로 95, NAVER 1784, 13561대표전화 : 1588-3820\n이메일 : ccnaver@naver.com호스팅 서비스 제공 : NAVER Cloud"
+        },
+        "needsSmart": false
+      }
+    ],
+    "counts": {
+      "nav": 8,
+      "comparison": 5,
+      "content": 4,
+      "footer": 1
+    },
+    "readingOrder": [
+      "nav",
+      "nav",
+      "comparison",
+      "nav",
+      "content",
+      "comparison",
+      "nav",
+      "nav",
+      "nav",
+      "content",
+      "content",
+      "nav",
+      "nav",
+      "comparison",
+      "comparison",
+      "comparison",
+      "content",
+      "footer"
+    ]
+  }
+}

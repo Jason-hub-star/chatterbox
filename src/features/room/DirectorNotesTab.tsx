@@ -2,16 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNotesStore } from '@/stores/notesStore'
 
-// 실시간 디렉터 노트 탭(ROOM-17, 계약 RightPanel.md §ROOM-17) — 참가자 전원 발행 가능(방장 구분 무).
+// 실시간 디렉터 노트 탭(ROOM-17, 계약 RightPanel.md §ROOM-17) — 배우·호스트 발행 가능(방장 구분 무).
+// viewer 는 읽기 전용(readOnly) — 노트는 직발행(DataChannel)이라 viewer 토큰이 canPublishData=false 로
+// 막히며(API-SURFACE 익명/뷰어 규칙), 입력을 숨겨 깨진 UI 를 예방한다.
 // 새 노트 도착 시 자동 최하단 스크롤, 사용자가 위로 스크롤하면 자동 스크롤 해제(notesStore.isAutoScroll).
 // 방장 노트는 amber 좌측 강조선 — hostAuthId 렌더 비교로 파생(호스트 이양에도 실시간 정확).
 interface Props {
   connected: boolean
   hostAuthId: string | null
   onSend: (content: string) => void | Promise<void>
+  readOnly?: boolean
 }
 
-export default function DirectorNotesTab({ connected, hostAuthId, onSend }: Props) {
+export default function DirectorNotesTab({ connected, hostAuthId, onSend, readOnly }: Props) {
   const { t, i18n } = useTranslation()
   const notes = useNotesStore((s) => s.notes)
   const isAutoScroll = useNotesStore((s) => s.isAutoScroll)
@@ -64,6 +67,7 @@ export default function DirectorNotesTab({ connected, hostAuthId, onSend }: Prop
           )
         })}
       </div>
+      {!readOnly && (
       <form onSubmit={submit} className="mt-2 flex shrink-0 gap-1.5">
         <input
           value={draft}
@@ -82,6 +86,7 @@ export default function DirectorNotesTab({ connected, hostAuthId, onSend }: Prop
           {t('notes.send')}
         </button>
       </form>
+      )}
     </div>
   )
 }

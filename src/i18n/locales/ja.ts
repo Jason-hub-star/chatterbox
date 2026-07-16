@@ -407,6 +407,25 @@ export const ja: Record<string, string> = {
   'theater.heroPrev': '前の舞台',
   'theater.heroNext': '次の舞台',
   'theater.heroGoto': '{{n}}番の舞台',
+
+// --- guest（ゲスト観覧, LOB-07） ---
+'guest.watchTitle': 'ログインなしで観覧できます',
+'guest.watchBody': 'ゲストとして入場すると、舞台を観て聴くことができます。チャットや出演はログイン後に可能です。',
+'guest.watchCta': 'ゲストで観覧する',
+'guest.loginCta': 'ログインして参加',
+'guest.signInError': 'ゲスト入場を開始できませんでした。しばらくしてからお試しください。',
+'guest.chatLocked': 'チャットはログイン後に参加できます',
+
+// --- グローバル作成メニュー（P2） ---
+'create.menuTitle': 'つくる',
+'create.avatar': 'アバターを作る',
+'create.shorts': 'ショートを作る',
+'create.stage': '舞台を開く',
+
+// --- 公開広場ホーム ライブレール（P1） ---
+'lobby.liveRailTitle': '今開いている舞台',
+'lobby.liveRailEmpty': '今は静かです。最初の舞台を開いてみましょう。',
+'lobby.liveRailMore': '大劇場でもっと見る',
   'shorts.title': 'ショート工房',
   'shorts.preparing': '工房を開いています…',
   'shorts.loadError': '工房を開けませんでした。しばらくして再度お試しください。',

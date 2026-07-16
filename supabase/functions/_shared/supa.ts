@@ -31,11 +31,21 @@ export function serviceClient(): SupabaseClient {
   );
 }
 
-export type AppUser = { authId: string; userId: string; email: string | null; service: SupabaseClient };
+export type AppUser = {
+  authId: string;
+  userId: string;
+  email: string | null;
+  isAnonymous: boolean;
+  service: SupabaseClient;
+};
 
 // 인증 + 프로필 매핑. 실패 시 {res} 로 즉시 응답.
+// 익명(anonymous sign-in) 세션은 기본 거부(403) — LOB-07 read-only 규칙의 단일 지점.
+// 관전 사슬 함수만 { allowAnonymous: true } 로 옵트인(join-as-viewer·leave-room).
+// 화이트리스트 누락 = 게스트 403(안전한 실패) / 블랙리스트 방식이면 누락 = 구멍이라 기본 거부를 쓴다.
 export async function getAppUser(
   req: Request,
+  opts?: { allowAnonymous?: boolean },
 ): Promise<{ ok: true; user: AppUser } | { ok: false; res: Response }> {
   const authHeader = req.headers.get("authorization") ?? "";
   const anon = createClient(
@@ -46,6 +56,11 @@ export async function getAppUser(
   const { data: { user }, error } = await anon.auth.getUser();
   if (error || !user) return { ok: false, res: json({ error: "Unauthorized" }, 401) };
 
+  const isAnonymous = user.is_anonymous === true;
+  if (isAnonymous && !opts?.allowAnonymous) {
+    return { ok: false, res: json({ error: "Sign in required" }, 403) };
+  }
+
   const service = serviceClient();
   const { data: appUser, error: uErr } = await service
     .from("users")
@@ -55,7 +70,10 @@ export async function getAppUser(
     .single();
   if (uErr || !appUser) return { ok: false, res: json({ error: "No profile" }, 403) };
 
-  return { ok: true, user: { authId: user.id, userId: appUser.id, email: appUser.email, service } };
+  return {
+    ok: true,
+    user: { authId: user.id, userId: appUser.id, email: appUser.email, isAnonymous, service },
+  };
 }
 
 export type HostRoom = { id: string; host_id: string; status: string } & Record<string, unknown>;

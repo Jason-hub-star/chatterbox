@@ -1,0 +1,347 @@
+{
+  "pageIntent": {
+    "type": "landing",
+    "confidence": 0.45,
+    "path": "/",
+    "title": "ZEP",
+    "description": "모두를 위한 메타버스 ZEP으로 초대합니다!",
+    "signals": [
+      {
+        "kind": "url",
+        "type": "landing",
+        "weight": 0.45,
+        "detail": "root-path"
+      }
+    ],
+    "alternates": [],
+    "needsSmart": true
+  },
+  "sectionRoles": {
+    "sections": [
+      {
+        "index": 0,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 64
+        },
+        "buttonCount": 6,
+        "cardCount": 12,
+        "slots": {
+          "ctaCount": 6,
+          "lede": "교육용\n기업용\n고객 지원\n둘러보기\n가격\n로그인\n무료로 시작하기"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 1,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 180,
+          "y": 14.5,
+          "w": 409.46875,
+          "h": 35
+        },
+        "buttonCount": 3,
+        "cardCount": 11,
+        "slots": {
+          "ctaCount": 3,
+          "lede": "교육용\n기업용\n고객 지원\n둘러보기\n가격"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 2,
+        "tag": "main",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "쉽고 재미있는 교육,\n에서 시작하세요",
+        "bounds": {
+          "x": 0,
+          "y": 64,
+          "w": 1280,
+          "h": 7444.9375
+        },
+        "buttonCount": 20,
+        "cardCount": 146,
+        "slots": {
+          "heading": "쉽고 재미있는 교육,\n에서 시작하세요",
+          "subheadings": [
+            "서비스 바로가기",
+            "다 함께 소통하는온라인 공간",
+            "빠르고 쉽게 만드는재미있는 퀴즈",
+            "스토리로 학습하는참여·체험형 교육"
+          ],
+          "ctaCount": 20
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 3,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.85,
+        "heading": "쉽고 재미있는 교육,\n에서 시작하세요",
+        "bounds": {
+          "x": 0,
+          "y": 64,
+          "w": 1280,
+          "h": 1141
+        },
+        "buttonCount": 3,
+        "cardCount": 7,
+        "slots": {
+          "heading": "쉽고 재미있는 교육,\n에서 시작하세요",
+          "ctaCount": 3
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 4,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "서비스 바로가기",
+        "bounds": {
+          "x": 0,
+          "y": 1205,
+          "w": 1280,
+          "h": 845.921875
+        },
+        "buttonCount": 0,
+        "cardCount": 4,
+        "slots": {
+          "heading": "서비스 바로가기",
+          "subheadings": [
+            "다 함께 소통하는온라인 공간",
+            "빠르고 쉽게 만드는재미있는 퀴즈",
+            "스토리로 학습하는참여·체험형 교육"
+          ],
+          "lede": "서비스 바로가기\n바로가기\n다 함께 소통하는온라인 공간\n바로가기\n빠르고 쉽게 만드는재미있는 퀴즈\n바로가기\n스토리로 학습하는참여·체험형 교육"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 5,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "누적 사용자",
+        "bounds": {
+          "x": 0,
+          "y": 2050.921875,
+          "w": 1280,
+          "h": 423.203125
+        },
+        "buttonCount": 0,
+        "cardCount": 17,
+        "slots": {
+          "heading": "누적 사용자"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 6,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "실시간으로 소통하는 온라인 공간",
+        "bounds": {
+          "x": 0,
+          "y": 2474.125,
+          "w": 1280,
+          "h": 1042
+        },
+        "buttonCount": 4,
+        "cardCount": 14,
+        "slots": {
+          "heading": "실시간으로 소통하는 온라인 공간",
+          "subheadings": [
+            "행사, 스터디, 팀플 등 실시간으로 함께하는 모임",
+            "화상 통화, 리액션, 채팅 등 직관적인 소통",
+            "여러 목적에 맞는 다양한 무료 템플릿",
+            "에디터로 나만의 맵 만들기"
+          ],
+          "ctaCount": 4,
+          "lede": "실시간으로 소통하는 온라인 공간\n홈페이지 바로가기\n가격 안내\n행사, 스터디, 팀플 등 실시간으로 함께하는 모임"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 7,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "빠르고 쉽게 만드는 재미있는 퀴즈",
+        "bounds": {
+          "x": 0,
+          "y": 3516.125,
+          "w": 1280,
+          "h": 1042
+        },
+        "buttonCount": 4,
+        "cardCount": 14,
+        "slots": {
+          "heading": "빠르고 쉽게 만드는 재미있는 퀴즈",
+          "subheadings": [
+            "문제만 넣으면 완성되는 게임형 교육 퀴즈",
+            "AI로 더 쉽고 빠른 수업준비",
+            "매 달 업데이트되는 다양한 퀴즈맵",
+            "문제 세트를 바로 복사"
+          ],
+          "ctaCount": 4,
+          "lede": "빠르고 쉽게 만드는 재미있는 퀴즈\n홈페이지 바로가기\n가격 안내\n문제만 넣으면 완성되는 게임형 교육 퀴즈"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 8,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "스토리로 학습하는 인터랙티브 교육",
+        "bounds": {
+          "x": 0,
+          "y": 4558.125,
+          "w": 1280,
+          "h": 1042
+        },
+        "buttonCount": 4,
+        "cardCount": 14,
+        "slots": {
+          "heading": "스토리로 학습하는 인터랙티브 교육",
+          "subheadings": [
+            "교과활동부터 계기교육까지, 바로 활용 가능",
+            "교보재까지 한번에 수업준비 끝",
+            "선생님들이 참여한 검증된 콘텐츠",
+            "우리학교 전용 프라이빗 스페이스"
+          ],
+          "ctaCount": 4,
+          "lede": "스토리로 학습하는 인터랙티브 교육\n홈페이지 바로가기\n가격 안내\n교과활동부터 계기교육까지, 바로 활용 가능"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 9,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "목적에 맞는 ZEP 서비스를 골라보세요",
+        "bounds": {
+          "x": 0,
+          "y": 5600.125,
+          "w": 1280,
+          "h": 1264
+        },
+        "buttonCount": 4,
+        "cardCount": 62,
+        "slots": {
+          "heading": "목적에 맞는 ZEP 서비스를 골라보세요",
+          "ctaCount": 4,
+          "lede": "목적에 맞는 ZEP 서비스를 골라보세요\n바로가기\n바로가기\n바로가기\n많은 인원이 함께 접속할 수 있어요\n최대 50,000명\n최대 200명\n최대 50명\n다 함께 모여 장시간 사용할 수 있는 공간이 필요해요\n나만의 공간을 커스터마이징하고 싶어요\n화상 카메라와 마이크 기능이 필요해요\n채팅과 DM 기능이 필요해요\n다 함께 실시간으로 소통하는 학교 행사를 만들고 싶어요\n체험형 인터랙티브 교육이 필요해요\n학습지를 함께 사용하고 싶어요\n학습 자료를 복사해서 빠르게 사용하고 싶어요\n계기교육을 진행하고 싶어요\nAI 기능으로 빠르게 문제를 만들고 싶어요\n학습 내역 확인이 필요해요\n재미있는 방탈출 퀴즈를 만들고 싶어요"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 10,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "세상에 없던 재밌는 교육을 만듭니다",
+        "bounds": {
+          "x": 0,
+          "y": 6864.125,
+          "w": 1280,
+          "h": 304
+        },
+        "buttonCount": 1,
+        "cardCount": 3,
+        "slots": {
+          "heading": "세상에 없던 재밌는 교육을 만듭니다",
+          "ctaCount": 1
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 11,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 7168.125,
+          "w": 1280,
+          "h": 340.8125
+        },
+        "buttonCount": 0,
+        "cardCount": 4,
+        "slots": {
+          "lede": "ZEP은 제페토를 서비스하고 있는 글로벌 메타버스 기업 네이버제트와RPG 개발력과 유니크한 도트 그래픽을 인정받는 슈퍼캣이 함께 만들어나가고 있습니다."
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 12,
+        "tag": "footer",
+        "role": "footer",
+        "subrole": null,
+        "confidence": 0.95,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 7508.9375,
+          "w": 1280,
+          "h": 250.609375
+        },
+        "buttonCount": 0,
+        "cardCount": 4,
+        "slots": {
+          "lede": "이용약관\n|\n개인정보처리방침\n|\n기능 업데이트\n|\n가이드\n|\n채용\n|\nZEP 공식 파트너스\n주식회사 ZEP|대표이사 김상엽, 고창원|사업자등록번호: 535-86-02323|통신판매업 신고번호: 2023-서울강남-04632\n서울특별시 강남구 선릉로93길 50, 11층 (현석타워)|유선번호: 070-7666-9837|팩스번호: 02-3487-1551|e-mail: hello@zep.us"
+        },
+        "needsSmart": false
+      }
+    ],
+    "counts": {
+      "nav": 2,
+      "content": 7,
+      "hero": 3,
+      "footer": 1
+    },
+    "readingOrder": [
+      "nav",
+      "nav",
+      "content",
+      "hero",
+      "content",
+      "content",
+      "content",
+      "content",
+      "content",
+      "hero",
+      "hero",
+      "content",
+      "footer"
+    ]
+  }
+}

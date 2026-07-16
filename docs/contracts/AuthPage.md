@@ -254,7 +254,7 @@ PENDING_VERIFICATION 상태 (EmailVerificationPending):
 - ❌ **Supabase secret 키 클라이언트 노출** — VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY만 사용 (environment 제한)
 - ❌ **세션/토큰을 localStorage 직접 저장** — Supabase SDK가 자동 관리. userStore는 메모리만 (새로고침 시 onAuthStateChange로 복원)
 - ❌ **비밀번호 평문 저장 or 로깅** — 폼에서 즉시 제거, 네트워크 요청은 HTTPS only
-- ❌ **인증 없이 /lobby, /models, /rooms/:id 접근 허용** — ProtectedRoute로 가드 (routes.tsx)
+- ❌ **인증 없이 /lobby, /models 접근 허용** — ProtectedRoute로 가드 (routes.tsx). **예외(LOB-07, 2026-07-16)**: `/lobby/theater` 는 비로그인 열람(목록=`list-public-rooms` Public 함수), `/rooms/:id` 는 GuestWatchGate — 게스트 선택 시 익명 세션 발급 후 read-only 뷰어로만 진입(ViewerGate.md as-built)
 - ❌ **로그인 실패 시 이메일 열거 공격(enumeration) 응답** — "이메일 또는 비밀번호가 틀렸습니다" (구체화 금지)
 - ❌ **회원가입 중복 확인 API 노출** — 폼 제출 시만 검증 (enumeration 방지)
 - ❌ **Google OAuth callback 핸들링 미흡** — URL fragment (#) 파싱 정확히 + state 검증 (CSRF 방지)

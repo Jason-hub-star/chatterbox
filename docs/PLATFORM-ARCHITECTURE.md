@@ -313,7 +313,7 @@ snack-web/
 
 | 경로 | 페이지 | 설명 |
 |---|---|---|
-| `/` | **Landing** | 플랫폼 소개 + "묵대에 오르기" CTA |
+| `/` | **공개 광장 홈** | 광장(월드 아트) + "지금 열린 무대" 라이브 레일 — **비로그인 열람 가능**(2026-07-16 개정: 2026-07-08 "인앱 랜딩 폐지·게임 런처식" 결정을 부분 번복 — 마케팅 랜딩은 여전히 외부 snack-web 담당이되, 앱 홈은 치지직식 공개 디스커버리로. 게스트는 관전(LOB-07)·로그인 CTA, 세션 있으면 기존 광장 동선 그대로). `/lobby` 는 호환 리다이렉트 |
 | `/login` | **Login** | 이메일/소셜 로그인 |
 | `/register` | **Register** | 회원가입 |
 | `/models` | **Model Select** | 보유 버튜버 선택 + 웹캠 캘리브레이션 |
@@ -326,6 +326,7 @@ snack-web/
 ### 인증 가드
 
 - `/models`, `/lobby`, `/rooms/:roomId`는 인증 필요.
+- **게스트 예외 (LOB-07, 2026-07-16)**: `/lobby/theater` 방 목록은 비로그인 열람 가능(`list-public-rooms` Public 함수 소스). `/rooms/:roomId`는 비로그인 도달 시 게스트 관전 게이트 — [게스트로 관전] 선택 시 Supabase anonymous sign-in 후 `?watch=1` 뷰어 경로로 진입(read-only).
 - `/login`, `/register`는 비인증 전용.
 - SPA 이므로 클라이언트 사이드 가드 + Supabase session subscribe.
 
@@ -345,7 +346,7 @@ snack-web/
 ### `/login`, `/register` — 인증
 
 - 방 초대 링크(`/rooms/:id`) → 로그인 완료 후 해당 방으로 자동 복귀 (리다이렉트 보존)
-- 게스트 관람 입장: MVP는 회원가입 없이 30초 read-only viewer만 허용한다. 채팅·반응·투표는 로그인 viewer + Edge Function 검증 이후에만 허용한다.
+- 게스트 관람 입장: 회원가입 없이 익명(Supabase anonymous) read-only viewer로 관전한다. 시청 시간 제한은 서버 config `guest_watch_limit_sec` 정책(기본 null=무제한 — 2026-07-16 개정, 구 "30초 고정"을 config로 승격. 티저 모드 전환 시 livekit-token ttl 단축 + 익명 refresh 거부로 강제하는 것이 지정 업그레이드 경로). 채팅·반응·투표는 로그인 viewer + Edge Function 검증 이후에만 허용한다 — 익명의 쓰기 호출은 403.
 - Discord / Twitter OAuth 추가 (버튜버 커뮤니티 친화) — **P1 Phase 2** (AUTH-02b·AUTH-02c, G-153)
 - 방 코드 6자리 직접 입력 → 즉시 입장 경로 병행 (Animaze 패턴): `snack.app/join?code=ABCDEF`
 
@@ -359,6 +360,7 @@ snack-web/
 
 ### `/lobby` — 로비
 
+- **글로벌 [+ 만들기] (2026-07-16, UIUX-OVERHAUL P2)**: 광장 칩 클러스터의 드롭다운 — 아바타(의상실 위저드 `?create=1` 딥링크)·쇼츠(제작소)·무대(대극장 `?tab=create`) 3진입 1클릭. 게스트 클릭 시 목적지 보존 로그인. 쇼츠 프리셋 카드 갤러리는 VGEN 프롬프트 템플릿 시스템 필요 — defer(후속 트랙).
 - **Discovery Feed (탭식 피드)**: 수직 피드 3탭: "🔴 지금 라이브" (현재 라이브 방만) / "⭐ 추천 방" (새 방 + 인기) / "🏷️ 장르별" (드라마·코미디·판타지 필터) (Twitch 패턴)
 - 방 카드: 장르 태그(공포·로맨스·코미디·낭독극) + 인원 + 자물쇠 표시
 - 카드 호버 시 현재 배경 씬·참가자 아바타 썸네일 프리뷰

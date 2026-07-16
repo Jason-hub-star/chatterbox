@@ -36,6 +36,8 @@ tags: [hub, spec]
 | `Owner` | User owns the target resource. Host may be additionally allowed per endpoint. |
 | `Admin` | Moderator/admin service UI or service role only. |
 
+**익명(anonymous) 세션 규칙 (LOB-07, 2026-07-16):** Supabase anonymous sign-in 사용자는 토큰상 `Auth`를 통과하지만 **read-only**다. `_shared/supa.ts getAppUser`가 익명을 기본 거부(403 `Sign in required`)하고, 화이트리스트 함수만 `{ allowAnonymous: true }`로 허용한다: `join-as-viewer` · `leave-room`. `livekit-token`은 활성 participant row를 요구하므로 익명은 viewer 토큰만 얻는다(`canPublish=false`, `canPublishData`는 viewer 전원 false — 2026-07-16 SSOT 정렬). 시청 제한은 config `guest_watch_limit_sec`(기본 무제한).
+
 ## Core Room APIs
 
 | Endpoint | Auth | Input | Output | Side Effects | Source |
@@ -44,6 +46,7 @@ tags: [hub, spec]
 | `POST /functions/v1/verify-invite-code` | `Public` or `Auth` | `{ invite_code, expected_room_id? }` | `{ valid, room_id, title, role_hint, role_source, expires_at, requires_auth, requires_password, reason? }` | Read-only. Validate invite hash, expiry, revocation. If `expected_room_id` is present, require `invite.room_id === expected_room_id`. No use-count increment, no participant creation. Rate limit by IP + code hash | [[DATA-SCHEMA]], [[SecurityPolicies]], [[ViewerGate]] |
 | `POST /functions/v1/accept-invite` | `Auth` | `{ invite_code, room_id, requested_role?, device_type: 'desktop'|'mobile', idempotency_key }` | `{ room_id, participant_id, role, role_source, greenroom_required }` | Validate `room_invites`, check age/block/capacity/`account_restrictions.can_join`, increment usage, insert/update `room_participants`; mobile/guest actors downgrade to viewer | [[DATA-SCHEMA]], [[ONBOARDING-FLOW]], [[LobbyPage]] |
 | `POST /functions/v1/join-public-room` | `Auth` | `{ room_id, requested_role?: 'viewer', idempotency_key }` | `{ room_id, participant_id, role: 'viewer' }` | Atomic capacity check + viewer insert; age/block/`account_restrictions.can_join` gates; no SELECT count → INSERT split | [[ViewerGate]], [[SecurityPolicies]] |
+| `POST /functions/v1/list-public-rooms` | `Public` | `{}` | `{ rooms: LobbyRoom[] }` (public_rooms 화이트리스트 컬럼: id·title·genre·status·current/max_participants·host_display_name·is_locked·is_demo·is_practice) | Read-only. service_role로 `public_rooms` SELECT(waiting·live, 최대 50). `check_rate_limit('lobby-list:<ip>', 30, 60)` IP 레이트리밋(429). 비로그인 로비·랜딩 포털의 목록 소스 (LOB-07) | [[LobbyPage]], [[ViewerGate]] |
 | `POST /functions/v1/livekit-token` | `Participant` or `Host` | `{ roomName }` | `{ server_url, token, jti, token_version }` | Sign LiveKit JWT with participant `token_version` metadata; block ended room, disabled participant, stale/restricted participant, block relationships; audit token issue | [[livekit-edge-fn]], [[SecurityPolicies]] |
 | `POST /functions/v1/refresh-livekit-token` | `Participant` or `Host` | `{ room_id, current_jti? }` | `{ server_url, token, jti }` | Same gates as `livekit-token`; audit token refresh | [[livekit-edge-fn]] |
 | `POST /functions/v1/leave-room` | `Participant` | `{ room_id }` | `{ ok: true, new_host_id? }` | Set participant `state='left'`; auto host transfer when needed | [[livekit-edge-fn]], [[HostAuthority]] |
@@ -80,7 +83,7 @@ tags: [hub, spec]
 | `POST /functions/v1/create-avatar-job` | `Auth` | `{ object_key }` | `{ job_id, status:'running' }` | `isSafeObjectKey(authId)` 검증 → `avatar_jobs` insert(queued) → 업로드 signed URL → Modal 웹엔드포인트 spawn(`trigger_secret` body). 실패 시 status=failed | [[avatar-forge-pipeline]], [[DATA-SCHEMA]] |
 | `subscribeToAvatarJob(jobId, cb)` (Realtime) | `Auth` | postgres_changes UPDATE on `avatar_jobs` | `AvatarJob` | phase 진행/완료 자동 방송. `fetchMyAvatarJobs()`=재진입 | [[avatar-forge-pipeline]] |
 
-**Modal → Supabase (webhook 대신 직접 PATCH)**: 파이프라인 컨테이너가 service_role로 `PATCH /rest/v1/avatar_jobs?id=eq.<job>`(phase·status=done+result_project_url). 인바운드 엣지 없음, 인증=Modal `vtube-supabase` 시크릿. 트리거 엔드포인트=`POST <modal>/submit`(`{trigger_secret, job_id, exp_id, png_url}` → `{call_id}`).
+**Modal → Supabase (webhook 대신 service-role lifecycle RPC)**: 파이프라인 컨테이너가 `renew_avatar_job_lease`(phase+lease), `complete_avatar_job`, `fail_avatar_job` RPC로 active 행만 전이한다. `reconcile_stuck_avatar_jobs` pg_cron은 만료 lease/abandoned queued 행을 `orchestrator_timeout`으로 닫는다. 인바운드 엣지 없음, 인증=Modal `vtube-supabase` 시크릿. 트리거 엔드포인트=`POST <modal>/submit`(`{trigger_secret, job_id, exp_id, png_url}` → `{call_id}`).
 
 ## Recording & DUB APIs
 

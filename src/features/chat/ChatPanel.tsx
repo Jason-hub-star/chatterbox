@@ -22,9 +22,11 @@ export default function ChatPanel({
   blockedAuthIds,
   onSubmitReport,
   onUnblock,
+  guestLocked,
 }: {
   connected: boolean
   onSend: (text: string) => Promise<void> | void
+  guestLocked?: boolean // LOB-07: 익명 게스트는 read-only — 입력 대신 로그인 안내(서버도 403으로 이중 차단)
   isHost?: boolean // HOST-11: 호스트에게만 메시지별 [숨김] 노출(서버 moderate-chat 이 진짜 권한 재검증)
   onHideMessage?: (id: string) => void
   blockedAuthIds?: Set<string> // V-2: 접힘 필터 키(auth id)
@@ -148,6 +150,11 @@ export default function ChatPanel({
           )
         })}
       </ul>
+      {guestLocked ? (
+        <p className="mt-2 rounded-lg border border-stage-border px-3 py-2 text-center text-xs text-stage-text-muted">
+          {t('guest.chatLocked')}
+        </p>
+      ) : (
       <form onSubmit={submit} className="mt-2 flex gap-2">
         <input
           value={draft}
@@ -165,6 +172,7 @@ export default function ChatPanel({
           {t('room.send')}
         </button>
       </form>
+      )}
 
       {reportTarget && (
         <Modal title={t('room.reportTitle')} onClose={() => setReportTarget(null)}>

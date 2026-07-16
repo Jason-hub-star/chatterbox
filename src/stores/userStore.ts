@@ -38,6 +38,8 @@ interface UserStore {
   login: (email: string, password: string) => Promise<boolean>
   // OAuth 간편로그인 — 성공 시 프로바이더로 리다이렉트되므로 반환값은 "시작 성공" 여부.
   loginWithOAuth: (provider: 'google' | 'kakao') => Promise<boolean>
+  // 게스트(익명) 관전 세션(LOB-07) — Supabase anonymous sign-in. 세션은 onAuthStateChange 가 흡수.
+  signInGuest: () => Promise<boolean>
   signUpWithEmail: (email: string, password: string) => Promise<boolean>
   // 인증 복구(A-FUNC-2). enumeration 방지: 요청/재전송은 성공 여부와 무관하게 동일 안내를 보이게 boolean 만 반환.
   requestPasswordReset: (email: string) => Promise<boolean>
@@ -140,6 +142,15 @@ export const useUserStore = create<UserStore>((set, get) => ({
       return false
     }
     return true // 브라우저가 프로바이더로 이동
+  },
+
+  signInGuest: async () => {
+    // 이미 세션이 있으면(정식/게스트) 재발급하지 않는다 — 방문마다 익명 유저가 쌓이는 것 방지.
+    if (get().session) return true
+    const { data, error } = await supabase.auth.signInAnonymously()
+    if (error || !data.session) return false
+    set({ session: data.session, user: data.user, authState: 'AUTHENTICATED', error: null })
+    return true
   },
 
   signUpWithEmail: async (email, password) => {

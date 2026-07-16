@@ -10,6 +10,7 @@ import {
   createRoom,
   fetchMyReservations,
   fetchPublicRooms,
+  fetchPublicRoomsGuest,
   listRecentPeople,
   type LobbyRoom,
   type RecentPerson,
@@ -44,19 +45,20 @@ export default function TheaterPage() {
     initTab === 'ticket' ? 'ticket' : initTab === 'create' ? 'create' : null,
   )
 
+  // LOB-07: 비로그인은 Public 함수(list-public-rooms) 경유 — 뷰 직접 SELECT 는 authenticated 전용 grant.
   const applyRooms = useCallback(async () => {
     try {
-      setRooms(await fetchPublicRooms())
+      setRooms(session ? await fetchPublicRooms() : await fetchPublicRoomsGuest())
     } catch {
       /* transient — 기존 목록 유지 */
     }
-  }, [])
+  }, [session])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const data = await fetchPublicRooms()
+        const data = session ? await fetchPublicRooms() : await fetchPublicRoomsGuest()
         if (!cancelled) setRooms(data)
       } catch {
         if (!cancelled) toast.error(t('lobby.fetchError'))
@@ -67,7 +69,7 @@ export default function TheaterPage() {
     return () => {
       cancelled = true
     }
-  }, [t])
+  }, [t, session])
 
   // 로비 Realtime nudge(기존 채널 재사용) — 방 생성/입퇴장 시 그리드 자동 갱신.
   useEffect(() => {
@@ -84,22 +86,34 @@ export default function TheaterPage() {
   }, [applyRooms])
 
   // ←/Esc 광장 복귀(InteriorShell 탈피 — 모달 열렸을 땐 모달이 Esc 를 소비하므로 !modal 가드).
+  // 게스트는 광장(/lobby, Protected)이 없으므로 복귀 없음.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !modal) navigate('/lobby')
+      if (e.key === 'Escape' && !modal && session) navigate('/lobby')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [navigate, modal])
+  }, [navigate, modal, session])
 
   const enter = useCallback(
     (r: LobbyRoom) => {
+      // 게스트는 항상 관전 경로 — GuestWatchGate 가 익명 세션 발급을 안내(LOB-07).
+      if (!session) {
+        navigate(`/rooms/${r.id}?watch=1`)
+        return
+      }
       const full = r.currentParticipants >= r.maxParticipants
       if (full && !r.isLocked) navigate(`/rooms/${r.id}?watch=1`)
       else navigate(`/rooms/${r.id}/ready`)
     },
-    [navigate],
+    [navigate, session],
   )
+
+  // 무대 만들기 진입 — 게스트는 로그인으로(복귀 경로 보존, LOB-05 리다이렉트 규칙).
+  const openCreate = useCallback(() => {
+    if (session) setModal('create')
+    else navigate('/login', { state: { from: '/lobby/theater' } })
+  }, [session, navigate])
 
   // 히어로 캐러셀 = 인기 상위 무대(LIVE 참여인원순, 없으면 최신순) 최대 5개. 연습방 제외.
   const heroRooms = useMemo(() => {
@@ -131,23 +145,25 @@ export default function TheaterPage() {
     <main className="min-h-screen bg-stage-base text-stage-text">
       {/* 상단 바 — ← 광장 복귀 + 무대 만들기(InteriorShell 헤더 대체) */}
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-stage-border bg-stage-base/85 px-4 py-3 backdrop-blur md:px-6">
-        <button
-          onClick={() => navigate('/lobby')}
-          className="rounded-lg border border-stage-border px-3 py-1.5 text-sm text-stage-text-muted hover:text-stage-text"
-        >
-          ← {t('hub.backToPlaza')}
-        </button>
+        {session && (
+          <button
+            onClick={() => navigate('/lobby')}
+            className="rounded-lg border border-stage-border px-3 py-1.5 text-sm text-stage-text-muted hover:text-stage-text"
+          >
+            ← {t('hub.backToPlaza')}
+          </button>
+        )}
         <h1 className="text-lg font-bold">{t('hub.rooms.title')}</h1>
         <button
-          onClick={() => setModal('create')}
+          onClick={openCreate}
           className="ml-auto rounded-lg bg-fire-amber px-4 py-1.5 text-sm font-bold text-stage-base hover:opacity-90"
         >
-          {t('theater.newStage')}
+          {session ? t('theater.newStage') : t('guest.loginCta')}
         </button>
       </header>
 
       <div className="mx-auto max-w-6xl space-y-6 p-4 pb-24 md:p-6">
-        <TheaterHero rooms={heroRooms} bgUrl={heroBg} onEnter={enter} onCreate={() => setModal('create')} />
+        <TheaterHero rooms={heroRooms} bgUrl={heroBg} onEnter={enter} onCreate={openCreate} />
 
         {/* 필터/검색 — 모바일: 칩은 가로 스크롤 1줄(YouTube·CHZZK식), 검색·예약은 아래 한 줄로 분리해
             세로 낭비 제거. 데스크톱(md↑): 칩 줄바꿈 + 검색 우측 정렬. 주인님 콜 2026-07-09 */}
@@ -191,12 +207,14 @@ export default function TheaterPage() {
               maxLength={40}
               className="min-w-0 flex-1 rounded-lg border border-stage-border bg-transparent px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-fire-amber md:ml-auto md:w-52 md:flex-none"
             />
-            <button
-              onClick={() => setModal('ticket')}
-              className="shrink-0 rounded-lg border border-stage-border px-3 py-1.5 text-sm text-stage-text-muted hover:text-stage-text"
-            >
-              {t('theater.reserveOpen')}
-            </button>
+            {session && (
+              <button
+                onClick={() => setModal('ticket')}
+                className="shrink-0 rounded-lg border border-stage-border px-3 py-1.5 text-sm text-stage-text-muted hover:text-stage-text"
+              >
+                {t('theater.reserveOpen')}
+              </button>
+            )}
           </div>
         </div>
 

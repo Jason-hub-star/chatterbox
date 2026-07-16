@@ -75,7 +75,7 @@ tags: [hub]
 | LOB-04 | 입장 전 페이셜 테스트 통과 게이트 | P0 | MediaPipe |
 | ★ LOB-05 | **초대 링크/코드 공유 + 배우/관전 역할 선택** — 친구 부르기. invite role은 `actor|viewer`로 고정하며 모바일은 viewer로 자동 다운그레이드 | P0 | Supabase |
 | ★ LOB-06 | **예약 공연 + 알림**(이메일/푸시) — "오늘 밤 9시 같이 하자" 약속 잡기 | P1 | Supabase |
-| ★ LOB-07 | **공개 Watch-only 데모 룸** — 가입 전 30초 관전 체험. MVP 익명/게스트는 read-only viewer이며 채팅·반응·투표 없음 | P0 | Supabase anonymous |
+| ★ LOB-07 | **공개 Watch-only 관전** — 가입 전 관전 체험(시청 제한은 config `guest_watch_limit_sec`, 기본 무제한 — 2026-07-16 개정). 익명/게스트는 read-only viewer이며 채팅·반응·투표 없음 | P0 | Supabase anonymous |
 | ★ LOB-08 | **최근 함께한 사람·최근 방·다시 초대** — 친구 재초대/재방문 루프 | P1 | Supabase |
 | ★ LOB-09 | **항상 켜진 데모 룸** — 사전 녹화 아바타 루프+배경으로 비로그인 30초 read-only 체험. 채팅은 로그인 viewer만 | P0 | Supabase anonymous/R2 |
 | ★ LOB-10 | **혼자 시작 방지 연습 방** — AI/스태프/녹화 루프 파트너와 즉시 리허설, 공개 연습 방 최소 1개 유지 | P1 | Supabase/TTS/R2 |

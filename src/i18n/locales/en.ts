@@ -407,6 +407,25 @@ export const en: Record<string, string> = {
   'theater.heroPrev': 'Previous stage',
   'theater.heroNext': 'Next stage',
   'theater.heroGoto': 'Stage {{n}}',
+
+// --- guest (LOB-07) ---
+'guest.watchTitle': 'Watch without signing in',
+'guest.watchBody': 'Enter as a guest to watch and listen to the stage. Sign in to chat or perform.',
+'guest.watchCta': 'Watch as guest',
+'guest.loginCta': 'Sign in to join',
+'guest.signInError': 'Could not start guest entry. Please try again shortly.',
+'guest.chatLocked': 'Sign in to join the chat',
+
+// --- global create menu (P2) ---
+'create.menuTitle': 'Create',
+'create.avatar': 'Create an avatar',
+'create.shorts': 'Create shorts',
+'create.stage': 'Open a stage',
+
+// --- public plaza home live rail (P1) ---
+'lobby.liveRailTitle': 'Live stages now',
+'lobby.liveRailEmpty': 'All quiet right now. Open the first stage.',
+'lobby.liveRailMore': 'More in the Grand Theater',
   'shorts.title': 'Shorts Studio',
   'shorts.preparing': 'Opening the studio…',
   'shorts.loadError': "Couldn't open the studio. Please try again.",

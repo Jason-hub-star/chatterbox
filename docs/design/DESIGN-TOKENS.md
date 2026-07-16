@@ -167,6 +167,17 @@ Tailwind 토큰(tailwind.config.ts): `ease-flecto` · `duration-sm/md/lg` · `an
 - `#F5F5F2` on `#0B0B0D` = 18.9:1 (AAA)
 - `#FF8C2A` on `#0B0B0D` = 5.1:1 (AA Large)
 
+**앱 타입 스케일 (2026-07-16, UIUX-OVERHAUL-2026-07 §4 — 제품 화면은 dense):**
+
+| 토큰 | 크기/굵기 | 용도 | tailwind |
+|---|---|---|---|
+| `app-h1` | 24px / 600 | 제품 화면 페이지 제목 (마케팅 display 스케일 금지) | `text-app-h1` |
+| `app-h2` | 18px / 600 | 섹션·패널 제목 | `text-app-h2` |
+| (본문) | 14px | 기본 본문 — 표준 `text-sm` 매핑 (신규 토큰 없음) | `text-sm` |
+| (캡션) | 12px | 보조 정보 — 표준 `text-xs` 매핑 | `text-xs` |
+
+> 근거: 치지직 h1 28/base 14 · cluster h1 24 · vroid hub 초밀도 — 제품 UI 3곳 합의(`product-ui-references/`).
+
 **CSS 변수 (`--scene-accent`):**
 씬 전환 시 SceneBackground가 `document.documentElement.style.setProperty` 로 주입.
 기본값: `#FF8C2A` (모닥불 amber). **컬러/씬 팩 구매 시스템**: `--scene-accent`를 유료 씬 언락과

@@ -294,16 +294,9 @@ export interface LobbyRoom {
   isPractice: boolean
 }
 
-export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
-  // LOB-01: 진행 중(live)인 방도 목록에 — 카드의 ●/○ 상태 점이 구분(ended 만 제외).
-  const { data, error } = await supabase
-    .from('public_rooms')
-    .select('id, title, genre, status, current_participants, max_participants, host_display_name, is_locked, is_demo, is_practice, created_at')
-    .in('status', ['waiting', 'live'])
-    .order('created_at', { ascending: false })
-    .limit(50)
-  if (error) throw new Error(error.message)
-  return (data ?? []).map((r) => ({
+// public_rooms 행 → LobbyRoom 경계 매핑(직접 SELECT 와 list-public-rooms 응답이 같은 행 모양을 공유).
+function mapLobbyRow(r: Record<string, unknown>): LobbyRoom {
+  return {
     id: r.id as string,
     title: r.title as string,
     genre: (r.genre as string | null) ?? null,
@@ -314,7 +307,30 @@ export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
     isLocked: (r.is_locked as boolean) ?? false,
     isDemo: (r.is_demo as boolean) ?? false,
     isPractice: (r.is_practice as boolean) ?? false,
-  }))
+  }
+}
+
+export async function fetchPublicRooms(): Promise<LobbyRoom[]> {
+  // LOB-01: 진행 중(live)인 방도 목록에 — 카드의 ●/○ 상태 점이 구분(ended 만 제외).
+  const { data, error } = await supabase
+    .from('public_rooms')
+    .select('id, title, genre, status, current_participants, max_participants, host_display_name, is_locked, is_demo, is_practice, created_at')
+    .in('status', ['waiting', 'live'])
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(mapLobbyRow)
+}
+
+// LOB-07: 비로그인 방 목록 — Public 엣지 함수 경유(서버 IP 레이트리밋). 세션이 없으므로
+// anon key 를 Bearer 로 보낸다(verify_jwt 통과용 — 사용자 권한 아님, 서버는 service_role 로 읽음).
+export async function fetchPublicRoomsGuest(): Promise<LobbyRoom[]> {
+  const { rooms } = await callFn<{ rooms: Record<string, unknown>[] }>(
+    'list-public-rooms',
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    {},
+  )
+  return (rooms ?? []).map(mapLobbyRow)
 }
 
 // ---- V-3 인앱 녹화(ROOM-13, GOAL-g3) — 동의 게이트·presign·마감·재생. 서버가 host/참가자 재검증. ----

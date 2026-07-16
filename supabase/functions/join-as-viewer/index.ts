@@ -8,7 +8,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  const auth = await getAppUser(req);
+  // LOB-07: 익명 게스트 관전 허용 — read-only 는 role=viewer + livekit-token(canPublish/Data=false)이 강제.
+  const auth = await getAppUser(req, { allowAnonymous: true });
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 

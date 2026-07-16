@@ -1,0 +1,383 @@
+{
+  "pageIntent": {
+    "type": "landing",
+    "confidence": 0.31,
+    "path": "/",
+    "title": "メタバースプラットフォーム cluster（クラスター）",
+    "description": "「cluster (クラスター)」はスマートフォンやPC、VR機器など様々な環境からバーチャル空間に集って遊べるメタバースプラットフォームです。音楽ライブや発表会などのイベントの他、いつでも参加できるバーチャルワールドでチャットやゲームを楽しめます。",
+    "signals": [
+      {
+        "kind": "dom",
+        "type": "blog-post",
+        "weight": 0.35,
+        "detail": "byline|min-read"
+      },
+      {
+        "kind": "url",
+        "type": "landing",
+        "weight": 0.45,
+        "detail": "root-path"
+      }
+    ],
+    "alternates": [
+      {
+        "type": "blog-post",
+        "score": 0.35
+      }
+    ],
+    "needsSmart": true
+  },
+  "sectionRoles": {
+    "sections": [
+      {
+        "index": 0,
+        "tag": "main",
+        "role": "pricing",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "開催中のイベント",
+        "bounds": {
+          "x": 0,
+          "y": 981,
+          "w": 1280,
+          "h": 5989.984375
+        },
+        "buttonCount": 49,
+        "cardCount": 70,
+        "slots": {
+          "heading": "開催中のイベント",
+          "subheadings": [
+            "開催が近いイベント",
+            "オンラインのスペース",
+            "人気のアートワールド",
+            "人気のソーシャルワールド"
+          ],
+          "ctaCount": 49,
+          "lede": "ホット\nワールド\nイベント\nフィード\nダウンロード\nヘルプ\n公式ブログ\nクリエイターズガイド\nクリエイターハブ\nアップデート・不具合\nお問い合わせ\n法人様からのお問い合わせ\n運営会社\n利用規約\nプライバシーポリシー\n外部送信ポリシー\nガイドライン\nライセンス\n特定商取引法に基づく表示（クラスター社）\n特定商取引法に基づく表示（パートナー企業）\n資金決済法に基づく表示\n©Cluster, Inc.\n日本語\nEnglish\n简体中文\n繁體中文\nEspañol\n한국어\n開催中\nGroovescape（グルーヴ・スケープ） vol.15 - ゲスト：null.\n音鳴つむぎ\n開催中\nまいてゃ夜のリラックス音楽会\nまいてゃ\n終了\n総集編!! #FLASHBACK1970～2026\n和音れと\nCluster Lobby\nクラスター公式\nTreeClicker\nわらび"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 1,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 264,
+          "y": 989,
+          "w": 992,
+          "h": 476
+        },
+        "buttonCount": 15,
+        "cardCount": 0,
+        "slots": {
+          "ctaCount": 15,
+          "lede": "開催中\nGroovescape（グルーヴ・スケープ） vol.15 - ゲスト：null.\n音鳴つむぎ\n開催中\nまいてゃ夜のリラックス音楽会\nまいてゃ\n終了\n総集編!! #FLASHBACK1970～2026\n和音れと\nCluster Lobby\nクラスター公式\nTreeClicker\nわらび"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 2,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 264,
+          "y": 1497,
+          "w": 992,
+          "h": 165.75
+        },
+        "buttonCount": 2,
+        "cardCount": 0,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "水面の下に広がる世界を自由に創造してください！"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 3,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "開催中のイベント",
+        "bounds": {
+          "x": 264,
+          "y": 1718.75,
+          "w": 992,
+          "h": 1021.21875
+        },
+        "buttonCount": 7,
+        "cardCount": 7,
+        "slots": {
+          "heading": "開催中のイベント",
+          "ctaCount": 7,
+          "lede": "開催中のイベント\n開催中\nまいてゃ夜のリラックス音楽会\nまいてゃ"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 4,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "開催が近いイベント",
+        "bounds": {
+          "x": 264,
+          "y": 2795.96875,
+          "w": 992,
+          "h": 547.25
+        },
+        "buttonCount": 8,
+        "cardCount": 8,
+        "slots": {
+          "heading": "開催が近いイベント",
+          "ctaCount": 8,
+          "lede": "開催が近いイベント\nすべて見る\n本日\n2026/7/16（木）22:40"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 5,
+        "tag": "section",
+        "role": "pricing",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "オンラインのスペース",
+        "bounds": {
+          "x": 264,
+          "y": 3399.21875,
+          "w": 992,
+          "h": 612.25
+        },
+        "buttonCount": 0,
+        "cardCount": 8,
+        "slots": {
+          "heading": "オンラインのスペース",
+          "lede": "オンラインのスペース\nすべて見る"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 6,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "人気のアートワールド",
+        "bounds": {
+          "x": 264,
+          "y": 4067.46875,
+          "w": 992,
+          "h": 294.421875
+        },
+        "buttonCount": 0,
+        "cardCount": 4,
+        "slots": {
+          "heading": "人気のアートワールド",
+          "lede": "人気のアートワールド\nすべて見る\n1"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 7,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "人気のソーシャルワールド",
+        "bounds": {
+          "x": 264,
+          "y": 4417.890625,
+          "w": 992,
+          "h": 294.421875
+        },
+        "buttonCount": 0,
+        "cardCount": 4,
+        "slots": {
+          "heading": "人気のソーシャルワールド",
+          "lede": "人気のソーシャルワールド\nすべて見る\n1"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 8,
+        "tag": "section",
+        "role": "pricing",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "人気のゲームワールド",
+        "bounds": {
+          "x": 264,
+          "y": 4768.3125,
+          "w": 992,
+          "h": 294.421875
+        },
+        "buttonCount": 0,
+        "cardCount": 4,
+        "slots": {
+          "heading": "人気のゲームワールド",
+          "lede": "人気のゲームワールド\nすべて見る\n1"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 9,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "クリエイター向けガイド&コミュニティ",
+        "bounds": {
+          "x": 264,
+          "y": 5118.734375,
+          "w": 992,
+          "h": 205.75
+        },
+        "buttonCount": 2,
+        "cardCount": 0,
+        "slots": {
+          "heading": "クリエイター向けガイド&コミュニティ",
+          "ctaCount": 2
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 10,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "ピックアップイベントタグ",
+        "bounds": {
+          "x": 264,
+          "y": 5380.484375,
+          "w": 992,
+          "h": 184
+        },
+        "buttonCount": 0,
+        "cardCount": 8,
+        "slots": {
+          "heading": "ピックアップイベントタグ"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 11,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "「音楽」のイベント",
+        "bounds": {
+          "x": 264,
+          "y": 5620.484375,
+          "w": 992,
+          "h": 281.625
+        },
+        "buttonCount": 4,
+        "cardCount": 4,
+        "slots": {
+          "heading": "「音楽」のイベント",
+          "ctaCount": 4,
+          "lede": "「音楽」のイベント\nすべて見る\n2026/7/18（土）13:45"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 12,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "「雑談」のイベント",
+        "bounds": {
+          "x": 264,
+          "y": 5958.109375,
+          "w": 992,
+          "h": 281.625
+        },
+        "buttonCount": 4,
+        "cardCount": 4,
+        "slots": {
+          "heading": "「雑談」のイベント",
+          "ctaCount": 4,
+          "lede": "「雑談」のイベント\nすべて見る\n2026/7/18（土）23:00"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 13,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "「ラジオ」のイベント",
+        "bounds": {
+          "x": 264,
+          "y": 6295.734375,
+          "w": 992,
+          "h": 281.625
+        },
+        "buttonCount": 3,
+        "cardCount": 3,
+        "slots": {
+          "heading": "「ラジオ」のイベント",
+          "ctaCount": 3,
+          "lede": "「ラジオ」のイベント\nすべて見る\n2026/7/18（土）19:55"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 14,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "「DJ」のイベント",
+        "bounds": {
+          "x": 264,
+          "y": 6633.359375,
+          "w": 992,
+          "h": 281.625
+        },
+        "buttonCount": 4,
+        "cardCount": 4,
+        "slots": {
+          "heading": "「DJ」のイベント",
+          "ctaCount": 4,
+          "lede": "「DJ」のイベント\nすべて見る\n2026/7/18（土）18:50"
+        },
+        "needsSmart": true
+      }
+    ],
+    "counts": {
+      "pricing": 3,
+      "content": 10,
+      "hero": 2
+    },
+    "readingOrder": [
+      "pricing",
+      "content",
+      "content",
+      "hero",
+      "hero",
+      "pricing",
+      "content",
+      "content",
+      "pricing",
+      "content",
+      "content",
+      "content",
+      "content",
+      "content",
+      "content"
+    ]
+  }
+}

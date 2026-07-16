@@ -407,6 +407,26 @@ export const ko: Record<string, string> = {
   "theater.heroPrev": "이전 무대",
   "theater.heroNext": "다음 무대",
   "theater.heroGoto": "{{n}}번 무대",
+
+// --- guest(게스트 관전, LOB-07) ---
+  "guest.watchTitle": "로그인 없이 관전할 수 있어요",
+  "guest.watchBody": "게스트로 입장하면 무대를 구경하고 들을 수 있어요. 채팅과 출연은 로그인 후에 가능해요.",
+  "guest.watchCta": "게스트로 관전하기",
+  "guest.loginCta": "로그인하고 참여하기",
+  "guest.signInError": "게스트 입장에 실패했어요. 잠시 후 다시 시도해주세요.",
+  "guest.chatLocked": "채팅은 로그인 후에 참여할 수 있어요",
+
+// --- 글로벌 만들기 메뉴(P2) ---
+  "create.menuTitle": "만들기",
+  "create.avatar": "아바타 만들기",
+  "create.shorts": "쇼츠 만들기",
+  "create.stage": "무대 열기",
+
+// --- 공개 광장 홈 라이브 레일(P1) ---
+  "lobby.liveRailTitle": "지금 열린 무대",
+  "lobby.liveRailEmpty": "지금은 조용해요. 첫 무대를 열어보세요.",
+  "lobby.liveRailMore": "대극장에서 더 보기",
+
   "shorts.title": "쇼츠 제작소",
   "shorts.preparing": "제작소를 여는 중…",
   "shorts.loadError": "제작소를 열지 못했어요. 잠시 후 다시 시도해주세요.",

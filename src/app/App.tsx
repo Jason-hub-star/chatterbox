@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
+import { createBrowserRouter, Navigate, RouterProvider, useLocation } from 'react-router'
 import { useConfigStore } from '@/stores/configStore'
 import { useUserStore } from '@/stores/userStore'
 import { usePresence } from '@/hooks/usePresence'
 import ProtectedRoute from '@/components/shared/ProtectedRoute'
+import GuestWatchGate from '@/components/shared/GuestWatchGate'
 import MaintenanceBanner from '@/components/shared/MaintenanceBanner'
 import ToastHost from '@/components/shared/ToastHost'
 import LoginPage from '@/pages/LoginPage'
@@ -22,17 +23,16 @@ import StreamPage from '@/pages/StreamPage'
 import LegalDoc from '@/pages/legal/LegalDoc'
 import { PRIVACY, TERMS } from '@/pages/legal/content'
 
-// 앱 진입점 — 마케팅 랜딩은 외부 snack-web 이 담당(2026-07-08 인앱 랜딩 폐지).
-// 게임 런처식: 세션 있으면 바로 로비, 없으면 로그인. 로그아웃 navigate('/')·설정 홈 링크도 이 관문을 지난다.
-function HomeRedirect() {
-  const ready = useUserStore((s) => s.ready)
-  const authState = useUserStore((s) => s.authState)
-  if (!ready) return null // 세션 복원 판정 전 깜빡 리다이렉트 방지(ProtectedRoute 와 동일 게이트)
-  return <Navigate to={authState === 'AUTHENTICATED' ? '/lobby' : '/login'} replace />
+// 앱 진입점 — `/` = 공개 광장 홈(2026-07-16 개정, UIUX-OVERHAUL P1 — 구 게임 런처식 HomeRedirect 폐지).
+// 마케팅 랜딩은 여전히 외부 snack-web 담당, 앱 홈은 치지직식 공개 디스커버리(비로그인 열람 + 관전 LOB-07).
+// 기존 navigate('/lobby') 호출처 호환: 쿼리(?invite= 등) 보존 리다이렉트.
+function LobbyRedirect() {
+  const location = useLocation()
+  return <Navigate to={{ pathname: '/', search: location.search }} replace />
 }
 
 const router = createBrowserRouter([
-  { path: '/', element: <HomeRedirect /> },
+  { path: '/', element: <LobbyPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/reset', element: <ResetPasswordPage /> }, // 비번 재설정 링크 착지점 (A-FUNC-2)
@@ -42,16 +42,11 @@ const router = createBrowserRouter([
   // 개발 도구 (인증 불필요 — rig 배포 검증용).
   { path: '/avatar-inspect', element: <AvatarInspectorPage /> }, // 임의 rig 네이티브 렌더 검사 (?project=)
   { path: '/stream', element: <StreamPage /> }, // 데스크톱 방송 앱(snack-streamer)용 풀스크린 웹캠 구동 아바타 (?project=&bg=)
-  {
-    path: '/lobby',
-    element: (
-      <ProtectedRoute>
-        <LobbyPage />
-      </ProtectedRoute>
-    ),
-  },
+  // 구 광장 경로 — 공개 홈으로 흡수(쿼리 보존: 초대 링크 /lobby?invite= 가 살아남아야 함, LOB-05).
+  { path: '/lobby', element: <LobbyRedirect /> },
   // 로비 v3 내부 4관 — 광장 가게 클릭/모바일 하단 네비의 목적지(레거시 섹션 전가).
-  { path: '/lobby/theater', element: <ProtectedRoute><TheaterPage /></ProtectedRoute> },
+  // 대극장은 비로그인 열람 허용(LOB-07) — 목록은 list-public-rooms, 생성·예약은 페이지 안에서 세션 게이트.
+  { path: '/lobby/theater', element: <TheaterPage /> },
   { path: '/lobby/workshop', element: <ProtectedRoute><WorkshopPage /></ProtectedRoute> },
   { path: '/lobby/teahouse', element: <ProtectedRoute><TeahousePage /></ProtectedRoute> },
   { path: '/lobby/atelier', element: <ProtectedRoute><AtelierPage /></ProtectedRoute> },
@@ -67,11 +62,12 @@ const router = createBrowserRouter([
     ),
   },
   {
+    // 게스트 관전 게이트(LOB-07): 세션 있으면 통과, 없으면 [게스트로 관전]→익명 세션→?watch=1 뷰어 조인.
     path: '/rooms/:roomId',
     element: (
-      <ProtectedRoute>
+      <GuestWatchGate>
         <RoomPage />
-      </ProtectedRoute>
+      </GuestWatchGate>
     ),
   },
   // 설정은 의상실로 전가(로비 v3) — 기존 링크 호환용 리다이렉트만 유지.

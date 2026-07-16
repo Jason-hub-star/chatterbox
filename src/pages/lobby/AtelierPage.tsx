@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { fetchAvatarPresets, resolveAvatarUrl, thumbUrlFor, isValidAvatarUrl, type AvatarPreset } from '@/lib/avatars'
@@ -127,6 +128,7 @@ function WardrobeTile({
 
 export default function AtelierPage() {
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
   const avatarUrl = useUserStore((s) => s.avatarUrl)
   const setMyAvatar = useUserStore((s) => s.setMyAvatar)
   const { jobs, loaded: jobsLoaded, submit, reused, dismissReused } = useAvatarJobs()
@@ -138,7 +140,8 @@ export default function AtelierPage() {
   const [live, setLive] = useState(false) // 거울 웹캠 트래킹(비춰보기)
   const [trying, setTrying] = useState<string | null>(null) // 입어보는 중(미저장) projectUrl
   const [seen, setSeen] = useState<string[]>(readSeen)
-  const [wizardOpen, setWizardOpen] = useState(false) // 커미션 위저드 — 패널·옷장 버튼 공유
+  // 커미션 위저드 — 패널·옷장 버튼 공유. ?create=1 = 글로벌 [+ 만들기] 딥링크(P2)로 바로 열림.
+  const [wizardOpen, setWizardOpen] = useState(searchParams.get('create') === '1')
   const [feedbackOpen, setFeedbackOpen] = useState(false) // 문제 알리기(ISS-04 창구)
 
   useEffect(() => {

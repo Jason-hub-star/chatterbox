@@ -14,6 +14,14 @@
 
   --font-sans: 'Noto Sans KR', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* 앱 타입 스케일(§8, 2026-07-16) — 제품 화면은 dense: h1 24/600 · h2 18/600. 본문·캡션은 표준 text-sm/xs. */
+  --text-app-h1: 1.5rem;
+  --text-app-h1--line-height: 1.3;
+  --text-app-h1--font-weight: 600;
+  --text-app-h2: 1.125rem;
+  --text-app-h2--line-height: 1.35;
+  --text-app-h2--font-weight: 600;
 }
 
 body {

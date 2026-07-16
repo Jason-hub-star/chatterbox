@@ -1,0 +1,772 @@
+{
+  "pageIntent": {
+    "type": "landing",
+    "confidence": 0.31,
+    "path": "/",
+    "title": "Higgsfield AI — AI-native creative suite",
+    "description": "Create images, videos, and voice content with Higgsfield AI from text prompts or references. Edit and upscale media, automate creative workflows with its AI agent, and generate content on web and mobi",
+    "signals": [
+      {
+        "kind": "dom",
+        "type": "blog-post",
+        "weight": 0.35,
+        "detail": "byline|min-read"
+      },
+      {
+        "kind": "url",
+        "type": "landing",
+        "weight": 0.45,
+        "detail": "root-path"
+      }
+    ],
+    "alternates": [
+      {
+        "type": "blog-post",
+        "score": 0.35
+      }
+    ],
+    "needsSmart": true
+  },
+  "sectionRoles": {
+    "sections": [
+      {
+        "index": 0,
+        "tag": "header",
+        "role": "feature-grid",
+        "subrole": null,
+        "confidence": 0.8,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 49
+        },
+        "buttonCount": 2,
+        "cardCount": 6,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "SIGN UP AND GET ADDITIONAL DISCOUNT ON PREMIUM PLANS"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 1,
+        "tag": "header",
+        "role": "cta",
+        "subrole": null,
+        "confidence": 0.75,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 49,
+          "w": 1280,
+          "h": 52
+        },
+        "buttonCount": 2,
+        "cardCount": 38,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "Explore\nImage\nVideo\nAudio\nAcademy\nNew\nSupercomputer\nMCP & CLI\nNew\nCinema Studio\nPlugins\nNew\nMarketing Studio\nShorts Studio\nExplainer\nOriginals\nCanvas\nAI Influencer\nApps\nPricing\n30% OFF\nLogin\nSign up"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 2,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 60,
+          "y": 61,
+          "w": 934.5625,
+          "h": 28
+        },
+        "buttonCount": 0,
+        "cardCount": 36,
+        "slots": {
+          "lede": "Explore\nImage\nVideo\nAudio\nAcademy\nNew\nSupercomputer\nMCP & CLI\nNew\nCinema Studio\nPlugins\nNew\nMarketing Studio\nShorts Studio\nExplainer\nOriginals\nCanvas\nAI Influencer\nApps"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 3,
+        "tag": "main",
+        "role": "pricing-table",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": "HIGGSFIELD ACADEMY",
+        "bounds": {
+          "x": 0,
+          "y": 101,
+          "w": 1280,
+          "h": 13504.421875
+        },
+        "buttonCount": 131,
+        "cardCount": 443,
+        "slots": {
+          "heading": "HIGGSFIELD ACADEMY",
+          "subheadings": [
+            "HIGGSFIELD MCP/PLUGIN FOR AFTER EFFECTS",
+            "$100K APP CONTEST",
+            "SEEDREAM 5.0 PRO",
+            "APP BUILDER"
+          ],
+          "ctaCount": 131,
+          "lede": "Open Higgsfield Academy\nHIGGSFIELD ACADEMY"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 4,
+        "tag": "section",
+        "role": "pricing-table",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": "HIGGSFIELD ACADEMY",
+        "bounds": {
+          "x": 0,
+          "y": 101,
+          "w": 1280,
+          "h": 360
+        },
+        "buttonCount": 1,
+        "cardCount": 10,
+        "slots": {
+          "heading": "HIGGSFIELD ACADEMY",
+          "subheadings": [
+            "HIGGSFIELD MCP/PLUGIN FOR AFTER EFFECTS",
+            "$100K APP CONTEST",
+            "SEEDREAM 5.0 PRO",
+            "APP BUILDER"
+          ],
+          "ctaCount": 1,
+          "lede": "Open Higgsfield Academy\nHIGGSFIELD ACADEMY"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 5,
+        "tag": "section",
+        "role": "cta",
+        "subrole": null,
+        "confidence": 0.75,
+        "heading": "SIGN UP AND GET\nYOUR EXTRA DISCOUNT",
+        "bounds": {
+          "x": 16,
+          "y": 501,
+          "w": 1248,
+          "h": 288
+        },
+        "buttonCount": 1,
+        "cardCount": 18,
+        "slots": {
+          "heading": "SIGN UP AND GET\nYOUR EXTRA DISCOUNT",
+          "ctaCount": 1,
+          "lede": "EXTRA DISCOUNT"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 6,
+        "tag": "section",
+        "role": "hero",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "EXPLORE THE INSIDE OF EVERY PROJECT",
+        "bounds": {
+          "x": 16,
+          "y": 821,
+          "w": 1248,
+          "h": 528
+        },
+        "buttonCount": 1,
+        "cardCount": 33,
+        "slots": {
+          "heading": "EXPLORE THE INSIDE OF EVERY PROJECT",
+          "ctaCount": 1
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 7,
+        "tag": "section",
+        "role": "pricing-table",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": "HIGGSFIELD\nAPP CONTEST",
+        "bounds": {
+          "x": 16,
+          "y": 1381,
+          "w": 1248,
+          "h": 751
+        },
+        "buttonCount": 19,
+        "cardCount": 168,
+        "slots": {
+          "heading": "HIGGSFIELD\nAPP CONTEST",
+          "subheadings": [
+            "",
+            "",
+            "",
+            ""
+          ],
+          "ctaCount": 19,
+          "lede": "6\nD\n01\nH\n33\nM\n$100,000\nHIGGSFIELD\nAPP CONTEST"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 8,
+        "tag": "section",
+        "role": "cta",
+        "subrole": null,
+        "confidence": 0.75,
+        "heading": null,
+        "bounds": {
+          "x": 16,
+          "y": 2156,
+          "w": 1248,
+          "h": 2081.171875
+        },
+        "buttonCount": 2,
+        "cardCount": 7,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "NOW IN 4K"
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 9,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 16,
+          "y": 2724.171875,
+          "w": 1248,
+          "h": 1512
+        },
+        "buttonCount": 1,
+        "cardCount": 1,
+        "slots": {
+          "ctaCount": 1,
+          "lede": "View all of Seedance 2.0"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 10,
+        "tag": "section",
+        "role": "pricing",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "HIGGSFIELD VIRAL PRESETS",
+        "bounds": {
+          "x": 16,
+          "y": 5077.421875,
+          "w": 1248,
+          "h": 1100
+        },
+        "buttonCount": 53,
+        "cardCount": 48,
+        "slots": {
+          "heading": "HIGGSFIELD VIRAL PRESETS",
+          "ctaCount": 53
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 11,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 6201.421875,
+          "w": 1280,
+          "h": 976
+        },
+        "buttonCount": 2,
+        "cardCount": 2,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "GPT IMAGE 2"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 12,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 6201.421875,
+          "w": 1280,
+          "h": 60
+        },
+        "buttonCount": 1,
+        "cardCount": 1,
+        "slots": {
+          "ctaCount": 1,
+          "lede": "GPT IMAGE 2"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 13,
+        "tag": "section",
+        "role": "feature-grid",
+        "subrole": null,
+        "confidence": 0.8,
+        "heading": "ONE CANVAS.EVERY WORKFLOW.",
+        "bounds": {
+          "x": 16,
+          "y": 7241.421875,
+          "w": 1248,
+          "h": 300
+        },
+        "buttonCount": 2,
+        "cardCount": 8,
+        "slots": {
+          "heading": "ONE CANVAS.EVERY WORKFLOW.",
+          "subheadings": [
+            "ONE CANVAS.\nEVERY WORKFLOW."
+          ],
+          "ctaCount": 2,
+          "lede": "NEW FEATURE\nONE CANVAS.\nEVERY WORKFLOW."
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 14,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 7565.421875,
+          "w": 1280,
+          "h": 976
+        },
+        "buttonCount": 2,
+        "cardCount": 2,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "MARKETING STUDIO"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 15,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 7565.421875,
+          "w": 1280,
+          "h": 60
+        },
+        "buttonCount": 1,
+        "cardCount": 1,
+        "slots": {
+          "ctaCount": 1,
+          "lede": "MARKETING STUDIO"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 16,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 8605.421875,
+          "w": 1280,
+          "h": 976
+        },
+        "buttonCount": 2,
+        "cardCount": 2,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "SEEDANCE 2.0"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 17,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 8605.421875,
+          "w": 1280,
+          "h": 60
+        },
+        "buttonCount": 1,
+        "cardCount": 1,
+        "slots": {
+          "ctaCount": 1,
+          "lede": "SEEDANCE 2.0"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 18,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 9989.421875,
+          "w": 1280,
+          "h": 976
+        },
+        "buttonCount": 2,
+        "cardCount": 2,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "HIGGSFIELD SOUL CINEMA"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 19,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 9989.421875,
+          "w": 1280,
+          "h": 60
+        },
+        "buttonCount": 1,
+        "cardCount": 1,
+        "slots": {
+          "ctaCount": 1,
+          "lede": "HIGGSFIELD SOUL CINEMA"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 20,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 11029.421875,
+          "w": 1280,
+          "h": 976
+        },
+        "buttonCount": 2,
+        "cardCount": 2,
+        "slots": {
+          "ctaCount": 2,
+          "lede": "HIGGSFIELD SOUL 2.0"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 21,
+        "tag": "header",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 11029.421875,
+          "w": 1280,
+          "h": 60
+        },
+        "buttonCount": 1,
+        "cardCount": 1,
+        "slots": {
+          "ctaCount": 1,
+          "lede": "HIGGSFIELD SOUL 2.0"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 22,
+        "tag": "section",
+        "role": "feature-grid",
+        "subrole": null,
+        "confidence": 0.8,
+        "heading": "EXPLORE MORE AI FEATURES",
+        "bounds": {
+          "x": 0,
+          "y": 12069.421875,
+          "w": 1280,
+          "h": 440
+        },
+        "buttonCount": 39,
+        "cardCount": 39,
+        "slots": {
+          "heading": "EXPLORE MORE AI FEATURES",
+          "ctaCount": 39
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 23,
+        "tag": "footer",
+        "role": "footer",
+        "subrole": null,
+        "confidence": 0.95,
+        "heading": "THE ULTIMATE AI-POWERED CAMERA CONTROL FOR FILMMAKERS & CREATORS",
+        "bounds": {
+          "x": 0,
+          "y": 12573.421875,
+          "w": 1280,
+          "h": 1032
+        },
+        "buttonCount": 0,
+        "cardCount": 92,
+        "slots": {
+          "heading": "THE ULTIMATE AI-POWERED CAMERA CONTROL FOR FILMMAKERS & CREATORS",
+          "subheadings": [
+            "Higgsfield AI",
+            "Image",
+            "Video",
+            "Edit"
+          ]
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 24,
+        "tag": "section",
+        "role": "pricing",
+        "subrole": null,
+        "confidence": 0.4,
+        "heading": "Higgsfield AI",
+        "bounds": {
+          "x": 448,
+          "y": 12609.421875,
+          "w": 168,
+          "h": 816
+        },
+        "buttonCount": 0,
+        "cardCount": 22,
+        "slots": {
+          "heading": "Higgsfield AI",
+          "lede": "Higgsfield AI\nAbout\nTrust\nCareers\nContact\nPricing\nApps\nSupercomputer\nCinema Studio\nMarketing Studio\nHiggsfield Canvas\nHiggsfield Collab\nHiggsfield MCP\nHiggsfield Games\nAI Influencer\nCommunity\nEnterprise\nTeam\nCopilot\nReference Extension\nBlog\nContests\nDiscord"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 25,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "Image",
+        "bounds": {
+          "x": 664,
+          "y": 12609.421875,
+          "w": 168,
+          "h": 816
+        },
+        "buttonCount": 0,
+        "cardCount": 17,
+        "slots": {
+          "heading": "Image",
+          "lede": "Image\nAI Image\nSoul ID Character\nDraw to Edit\nFashion Factory\nEdit Image\nImage Upscale\nPhotodump Studio\nHiggsfield Popcorn\nNano Banana\nPrompt Guide\nFlux 2\nSeedream 5\nGPT Image 2\nInpaint\nSoul 2.0\nSoul Cinema\nSoul Cast"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 26,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "Video",
+        "bounds": {
+          "x": 880,
+          "y": 12609.421875,
+          "w": 168,
+          "h": 816
+        },
+        "buttonCount": 0,
+        "cardCount": 15,
+        "slots": {
+          "heading": "Video",
+          "lede": "Video\nAI Video\nMixed media\nSora 2 Introduction\nVeo 3.1 Introduction\nCreate Video\nLipsync Studio\nTalking Avatar\nDraw to Video\nUGC Factory\nVideo Upscale\nKling 3.0\nWAN 2.6\nSeedance 2.0\nGrok Imagine 1.5\nGemini Omni Flash"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 27,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": "Edit",
+        "bounds": {
+          "x": 1096,
+          "y": 12609.421875,
+          "w": 168,
+          "h": 816
+        },
+        "buttonCount": 0,
+        "cardCount": 6,
+        "slots": {
+          "heading": "Edit",
+          "lede": "Edit\nBanana Placement\nProduct Placement\nEdit Image\nMulti Reference\nUpscale\nSora 2 Upscale"
+        },
+        "needsSmart": true
+      },
+      {
+        "index": 28,
+        "tag": "footer",
+        "role": "footer",
+        "subrole": null,
+        "confidence": 0.95,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 13605.421875,
+          "w": 1280,
+          "h": 68
+        },
+        "buttonCount": 0,
+        "cardCount": 6,
+        "slots": {
+          "lede": "© 2026 Higgsfield, Inc. All rights reserved."
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 29,
+        "tag": "nav",
+        "role": "nav",
+        "subrole": null,
+        "confidence": 0.9,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 13605.421875,
+          "w": 1280,
+          "h": 68
+        },
+        "buttonCount": 0,
+        "cardCount": 5,
+        "slots": {
+          "lede": "© 2026 Higgsfield, Inc. All rights reserved."
+        },
+        "needsSmart": false
+      },
+      {
+        "index": 30,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 13673.421875,
+          "w": 1280,
+          "h": 0
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {},
+        "needsSmart": true
+      },
+      {
+        "index": 31,
+        "tag": "section",
+        "role": "content",
+        "subrole": null,
+        "confidence": 0.3,
+        "heading": null,
+        "bounds": {
+          "x": 0,
+          "y": 13673.421875,
+          "w": 1280,
+          "h": 0
+        },
+        "buttonCount": 0,
+        "cardCount": 0,
+        "slots": {},
+        "needsSmart": true
+      }
+    ],
+    "counts": {
+      "feature-grid": 3,
+      "cta": 3,
+      "nav": 7,
+      "pricing-table": 3,
+      "hero": 1,
+      "content": 11,
+      "pricing": 2,
+      "footer": 2
+    },
+    "readingOrder": [
+      "feature-grid",
+      "cta",
+      "nav",
+      "pricing-table",
+      "pricing-table",
+      "cta",
+      "hero",
+      "pricing-table",
+      "cta",
+      "content",
+      "pricing",
+      "content",
+      "nav",
+      "feature-grid",
+      "content",
+      "nav",
+      "content",
+      "nav",
+      "content",
+      "nav",
+      "content",
+      "nav",
+      "feature-grid",
+      "footer",
+      "pricing",
+      "content",
+      "content",
+      "content",
+      "footer",
+      "nav",
+      "content",
+      "content"
+    ]
+  }
+}

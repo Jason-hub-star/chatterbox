@@ -627,8 +627,8 @@ export default function RoomPage() {
   const tabs: RightPanelTab[] = [
     { id: 'chat', label: t('room.tabChat'), render: () => (
       <ChatNotesTab
-        chat={<ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} blockedAuthIds={blockedAuthIds} onSubmitReport={submitReport} onUnblock={unblock} />}
-        notes={<DirectorNotesTab connected={connected} hostAuthId={hostAuthId} onSend={sendNote} />}
+        chat={<ChatPanel connected={connected} onSend={sendChat} isHost={isHost} onHideMessage={isHost ? hideMessage : undefined} blockedAuthIds={blockedAuthIds} onSubmitReport={submitReport} onUnblock={unblock} guestLocked={session?.user.is_anonymous === true} />}
+        notes={<DirectorNotesTab connected={connected} hostAuthId={hostAuthId} onSend={sendNote} readOnly={isViewer} />}
       />
     ) },
     { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} /> },

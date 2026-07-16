@@ -13,7 +13,8 @@ tags: [contract]
 > **구현 상태 (2026-07-08, 뷰어 경로 MVP — Phase 4)** — 이 계약은 풀비전이고 as-built 는:
 > - **서버**: 마이그 `20260708130000_viewer_role` — `join_room_as_viewer` RPC(좌석·정원·current_participants 비점유, 멱등) + `join_room_as_participant` v2(정원·슬롯 계산에서 뷰어 제외 — 뷰어 NULL slot 의 NOT IN 오염 수정, 실제 role 반환) + 활성 참가자 부분 유니크. Edge `join-as-viewer`(잠금방 403 — 관전은 뷰어 초대로만) + `leave-room` 뷰어 인지(뷰어 퇴장 무영향·호스트 승계는 배우만·배우 0 → ended) + 초대 role='viewer' 개방(`create-room-invite`·`accept-invite`).
 > - **클라**: 별도 가드 레이어 대신 RoomPage 가 `?watch=1` 로 `join-as-viewer` 호출, `roomStore.myRole`(서버 진실)로 관전 렌더 — 무대에서 내 좌석·SelfAvatar(웹캠 요청) 미마운트, 마이크 버튼 대신 "관전 중" 뱃지. canPublish=false 는 livekit-token 이 role 로 강제(기존). 채팅·리액션은 로그인 뷰어에게 허용(LOB-09 정합).
-> - **후속**: 모바일 UA 자동 다운그레이드·MobileViewer 전용 뷰·익명(guest_demo — Supabase 대시보드 anonymous sign-in 활성화 필요)·정원 매트릭스 세분.
+> - **익명 게스트 관전 (2026-07-16, LOB-07)**: 비로그인 `/rooms/:id` 도달 → 게스트 관전 게이트(GuestWatchGate) → [게스트로 관전] 시 `userStore.signInGuest()`(Supabase `signInAnonymously`) → `?watch=1` 뷰어 경로 재사용. 서버는 `getAppUser` 기본 거부 + `join-as-viewer`·`leave-room`만 `allowAnonymous` 화이트리스트(API-SURFACE Auth Levels 익명 규칙). `livekit-token` `canPublishData`는 viewer 전원 false로 정렬. 비로그인 방 목록은 `list-public-rooms`(Public·IP 레이트리밋). ⚠️ 프로드 대시보드 anonymous sign-in 활성화 필요(배포 승인 항목).
+> - **후속**: 모바일 UA 자동 다운그레이드·MobileViewer 전용 뷰·정원 매트릭스 세분·익명 시청 제한 티저 모드(config `guest_watch_limit_sec`).
 
 ## 진입 조건 매트릭스
 

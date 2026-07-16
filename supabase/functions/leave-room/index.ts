@@ -11,7 +11,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  const auth = await getAppUser(req);
+  // LOB-07: 익명 게스트 뷰어의 정상 퇴장 허용(뷰어 퇴장은 좌석·승계 무영향 — 아래 기존 분기).
+  const auth = await getAppUser(req, { allowAnonymous: true });
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 
