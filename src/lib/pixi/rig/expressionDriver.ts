@@ -86,7 +86,7 @@ export function createExpressionDriver(options: ExpressionDriverOptions = {}): E
       ParamEyeROpen: eyeSmooth, // 링크: 단일 값을 두 파라미터에
       ParamEyeBallX: clamp(gazeX * M, -1, 1),
       ParamEyeBallY: clamp(gazeY, -1, 1),
-      ParamMouthOpenY: clamp(remapDeadzone(g('jawOpen'), 0.05, 0.32), 0, 1),
+      ParamMouthOpenY: clamp(remapDeadzone(g('jawOpen'), 0.05, 0.2), 0, 1), // jawOpen 0.2에서 풀오픈(정상 개구가 리그 최대치에 닿게 — 구 0.32는 웹캠 정상값 ~0.18이라 절반만 열림)
       ParamMouthForm: clamp(
         avg(g('mouthSmileLeft'), g('mouthSmileRight')) - avg(g('mouthFrownLeft'), g('mouthFrownRight')),
         -1,

@@ -49,4 +49,11 @@
 - 2026-07-16 P3(예방 구현·미커밋): QA_MOUTH_SKIP 우회를 durable 추적으로 격상 — 공유 헬퍼 `scripts/lib/qa-bypass-log.mjs`(deploy·publish 공용), 우회 시 `docs/status/qa-mouth-bypass.tsv`에 id·시각·사유 기록, 사유 없으면 차단. `node --check` 3/3·스모크 PASS.
 - 2026-07-16 P4(수선·배포·라이브검증 **DONE**): 실게이트가 **2결함** 노출 — 과다개구 19% + `mouth_state_wide absolute primary` 태그 누락(airi가 유일 wide_grow라 계약 미검증이었음). 수선 = openY 키폼+스프라이트 **0.55 스쿼시** + `composition:'absolute'` 태그(단일 spec 렌더 무변경). 몽타주 육안: before(쩍 벌어짐)/after(자연) 확인. `deploy-avatar.mjs` 정공 배포 — **게이트 우회 없이 PASS**·39파츠·원격 40/40·매니페스트 유지. **라이브 실측: rev 2026-07-16T12:21:32Z · maxHeight 10.6% · gate.ok true · errors 0.**
 - 2026-07-16 P5(**정정·재동기화**): 병행 세션(Vtube `keyform-compose-002`)이 오늘 03:08 이미 정공(**height-normalize 12.5%**, `absolute + AngleY affine_additive` 계약, 원본 스프라이트)으로 고쳐 **잡 경로 `99c74a83.../v6`에만** 배포했음을 발견. 진범 = 진폭이 아니라 **키폼 delta 기준 불일치(raw base 251px > 닫힘 169px)**. 내 0.55 스쿼시(10.6%)는 조잡한 중복이라 **로스터를 정공 v6로 교체**(rev 13:45Z·12.5%·errors 0·우회 없이). **states 재생성은 불필요**(wide_grow는 정규화하면 정상). 남은 sync 갭 = 로스터↔잡 경로 미러 + 세션 조율.
-- **골 달성(정공).** 잔여(미커밋): 예방 게이트 강화(P3)·명령 일원화·문서. `/마감`으로 커밋·인계.
+- **골 달성(정공 v6).** 잔여(미커밋): 예방 게이트 강화(P3)·명령 일원화·문서.
+- 2026-07-16 P6(**states 전환 브리프** — 주인님 판정: wide_grow는 "입 그림을 늘려서" 15%여도 얌전 → states(그린 입) 필요): **feasibility 확인·Vtube 포지 세션으로 인계.**
+  - 소스(안전): Modal `rig-jobs-vol jobs/av-99c74a83-006e-42da-8549-e17499796c57` — inputs(master·mouth 시트·eyes·accent·yaml)·optimized(분해)·tha(회전) 전부 존재.
+  - **핵심 우회**: `--reuse-decomposition`(ComfyUI 8188 down 무관·P1 생략) + `--skip-gates`(H1.5/H2 人게이트) + `--prefer-mouth-states`(small/mid/wide).
+  - 절차: 볼륨 자산 회수 → `run_autorig_pipeline.py --master … --mouth-sheet inputs/mouth.png --experiment-id airi-states --prefer-mouth-states --reuse-decomposition <분해> --skip-gates --skip-perf`(THA3=Modal GPU) → `bake_storage_avatar.py` → ChatterBox `deploy-avatar.mjs <rig> airi 아이리`(qa-mouth-lips 우회 없이) → 로스터 states 라이브 + 27포즈 렌더 육안.
+  - states 확정 시 재검토: 게이트 0.16→0.13 원복 가능(그린 입은 진폭 상한 무의미), airi 15% wide_grow·factor 1.2 스톱갭 폐기.
+  - **Systemic(별도)**: 파이프라인 기본 `run_autorig_pipeline.py:328 --mouth-wide-grow default True→False` → 모든 신규 커미션이 그린 입 states로(per-avatar 하드코딩 없이).
+  - ChatterBox 세션 ad-hoc 실행은 Modal 폴더 회수 마찰(잘못된 하네스) → Vtube 포지 세션(`chatterbox-avatar-forge`)에서 실행 권장. 현 airi=wide_grow 15% 라이브 유지(states 검증 전까지).
