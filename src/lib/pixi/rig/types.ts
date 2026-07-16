@@ -44,7 +44,8 @@ export interface SkinLbs {
 export interface KeyformSpec {
   parameter_id?: string
   parameter_ids?: [string, string]
-  keys?: { value: number; vertices: Vec2[] }[]
+  composition?: 'absolute' | 'additive' | 'affine_additive'
+  keys?: { value: number; vertices: Vec2[]; affine?: [number, number, number, number, number, number] }[]
   grid?: Vec2[][][] // grid[iy][ix] = vertices[]
   values_x?: number[]
   values_y?: number[]

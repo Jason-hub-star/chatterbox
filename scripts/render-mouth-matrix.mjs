@@ -9,8 +9,9 @@
 // 사용법: node scripts/render-mouth-matrix.mjs <stagingName...>   # 예: poon995-test poon995-testB
 //   OUT=<dir>  산출 디렉토리(기본 ./mouth-matrix-out) — 변형별 1행, 상태 7열 몽타주 1장 생성(ffmpeg)
 import { chromium } from 'playwright-core'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { inspectWideGrowGeometry } from './lib/mouth-geometry.mjs'
 
 const APP = 'http://localhost:5199'
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
@@ -22,12 +23,13 @@ mkdirSync(OUT, { recursive: true })
 // 상태 세트: 소실 재현 밴드(0.3~0.6)를 촘촘히 + 라이브 복합각(2026-07-11 커미션 실측 각)
 const STATES = [
   ['closed', { ParamMouthOpenY: 0, ParamMouthForm: 0, ParamAngleX: 0, ParamAngleY: 0 }],
-  ['o030', { ParamMouthOpenY: 0.3, ParamMouthForm: 0, ParamAngleX: 0, ParamAngleY: 0 }],
-  ['o040', { ParamMouthOpenY: 0.4, ParamMouthForm: 0, ParamAngleX: 0, ParamAngleY: 0 }],
+  ['o020', { ParamMouthOpenY: 0.2, ParamMouthForm: 0, ParamAngleX: 0, ParamAngleY: 0 }],
   ['o050', { ParamMouthOpenY: 0.5, ParamMouthForm: 0, ParamAngleX: 0, ParamAngleY: 0 }],
-  ['o060', { ParamMouthOpenY: 0.6, ParamMouthForm: 0, ParamAngleX: 0, ParamAngleY: 0 }],
   ['o100', { ParamMouthOpenY: 1, ParamMouthForm: 0, ParamAngleX: 0, ParamAngleY: 0 }],
-  ['live', { ParamMouthOpenY: 0.3, ParamMouthForm: 0, ParamAngleX: 20, ParamAngleY: -15 }],
+  ...[-30, 0, 30].flatMap((x) => [-30, 0, 30].map((y) => [
+    `x${x}y${y}`,
+    { ParamMouthOpenY: 1, ParamMouthForm: 0, ParamAngleX: x, ParamAngleY: y },
+  ])),
 ]
 
 const browser = await chromium.launch({
@@ -36,10 +38,16 @@ const browser = await chromium.launch({
 })
 const page = await browser.newPage({ viewport: { width: 1100, height: 640 } })
 const errors = []
+const report = { variants: [], states: STATES.map(([name, params]) => ({ name, params })), consoleErrors: errors }
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)) })
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message.slice(0, 200)))
 
 for (const v of variants) {
+  const project = JSON.parse(readFileSync(`public/${v}/project.json`, 'utf8'))
+  const geometry = project.mouth_mode === 'wide_grow' ? inspectWideGrowGeometry(project) : { ok: true, errors: [], samples: [] }
+  const row = { variant: v, mouthMode: project.mouth_mode ?? 'none', geometry, screenshots: [] }
+  report.variants.push(row)
+  if (!geometry.ok) errors.push(`${v}: ${geometry.errors.slice(0, 4).join('; ')}`)
   await page.goto(`${APP}/avatar-inspect?project=${encodeURIComponent(`/${v}/project.json`)}`, { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => !!(window.__rigAvatar), null, { timeout: 40000 })
   const canvas = page.locator('[aria-label="네이티브 아바타 캔버스"]').first()
@@ -49,7 +57,11 @@ for (const v of variants) {
     }, params)
     if (r !== 'ok') { console.log('FAIL setParams', v, name, r); continue }
     await page.waitForTimeout(300)
-    await canvas.screenshot({ path: `${OUT}/${v}-${name}.png` })
+    const file = `${OUT}/${v}-${name}.png`
+    await canvas.screenshot({ path: file })
+    const bytes = statSync(file).size
+    row.screenshots.push({ name, file, bytes })
+    if (bytes < 1000) errors.push(`${v}/${name}: screenshot too small (${bytes})`)
   }
   console.log(`variant 촬영 완료: ${v}`)
 }
@@ -62,7 +74,7 @@ try {
   const rows = []
   for (const v of variants) {
     const crops = STATES.map(([n]) => {
-      execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `${OUT}/${v}-${n}.png`, '-vf', 'crop=iw*0.22:ih*0.28:iw*0.40:ih*0.06,scale=300:-1', `${OUT}/c-${v}-${n}.png`])
+      execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `${OUT}/${v}-${n}.png`, '-vf', 'crop=iw*0.38:ih*0.27:iw*0.31:ih*0.30,scale=300:-1', `${OUT}/c-${v}-${n}.png`])
       return `${OUT}/c-${v}-${n}.png`
     })
     const inputs = crops.flatMap((c) => ['-i', c])
@@ -76,3 +88,6 @@ try {
 } catch (e) {
   console.log(`몽타주 생략(ffmpeg 필요): ${String(e).slice(0, 120)} — ${OUT}/*.png 개별 확인`)
 }
+writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2))
+console.log(`리포트: ${OUT}/report.json`)
+if (errors.length) process.exitCode = 1

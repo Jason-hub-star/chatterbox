@@ -65,8 +65,10 @@ tags: [spec]
       "triangles": [[a, b, c], …], // 정점 인덱스 삼각형
       "uvs": [[u, v], …],          // (draw_pixi는 bbox 크롭 기준으로 재계산)
       "vertex_keyforms": [         // (선택) 정점 자체를 파라미터로 보간 (EYE-NATURAL-002)
-        { "parameter_id": "ParamMouthOpenY",
+        { "parameter_id": "ParamMouthOpenY", "composition": "absolute",
           "keys": [ { "value": 0, "vertices": [[x,y],…] }, { "value": 1, "vertices": [[x,y],…] } ] },
+        { "parameter_id": "ParamAngleY", "composition": "affine_additive",
+          "keys": [ { "value": 0, "vertices": [[x,y],…], "affine": [1,0,0,0,1,0] }, … ] },
         { "parameter_ids": ["ParamAngleX","ParamAngleY"],   // 2D 조합 키폼 (MULTI-KEYFORM-2D-001)
           "values_x": [-30,0,30], "values_y": [-30,0,30], "grid": [[ [[x,y],…], … ], …] }
       ]
@@ -116,6 +118,8 @@ tags: [spec]
 **변형 파이프라인(요약, ground truth = `rig.js`):**
 `ParamXxx` 값 → ① `keyform_bindings` 보간으로 디포머 격자 제어점 변위(`latticeDisplaced`) → ② 정점당 격자 이중선형 보간 + 부모→자식 체인 누적(`chainDisplacementAt`) → ③ `vertex_keyforms`(정점 직접 보간)·`skin_lbs`/`skin_blend`·물리 오프셋 가산 → 최종 정점을 `MeshSimple`에 write. 불투명도는 `part_opacity_keyframes`로 별도 구동. 눈 클리핑(홍채↔흰자 마스크)·눈두덩 커버는 `_mini_rig`가 제어.
 
+`KEYFORM-COMPOSE-002` 계약: `composition:"absolute"` 스펙 하나가 현재 형상의 기준이며 raw `mesh.vertices`를 대체한다. `composition:"affine_additive"` 포즈 스펙은 각 키의 2×3 `affine`을 중립 행렬 대비 상대변환으로 만들어 그 절대형상 위에 적용한다. 따라서 `MouthOpenY absolute + AngleX/Y affine_additive`는 입꼬리 정합 폭과 얼굴 상대 개구 상한을 유지하면서 회전한다. `mesh.vertices`와 PNG bbox는 UV 기준이므로 이 계약을 맞추기 위해 압축하지 않는다. composition이 없는 기존 리그는 기존 base+delta 합성을 유지한다.
+
 ---
 
 ## 3. 트래킹 → `ParamXxx` 매핑
@@ -163,7 +167,8 @@ export interface RigMesh {
   part_id: string; vertices: [number, number][]; triangles: [number, number, number][];
   uvs?: [number, number][];
   vertex_keyforms?: Array<
-    | { parameter_id: string; keys: Array<{ value: number; vertices: [number, number][] }> }
+    | { parameter_id: string; composition?: 'absolute' | 'additive' | 'affine_additive';
+        keys: Array<{ value: number; vertices: [number, number][]; affine?: [number,number,number,number,number,number] }> }
     | { parameter_ids: [string, string]; values_x: number[]; values_y: number[]; grid: [number, number][][][] }
   >;
 }

@@ -125,6 +125,41 @@ function interpKeyformSpec(spec: KeyformSpec, value: number): Vec2[] | null {
   return null
 }
 
+type Affine2D = [number, number, number, number, number, number]
+
+function interpAffineSpec(spec: KeyformSpec, value: number): Affine2D | null {
+  const keys = [...(spec.keys || [])].filter((key) => key.affine).sort((a, b) => a.value - b.value)
+  if (!keys.length) return null
+  if (value <= keys[0].value) return keys[0].affine!
+  if (value >= keys[keys.length - 1].value) return keys[keys.length - 1].affine!
+  for (let index = 0; index < keys.length - 1; index += 1) {
+    const lower = keys[index]
+    const upper = keys[index + 1]
+    if (value < lower.value || value > upper.value) continue
+    const t = clamp((value - lower.value) / (upper.value - lower.value || 1), 0, 1)
+    return lower.affine!.map((item, i) => lerp(item, upper.affine![i], t)) as Affine2D
+  }
+  return null
+}
+
+function relativeAffine(current: Affine2D, neutral: Affine2D): Affine2D | null {
+  const [a, b, tx, c, d, ty] = neutral
+  const det = a * d - b * c
+  if (Math.abs(det) < 1e-8) return null
+  const inverse: Affine2D = [d / det, -b / det, (b * ty - d * tx) / det,
+    -c / det, a / det, (c * tx - a * ty) / det]
+  const [e, f, ux, g, h, uy] = current
+  return [
+    e * inverse[0] + f * inverse[3], e * inverse[1] + f * inverse[4], e * inverse[2] + f * inverse[5] + ux,
+    g * inverse[0] + h * inverse[3], g * inverse[1] + h * inverse[4], g * inverse[2] + h * inverse[5] + uy,
+  ]
+}
+
+function applyAffine(vertices: Vec2[], matrix: Affine2D): Vec2[] {
+  const [a, b, tx, c, d, ty] = matrix
+  return vertices.map(([x, y]) => [a * x + b * y + tx, c * x + d * y + ty])
+}
+
 // MULTI-KEYFORM-2D-001: 두 파라미터 격자 이중선형 보간.
 function interpKeyform2DSpec(spec: KeyformSpec, vx: number, vy: number): Vec2[] | null {
   const g = spec.grid
@@ -152,6 +187,73 @@ function interpKeyform2DSpec(spec: KeyformSpec, vx: number, vy: number): Vec2[] 
     const bY = lerp(g10[i][1], g11[i][1], tx)
     return [lerp(tX, bX, ty), lerp(tY, bY, ty)] as Vec2
   })
+}
+
+// KEYFORM-COMPOSE-002: a morphology keyform can be the absolute shape baseline while
+// pose/expression keyforms remain neutral-relative additive deltas. This keeps the
+// legacy single-keyform path unchanged and prevents a raw mesh from replacing a
+// corner-aligned MouthOpenY shape after THA3 adds AngleX/AngleY keyforms.
+export function composeKeyformVertices(
+  project: Project,
+  mesh: Mesh,
+  parameterValue: (id: string, fallback: number) => number,
+): Vec2[] {
+  const kf = mesh.vertex_keyforms
+  if (!kf) return mesh.vertices
+  const specs = Array.isArray(kf) ? kf : [kf]
+  if (!specs.length) return mesh.vertices
+  if (specs.length === 1 && !Array.isArray(specs[0].parameter_ids)) {
+    const spec = specs[0]
+    const p = project.parameters.find((item) => item.id === spec.parameter_id)
+    const value = parameterValue(spec.parameter_id!, p?.default ?? 0)
+    return interpKeyformSpec(spec, value) ?? mesh.vertices
+  }
+
+  const absolute = specs.find((spec) => spec.composition === 'absolute')
+  let out: Vec2[] = mesh.vertices.map((point) => [point[0], point[1]])
+  if (absolute && !Array.isArray(absolute.parameter_ids)) {
+    const p = project.parameters.find((item) => item.id === absolute.parameter_id)
+    const value = parameterValue(absolute.parameter_id!, p?.default ?? 0)
+    const shape = interpKeyformSpec(absolute, value)
+    if (shape) out = shape.map((point) => [point[0], point[1]])
+  }
+
+  for (const spec of specs) {
+    if (spec === absolute) continue
+    if (absolute && spec.composition === 'affine_additive' && !Array.isArray(spec.parameter_ids)) {
+      const p = project.parameters.find((item) => item.id === spec.parameter_id)
+      const value = parameterValue(spec.parameter_id!, p?.default ?? 0)
+      const current = interpAffineSpec(spec, value)
+      const neutral = interpAffineSpec(spec, p?.default ?? 0)
+      const relative = current && neutral ? relativeAffine(current, neutral) : null
+      if (relative) {
+        out = applyAffine(out, relative)
+        continue
+      }
+    }
+    let cur: Vec2[] | null
+    let neu: Vec2[] | null
+    if (Array.isArray(spec.parameter_ids)) {
+      const [px, py] = spec.parameter_ids
+      const pdx = project.parameters.find((item) => item.id === px)
+      const pdy = project.parameters.find((item) => item.id === py)
+      const vx = parameterValue(px, pdx?.default ?? 0)
+      const vy = parameterValue(py, pdy?.default ?? 0)
+      cur = interpKeyform2DSpec(spec, vx, vy)
+      neu = interpKeyform2DSpec(spec, pdx?.default ?? 0, pdy?.default ?? 0)
+    } else {
+      const p = project.parameters.find((item) => item.id === spec.parameter_id)
+      const value = parameterValue(spec.parameter_id!, p?.default ?? 0)
+      cur = interpKeyformSpec(spec, value)
+      neu = interpKeyformSpec(spec, p?.default ?? 0)
+    }
+    if (!cur || !neu) continue
+    for (let index = 0; index < out.length; index += 1) {
+      out[index][0] += cur[index][0] - neu[index][0]
+      out[index][1] += cur[index][1] - neu[index][1]
+    }
+  }
+  return out
 }
 
 function isNeutralVisualRepairKeyform(keyform: { purpose?: string }): boolean {
@@ -517,41 +619,7 @@ export function createRigMath(ctx: RigContext): RigMath {
 
   // EYE-NATURAL-002 / MULTI-KEYFORM-001: 정점 키폼 (단일·2D 조합 중첩).
   function keyformBaseVertices(project: Project, mesh: Mesh): Vec2[] {
-    const kf = mesh.vertex_keyforms
-    if (!kf) return mesh.vertices
-    const specs = Array.isArray(kf) ? kf : [kf]
-    if (!specs.length) return mesh.vertices
-    if (specs.length === 1 && !Array.isArray(specs[0].parameter_ids)) {
-      const spec = specs[0]
-      const p = project.parameters.find((item) => item.id === spec.parameter_id)
-      const value = param(spec.parameter_id!, p?.default ?? 0)
-      return interpKeyformSpec(spec, value) ?? mesh.vertices
-    }
-    const out: Vec2[] = mesh.vertices.map((p) => [p[0], p[1]])
-    for (const spec of specs) {
-      let cur: Vec2[] | null
-      let neu: Vec2[] | null
-      if (Array.isArray(spec.parameter_ids)) {
-        const [px, py] = spec.parameter_ids
-        const pdx = project.parameters.find((it) => it.id === px)
-        const pdy = project.parameters.find((it) => it.id === py)
-        const vx = param(px, pdx?.default ?? 0)
-        const vy = param(py, pdy?.default ?? 0)
-        cur = interpKeyform2DSpec(spec, vx, vy)
-        neu = interpKeyform2DSpec(spec, pdx?.default ?? 0, pdy?.default ?? 0)
-      } else {
-        const p = project.parameters.find((item) => item.id === spec.parameter_id)
-        const value = param(spec.parameter_id!, p?.default ?? 0)
-        cur = interpKeyformSpec(spec, value)
-        neu = interpKeyformSpec(spec, p?.default ?? 0)
-      }
-      if (!cur || !neu) continue
-      for (let i = 0; i < out.length; i += 1) {
-        out[i][0] += cur[i][0] - neu[i][0]
-        out[i][1] += cur[i][1] - neu[i][1]
-      }
-    }
-    return out
+    return composeKeyformVertices(project, mesh, param)
   }
 
   function physicsVertexOffsets(partId: string, vertexCount: number): Vec2[] {

@@ -17,6 +17,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
+import { inspectWideGrowGeometry } from './lib/mouth-geometry.mjs'
 
 const MIN_LIP_RATIO = 0.35 // state 립안료/closed — poon995 실측: 소실 재현 small=0.19 vs 수용가능 mid=0.64 사이값
 const MIN_CLOSED_LIP_PX = 400 // closed 립안료가 이보다 작으면 무안료 화풍 — 연속성 판정 보류
@@ -41,25 +42,32 @@ const ampFailed = []
 {
   const fb = project.parts.find((p) => p.id === 'face_base')
   const opens = project.parts.filter((p) => /^mouth_(state_|open|wide)/.test(p.id) && Array.isArray(p.bbox))
-  // 렌더 개구 = base 메시 지오메트리(mesh.vertices) y-extent — 렌더러(rigMath keyformBaseVertices)가 이
-  //   base 지오메트리를 그린다(2026-07-16 실렌더 실증: base 123→68px 축소=입 작아짐, 키폼 압축은 무영향).
-  //   메시 없으면 스프라이트 bbox 폴백. 클램프 후 bbox(스프라이트)는 불변이라 base 메시가 렌더-정합 신호.
-  const baseH = (p) => {
-    const mesh = (project.meshes || []).find((m) => m.part_id === p.id)
-    if (mesh?.vertices?.length) {
-      const ys = mesh.vertices.map((v) => v[1])
-      return Math.max(...ys) - Math.min(...ys)
-    }
-    return p.bbox[3]
-  }
-  if (fb?.bbox && opens.length) {
-    const faceH = fb.bbox[3], openH = Math.round(Math.max(...opens.map(baseH)))
-    const ratio = openH / faceH
-    const bad = ratio > AMP_MAX_RATIO
-    console.log(`qa-mouth-lips: 입벌림 openH=${openH}/faceH=${faceH} = ${(ratio * 100).toFixed(1)}%${bad ? ` ❌ > ${(AMP_MAX_RATIO * 100).toFixed(0)}%` : ' ✓'}`)
-    if (bad) ampFailed.push(`입벌림과대 ${(ratio * 100).toFixed(1)}%(>${(AMP_MAX_RATIO * 100).toFixed(0)}%)`)
+  // wide_grow는 MouthOpenY absolute + Angle additive의 실제 합성 정점을 3×3 각도×3개구로 측정한다.
+  // 그 외 레거시 모드는 base 메시/스프라이트 bbox 높이 게이트를 유지한다.
+  if (project.mouth_mode === 'wide_grow') {
+    const geometry = inspectWideGrowGeometry(project, { maxHeightRatio: AMP_MAX_RATIO })
+    const maxH = Math.max(0, ...geometry.samples.map((sample) => sample.heightRatio))
+    const width = geometry.samples.filter((sample) => sample.mouthOpen === 1).map((sample) => sample.widthRatio)
+    console.log(`qa-mouth-lips: wide_grow 실합성 27포즈 maxH/face=${(maxH * 100).toFixed(1)}% openW/closedW=${Math.min(...width).toFixed(2)}~${Math.max(...width).toFixed(2)}`)
+    if (!geometry.ok) ampFailed.push(...geometry.errors.map((error) => `기하계약 ${error}`))
   } else {
-    console.log('qa-mouth-lips: face_base/열린입 파츠 없음 — 진폭 축 보류')
+    const baseH = (p) => {
+      const mesh = (project.meshes || []).find((m) => m.part_id === p.id)
+      if (mesh?.vertices?.length) {
+        const ys = mesh.vertices.map((v) => v[1])
+        return Math.max(...ys) - Math.min(...ys)
+      }
+      return p.bbox[3]
+    }
+    if (fb?.bbox && opens.length) {
+      const faceH = fb.bbox[3], openH = Math.round(Math.max(...opens.map(baseH)))
+      const ratio = openH / faceH
+      const bad = ratio > AMP_MAX_RATIO
+      console.log(`qa-mouth-lips: 입벌림 openH=${openH}/faceH=${faceH} = ${(ratio * 100).toFixed(1)}%${bad ? ` ❌ > ${(AMP_MAX_RATIO * 100).toFixed(0)}%` : ' ✓'}`)
+      if (bad) ampFailed.push(`입벌림과대 ${(ratio * 100).toFixed(1)}%(>${(AMP_MAX_RATIO * 100).toFixed(0)}%)`)
+    } else {
+      console.log('qa-mouth-lips: face_base/열린입 파츠 없음 — 진폭 축 보류')
+    }
   }
 }
 
