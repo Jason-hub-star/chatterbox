@@ -44,7 +44,7 @@ tags: [status, goals]
 | R2 | RM-EDIT 방 설정 편집 | 제목/장르 변경→서버 재검증→전원 상단바 반영 | `check:all` + deno check(update-room-settings) | **DONE**(2026-07-17: Edge+래퍼+수신+콘솔 섹션+i18n — deno clean·159/159·자기리뷰 PASS·title 80자=create-room SSOT 미러) |
 | R3 | RM-GUEST-CTA 게스트 전환 | 채팅 잠금에 로그인 CTA·현 방 `?watch=1` 복귀 | `check:all`(프론트만) | **DONE**(2026-07-17: onGuestCta 콜백 주입+state.from 복귀 — 159/159·자기리뷰 PASS) |
 | R4 | RM-MUTE-DUR duration 음소거 | `muted_until` 마이그+만료 자동해제+콘솔 셀렉트 | `check:all` + 로컬 db reset·psql + deno check | **DONE**(2026-07-17: 마이그 불필요 판명(컬럼 20260702050002 기존재) — Edge 3수정+파생 3점+콘솔 셀렉트·deno ×3 clean·159/159·자기리뷰 PASS) |
-| R5 | RM-SOFTLEAVE 탭닫기 승계 | keepalive leave(완화)+livekit-webhook(근본) | `check:all` + deno check(웹훅 라이브는 배포 게이트) | **DONE**(2026-07-17: roomLeave 공유 추출+웹훅(재실 대조)+비호스트 keepalive — deno ×2 clean·159/159·자기리뷰 PASS·LiveKit 대시보드 등록은 배포 게이트) |
+| R5 | RM-SOFTLEAVE 탭닫기 승계 | keepalive leave(완화)+livekit-webhook(근본) | `check:all` + deno check + 라이브 탭킬 | **부분 DONE**(2026-07-17: 클라 keepalive·핸들러(서명검증 200/401)·leave 회귀 실증 · **실 탭킬 웹훅 회수 미확인**(180s·360s 2회 실패) → 원인 LiveKit 전달/서명 or 가드 레이스, 대시보드 로그 필요 · **후속 P2**) |
 | — | **승인 게이트**: R6 대본 시스템 설계(마이그 형태·시드 구성) 플랜 승인 | | | |
 | R6 | RM-SCRIPT 방별 대본 선택 | ~~`rooms.script_id`+시드 3종~~ → **스펙 정본 재설계 대상**: scripts 테이블+시드 팩(CNT-09)+업로드(CNT-02) — G-286 방향 | 별도 세션 플랜모드 설계 승인 후 | **HOLD**(2026-07-17 주인님 결정: 컬럼-only 안은 스펙(G-286)과 어긋남 판명 — 별도 세션서 정본 설계) |
 | R7 | 트랙B 룸 UX 델타 1패스 | 미읽음 뱃지·수락실패 toast·더빙 세그먼트 강조·좌석번호·노트 고지·DUB 뷰어 안내(3국어) | `check:all` + i18nCoverage | **DONE**(2026-07-17: 6건+i18n 7키×3 — 159/159·자기리뷰 PASS·R6 승인 대기 중 선행 처리(의존성 0)) |
