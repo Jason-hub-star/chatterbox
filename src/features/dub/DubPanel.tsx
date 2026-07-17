@@ -42,7 +42,8 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   const [phase, setPhase] = useState<'uploading' | 'transcribing' | 'translating' | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showTranslation, setShowTranslation] = useState(false)
+  // 번역본이 있으면 기본으로 번역(한국어 등)을 보여준다 — 더빙 대본의 주 사용본은 번역본(신규 유저가 원문만 보던 마찰 해소).
+  const [showTranslation, setShowTranslation] = useState(true)
   // V-10 자막편집: 편집 중인 세그먼트(보이는 필드를 고침 — 번역 표시 중이면 translated_text, 아니면 text)
   const [editing, setEditing] = useState<{ segId: number; value: string } | null>(null)
 
@@ -255,7 +256,27 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       )}
 
       {status === 'failed' && (
-        <p className="mt-3 text-sm text-fire-hot">{t('dub.processingFailed')}</p>
+        <div className="mt-3 space-y-2">
+          <p className="text-sm text-fire-hot">{t('dub.processingFailed')}</p>
+          {isHost && (
+            <button
+              disabled={busy}
+              onClick={() => run(async () => {
+                // 실패 세션은 source 를 유지 → STT 재시도(+비-ko 번역). 데드엔드 해소.
+                try {
+                  setPhase('transcribing')
+                  await startTranscription(token!, session!.id)
+                  if (sourceLanguage !== 'ko') { setPhase('translating'); await translateDubScript(token!, session!.id).catch(() => {}) }
+                } finally { setPhase(null) }
+              })}
+              className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-fire-amber focus-visible:ring-offset-1 disabled:opacity-40"
+            >
+              {phase === 'transcribing' ? t('dub.pipelineTranscribing')
+                : phase === 'translating' ? t('dub.pipelineTranslating')
+                : t('dub.retryButton')}
+            </button>
+          )}
+        </div>
       )}
 
       {/* READY: 세그먼트 + 역할배정 + 동의 */}

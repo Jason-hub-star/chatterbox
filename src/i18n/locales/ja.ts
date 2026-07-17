@@ -44,6 +44,7 @@ export const ja: Record<string, string> = {
   'dub.roleNextHint': '配役を保存すると録音準備ができます。',
   'dub.consentNextHint': '全員が同意するとホストが録音を開始できます。',
   'dub.recordDisabledHint': '配役の保存と全員の同意で録音を開始できます。',
+  'dub.retryButton': '再試行',
   'dub.hostNotStarted': 'ホストが吹き替えを開始すると参加できます。',
   'dub.sttLoading': 'リクエスト中…',
   'dub.sttButton': 'セリフ抽出（STT）',

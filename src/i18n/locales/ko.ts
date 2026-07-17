@@ -44,6 +44,7 @@ export const ko: Record<string, string> = {
   "dub.roleNextHint": "역할을 저장하면 녹음 준비가 돼요.",
   "dub.consentNextHint": "전원 동의하면 호스트가 녹음을 시작할 수 있어요.",
   "dub.recordDisabledHint": "역할 저장 + 전원 동의 후 녹음을 시작할 수 있어요.",
+  "dub.retryButton": "다시 시도",
   "dub.hostNotStarted": "호스트가 더빙을 시작하면 참여할 수 있어요.",
   "dub.sttLoading": "요청 중…",
   "dub.sttButton": "대본 추출 (STT)",

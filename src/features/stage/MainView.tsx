@@ -116,7 +116,7 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
       {/* DUB-UX: 현재 세그먼트 자막(번역 우선) — 무대 센터에서 전원이 같은 줄을 본다. */}
       {isDub && subtitle && (
         <div className="pointer-events-none absolute inset-x-0 bottom-10 flex justify-center px-4">
-          <span className="rounded bg-black/70 px-3 py-1 text-center text-sm font-medium text-white sm:text-base">{subtitle}</span>
+          <span className="rounded bg-black/85 px-3 py-1 text-center text-sm font-medium text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)] sm:text-base">{subtitle}</span>
         </div>
       )}
       {isHost && !isDub && (

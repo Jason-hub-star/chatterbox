@@ -44,6 +44,7 @@ export const en: Record<string, string> = {
   'dub.roleNextHint': 'Save roles to get ready to record.',
   'dub.consentNextHint': 'Once everyone consents, the host can start recording.',
   'dub.recordDisabledHint': 'Save roles and get everyone\'s consent to start recording.',
+  'dub.retryButton': 'Try again',
   'dub.hostNotStarted': 'You can join once the host starts a dubbing session.',
   'dub.sttLoading': 'Requesting…',
   'dub.sttButton': 'Extract script (STT)',

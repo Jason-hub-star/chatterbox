@@ -206,7 +206,7 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
       </ul>
 
       {/* 하단: 진행도 (전 트랙 synced 시 DubPanel 이 DubCompositor 마운트) */}
-      <div className="flex items-center justify-between border-t border-stage-border pt-3">
+      <div className="flex items-center justify-between border-t border-stage-border pt-3" role="status" aria-live="polite">
         <span className="text-xs text-stage-text-muted">{t('dub.progressDisplay', { count: syncedCount, total: tracks.length })}</span>
         {allSynced && <span className="text-xs text-fire-amber">{t('dub.recordingComplete')}</span>}
       </div>
