@@ -18,9 +18,10 @@ interface Props {
   initialSticky?: boolean // 터치 롱프레스 개화 — 릴리즈 발사 없이 처음부터 탭 선택 모드
   onFire: (emoji: string) => void
   onClose: () => void
+  onEdit?: () => void // 슬롯 편집(로드아웃) — 우측패널 이모트카드 제거 후 편집 진입점을 휠로 이관(sticky 모드서 노출)
 }
 
-export default function ReactionWheel({ origin, initialSticky, onFire, onClose }: Props) {
+export default function ReactionWheel({ origin, initialSticky, onFire, onClose, onEdit }: Props) {
   const { t } = useTranslation()
   const slots = useReactionStore((s) => s.slots)
   const [active, setActive] = useState<number | null>(null)
@@ -113,6 +114,19 @@ export default function ReactionWheel({ origin, initialSticky, onFire, onClose }
             </button>
           )
         })}
+
+        {/* 편집 진입점(로드아웃) — 우측패널 이모트카드 삭제 후 휠로 이관. sticky(중앙서 뗌·터치 롱프레스) 시 노출. */}
+        {onEdit && sticky && (
+          <button
+            onClick={() => { onClose(); onEdit() }}
+            aria-label={t('reaction.editLoadout')}
+            title={t('reaction.editLoadout')}
+            className="absolute grid place-items-center rounded-full border border-stage-border bg-stage-panel text-sm hover:border-fire-amber"
+            style={{ left: -16, top: RADIUS + 10, width: 32, height: 32 }}
+          >
+            ✏️
+          </button>
+        )}
       </div>
     </div>
   )

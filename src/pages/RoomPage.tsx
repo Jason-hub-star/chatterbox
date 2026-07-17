@@ -42,7 +42,7 @@ import RoomJoinGate from '@/features/room/RoomJoinGate'
 import RoomShell from '@/features/room/RoomShell'
 import RoomTopBar from '@/features/room/RoomTopBar'
 import RoomBottomBar from '@/features/room/RoomBottomBar'
-import EmoteConsoleCard from '@/features/reaction/EmoteConsoleCard'
+import EmoteLoadoutPicker from '@/features/reaction/EmoteLoadoutPicker'
 
 // Phase 1B PoC → 우측 패널 셸 도입: 채팅·DUB·VGen 을 RightPanel 탭 블록으로 통합(contracts/RightPanel.md).
 // 좌측 컬럼 = 참가자·무대·대본 텔레프롬프터·마이크/나가기. 우측 = RightPanel(탭 콘텐츠 주입식).
@@ -71,6 +71,7 @@ export default function RoomPage() {
   // 잠금방: join-public-room 이 "Room is locked" 로 거부하면 비번 입력 단계로. 입장 성공 시 roomLocked=true.
   // (비번 입력 폼의 로컬 상태는 RoomJoinGate 소유 — R-커밋 분리)
   const [roomLocked, setRoomLocked] = useState(false)
+  const [loadoutOpen, setLoadoutOpen] = useState(false) // 이모트 로드아웃 편집 모달(우클릭 휠에서 진입 — 우측패널 카드 대체)
 
   // 취소 버튼(트랙 B)이 진행 중 join fetch 를 끊을 수 있게 컨트롤러를 ref 로 노출.
   const joinAbortRef = useRef<AbortController | null>(null)
@@ -906,18 +907,16 @@ export default function RoomPage() {
         </div>
       )}
       {reactionOrigin && (
-        <ReactionWheel origin={reactionOrigin} initialSticky={reactionSticky} onFire={sendReaction} onClose={closeReactionWheel} />
+        <ReactionWheel origin={reactionOrigin} initialSticky={reactionSticky} onFire={sendReaction} onClose={closeReactionWheel} onEdit={() => setLoadoutOpen(true)} />
       )}
+      {loadoutOpen && <EmoteLoadoutPicker onClose={() => setLoadoutOpen(false)} />}
     </div>
   )
 
-  // 우도크: 방분위기(상단) + 라이브피드 탭 패널(중앙) + 사운드보드(하단) — R4 카드 스택.
+  // 우도크: 탭 패널 전체. 이모트 카드는 제거(우클릭 휠로 발사+편집 이관) → 더빙 등 탭 내용이 안 가려짐.
   const rightDockContent = (
-    <div className="flex h-full flex-col gap-3">
-      <div className="min-h-0 flex-1">
-        <RightPanel tabs={tabs} />
-      </div>
-      <EmoteConsoleCard onReaction={sendReaction} disabled={!connected} />
+    <div className="flex h-full flex-col">
+      <RightPanel tabs={tabs} />
     </div>
   )
 
