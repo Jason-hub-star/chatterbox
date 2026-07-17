@@ -53,6 +53,19 @@ export async function softLeaveRoom(
       await service.from("rooms").update({ current_participants: 0 }).eq("id", roomId);
       return { kind: "left", newHostId: null };
     }
+    // 유료 더빙 보존(DUB-PERSIST): 진행 중 더빙 세션이 있으면 방을 닫지 않는다 — 닫으면
+    // join-public-room 이 재입장을 막아 STT/번역 비용이 든 더빙이 고립된다. 방을 waiting 으로
+    // 유지하면 재입장 시 fetchActiveDubSession 이 그대로 복원한다(is_practice 유지 예외와 동형).
+    const { data: activeDub } = await service
+      .from("dub_sessions")
+      .select("id")
+      .eq("room_id", roomId)
+      .not("status", "in", "(completed,failed)")
+      .limit(1);
+    if (activeDub && activeDub.length > 0) {
+      await service.from("rooms").update({ current_participants: 0 }).eq("id", roomId);
+      return { kind: "left", newHostId: null };
+    }
     // 마지막 배우 → 방 종료(남은 뷰어의 토큰은 room ended 게이트가 무효화).
     await service
       .from("rooms")

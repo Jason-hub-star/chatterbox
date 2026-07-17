@@ -57,6 +57,16 @@ Deno.serve(async (req) => {
     }
     if (present > 0) return false; // 누군가 실접속 — 유지(뷰어 포함)
 
+    // 유료 더빙 보존(DUB-PERSIST): 진행 중 더빙 세션이 있는 방은 회수하지 않는다 — 종료하면 재입장이
+    // 막혀 STT/번역 비용이 든 더빙이 고립된다(호스트가 LiveKit 미접속으로 나가도 방 유지 → 재입장 복원).
+    const { data: activeDub } = await service
+      .from("dub_sessions")
+      .select("id")
+      .eq("room_id", room.id)
+      .not("status", "in", "(completed,failed)")
+      .limit(1);
+    if (activeDub && activeDub.length > 0) return false; // 진행 중 더빙 → 유지
+
     // 좀비 확정 → 방 종료(상태 조건부 = race 가드) + 참가자 행 soft-left.
     const { data: ended } = await service
       .from("rooms")
