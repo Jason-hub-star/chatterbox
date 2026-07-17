@@ -622,7 +622,9 @@ CREATE TABLE avatar_jobs (
   result_project_url TEXT,                             -- avatars/<job>/project.json (완료 시, 공개 URL — isValidAvatarUrl 통과)
   provider           TEXT NOT NULL DEFAULT 'modal',
   provider_call_id   TEXT,                             -- Modal FunctionCall id
-  error              TEXT,
+  error              TEXT,                             -- user-safe terminal code (pipeline_error | orchestrator_timeout)
+  last_heartbeat_at  TIMESTAMPTZ,                       -- Modal enters each phase through renew_avatar_job_lease
+  lease_expires_at   TIMESTAMPTZ,                       -- stale running job cutoff; never a client-provided timestamp
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at       TIMESTAMPTZ,
@@ -633,7 +635,7 @@ CREATE TABLE avatar_jobs (
 -- Realtime: subscribe to avatar_jobs (queued→running→done/failed, phase 진행)
 ```
 
-**상태 기계**: `queued → running`(phase analyzing→cutting→rigging→finishing)`→ done`(result_project_url 세팅) | `→ failed`(error). 발행처는 **Supabase Storage 공개 `avatars` 버킷**(로더 신뢰-오리진 `*.supabase.co`), `project.json._project_base_url=""`(로더 파생). 입력은 `avatar-uploads`(private, 본인폴더 RLS).
+**상태 기계**: `queued → running`(phase analyzing→cutting→rigging→finishing)`→ done`(result_project_url 세팅) | `→ failed`(error). `provider_call_id`와 첫 analyzing lease(75분)는 Edge가 spawn 직후 기록한다. Modal은 단계 진입마다 `renew_avatar_job_lease` RPC로 lease를 갱신하고, `complete_avatar_job`/`fail_avatar_job`은 active 행만 원자 전이한다. `reconcile_stuck_avatar_jobs`(pg_cron 5분)는 만료 lease 또는 15분 넘은 queued 행만 `orchestrator_timeout`으로 닫으므로, 하드킬 뒤 유령 잡도 terminal이다. 발행처는 **Supabase Storage 공개 `avatars` 버킷**(로더 신뢰-오리진 `*.supabase.co`), `project.json._project_base_url=""`(로더 파생). 입력은 `avatar-uploads`(private, 본인폴더 RLS).
 
 ### 1.9 credits
 
@@ -757,6 +759,7 @@ CREATE TABLE dub_sessions (
   created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   source_video_url TEXT NOT NULL,  -- uploaded MP4 object key/signed cache or VGEN object key
   source_type TEXT NOT NULL,  -- 'mp4', 'vgen'. 'youtube' is P2-disabled until legal/SSRF gate lands
+  source_language TEXT,  -- STT/번역 소스 언어(ko/en/ja). null이면 rooms.language 폴백 (방 UI 언어와 분리, DUB-LANG)
   youtube_url TEXT,  -- P2 only; never used in MVP
   whisper_job_id TEXT,  -- external Whisper API job ID
   diarization_result_json JSONB,  -- {segments: [{id, start_ms, end_ms, text}]}. whisper-1 은 화자분리 불가 → speaker 필드 없음(호스트가 DubRoleAssigner 에서 수동 배정). diarization provider 승급 시 speaker 추가 (G-269)

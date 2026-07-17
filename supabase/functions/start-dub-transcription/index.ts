@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
   // 세션 + 방 언어 조회, 호스트 전용, status='uploaded' 만 시작 가능
   const { data: sess } = await service
     .from("dub_sessions")
-    .select("id, room_id, created_by, source_video_url, status, rooms(host_id, language)")
+    .select("id, room_id, created_by, source_video_url, status, source_language, rooms(host_id, language)")
     .eq("id", sessionId)
     .maybeSingle();
   if (!sess) return json({ error: "세션을 찾을 수 없어요." }, 404);
@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
   fd.append("file", blob, sess.source_video_url.split("/").pop() ?? "audio.mp4");
   fd.append("model", "whisper-1");
   fd.append("response_format", "verbose_json");
-  fd.append("language", room.language ?? "ko");
+  // DUB-LANG: 소스 언어 우선(세션 속성) → 방 UI 언어 폴백 → ko. 방 language 에 하드바인딩하던 오인식 근절.
+  fd.append("language", (sess.source_language as string | null) ?? room.language ?? "ko");
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);

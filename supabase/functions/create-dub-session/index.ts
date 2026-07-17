@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 
-  let body: { room_id?: unknown; source_path?: unknown; source_type?: unknown };
+  let body: { room_id?: unknown; source_path?: unknown; source_type?: unknown; source_language?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -29,6 +29,12 @@ Deno.serve(async (req) => {
   }
   // MVP: mp4 만. vgen/youtube 는 후속.
   const sourceType = body.source_type === "vgen" ? "vgen" : "mp4";
+  // DUB-LANG: 소스 언어(STT/번역 힌트) — 방 UI 언어와 분리. 화이트리스트(create-room LANGS 동형) 외/미지정은
+  //   null → start-dub-transcription·translate-dub-script 가 rooms.language 로 폴백(회귀 0).
+  const LANGS = ["ko", "en", "ja"];
+  const sourceLanguage = typeof body.source_language === "string" && LANGS.includes(body.source_language)
+    ? body.source_language
+    : null;
 
   // 호스트 전용
   const { data: room } = await service
@@ -46,6 +52,7 @@ Deno.serve(async (req) => {
       created_by: userId,
       source_video_url: sourcePath,
       source_type: sourceType,
+      source_language: sourceLanguage,
       status: "uploaded",
     })
     .select("id, status")

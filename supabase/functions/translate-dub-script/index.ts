@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
   const { data: sess } = await service
     .from("dub_sessions")
-    .select("id, status, diarization_result_json, rooms(host_id, language)")
+    .select("id, status, diarization_result_json, source_language, rooms(host_id, language)")
     .eq("id", sessionId)
     .maybeSingle();
   if (!sess) return json({ error: "세션을 찾을 수 없어요." }, 404);
@@ -68,7 +68,9 @@ Deno.serve(async (req) => {
   if (segments.length === 0) return json({ error: "번역할 대본이 없어요." }, 400);
 
   // 원문이 한국어면 스킵(번역 불필요, 무과금)
-  const sourceLang = (room.language ?? "ko").toLowerCase();
+  // DUB-LANG: 소스 언어 우선(세션 속성) → 방 UI 언어 폴백. 방 language='ko' 하드바인딩으로 비-KR 소스가
+  //   조용히 스킵되던 것을 근절(STT 힌트와 동일 소스).
+  const sourceLang = ((sess.source_language as string | null) ?? room.language ?? "ko").toLowerCase();
   if (sourceLang === "ko") {
     return json({ dub_session_id: sessionId, translated_count: 0, skipped_count: segments.length, skipped: true }, 200);
   }

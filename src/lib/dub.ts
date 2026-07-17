@@ -15,6 +15,9 @@ async function putToR2(uploadUrl: string, body: Blob, contentType: string): Prom
 export type DubStatus =
   | 'uploaded' | 'transcribing' | 'ready' | 'recording' | 'compositing' | 'completed' | 'failed'
 
+// DUB-LANG: 소스(원본) 언어 — STT/번역 힌트. 방 UI 언어와 분리(create-room LANGS 동형).
+export type DubLang = 'ko' | 'en' | 'ja'
+
 export interface DubSegment { id: number; start_ms: number; end_ms: number; text: string; translated_text?: string }
 export interface DubTrack {
   id: string
@@ -40,9 +43,10 @@ export async function uploadDubSource(accessToken: string, roomId: string, file:
 }
 
 // ── Edge Function 래퍼 ──────────────────────────────────────────────
-export const createDubSession = (accessToken: string, roomId: string, sourcePath: string) =>
+export const createDubSession = (accessToken: string, roomId: string, sourcePath: string, sourceLanguage?: DubLang) =>
   callFn<{ dub_session_id: string; status: DubStatus }>(
-    'create-dub-session', accessToken, { room_id: roomId, source_path: sourcePath },
+    'create-dub-session', accessToken,
+    { room_id: roomId, source_path: sourcePath, ...(sourceLanguage ? { source_language: sourceLanguage } : {}) },
   )
 
 export const startTranscription = (accessToken: string, dubSessionId: string) =>

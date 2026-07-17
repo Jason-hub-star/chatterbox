@@ -9,7 +9,7 @@ import {
   uploadDubSource, createDubSession, startTranscription, translateDubScript, assignRoles,
   recordConsent, startRecording, fetchRoomMembers, fetchActiveDubSession,
   fetchMyUserId, fetchRoomHostId, fetchDubTracks, updateDubSegmentText,
-  type DubSegment, type DubTrack, type RoomMember,
+  type DubSegment, type DubTrack, type RoomMember, type DubLang,
 } from '@/lib/dub'
 
 // Phase 3B 더빙 슬라이스 최소 UI: 업로드 → STT → 역할배정 → 동의 → 녹음 진입.
@@ -35,6 +35,8 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   const [tracks, setTracks] = useState<DubTrack[]>([])
   const [assignments, setAssignments] = useState<Record<number, string>>({})
   const [file, setFile] = useState<File | null>(null)
+  // DUB-LANG: 소스(원본) 언어 — 방 UI 언어와 분리. 기본 ja(더빙 1차 용도 = 애니 JP→KR).
+  const [sourceLanguage, setSourceLanguage] = useState<DubLang>('ja')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showTranslation, setShowTranslation] = useState(false)
@@ -131,11 +133,22 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
               onChange={(e) => setFile(e.currentTarget.files?.[0] ?? null)}
               aria-label={t('dub.sourceFileLabel')}
             />
+            {/* DUB-LANG: 원본 언어 — STT/번역 힌트. 방 UI 언어와 분리(안 고르면 STT 오인식+번역 스킵). */}
+            <select
+              value={sourceLanguage}
+              onChange={(e) => setSourceLanguage(e.currentTarget.value as DubLang)}
+              aria-label={t('dub.sourceLanguageLabel')}
+              className="rounded-lg border border-stage-border bg-stage-base px-2 py-2 text-sm text-stage-text"
+            >
+              <option value="ja">{t('dub.lang_ja')}</option>
+              <option value="en">{t('dub.lang_en')}</option>
+              <option value="ko">{t('dub.lang_ko')}</option>
+            </select>
             <button
               disabled={!file || busy}
               onClick={() => run(async () => {
                 const path = await uploadDubSource(token!, roomId, file!)
-                await createDubSession(token!, roomId, path)
+                await createDubSession(token!, roomId, path, sourceLanguage)
                 // G-261: 더빙 세션 개시 = 방 모드 'dub'(서버 broadcast → 전원 탭 전환+배너). best-effort.
                 void setRoomMode(token!, roomId, 'dub').catch(() => {})
               })}
