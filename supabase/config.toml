@@ -364,6 +364,11 @@ verify_jwt = false
 [functions.livekit-webhook]
 verify_jwt = false
 
+# reap-stale-rooms 는 pg_cron(net.http_post)이 호출 — Supabase gotrue JWT 가 아니라 service key 를
+# bearer 로 보낸다. 플랫폼 JWT 검증을 끄고 함수 내부에서 bearer==SERVICE_ROLE_KEY 대조(랜덤 호출 401).
+[functions.reap-stale-rooms]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
