@@ -13,6 +13,7 @@ import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
 import { startBgm, stopBgm } from '@/lib/sound'
 import { useStageStore } from '@/stores/stageStore'
+import { useDubStore } from '@/stores/dubStore'
 import { useVgenStore } from '@/stores/vgenStore'
 import { resolveAvatarUrl } from '@/lib/avatars'
 import { useInterior } from '@/pages/lobby/useInterior'
@@ -25,6 +26,7 @@ import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import DubPanel from '@/features/dub/DubPanel'
 import VgenStatusTab from '@/features/vgen/VgenStatusTab'
 import ScriptPanel from '@/features/script/ScriptPanel'
+import DubScriptPanel from '@/features/dub/DubScriptPanel'
 import { supabase } from '@/lib/supabase'
 import ChatPanel from '@/features/chat/ChatPanel'
 import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
@@ -54,6 +56,8 @@ export default function RoomPage() {
   const session = useUserStore((s) => s.session)
   const myAvatarUrl = useUserStore((s) => s.avatarUrl)
   const appUserId = useUserStore((s) => s.appUserId)
+  // DUB-UX: 더빙 활성 여부(좌도크가 더빙 대본↔연기 대본 전환) — 조기 return 이전 최상위 훅.
+  const dubActive = useDubStore((s) => !!s.activeSessionId)
   const hostId = useRoomStore((s) => s.hostId)
   const myIdentity = session?.user?.id ?? '' // LiveKit identity = auth uid
   const joinBackdrop = useInterior('rooms')?.hero // 조인 대기 백드롭 — 분장실과 같은 대극장 원화(시각 연속)
@@ -818,9 +822,12 @@ export default function RoomPage() {
   const roomTags = roomGenre ? [roomGenre] : []
 
   // 좌도크: 대본 텔레프롬프터(연결 후, ROOM-14/06) — 세션정보 카드는 상단바 중복이라 제거(2026-07-13).
+  // DUB-UX: 더빙 활성 시 연기 대본 대신 더빙 대본(센터 영상과 동기 하이라이트)을 건다(dubActive 는 상단 훅).
   const leftDockContent = (
     <div className="flex flex-col gap-3">
-      {connected && (
+      {connected && (dubActive ? (
+        <DubScriptPanel />
+      ) : (
         <ScriptPanel
           script={scriptSync.script}
           cueIndex={scriptSync.cueIndex}
@@ -837,7 +844,7 @@ export default function RoomPage() {
           onToggleMode={scriptSync.toggleScriptMode}
           onAdvance={scriptSync.advanceCue}
         />
-      )}
+      ))}
     </div>
   )
 

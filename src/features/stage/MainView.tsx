@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStageStore } from '@/stores/stageStore'
+import { useDubStore } from '@/stores/dubStore'
 import {
   publishVodSync,
   setVodSyncApplier,
@@ -20,6 +21,14 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
   const url = useStageStore((s) => s.mainVideoUrl)
   const clear = useStageStore((s) => s.clearMainVideo)
   const backgroundUrl = useStageStore((s) => s.backgroundUrl)
+  // DUB-UX: 더빙 활성 시 센터에 소스 영상 + 현재 대사 자막(원음 음소거·타임라인은 vgen 과 동일 vodSync).
+  //   dubUrl 이 vgen 공유영상보다 우선(더빙 중엔 소스가 센터의 주인공).
+  const dubUrl = useDubStore((s) => s.sourceUrl)
+  const dubSegments = useDubStore((s) => s.segments)
+  const setDubSegment = useDubStore((s) => s.setCurrentSegment)
+  const isDub = !!dubUrl
+  const centerUrl = dubUrl ?? url
+  const [subtitle, setSubtitle] = useState('')
   const videoRef = useRef<HTMLVideoElement>(null)
   const [rate, setRate] = useState(1) // 호스트 배속 칩 활성 표시용(진실은 video.playbackRate)
 
@@ -27,7 +36,7 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
   // 비호스트 controls 는 유지(스크럽해도 다음 호스트 이벤트·5s 하트비트에서 ±200ms 로 복귀 — 계약 §Scrubber 편차).
   useEffect(() => {
     const v = videoRef.current
-    if (!url || !v) return
+    if (!centerUrl || !v) return
     if (isHost) {
       const read = (): VodSyncState => ({ positionMs: v.currentTime * 1000, playing: !v.paused && !v.ended, atMs: Date.now(), rate: v.playbackRate })
       setVodSyncReader(read)
@@ -59,9 +68,9 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
       else if (!s.playing && !v.paused) v.pause()
     })
     return () => setVodSyncApplier(null)
-  }, [url, isHost])
+  }, [centerUrl, isHost])
 
-  if (!url) {
+  if (!centerUrl) {
     // 씬 설정 시(방장 선택) 무대 전체 배경이 씬을 담당 → 센터는 투명(중복 제거·불꽃이 비침). 공유 시 이 자리에 영상.
     if (backgroundUrl) return <div className="col-start-2 row-start-2" aria-hidden />
     return (
@@ -82,13 +91,35 @@ export default function MainView({ isHost, onStop }: { isHost: boolean; onStop: 
   return (
     <div
       className="relative col-start-2 row-start-2 overflow-hidden rounded-lg border border-stage-border bg-black"
-      aria-label={t('stage.sharedVideo')}
+      aria-label={isDub ? t('dub.centerLabel') : t('stage.sharedVideo')}
     >
-      {/* 각 클라가 종료 시 자기 화면만 정리 → 15s 타이머 없이 자동 해제(짧은 클립이라 뷰어 간 편차 무시) */}
-      <video ref={videoRef} src={url} autoPlay controls onEnded={clear} className="h-full w-full object-contain">
+      {/* 각 클라가 종료 시 자기 화면만 정리(vgen) → 15s 타이머 없이 자동 해제. 더빙은 참조영상이라 onEnded 무동작. */}
+      <video
+        ref={videoRef}
+        src={centerUrl}
+        autoPlay
+        controls
+        muted={isDub}
+        onEnded={isDub ? undefined : clear}
+        onTimeUpdate={isDub ? () => {
+          const v = videoRef.current
+          if (!v) return
+          const ms = v.currentTime * 1000
+          const seg = dubSegments.find((s) => ms >= s.start_ms && ms < s.end_ms)
+          setSubtitle(seg ? (seg.translated_text || seg.text) : '')
+          setDubSegment(seg ? seg.id : null)
+        } : undefined}
+        className="h-full w-full object-contain"
+      >
         <track kind="captions" />
       </video>
-      {isHost && (
+      {/* DUB-UX: 현재 세그먼트 자막(번역 우선) — 무대 센터에서 전원이 같은 줄을 본다. */}
+      {isDub && subtitle && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-10 flex justify-center px-4">
+          <span className="rounded bg-black/70 px-3 py-1 text-center text-sm font-medium text-white sm:text-base">{subtitle}</span>
+        </div>
+      )}
+      {isHost && !isDub && (
         <div className="absolute right-1 top-1 flex items-center gap-1">
           {/* 배속 3단(U-3) — 클릭은 playbackRate 설정만, 발행은 ratechange 리스너가(단일 경로) */}
           {VOD_RATES.map((r) => (
