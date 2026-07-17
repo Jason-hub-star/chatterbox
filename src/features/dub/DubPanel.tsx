@@ -326,18 +326,20 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
                       </button>
                     </span>
                   ) : (
-                    <span className="flex-1 truncate">
-                      {shownText}
+                    <>
+                      {/* ✏️ 를 truncate span 밖 shrink-0 로 — 긴 대사에도 편집 버튼이 안 잘리고 항상 보인다. */}
+                      <span className="flex-1 truncate">{shownText}</span>
                       {isHost && (
                         <button
                           onClick={() => setEditing({ segId: seg.id, value: shownText })}
                           aria-label={t('dub.segEditLabel')}
-                          className="ml-1 text-xs text-stage-text-muted hover:text-stage-text"
+                          title={t('dub.segEditLabel')}
+                          className="shrink-0 text-xs text-stage-text-muted hover:text-fire-amber"
                         >
                           ✏️
                         </button>
                       )}
-                    </span>
+                    </>
                   )}
                   {isHost && !isSolo ? (
                     <select

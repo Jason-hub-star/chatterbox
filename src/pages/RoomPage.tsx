@@ -827,7 +827,7 @@ export default function RoomPage() {
   const leftDockContent = (
     <div className="flex flex-col gap-3">
       {connected && (dubActive ? (
-        <DubScriptPanel />
+        <DubScriptPanel isHost={isHost} />
       ) : (
         <ScriptPanel
           script={scriptSync.script}
