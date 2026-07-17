@@ -10,11 +10,11 @@
 
 **판정:** 핵심 2개(마이크 실시간 피드백·영상 즉시반영)는 **중간 규모·전부 브라우저 내·ffmpeg 불필요**(미리보기는 재생, 최종 다운로드만 ffmpeg). "실제 멀티트랙 영상 편집기(파형 드래그·트림)"만 **대설계**로 범위 밖(별도 goal). Phase 2 로 이미 센터 MainView에 원본영상+자막·현재 세그먼트 하이라이트가 들어가 있어 "메인뷰 영상" 토대는 완성.
 
-## 1. Outcome (이진 판정)
-- **P1 마이크 실시간 시각화**: 녹음 중 마이크 입력 레벨미터(또는 파형)가 실시간으로 움직인다(입력 있으면 값 변화·무음이면 바닥). "마이크가 잡히는지" 즉시 확인.
-- **P2 녹음 직후 즉시 미리보기**: 한 세그먼트 녹음을 마치면 그 구간의 원본 영상(원음 뮤트)에 방금 녹음한 오디오가 동기 재생되어 "내 더빙이 영상에 붙은" 결과를 바로 본다.
-- **P3 누적 더빙 미리보기**: "지금까지 더빙 ▶" — 원본 영상(원음 뮤트) 위에 지금까지 synced/submitted 된 모든 트랙을 각자 start_ms(+calibration) offset 에 배치해 동시 재생. 녹음이 쌓일수록 완성본에 근접(ffmpeg 없이).
-- **P4 SSOT 갭(선택·여력 시)**: "내 차례" 배너(현재 재생위치가 내 트랙 구간이면 표시) + ±200ms 캘리브레이션 슬라이더(스키마 `dub_tracks.calibration_offset_ms` 이미 존재).
+## 1. Outcome (이진 판정) — 2026-07-17 주인님 결정 4건 반영
+- **P1 마이크 실시간 시각화**: 녹음 중 마이크 입력 레벨미터가 실시간으로 움직인다(입력 있으면 값 변화·무음 지속 시 경고). "마이크가 잡히는지" 즉시 확인.
+- **P2 녹음 로컬모드 + 즉시 미리보기** *(결정: 영상 보면서 녹음)*: 녹음 시작 → 센터 MainView 영상이 해당 세그먼트 시작점으로 이동해 음소거 재생(내 화면만 — vodSync 일시 해제 "로컬 모드"), 구간 끝 도달 시 정지 유도. 정지 즉시 같은 로컬 창에서 방금 녹음한 오디오+영상이 자동 동기 재생 → 제출/재녹음 후 동기 복귀.
+- **P3 누적 더빙 시사회** *(결정: 센터 공유 재생 — 전원이 같이 봄 + 멤버 게이트 완화)*: 호스트가 "지금까지 더빙 ▶" → vodSync 공유 타임라인으로 방 전원의 센터 영상이 재생되고, **각 멤버의 브라우저가** `get-dub-recordings`(게이트: 호스트→방 활성 멤버, 대상: synced→submitted+synced 로 완화·재배포)로 트랙 오디오를 받아 각자 start_ms(+calibration) 에 스케줄해 얹는다. 개인 미리보기가 아니라 다같이 시사회.
+- **P4 SSOT 갭** *(결정: 이번 루프에 포함)*: "내 차례" 배너(현재 재생위치가 내 트랙 구간이면 표시) + ±200ms 캘리브레이션 슬라이더(스키마 `dub_tracks.calibration_offset_ms` 이미 존재 — 저장 경로만 소형 Edge 확장).
 - 각 기능이 헤드리스 실렌더로 동작(아래 §2).
 
 ## 2. Verification surface
@@ -34,8 +34,8 @@
 - i18n(en/ja/ko 완역)·반응형 게이트 준수.
 
 ## 4. Boundaries
-- 허용: `src/features/dub/*`(DubRecorder·DubPanel·신설 프리뷰 컴포넌트) · `src/stores/dubStore.ts` · `src/i18n/locales/*` · `src/lib/`(오디오 유틸 신설 가능).
-- 금지/범위 밖: **멀티트랙 영상 편집기**(파형 위 드래그·클립 트림·컷) = 별도 대설계 goal. 서버/스키마 변경은 원칙적으로 없음(`calibration_offset_ms` 는 기존 컬럼 재사용 — 신규 마이그 0). 화자 자동분리·서버합성 무관.
+- 허용: `src/features/dub/*`(DubRecorder·DubPanel·신설 프리뷰 컴포넌트) · `src/stores/dubStore.ts` · `src/features/stage/MainView.tsx`(로컬모드·시사회 배선) · `src/i18n/locales/*` · `src/lib/`(오디오 유틸 신설 가능) · **Edge 소형 변경 2건 허용(주인님 승인 2026-07-17)**: `get-dub-recordings` 게이트 완화(멤버+submitted) · 캘리브레이션 저장 경로.
+- 금지/범위 밖: **멀티트랙 영상 편집기**(파형 위 드래그·클립 트림·컷) = 별도 대설계 goal. 신규 마이그 0(`calibration_offset_ms` 는 기존 컬럼 재사용). 화자 자동분리·서버합성 무관.
 
 ## 5. Iteration policy
 - Phase 순서: P1(레벨미터) → P2(녹음후 즉시 미리보기) → P3(누적 미리보기) → P4(내 차례 배너·캘리브레이션, 여력 시).
@@ -90,6 +90,13 @@ async function playPreview(video, tracks /* {buffer, startMs, calMs} */) {
 
 ## 7. 실행 기록 (실행 에이전트가 기록)
 - 2026-07-17 설계(메인/Opus): 브리프 작성 + 웹 레퍼런스 조사(§8). 구현 미착수 — 주인님이 "설계문서만" 선택. 다음: 승인 후 P1부터 phase-loop.
+- 2026-07-17 설계 확정(주인님 결정 4건): ①미리보기 무대=센터 공유 재생(전원 시사회, 개인 미리보기는 녹음 로컬모드에 한정) ②녹음 중 센터 영상 구간 자동재생(음소거·로컬모드) ③P3 접근=방 멤버 전체+submitted 포함(get-dub-recordings 게이트 완화·재배포) ④P4까지 완주. phase-loop 착수.
+- 2026-07-17 **P1 PASS**: MicLevelMeter(AnalyserNode·destination 미연결·무음 2.5s 경고) DubRecorder 배선 + i18n 3로케일. `check:all` exit 0(159/159·drift 0) + 헤드리스 실렌더 2종 — 비프 wav: 미터 max 91/100·distinct 9·경고 없음 / 무음 wav: level 0·경고 표시. 중지→미리보기 UI 등장(정리 경로 무크래시). 스크린샷 육안 확인(g9-p1-tone.png).
+- 2026-07-17 **P2 PASS**: dubStore.localMode + lib/dubPreview.ts(AudioBufferSourceNode 스케줄·버퍼 캐시·DEV 훅) + MainView(로컬모드 진입/복귀·vodSync 발행/수신/하트비트 3중 게이트·REC/미리보기 배지·구간끝 정지) + DubRecorder(startRec(track)→record 모드, stop→preview 자동재생, submit→해제). `check:all` exit 0 + 헤드리스 12어서션 전부 ok — 시크 4.34s≈3680ms·구간끝 정지·중지 즉시 재시크+스케줄 {scheduled:1, running}·제출 후 위치 복원·트랙 submitted 실측. 스크린샷 육안(g9-p2-preview.png).
+- 2026-07-17 **P3 PASS**: get-dub-recordings 게이트 완화(호스트→활성멤버·synced→submitted+synced·calibration 동봉) **배포 v13(14:47 실측)** + dubStore.screening + SEC-RA-1 HOST_CLIENT_TYPES 에 dub_screening(호스트 identity 게이트 상속) + RoomPage 발행/수신 + MainView 시사회 스케줄·토글·배지 + 녹음 진입 시 시사회 이탈. `check:all` exit 0·deno check clean. 실증 — API: 호스트 200(submitted 포함)·멤버 200(calibration 필드)·비멤버 403 / 2탭: 호스트 토글→양쪽 배지+{scheduled:1,running}·B 위치 추종(1.7s↔1.6s)·중지→양쪽 해제·멤버에 토글 버튼 비노출. 스크린샷 육안(g9-p3-memberB.png). 알려진 한계(주석 명시): 늦은 입장자는 신호 미수신 — 호스트 재토글로 합류.
+- 2026-07-17 **P4 PASS**: MainView 내차례 배너(dubStore.myTurnRanges — DubPanel 이 내 미제출 트랙 구간 파생) + DubRecorder ±200ms 슬라이더·[다시 미리보기](localMode.calMs 재재생)·제출 시 calibration 전송 + submit-dub-track 서버 클램프 ±200 **배포 v10(14:56 실측)** + DubCompositor 합성 cue 에 cal 동일 적용(미리보기=완성본 싱크 일치, adelay 0 클램프). `check:all` exit 0·deno clean. 실증 5/5 — 배너: 미제출 구간 표시·제출 구간 비표시·다음 미제출 구간 재표시 / 캘리브레이션: 재미리보기 cals=[200] 훅 실측·제출 후 DB calibration_offset_ms=200. 스크린샷 육안(g9-p4-cal.png). (첫 실행 1회 flake = 하네스 고정 4s 대기 — 폴링으로 견고화, 제품 결함 아님. create-room 429 는 테스트 계정 교체로 우회.)
+- **완료 판정(2026-07-17)**: 재현됨 — P1~P4 전부(§2 검증 표면 그대로: check:all + 헤드리스 가짜마이크 실렌더 + 프로드 Edge 2종 배포 실측). 근사 — 비호스트 시사회 오디오는 자기 시계 스케줄(영상만 vodSync 보정, seek 시 오디오 미추종·±200ms 허용오차 내). 막힘 — 없음. 남은 불확실 — 늦은 입장자 시사회 하트비트(후속).
+- 2026-07-18 **bepo 완료**: 프리플라이트 check:all exit 0 → CF Pages `--branch main` 배포(함정 재확인: branch 누락 시 프리뷰만 갱신·별칭 MISMATCH) → 별칭 `index-DpVmQqc7.js` **로컬 dist byte-identical**·curl root/asset/deep 200·번들 시크릿 6종 clean·`__dubPreviewStats` 프로드 번들 0건(DEV 게이트 실증) → **배포판 스모크 8/8**(가짜마이크: 레벨미터 0→59 변동·REC 배지·구간 시크·재미리보기 배지·제출→DB submitted+cal=200(v10 경유)·배너 3게이트). create-room 429 는 테스트 계정 b 교체로 우회.
 
 ## 8. 참조 문서 / 레퍼런스
 - SSOT: `docs/contracts/DubRecorder.md`(메인뷰 레이아웃·MUST NOT) · `docs/state-machines/DubSession.md`(RECORDING) · `DATA-SCHEMA §1.13 dub_tracks`(calibration_offset_ms) · `docs/contracts/DubCompositor.md`(최종합성).

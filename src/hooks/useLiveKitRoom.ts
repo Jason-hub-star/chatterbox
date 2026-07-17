@@ -245,7 +245,7 @@ export function useLiveKitRoom(
           // (vod_sync/vgen_*)이고 발신자가 방 호스트일 때만 수락 — 나머지(promoted/mode_change/bg_change 등
           // 서버 전용)는 스푸핑으로 간주해 드롭. script-cue/reaction 과 동형(단 호스트 클라 발행은 예외 허용).
           if (participant) {
-            const HOST_CLIENT_TYPES = new Set(['vod_sync', 'vgen_result', 'vgen_stop'])
+            const HOST_CLIENT_TYPES = new Set(['vod_sync', 'vgen_result', 'vgen_stop', 'dub_screening'])
             if (!HOST_CLIENT_TYPES.has(data.type)) return
             if (!hostIdentityRef.current || participant.identity !== hostIdentityRef.current) return
           }

@@ -58,6 +58,7 @@ export default function RoomPage() {
   const appUserId = useUserStore((s) => s.appUserId)
   // DUB-UX: 더빙 활성 여부(좌도크가 더빙 대본↔연기 대본 전환) — 조기 return 이전 최상위 훅.
   const dubActive = useDubStore((s) => !!s.activeSessionId)
+  const dubScreening = useDubStore((s) => s.screening)
   const hostId = useRoomStore((s) => s.hostId)
   const myIdentity = session?.user?.id ?? '' // LiveKit identity = auth uid
   const joinBackdrop = useInterior('rooms')?.hero // 조인 대기 백드롭 — 분장실과 같은 대극장 원화(시각 연속)
@@ -260,7 +261,7 @@ export default function RoomPage() {
   // V-3 녹화: useRoomRecording 은 isHost(아래 파생) 뒤에 호출되므로 ref 브리지로 수신을 위임(TDZ 회피).
   const recAuthorityRef = useRef<((msg: { type: string; recording_id?: string; all_consented?: boolean }) => void) | null>(null)
   const recAudioRef = useRef<((track: MediaStreamTrack) => void) | null>(null)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; rate?: number; recording_id?: string; all_consented?: boolean; new_host_auth_id?: string; title?: string; genre?: string | null }) => {
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; rate?: number; recording_id?: string; all_consented?: boolean; new_host_auth_id?: string; title?: string; genre?: string | null; on?: boolean }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
@@ -289,6 +290,11 @@ export default function RoomPage() {
         const rate = typeof msg.rate === 'number' && Number.isFinite(msg.rate) && msg.rate > 0 && msg.rate <= 4 ? msg.rate : 1
         applyVodSync({ positionMs: msg.position_ms, playing: msg.playing === true, atMs: msg.at_ms, rate })
       }
+    }
+    else if (msg.type === 'dub_screening') {
+      // G9-P3 누적 시사회: SEC-RA-1 게이트(HOST_CLIENT_TYPES + 발신자=호스트 identity) 통과분만 도달.
+      // 각 클라가 자기 브라우저에서 get-dub-recordings(멤버 게이트)로 트랙을 받아 스케줄(MainView).
+      useDubStore.getState().setScreening(msg.on === true)
     }
     else if (msg.type === 'mode_change') {
       // G-261: 서버(set-room-mode) broadcast. 배너 표출+탭 자동전환은 stageStore 구독측(ModeBanner·RightPanel).
@@ -486,6 +492,15 @@ export default function RoomPage() {
       clearInterval(id)
     }
   }, [isHost, sendRoomAuthority])
+
+  // G9-P3: 호스트 시사회 토글(MainView 버튼 → dubStore) → 방 전체 broadcast(publishData 는 자기 echo 없음).
+  // 초회 마운트(off)는 발행 생략. 늦은 입장자는 신호를 못 받음 — 호스트 재토글로 합류(ponytail, 하트비트는 후속).
+  const screeningPrevRef = useRef(false)
+  useEffect(() => {
+    if (!isHost || screeningPrevRef.current === dubScreening) return
+    screeningPrevRef.current = dubScreening
+    void sendRoomAuthority({ type: 'dub_screening', on: dubScreening })
+  }, [isHost, dubScreening, sendRoomAuthority])
   // 대본 진행·역할 클레임·모드 전환은 useScriptSync 소유(R-커밋) — ScriptPanel 배선은 아래 leftDock.
 
   // 우측 패널 탭(주입식 블록): 채팅·DUB·VGen. 각 탭은 자족적 컴포넌트 — 셸은 전환만 담당.

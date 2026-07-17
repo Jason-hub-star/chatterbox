@@ -99,10 +99,10 @@ export async function uploadDubRecording(accessToken: string, dubTrackId: string
   return path
 }
 
-export const submitDubTrack = (accessToken: string, dubTrackId: string, recordingPath: string, durationMs: number) =>
+export const submitDubTrack = (accessToken: string, dubTrackId: string, recordingPath: string, durationMs: number, calibrationMs = 0) =>
   callFn<{ track_id: string; status: string }>(
     'submit-dub-track', accessToken,
-    { dub_track_id: dubTrackId, recording_path: recordingPath, duration_ms: durationMs },
+    { dub_track_id: dubTrackId, recording_path: recordingPath, duration_ms: durationMs, calibration_offset_ms: calibrationMs },
   )
 
 export const confirmDubTrack = (accessToken: string, dubTrackId: string) =>
@@ -111,7 +111,7 @@ export const confirmDubTrack = (accessToken: string, dubTrackId: string) =>
   )
 
 // ── 합성(DUB-05, 원본 재더빙) ───────────────────────────────────────
-export interface DubRecordingUrl { trackId: string; startTimeMs: number; url: string }
+export interface DubRecordingUrl { trackId: string; startTimeMs: number; calibrationOffsetMs: number; url: string }
 export interface DubOutput { url: string; fileSizeBytes: number | null; durationMs: number | null }
 
 // 음원분리(G-280): 원어 대사(vocals) 제거 → 비보컬 배경 스템 URL. 합성 중간에 호스트가 호출.
@@ -151,9 +151,11 @@ export const getDubOutputUrl = (accessToken: string, dubSessionId: string) =>
 
 export async function fetchDubRecordings(accessToken: string, dubSessionId: string): Promise<DubRecordingUrl[]> {
   const { recordings } = await callFn<{
-    recordings: Array<{ track_id: string; start_time_ms: number; url: string }>
+    recordings: Array<{ track_id: string; start_time_ms: number; calibration_offset_ms?: number; url: string }>
   }>('get-dub-recordings', accessToken, { dub_session_id: dubSessionId })
-  return recordings.map((r) => ({ trackId: r.track_id, startTimeMs: r.start_time_ms, url: r.url }))
+  return recordings.map((r) => ({
+    trackId: r.track_id, startTimeMs: r.start_time_ms, calibrationOffsetMs: r.calibration_offset_ms ?? 0, url: r.url,
+  }))
 }
 
 // 완료 세션 재로드 시 완성본 존재 확인(RLS: member SELECT).

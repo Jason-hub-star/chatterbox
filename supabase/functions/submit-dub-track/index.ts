@@ -1,6 +1,6 @@
 // submit-dub-track: 참가자 녹음 제출 (트랙 소유자 전용).
 // SSOT: docs/state-machines/DubSession.md (RECORDING: dub_tracks assigned→submitted), DubRecorder.md §5
-// 입력: { dub_track_id, recording_path, duration_ms }  출력: { track_id, status }
+// 입력: { dub_track_id, recording_path, duration_ms, calibration_offset_ms? (±200 클램프) }  출력: { track_id, status }
 //
 // recording_url 은 R2/Storage object key 만 저장(공개 URL 금지) — 재생 시 signed URL 발급.
 // 호스트 확인 후 confirm-dub-track 으로 'synced' 승격.
@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 
-  let body: { dub_track_id?: unknown; recording_path?: unknown; duration_ms?: unknown };
+  let body: { dub_track_id?: unknown; recording_path?: unknown; duration_ms?: unknown; calibration_offset_ms?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -25,6 +25,10 @@ Deno.serve(async (req) => {
   const recordingPath = typeof body.recording_path === "string" ? body.recording_path : "";
   if (!recordingPath.includes("/recordings/")) return json({ error: "Invalid recording_path" }, 400);
   const durationMs = Number.isInteger(body.duration_ms) ? (body.duration_ms as number) : null;
+  // G9-P4 캘리브레이션(DubRecorder.md ±200ms) — 미리보기로 맞춘 오프셋을 합성에도 동일 적용
+  const calibrationMs = Number.isInteger(body.calibration_offset_ms)
+    ? Math.max(-200, Math.min(200, body.calibration_offset_ms as number))
+    : 0;
 
   const { data: track } = await service
     .from("dub_tracks")
@@ -42,7 +46,7 @@ Deno.serve(async (req) => {
 
   const { error } = await service
     .from("dub_tracks")
-    .update({ recording_url: recordingPath, recording_duration_ms: durationMs, status: "submitted" })
+    .update({ recording_url: recordingPath, recording_duration_ms: durationMs, calibration_offset_ms: calibrationMs, status: "submitted" })
     .eq("id", track.id);
   if (error) return json({ error: "제출 실패", detail: error.message }, 500);
 

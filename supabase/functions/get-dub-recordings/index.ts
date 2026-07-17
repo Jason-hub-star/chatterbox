@@ -1,8 +1,11 @@
-// get-dub-recordings: 세션의 synced 트랙 녹음들 signed URL 일괄 발급(방 멤버 — 호스트가 합성용 다운로드).
-// SSOT: docs/contracts/DubCompositor.md §3 (합성 입력), get-dub-source-url 패턴
-// 입력: { dub_session_id }  출력: { recordings: [{ track_id, start_time_ms, url }] }
+// get-dub-recordings: 세션의 트랙 녹음들 signed URL 일괄 발급(방 활성 멤버).
+// 용도 2: 호스트 합성 다운로드(DubCompositor §3) + 누적 시사회(G9-P3 — 각 멤버가 자기 브라우저에서 스케줄 재생).
+// 게이트: 호스트 전용 → 방 활성 멤버로 완화(주인님 승인 2026-07-17 — 더빙 멤버는 동의한 협업자,
+//   대상도 synced → submitted+synced 포함해 제출 직후 트랙이 시사회에 바로 반영).
+// SSOT: docs/contracts/DubCompositor.md §3, get-dub-source-url 패턴
+// 입력: { dub_session_id }  출력: { recordings: [{ track_id, start_time_ms, calibration_offset_ms, url }] }
 
-import { cors, json, getAppUser, isUuid, isRoomHost } from "../_shared/supa.ts";
+import { cors, json, getAppUser, isUuid, isActiveParticipant } from "../_shared/supa.ts";
 import { presignGet } from "../_shared/r2.ts";
 
 const TTL_SEC = 3600;
@@ -30,26 +33,30 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!sess) return json({ error: "세션을 찾을 수 없어요." }, 404);
 
-  // 호스트만(SEC-DUB-1·DubCompositor §1) — 합성용 전체 트랙 다운로드는 호스트 전용. 종료방도 허용(합성 후처리).
-  // 호스트는 강퇴 불가라 kick 우회 무관(isActiveParticipant 보다 좁은 게이트).
-  if (!(await isRoomHost(service, sess.room_id, userId))) {
-    return json({ error: "호스트만 내려받을 수 있어요." }, 403);
+  // 방 활성 멤버(강퇴자 제외) — 시사회는 방 구성원 전원의 경험, 합성 다운로드(호스트)도 포함 게이트.
+  if (!(await isActiveParticipant(service, sess.room_id, userId))) {
+    return json({ error: "더빙 방 참가자만 내려받을 수 있어요." }, 403);
   }
 
   const { data: tracks } = await service
     .from("dub_tracks")
-    .select("id, start_time_ms, recording_url, status")
+    .select("id, start_time_ms, calibration_offset_ms, recording_url, status")
     .eq("dub_session_id", body.dub_session_id)
-    .eq("status", "synced")
+    .in("status", ["submitted", "synced"])
     .order("start_time_ms", { ascending: true });
 
-  const recordings: Array<{ track_id: string; start_time_ms: number; url: string }> = [];
+  const recordings: Array<{ track_id: string; start_time_ms: number; calibration_offset_ms: number; url: string }> = [];
   // presignGet 은 로컬 HMAC 계산이라 실패=전역 설정 문제 → skip(은폐) 대신 전파.
   // 부분 발급으로 합성 입력(트랙)이 조용히 누락되는 걸 막는다.
   for (const t of tracks ?? []) {
     if (!t.recording_url) continue;
     const url = await presignGet(t.recording_url, TTL_SEC);
-    recordings.push({ track_id: t.id, start_time_ms: t.start_time_ms, url });
+    recordings.push({
+      track_id: t.id,
+      start_time_ms: t.start_time_ms,
+      calibration_offset_ms: (t.calibration_offset_ms as number | null) ?? 0,
+      url,
+    });
   }
 
   return json({ recordings }, 200);

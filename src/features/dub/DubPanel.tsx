@@ -80,6 +80,17 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   // 방 이탈(언마운트) 시 더빙 공유상태 초기화 — 다른 방으로 잔상 누출 방지.
   useEffect(() => () => useDubStore.getState().clear(), [])
 
+  // G9-P4: 내 미제출(assigned/recording) 트랙 구간 → dubStore(센터 "내 차례" 배너 재료)
+  useEffect(() => {
+    useDubStore.getState().setMyTurnRanges(
+      myId
+        ? tracks
+          .filter((tr) => tr.participantId === myId && (tr.status === 'assigned' || tr.status === 'recording'))
+          .map((tr) => ({ startMs: tr.startTimeMs, endMs: tr.endTimeMs }))
+        : [],
+    )
+  }, [tracks, myId])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {

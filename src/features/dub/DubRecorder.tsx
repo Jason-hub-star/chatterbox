@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
+import { useDubStore } from '@/stores/dubStore'
 import {
   getDubSourceUrl, uploadDubRecording, submitDubTrack, confirmDubTrack,
   type DubTrack, type RoomMember,
@@ -14,6 +15,62 @@ const MIME = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
 function pickMime(): string {
   for (const m of MIME) if (MediaRecorder.isTypeSupported(m)) return m
   return 'audio/webm'
+}
+
+// G9-P1: 녹음 중 마이크 입력 실시간 레벨미터 — "녹음이 되고 있는지" 즉시 체감.
+// AnalyserNode 는 destination 에 연결하지 않는다(모니터 아웃 = 하울링, GOAL-dub-recording-tangible §3).
+const SILENT_AFTER_MS = 2500
+const SILENT_PEAK = 0.02
+
+function MicLevelMeter({ stream }: { stream: MediaStream }) {
+  const { t } = useTranslation()
+  const [level, setLevel] = useState(0)
+  const [silent, setSilent] = useState(false)
+
+  useEffect(() => {
+    const ctx = new AudioContext()
+    const analyser = ctx.createAnalyser()
+    analyser.fftSize = 2048
+    const buf = new Uint8Array(analyser.frequencyBinCount) // 1회 생성·재사용
+    const src = ctx.createMediaStreamSource(stream)
+    src.connect(analyser)
+    const startedAt = performance.now()
+    let peak = 0
+    let display = 0
+    let raf = requestAnimationFrame(function tick() {
+      raf = requestAnimationFrame(tick)
+      analyser.getByteTimeDomainData(buf)
+      let max = 0
+      for (const v of buf) { const d = Math.abs(v - 128); if (d > max) max = d }
+      const lvl = max / 128 // 128=무음 기준, 편차=입력 세기
+      peak = Math.max(peak, lvl)
+      display = Math.max(lvl, display * 0.85) // 시각 감쇠
+      setLevel(display)
+      setSilent(performance.now() - startedAt > SILENT_AFTER_MS && peak < SILENT_PEAK)
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      src.disconnect()
+      void ctx.close()
+    }
+  }, [stream])
+
+  return (
+    <div className="flex min-w-28 flex-1 items-center gap-2">
+      <div
+        role="meter" aria-valuemin={0} aria-valuemax={100}
+        aria-valuenow={Math.min(100, Math.round(level * 100))}
+        aria-label={t('dub.micLevelLabel')}
+        className="h-2 min-w-16 flex-1 overflow-hidden rounded-full bg-stage-border"
+      >
+        <div
+          className={`h-full rounded-full ${silent ? 'bg-fire-hot' : 'bg-fire-amber'}`}
+          style={{ width: `${Math.min(100, Math.round(level * 100))}%` }}
+        />
+      </div>
+      {silent && <span className="shrink-0 text-xs text-fire-hot" role="status">{t('dub.micSilentHint')}</span>}
+    </div>
+  )
 }
 
 interface Props {
@@ -44,6 +101,8 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showTranslation, setShowTranslation] = useState(false)
+  const [micStream, setMicStream] = useState<MediaStream | null>(null)
+  const [calMs, setCalMs] = useState(0) // G9-P4 ±200ms 캘리브레이션(테이크마다 0 리셋)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -72,9 +131,13 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
     if (preview) URL.revokeObjectURL(preview.url)
   }, [preview])
 
-  const startRec = useCallback(async (trackId: string) => {
+  // 언마운트 시 로컬모드 해제 — 센터를 잔존 record/preview 상태로 두지 않는다(G9-P2)
+  useEffect(() => () => { useDubStore.getState().setLocalMode(null) }, [])
+
+  const startRec = useCallback(async (track: DubTrack) => {
     if (isRecording) return
     setError(null)
+    setCalMs(0)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
@@ -88,13 +151,29 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
         const durationMs = Math.round(performance.now() - startedAtRef.current)
         stream.getTracks().forEach((t) => t.stop())
         streamRef.current = null
-        setPreview({ trackId, url: URL.createObjectURL(blob), blob, durationMs })
+        setMicStream(null)
+        const url = URL.createObjectURL(blob)
+        setPreview({ trackId: track.id, url, blob, durationMs })
         setRecordingTrackId(null)
+        // G9-P2: 정지 즉시 센터에서 방금 녹음 자동 미리보기(녹음이 구간보다 길면 그만큼 연장)
+        useDubStore.getState().setLocalMode({
+          kind: 'preview',
+          startMs: track.startTimeMs,
+          endMs: Math.max(track.endTimeMs, track.startTimeMs + durationMs),
+          audioUrl: url,
+        })
       })
       startedAtRef.current = performance.now()
       recorderRef.current = rec
-      setRecordingTrackId(trackId)
+      setRecordingTrackId(track.id)
+      setMicStream(stream)
       rec.start()
+      // G9-P2: 녹음 시작 → 센터 영상이 이 구간을 음소거 재생(내 화면만 — MainView 가 vodSync 일시 해제).
+      // ponytail: 시크 완료와 녹음 시작 사이 수백 ms 오차 가능 — P4 캘리브레이션(±200ms)이 보정 경로.
+      if (useDubStore.getState().screening) useDubStore.getState().setScreening(false) // 시사회 오디오와 겹침 방지(호스트면 전원 종료 broadcast)
+      useDubStore.getState().setLocalMode({
+        kind: 'record', startMs: track.startTimeMs, endMs: track.endTimeMs, audioUrl: null,
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : t('dub.micAccessError'))
     }
@@ -107,14 +186,29 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
     setBusy(true); setError(null)
     try {
       const path = await uploadDubRecording(token, preview.trackId, preview.blob)
-      await submitDubTrack(token, preview.trackId, path, preview.durationMs)
+      await submitDubTrack(token, preview.trackId, path, preview.durationMs, calMs)
+      useDubStore.getState().setLocalMode(null) // 제출 → 로컬모드 해제(동기 복귀), objectURL 소멸 전에
       URL.revokeObjectURL(preview.url)
       setPreview(null)
       await onChanged()
     } catch (e) {
       setError(e instanceof Error ? e.message : t('dub.submitError'))
     } finally { setBusy(false) }
-  }, [token, preview, onChanged, t])
+  }, [token, preview, calMs, onChanged, t])
+
+  // G9-P4: 보정 슬라이더 반영해 센터 미리보기 재재생(오디오를 calMs 만큼 이동)
+  const replayPreview = useCallback(() => {
+    if (!preview) return
+    const track = tracks.find((tr) => tr.id === preview.trackId)
+    if (!track) return
+    useDubStore.getState().setLocalMode({
+      kind: 'preview',
+      startMs: track.startTimeMs,
+      endMs: Math.max(track.endTimeMs, track.startTimeMs + preview.durationMs + Math.max(0, calMs)),
+      audioUrl: preview.url,
+      calMs,
+    })
+  }, [preview, tracks, calMs])
 
   const confirm = useCallback(async (trackId: string) => {
     if (!token) return
@@ -170,12 +264,15 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
               {mine && track.status !== 'synced' && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   {recordingTrackId === track.id ? (
-                    <button onClick={stopRec}
-                      className="rounded-lg bg-fire-hot px-3 py-1.5 text-xs font-semibold text-stage-base">
-                      {t('dub.stopButton')}
-                    </button>
+                    <>
+                      <button onClick={stopRec}
+                        className="rounded-lg bg-fire-hot px-3 py-1.5 text-xs font-semibold text-stage-base">
+                        {t('dub.stopButton')}
+                      </button>
+                      {micStream && <MicLevelMeter stream={micStream} />}
+                    </>
                   ) : (
-                    <button onClick={() => startRec(track.id)} disabled={isRecording || busy}
+                    <button onClick={() => startRec(track)} disabled={isRecording || busy}
                       className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
                       {t('dub.recordButton')}
                     </button>
@@ -185,6 +282,20 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
                       <audio src={preview.url} controls className="h-8">
                         <track kind="captions" />
                       </audio>
+                      {/* G9-P4 캘리브레이션 — 미리보기로 맞추고 제출하면 합성에도 동일 적용 */}
+                      <label className="flex items-center gap-1 text-xs text-stage-text-muted">
+                        {t('dub.calibrationLabel')}
+                        <input
+                          type="range" min={-200} max={200} step={10} value={calMs}
+                          onChange={(e) => setCalMs(Number(e.target.value))}
+                          className="w-24 accent-fire-amber"
+                        />
+                        <span className="w-14 text-right tabular-nums">{calMs > 0 ? `+${calMs}` : calMs}ms</span>
+                      </label>
+                      <button onClick={replayPreview} disabled={busy}
+                        className="rounded-lg border border-stage-border px-3 py-1.5 text-xs hover:bg-stage-border/30 disabled:opacity-40">
+                        {t('dub.replayPreview')}
+                      </button>
                       <button onClick={submit} disabled={busy}
                         className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
                         {busy ? t('dub.submitLoading') : t('dub.submitButton')}
