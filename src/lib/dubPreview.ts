@@ -32,13 +32,19 @@ async function decode(ctx: AudioContext, url: string): Promise<AudioBuffer> {
 
 // video 를 fromMs 로 시크·재생하고, 각 트랙을 영상 타임라인에 맞춰 스케줄한다.
 // 이미 지난 트랙은 offset 으로 중간부터 발화(늦참 시사회 대응). 반환 stop() 이 전 노드·컨텍스트 정리.
+// S2(각인 #2): bedUrls 를 주면 배경 스템(기존 목소리 제거본)을 연속 트랙으로 깔아
+// "배경음 위 내 목소리"로 들린다 — 없으면 기존 무음 배경 그대로(하위호환).
 export async function playDubPreview(
   video: HTMLVideoElement,
   tracks: DubPreviewTrack[],
   fromMs: number,
+  bedUrls: string[] = [],
 ): Promise<DubPreviewHandle> {
   const ctx = new AudioContext()
-  const buffers = await Promise.all(tracks.map((t) => decode(ctx, t.url)))
+  const [buffers, bedBuffers] = await Promise.all([
+    Promise.all(tracks.map((t) => decode(ctx, t.url))),
+    Promise.all(bedUrls.map((u) => decode(ctx, u).catch(() => null))), // 베드 실패 비치명
+  ])
   video.currentTime = fromMs / 1000
   await video.play()
   const base = ctx.currentTime + 0.05 // 짧은 리드타임
@@ -51,9 +57,16 @@ export async function playDubPreview(
     else node.start(base, Math.min(-whenMs / 1000, buffers[i].duration))
     return node
   })
+  const bedNodes = bedBuffers.filter((b): b is AudioBuffer => !!b).map((buf) => {
+    const node = new AudioBufferSourceNode(ctx, { buffer: buf })
+    node.connect(ctx.destination)
+    node.start(base, Math.min(baseMs / 1000, buf.duration)) // 영상 위치부터 연속 재생
+    return node
+  })
   if (import.meta.env.DEV) {
     ;(window as unknown as Record<string, unknown>).__dubPreviewStats = {
       scheduled: nodes.length,
+      beds: bedNodes.length,
       ctxState: ctx.state,
       fromMs,
       cals: tracks.map((t) => t.calMs ?? 0),
@@ -64,7 +77,7 @@ export async function playDubPreview(
     stop: () => {
       if (stopped) return
       stopped = true
-      for (const n of nodes) { try { n.stop() } catch { /* 이미 종료 */ } }
+      for (const n of [...nodes, ...bedNodes]) { try { n.stop() } catch { /* 이미 종료 */ } }
       void ctx.close()
     },
   }

@@ -245,9 +245,11 @@ export function useLiveKitRoom(
           // (vod_sync/vgen_*)이고 발신자가 방 호스트일 때만 수락 — 나머지(promoted/mode_change/bg_change 등
           // 서버 전용)는 스푸핑으로 간주해 드롭. script-cue/reaction 과 동형(단 호스트 클라 발행은 예외 허용).
           if (participant) {
-            const HOST_CLIENT_TYPES = new Set(['vod_sync', 'vgen_result', 'vgen_stop', 'dub_screening'])
+            const HOST_CLIENT_TYPES = new Set(['vod_sync', 'vgen_result', 'vgen_stop', 'dub_screening', 'dub_edit'])
             if (!HOST_CLIENT_TYPES.has(data.type)) return
             if (!hostIdentityRef.current || participant.identity !== hostIdentityRef.current) return
+            // DUB-EDIT 편집중 배지: 발신자 표시명을 수신측에서 확정(위 identity 게이트 통과라 위조 불가)
+            if (data.type === 'dub_edit') data.name = participant.name ?? ''
           }
           // 접근제어는 수신측 getVgenUrl(멤버십·visibility 게이트)가 추가 재검증.
           onRoomAuthorityRef.current?.(data)

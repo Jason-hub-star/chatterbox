@@ -1,15 +1,18 @@
-// separate-dub-audio: fal.ai Demucs 로 원어 대사(vocals) 제거 → 비보컬 배경 스템 URL 반환(호스트 전용).
-// SSOT: docs/state-machines/DubSession.md, docs/contracts/DubCompositor.md, GAP G-280.
-// 입력: { dub_session_id }  출력: { dub_session_id, background_urls: string[], stem_count }
+// separate-dub-audio: fal.ai Demucs 로 기존 대사(vocals) 제거 → 비보컬 배경 스템 URL 반환.
+// SSOT: docs/state-machines/DubSession.md, docs/contracts/DubCompositor.md, GAP G-280, GOAL-dub-showcase(S1).
+// 입력: { dub_session_id }  출력: { dub_session_id, background_urls: string[], stem_count, cached? }
 //
-// 설계: 분리는 합성의 중간 단계 — DB 상태 변경 없는 순수 컴퓨트. fal 결과 URL 을 클라가 즉시
-//   다운로드→mixAndMux background 로 amix. 원본 vocals(원어 대사)는 드롭 → 이중음성 없음.
-// 보안: FAL_KEY 는 Edge 런타임 시크릿(클라/VITE 노출 금지·성역). 호스트만 호출(크레딧 보호).
-// ponytail: MVP 동기 호출(짧은 클립 전제). 긴 클립은 fal 큐/웹훅·스템 Storage 캐시(재과금 방지)가 후속.
-//   노래 보컬도 vocals 로 제거됨(Demucs 한계) → 대사특화 AudioShake 승급은 [[dub-audio-separation-anime]].
+// 설계: 분리는 DB 상태 변경 없는 순수 컴퓨트. fal 결과 URL 을 클라가 다운로드→베드 재생/mixAndMux amix.
+// S1 스템 버킷 캐시(재과금 소멸·마이그 0): 결과를 R2 `<room>/stems/<sessionId>/bg-N.*` 로 복사하고
+//   manifest.json 에 키 목록 — 재호출은 매니페스트 히트 시 fal 스킵. 캐시 실패는 비치명(fal URL 폴백).
+// 권한 2단: 호스트 = fal 호출 가능(크레딧 보호·레이트리밋은 캐시 미스에만 계수) /
+//   활성 멤버 = 캐시-전용(있으면 반환·없으면 404 — 베드는 전원이 들어야 해서 읽기만 개방).
+// 보안: FAL_KEY 는 Edge 런타임 시크릿(클라/VITE 노출 금지·성역).
+// ponytail: 동기 호출(짧은 클립 전제) · 노래 보컬도 vocals 로 제거(Demucs 한계) → AudioShake 승급은
+//   [[dub-audio-separation-anime]].
 
-import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
-import { presignGet } from "../_shared/r2.ts";
+import { cors, json, getAppUser, isUuid, isActiveParticipant } from "../_shared/supa.ts";
+import { presignGet, presignPut, r2Get } from "../_shared/r2.ts";
 
 const FAL_URL = "https://fal.run/fal-ai/demucs";
 const TIMEOUT_MS = 140_000;
@@ -26,26 +29,44 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 
-  let body: { dub_session_id?: unknown };
+  let body: { dub_session_id?: unknown; cache_only?: unknown };
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
   if (!isUuid(body.dub_session_id)) return json({ error: "Invalid dub_session_id" }, 400);
   const sessionId = body.dub_session_id;
+  const cacheOnly = body.cache_only === true; // 자동 프로브용 — 미스여도 fal 비발화(호스트 포함)
 
   const apiKey = Deno.env.get("FAL_KEY");
   if (!apiKey) return json({ error: "음원분리 미설정(FAL_KEY)" }, 500);
 
-  // 세션 + 호스트 검증(크레딧 보호), 소스 존재 필수.
+  // 세션 + 권한 2단(호스트=fal 가능 / 활성 멤버=캐시-전용), 소스 존재 필수.
   const { data: sess } = await service
     .from("dub_sessions")
-    .select("id, source_video_url, status, rooms(host_id)")
+    .select("id, room_id, source_video_url, status, rooms(host_id)")
     .eq("id", sessionId)
     .maybeSingle();
   if (!sess) return json({ error: "세션을 찾을 수 없어요." }, 404);
   const room = sess.rooms as unknown as { host_id: string };
-  if (room.host_id !== userId) return json({ error: "호스트만 음원분리를 할 수 있어요." }, 403);
+  const isHost = room.host_id === userId;
+  if (!isHost && !(await isActiveParticipant(service, sess.room_id, userId))) {
+    return json({ error: "방 멤버만 접근할 수 있어요." }, 403);
+  }
   if (!sess.source_video_url) return json({ error: "소스가 없어요." }, 409);
 
-  // 비용 API 캡(SEC-4): 사용자별 20회/일. FAL Demucs(고비용) 무제한 호출로 인한 비용-DoS 차단.
+  // S1 캐시 조회 — 매니페스트 히트면 fal·레이트리밋 없이 즉시 반환(재과금 0).
+  const stemBase = `${sess.room_id}/stems/${sessionId}`;
+  try {
+    const mf = await r2Get(`${stemBase}/manifest.json`);
+    if (mf.ok) {
+      const { keys } = await mf.json() as { keys: string[] };
+      if (Array.isArray(keys) && keys.length > 0) {
+        const background_urls = await Promise.all(keys.map((k) => presignGet(k, 3600)));
+        return json({ dub_session_id: sessionId, background_urls, stem_count: background_urls.length, cached: true }, 200);
+      }
+    }
+  } catch { /* 캐시 조회 실패 = 미스로 진행 */ }
+  if (!isHost || cacheOnly) return json({ error: "아직 음원분리 전이에요." }, 404); // 멤버·프로브는 캐시-전용
+
+  // 비용 API 캡(SEC-4): 사용자별 20회/일 — 캐시 미스(실 fal 호출)에만 계수.
   const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `separate:${userId}`, p_max: 20, p_window_sec: 86400 });
   if (rlOk === false) return json({ error: "오늘 음원분리 한도를 초과했어요. 내일 다시 시도해주세요." }, 429);
 
@@ -73,12 +94,39 @@ Deno.serve(async (req) => {
       return json({ error: "음원분리 실패", detail: detail.slice(0, 300) }, 502);
     }
     const result = await resp.json() as Record<string, FalStem>;
-    const background_urls = NON_VOCAL
+    const falUrls = NON_VOCAL
       .map((k) => result[k]?.url)
       .filter((u): u is string => typeof u === "string" && u.length > 0);
-    if (background_urls.length === 0) return json({ error: "배경 스템이 비어 있어요." }, 502);
+    if (falUrls.length === 0) return json({ error: "배경 스템이 비어 있어요." }, 502);
 
-    return json({ dub_session_id: sessionId, background_urls, stem_count: background_urls.length }, 200);
+    // S1 캐시 저장 — 스템을 우리 R2 로 복사 + manifest.json. 실패는 비치명(fal URL 폴백 반환).
+    try {
+      const keys: string[] = [];
+      for (let i = 0; i < falUrls.length; i++) {
+        const stem = await fetch(falUrls[i]);
+        if (!stem.ok) throw new Error(`stem fetch ${stem.status}`);
+        const ct = stem.headers.get("content-type") ?? "audio/mpeg";
+        const ext = ct.includes("wav") ? "wav" : ct.includes("flac") ? "flac" : "mp3";
+        const key = `${stemBase}/bg-${i}.${ext}`;
+        const put = await fetch(await presignPut(key, 300), {
+          method: "PUT",
+          headers: { "Content-Type": ct },
+          body: await stem.arrayBuffer(),
+        });
+        if (!put.ok) throw new Error(`stem put ${put.status}`);
+        keys.push(key);
+      }
+      const mfPut = await fetch(await presignPut(`${stemBase}/manifest.json`, 300), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keys }),
+      });
+      if (!mfPut.ok) throw new Error(`manifest put ${mfPut.status}`);
+      const background_urls = await Promise.all(keys.map((k) => presignGet(k, 3600)));
+      return json({ dub_session_id: sessionId, background_urls, stem_count: background_urls.length, cached: false }, 200);
+    } catch {
+      return json({ dub_session_id: sessionId, background_urls: falUrls, stem_count: falUrls.length, cached: false }, 200);
+    }
   } catch (e) {
     clearTimeout(timer);
     const reason = e instanceof Error && e.name === "AbortError" ? "demucs_timeout" : "demucs_exception";

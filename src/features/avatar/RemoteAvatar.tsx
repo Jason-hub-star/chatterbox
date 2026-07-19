@@ -17,9 +17,11 @@ interface Props {
   // 렌더 픽셀 크기(무대 슬롯에서 축소). 기본 240.
   size?: number
   isHost?: boolean
+  // S3(더빙 무대): 스프라이트만 — 크림 원 배경·테두리·크라운·이름칩 미렌더(영상 위 오버레이용)
+  bare?: boolean
 }
 
-export default function RemoteAvatar({ identity, name, projectUrl, registry, size = 240, isHost = false }: Props) {
+export default function RemoteAvatar({ identity, name, projectUrl, registry, size = 240, isHost = false, bare = false }: Props) {
   const mountRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -30,7 +32,8 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry, siz
     const driver = createExpressionDriver({ mirror: false }) // 원격은 셀카 거울 아님
     if (mount) {
       // preserveDrawingBuffer: 무대 녹화(stageRecorder)가 좌석 캔버스를 drawImage 로 합성 — 꺼져 있으면 검은 프레임.
-      RigAvatar.create(mount, { projectUrl, size, preserveDrawingBuffer: true })
+      // bare(더빙 오버레이): 캔버스 자체 배경(#f4f0e8 판)도 투명화 — 영상 위 스프라이트만 남는다.
+      RigAvatar.create(mount, { projectUrl, size, preserveDrawingBuffer: true, transparent: bare })
         .then((av) => {
           if (cancelled) {
             av.destroy()
@@ -57,8 +60,15 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry, siz
       }
       created?.destroy()
     }
-  }, [identity, projectUrl, registry, size])
+  }, [identity, projectUrl, registry, size, bare])
 
+  if (bare) {
+    return (
+      <div className="relative" style={{ width: size, height: size }}>
+        <div ref={mountRef} data-remote-avatar={identity} className="h-full w-full overflow-hidden" />
+      </div>
+    )
+  }
   return (
     <figure className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: size, height: size }}>

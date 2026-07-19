@@ -251,7 +251,7 @@ tags: [fsm]
 - **Side effects**:
   - UPLOADING: R2 presigned URL 발급 (Edge Function), 업로드 진행률 표시
   - TRANSCRIBING: Whisper API 비동기 호출, 진행 배너 "대본 추출 중..." (**원본 믹스 오디오로 동작 — 음원분리 선행 불필요**; 분리는 합성 출력용, G-280. 일본어 STT 실증: 배경음 섞여도 2.5s 정확 전사)
-  - READY: STT segments 미리보기, 역할 배정 UI 활성 (화자는 호스트 수동 배정)
+  - READY: STT segments 미리보기, 역할 배정 UI 활성 (화자는 호스트 수동 배정). **세그먼트 편집(텍스트 update-dub-segment-text · 시간/삭제 edit-dub-segment)은 READY 에서만** — RECORDING 이후 409 잠금(기녹음 테이크 무효화 원천 차단, DUB-EDIT 2026-07-19)
   - RECORDING: roles_locked_at 설정, 참가자별 녹음 UI 활성, LiveKit 마이크 캡처
   - COMPOSITING: 진행바 표시, ffmpeg.wasm 또는 Egress 호출
   - COMPLETED: 다운로드 버튼 활성, 보존기간 안내

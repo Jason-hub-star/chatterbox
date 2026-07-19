@@ -6,6 +6,7 @@ import {
   getDubSourceUrl, uploadDubRecording, submitDubTrack, confirmDubTrack,
   type DubTrack, type RoomMember,
 } from '@/lib/dub'
+import { toast } from '@/hooks/useToast'
 
 // Phase 3B 슬라이스 2: 더빙 녹음(DUB-04) 최소 UI.
 // 계약(DubRecorder.md) 준수: 원본 음소거 재생·본인 트랙만·미리보기 필수 저장·assigned→submitted→synced.
@@ -192,6 +193,7 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
       useDubStore.getState().setLocalMode(null) // 제출 → 로컬모드 해제(동기 복귀), objectURL 소멸 전에
       URL.revokeObjectURL(preview.url)
       setPreview(null)
+      toast.success(t('dub.submitSuccess')) // 감사 픽스: "제출됐나?" 무피드백 해소
       await onChanged()
     } catch (e) {
       setError(e instanceof Error ? e.message : t('dub.submitError'))
@@ -278,6 +280,10 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
                       className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
                       {t('dub.recordButton')}
                     </button>
+                  )}
+                  {/* 감사 픽스: submitted = 호스트 확정 대기 — 배우가 "뭘 해야 하나" 무피드백 해소 */}
+                  {track.status === 'submitted' && !previewing && (
+                    <span className="text-[11px] text-stage-text-muted" role="status">{t('dub.waitingConfirmHint')}</span>
                   )}
                   {previewing && (
                     <>

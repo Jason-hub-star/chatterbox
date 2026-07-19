@@ -1,8 +1,9 @@
-import { useEffect, useState, type CSSProperties, type RefObject } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 import RemoteAvatar, { type RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
 import SelfAvatar from './SelfAvatar'
+import { useDubStore } from '@/stores/dubStore'
 import StageSlot from './StageSlot'
 import AvatarZoomOverlay from './AvatarZoomOverlay'
 import MainView from './MainView'
@@ -26,6 +27,7 @@ interface Props {
   // UX-STAGE-VIS: 호스트음소거 authId 집합(서버 진실·전 멤버) — 무대 슬롯에 🔇 배지. 연결저하는 participant.connectionQuality.
   mutedIdentities: Set<string>
   onStopShare: () => void
+  onDubEdit?: (segmentId: number) => void // DUB-EDIT E3: 타임라인 편집중 배지 broadcast(호스트)
 }
 
 // 무대 슬롯 상태 배지(UX-STAGE-VIS) — 콘솔 탭에만 있던 음소거·연결 상태를 무대에 노출.
@@ -78,15 +80,64 @@ export default function Stage({
   hostId,
   mutedIdentities,
   onStopShare,
+  onDubEdit,
 }: Props) {
   const { t } = useTranslation()
   const slotPx = useSlotPx()
   const backgroundUrl = useStageStore((s) => s.backgroundUrl)
+  // S3 더빙 무대(주인님 디렉티브): 씬 배경 없음 · 영상 AR fit 최대화 · 아바타는 영상 위 bare 오버레이.
+  const isDubStage = !!useDubStore((s) => s.sourceUrl)
+  const sourceAR = useDubStore((s) => s.sourceAR)
+  const dubBoxRef = useRef<HTMLDivElement | null>(null)
+  const [dubBox, setDubBox] = useState<{ w: number; h: number } | null>(null)
+  useEffect(() => {
+    if (!isDubStage) return
+    const el = dubBoxRef.current
+    if (!el) return
+    const ro = new ResizeObserver((es) => {
+      const r = es[0].contentRect
+      setDubBox({ w: r.width, h: r.height })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [isDubStage])
   // 최대 6석(§6.4; 8인 배치는 defer). slot_index 절대좌석 — key=identity 라 재배치돼도 캔버스 보존.
   const seats = seatParticipants(participants, slotOf, SLOTS.length)
   // 아바타 크게보기(무대 클릭, 전원 대상). 원격은 registry 이동이라 확대 중 무대 슬롯을 비운다(placeholder). self 는 구독이라 무대 유지.
   const [zoomed, setZoomed] = useState<string | null>(null)
   const zoomedSeat = seats.find((p) => p?.identity === zoomed) ?? null
+
+  if (isDubStage) {
+    // AR fit: 무대 실측 × 소스 비율 → 최대 박스(타임라인 행 64px 보정). 메타 전엔 16:9 가정.
+    const TL_H = 64
+    const ar = sourceAR ?? 16 / 9
+    let fit: { width: number; height: number } | null = null
+    if (dubBox && dubBox.w > 0 && dubBox.h > TL_H) {
+      const videoH = Math.min(dubBox.h - TL_H, dubBox.w / ar)
+      fit = { width: Math.round(videoH * ar), height: Math.round(videoH + TL_H) }
+    }
+    const overlaySize = slotPx < 100 ? 64 : 96
+    const present = seats.filter((p): p is NonNullable<typeof p> => !!p)
+    return (
+      <div ref={dubBoxRef} data-dub-stage className="relative flex h-full w-full items-center justify-center">
+        <div className="relative" style={fit ?? { width: '100%', height: '100%' }}>
+          <MainView isHost={isHost} onStop={onStopShare} onDubEdit={onDubEdit} />
+          {/* 아바타 오버레이: 스프라이트만(크림 원·라벨·좌석 없음) — 타임라인 위 하단-좌측 가로줄 */}
+          <div className="pointer-events-none absolute left-2 z-10 flex items-end gap-1" style={{ bottom: TL_H + 8 }}>
+            {present.map((p) => (
+              <div key={p.identity} data-dub-overlay-avatar={p.identity}>
+                {p.isLocal ? (
+                  <SelfAvatar projectUrl={selfProjectUrl} sendBlendshapes={sendBlendshapes} size={overlaySize} bare />
+                ) : (
+                  <RemoteAvatar identity={p.identity} name={p.name} projectUrl={remoteProjectUrl(p.identity)} registry={remoteAvatars} size={overlaySize} bare />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative h-full w-full">
@@ -111,7 +162,7 @@ export default function Stage({
       )}
       <div className="relative grid h-full grid-cols-[1fr_1.9fr_1fr] grid-rows-[1fr_1.9fr_1fr] gap-2">
         {/* 센터 비디오 프레임(메인 뷰) — VGEN 공유재생 시 영상, 아니면 씬 배경이 비치는 히어로 placeholder. */}
-        <MainView isHost={isHost} onStop={onStopShare} />
+        <MainView isHost={isHost} onStop={onStopShare} onDubEdit={onDubEdit} />
 
       {seats.map((p, i) => (
         <StageSlot

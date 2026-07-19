@@ -52,14 +52,16 @@ export function useScriptSync(opts: {
     // (2026-07-09 프로드 2탭 E2E 가 잡은 버그: 리허설에서 배우 진행이 호스트에 영원히 미반영 → 모드 조건 추가.)
     if (!isPracticeRef.current && scriptModeRef.current !== 'rehearsal' && useRoomStore.getState().mySlotIndex === 0) return
     const sc = SEED_SCRIPTS[0]
-    if (p.sceneId !== sc.id) return
+    if (!sc || p.sceneId !== sc.id) return
     setCueIndex(Math.max(0, Math.min(sc.cues.length - 1, p.cueIndex)))
   }, [])
 
   // 대본 진행권: 호스트 또는 연습 방/리허설 모드의 배우(서버 advance-script-cue 가 동일 규칙으로 재검증 — 관전자 403).
   const canAdvanceCue = !isViewer && (isHost || isPractice || scriptMode === 'rehearsal')
-  const script = SEED_SCRIPTS[0]
+  // 실데이터만(2026-07-19): 시드가 비면 null — 좌패널은 빈 상태, 진행/재브로드캐스트는 no-op.
+  const script = SEED_SCRIPTS[0] ?? null
   const advanceCue = useCallback((delta: number) => {
+    if (!script) return
     setCueIndex((cur) => {
       const next = Math.max(0, Math.min(script.cues.length - 1, cur + delta))
       if (next !== cur) void sendCue(script.id, next) // 서버 릴레이 → 전 참가자 동기(호스트는 로컬 갱신·서버 echo 무시, SEC-5)
@@ -73,7 +75,7 @@ export function useScriptSync(opts: {
   const cueIndexRef = useRef(cueIndex)
   useEffect(() => { cueIndexRef.current = cueIndex }, [cueIndex])
   useEffect(() => {
-    if (!isHost || !connected) return
+    if (!isHost || !connected || !script) return
     void sendCue(script.id, cueIndexRef.current)
   }, [isHost, connected, memberKey, sendCue, script])
 

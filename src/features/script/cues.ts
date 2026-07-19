@@ -15,24 +15,8 @@ export interface Script {
   cues: Cue[]
 }
 
-export const SEED_SCRIPTS: Script[] = [
-  {
-    id: 'first-snow',
-    title: '첫눈 오는 날 (2인 단편)',
-    roles: ['하루', '유이'],
-    cues: [
-      { role: '하루', text: '…눈이다. 올해 첫눈이네.' },
-      { role: '유이', text: '진짜네. 손 내밀어 봐, 하루.' },
-      { role: '하루', text: '차가워. 근데 금방 녹아버리잖아.' },
-      { role: '유이', text: '그러니까 지금 봐야지. 첫눈은 손바닥에 닿는 순간부터 이미 녹기 시작하니까, 예쁘다고 감탄하는 그 몇 초가 전부인 거야. 눈송이 하나하나가 다 다른 모양인 거 알아? 이렇게 가까이서 안 보면 평생 모르고 지나가는 거라고. 그러니까 지금, 여기서, 나랑 같이 봐 줘.' },
-      { role: '하루', text: '…너는 늘 그렇게 말하더라.' },
-      { role: '유이', text: '왜, 틀렸어?' },
-      { role: '하루', text: '아니. 맞아서 문제지.' },
-      { role: '유이', text: '후훗. 그럼 오늘은 안 놓칠 거지?' },
-      { role: '하루', text: '응. …오늘은 안 놓칠게.' },
-      { role: '유이', text: '약속. 자, 눈 더 오기 전에 뛰자!' },
-    ],
-  },
-]
+// 데모 시드("첫눈 오는 날") 제거(2026-07-19 주인님 결정 — "실제 데이터만"): 전 방에 가짜 대본이
+// 뜨던 것을 빈 상태로. 실데이터 공급은 RM-SCRIPT(scripts 테이블·업로드·시드 팩 — 정본 설계 대기)가 담당.
+export const SEED_SCRIPTS: Script[] = []
 
 export const getScript = (id: string): Script | undefined => SEED_SCRIPTS.find((s) => s.id === id)

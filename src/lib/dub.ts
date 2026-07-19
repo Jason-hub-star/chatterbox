@@ -49,15 +49,28 @@ export const createDubSession = (accessToken: string, roomId: string, sourcePath
     { room_id: roomId, source_path: sourcePath, ...(sourceLanguage ? { source_language: sourceLanguage } : {}) },
   )
 
+// 장시간 AI 호출(STT/번역/음원분리)은 영상 길이에 비례 — 기본 15s 로는 3분 영상 STT(20~40s)가
+// "응답이 없어요" 오탐으로 끝난다(서버는 성공). 실측: 59s 클립 = STT 6.5s·번역 6.8s·분리 21.7s.
+const LONG_AI_TIMEOUT_MS = 180_000
+
 export const startTranscription = (accessToken: string, dubSessionId: string) =>
   callFn<{ dub_session_id: string; status: DubStatus; segment_count: number }>(
-    'start-dub-transcription', accessToken, { dub_session_id: dubSessionId },
+    'start-dub-transcription', accessToken, { dub_session_id: dubSessionId }, { timeoutMs: LONG_AI_TIMEOUT_MS },
   )
 
 // DUB-06: STT 대본 세그먼트를 JP/EN→KR 자동 번역(원문 ko 면 skipped=true·무과금).
 export const translateDubScript = (accessToken: string, dubSessionId: string) =>
   callFn<{ dub_session_id: string; translated_count: number; skipped_count: number; skipped?: boolean }>(
-    'translate-dub-script', accessToken, { dub_session_id: dubSessionId },
+    'translate-dub-script', accessToken, { dub_session_id: dubSessionId }, { timeoutMs: LONG_AI_TIMEOUT_MS },
+  )
+
+// DUB-EDIT: 호스트 세그먼트 시간(retime)/삭제(delete) — ready 세션 한정(서버 게이트), 전파는 Realtime.
+export const editDubSegment = (accessToken: string, dubSessionId: string, op: 'retime' | 'delete', segmentId: number, startMs?: number, endMs?: number) =>
+  callFn<{ dub_session_id: string; segment_id: number; op: string }>(
+    'edit-dub-segment', accessToken,
+    op === 'retime'
+      ? { dub_session_id: dubSessionId, op, segment_id: segmentId, start_ms: startMs, end_ms: endMs }
+      : { dub_session_id: dubSessionId, op, segment_id: segmentId },
   )
 
 // V-10 자막편집: READY 상태에서 세그먼트 대사(원문/번역) 수정 — 프롬프터·합성 자막에 반영.
@@ -116,10 +129,13 @@ export const confirmDubTrack = (accessToken: string, dubTrackId: string, undo = 
 export interface DubRecordingUrl { trackId: string; startTimeMs: number; calibrationOffsetMs: number; url: string }
 export interface DubOutput { url: string; fileSizeBytes: number | null; durationMs: number | null }
 
-// 음원분리(G-280): 원어 대사(vocals) 제거 → 비보컬 배경 스템 URL. 합성 중간에 호스트가 호출.
-export const separateDubAudio = (accessToken: string, dubSessionId: string) =>
-  callFn<{ dub_session_id: string; background_urls: string[]; stem_count: number }>(
-    'separate-dub-audio', accessToken, { dub_session_id: dubSessionId },
+// 음원분리(G-280·S1): 기존 대사(vocals) 제거 → 비보컬 배경 스템 URL(버킷 캐시 — 재과금 0).
+// cacheOnly=true: 캐시 프로브(미스면 404·fal 비발화) — 멤버 베드 로드·호스트 자동 프로브용.
+export const separateDubAudio = (accessToken: string, dubSessionId: string, cacheOnly = false) =>
+  callFn<{ dub_session_id: string; background_urls: string[]; stem_count: number; cached?: boolean }>(
+    'separate-dub-audio', accessToken,
+    cacheOnly ? { dub_session_id: dubSessionId, cache_only: true } : { dub_session_id: dubSessionId },
+    { timeoutMs: LONG_AI_TIMEOUT_MS },
   )
 
 // 합성 시작: dub_outputs(compositing) 생성 + 산출물 업로드 URL. 세션 compositing 전이.

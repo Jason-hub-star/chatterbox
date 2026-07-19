@@ -256,12 +256,13 @@ export default function RoomPage() {
       useStageStore.getState().setMainVideo(url, jobId)
     } catch { /* 접근 불가·미완성 → 무시(서버 get-vgen-url 이 멤버십·visibility 게이트) */ }
   }, [session])
+  const dubEditBadgeTimer = useRef<number | null>(null) // DUB-EDIT: 편집중 배지 decay 타이머
   const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
   const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
   // V-3 녹화: useRoomRecording 은 isHost(아래 파생) 뒤에 호출되므로 ref 브리지로 수신을 위임(TDZ 회피).
   const recAuthorityRef = useRef<((msg: { type: string; recording_id?: string; all_consented?: boolean }) => void) | null>(null)
   const recAudioRef = useRef<((track: MediaStreamTrack) => void) | null>(null)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; rate?: number; recording_id?: string; all_consented?: boolean; new_host_auth_id?: string; title?: string; genre?: string | null; on?: boolean }) => {
+  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; rate?: number; recording_id?: string; all_consented?: boolean; new_host_auth_id?: string; title?: string; genre?: string | null; on?: boolean; segment_id?: number; name?: string }) => {
     if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
     else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
     else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
@@ -295,6 +296,14 @@ export default function RoomPage() {
       // G9-P3 누적 시사회: SEC-RA-1 게이트(HOST_CLIENT_TYPES + 발신자=호스트 identity) 통과분만 도달.
       // 각 클라가 자기 브라우저에서 get-dub-recordings(멤버 게이트)로 트랙을 받아 스케줄(MainView).
       useDubStore.getState().setScreening(msg.on === true)
+    }
+    else if (msg.type === 'dub_edit') {
+      // DUB-EDIT E3: 편집중 배지(name 은 수신측 useLiveKitRoom 이 발신자 identity 로 확정) — 3s 무신호 소멸.
+      if (Number.isInteger(msg.segment_id)) {
+        useDubStore.getState().setEditingBadge({ segmentId: msg.segment_id!, name: msg.name ?? '' })
+        if (dubEditBadgeTimer.current) window.clearTimeout(dubEditBadgeTimer.current)
+        dubEditBadgeTimer.current = window.setTimeout(() => useDubStore.getState().setEditingBadge(null), 3000)
+      }
     }
     else if (msg.type === 'mode_change') {
       // G-261: 서버(set-room-mode) broadcast. 배너 표출+탭 자동전환은 stageStore 구독측(ModeBanner·RightPanel).
@@ -843,6 +852,9 @@ export default function RoomPage() {
     <div className="flex flex-col gap-3">
       {connected && (dubActive ? (
         <DubScriptPanel isHost={isHost} />
+      ) : !scriptSync.script ? (
+        // 실데이터만(2026-07-19): 대본 없으면 아무것도 안 그림(안내 문구도 삭제 — 주인님 결정).
+        null
       ) : (
         <ScriptPanel
           script={scriptSync.script}
@@ -895,6 +907,7 @@ export default function RoomPage() {
             hostId={hostId}
             mutedIdentities={mutedIdentities}
             onStopShare={stopShareVgen}
+            onDubEdit={(segmentId) => void sendRoomAuthority({ type: 'dub_edit', segment_id: segmentId })}
           />
           <ReactionOverlay slotOf={slotOf} />
           <PollBar roomId={roomId} />

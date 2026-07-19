@@ -11,6 +11,9 @@ interface Props {
   sendBlendshapes: (blendshapes: Record<string, number>) => void
   size: number
   isHost?: boolean
+  // S3(더빙 무대): 스프라이트만 — 크림 원 배경·크라운·상태 라벨 미렌더(영상 위 오버레이용).
+  // 트래킹 폴백 오버레이·웹캠 입력 video 는 유지(기능 필수).
+  bare?: boolean
 }
 
 const STATE_LABEL_KEY: Record<TrackingState, string> = {
@@ -23,7 +26,7 @@ const STATE_LABEL_KEY: Record<TrackingState, string> = {
 
 // 내 좌석: 웹캠 → MediaPipe → 네이티브 rig self-view 구동(head pose 포함) + blendshape 송신(52ch, head pose 미포함).
 // 웹캠 video 는 순수 트래킹 입력 — 화면에는 안 보인다(주인님 콜 2026-07-10: 전 화면 pip 숨김).
-export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost = false }: Props) {
+export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost = false, bare = false }: Props) {
   const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const mountRef = useRef<HTMLDivElement>(null)
@@ -41,7 +44,8 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
     const mount = mountRef.current
     if (mount) {
       // preserveDrawingBuffer: 무대 녹화(stageRecorder)가 좌석 캔버스를 drawImage 로 합성 — 꺼져 있으면 검은 프레임.
-      RigAvatar.create(mount, { projectUrl, size, preserveDrawingBuffer: true })
+      // bare(더빙 오버레이): 캔버스 자체 배경(#f4f0e8 판)도 투명화 — 영상 위 스프라이트만 남는다.
+      RigAvatar.create(mount, { projectUrl, size, preserveDrawingBuffer: true, transparent: bare })
         .then((av) => {
           if (cancelled) {
             av.destroy()
@@ -59,7 +63,7 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
       created?.destroy()
       avatarRef.current = null
     }
-  }, [projectUrl, size])
+  }, [projectUrl, size, bare])
 
   // 웹캠 → self-view 구동(head pose 포함) + blendshape 송신(head pose 미포함).
   const onFrame = useCallback(
@@ -96,7 +100,7 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
         <div
           ref={mountRef}
           data-self-avatar
-          className={`h-full w-full overflow-hidden rounded-full bg-[#f4f0e8] ${isHost ? 'ring-2 ring-fire-amber' : ''}`}
+          className={bare ? 'h-full w-full overflow-hidden' : `h-full w-full overflow-hidden rounded-full bg-[#f4f0e8] ${isHost ? 'ring-2 ring-fire-amber' : ''}`}
         />
         {fallbackKey && (
           <div
@@ -111,7 +115,7 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
             </span>
           </div>
         )}
-        {isHost && <HostCrown />}
+        {isHost && !bare && <HostCrown />}
         {/* 웹캠 video = MediaPipe 입력 소스 — 언마운트하면 트래킹이 죽으므로 시각만 숨긴다
             (display:none 금지 — 브라우저가 렌더 파이프를 멈출 수 있음). */}
         <video
@@ -123,9 +127,11 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
           className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
         />
       </div>
-      <span className="rounded-full bg-stage-elevated/70 px-2 py-0.5 text-[11px] text-spring-green">
-        {t('stage.selfLabel')}{isHost ? ` · ${t('stage.directorTag')}` : ''} {trackingState === 'TRACKING' ? `· ${t('stage.expressionSending')}` : `· ${t(STATE_LABEL_KEY[trackingState])}`}
-      </span>
+      {!bare && (
+        <span className="rounded-full bg-stage-elevated/70 px-2 py-0.5 text-[11px] text-spring-green">
+          {t('stage.selfLabel')}{isHost ? ` · ${t('stage.directorTag')}` : ''} {trackingState === 'TRACKING' ? `· ${t('stage.expressionSending')}` : `· ${t(STATE_LABEL_KEY[trackingState])}`}
+        </span>
+      )}
     </>
   )
 }

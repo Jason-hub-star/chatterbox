@@ -143,3 +143,49 @@ export async function mixAndMux(
     for (const n of recNames) await ffmpeg.deleteFile(n).catch(() => {})
   }
 }
+
+// ── DUB-TRIM v1: 업로드 전 구간 절단 ─────────────────────────────────
+// 순수부(유닛테스트 대상): 슬라이더 입력 정규화 + 예상 용량(비율 근사 — "예상" 표기 전제).
+export interface TrimRange { startMs: number; endMs: number }
+export const MIN_TRIM_MS = 1000 // 최소 1초 — 시작/끝 핸들 교차 방지
+
+export function clampTrimRange(durMs: number, startMs: number, endMs: number): TrimRange {
+  const d = Math.max(0, Math.round(durMs))
+  const s = Math.min(Math.max(0, Math.round(startMs)), Math.max(0, d - MIN_TRIM_MS))
+  const e = Math.min(Math.max(Math.round(endMs), s + MIN_TRIM_MS), d)
+  return { startMs: s, endMs: Math.max(e, s) }
+}
+
+export function estimateTrimBytes(totalBytes: number, durMs: number, r: TrimRange): number {
+  if (durMs <= 0) return totalBytes
+  return Math.round(totalBytes * ((r.endMs - r.startMs) / durMs))
+}
+
+// -ss 를 -i 앞(입력 시킹) = 키프레임 스냅·재인코딩 0(-c copy: 수초 완료·화질 무손실).
+// 시작점이 요청보다 최대 수초 이를 수 있다(키프레임 경계) — 더빙 소스 용도 무해, 정밀 컷(재인코딩)은 ponytail.
+// 출력 확장자 = 입력 확장자 유지(muxer 불일치 방지) · 반환 File 은 원본 이름·type 유지 → 업로드 경로 무수정.
+export async function trimVideo(file: File, startMs: number, endMs: number): Promise<File> {
+  const ffmpeg = await loadFfmpeg()
+  const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
+  const IN = `trim-in.${ext}`
+  const OUT = `trim-out.${ext}`
+  try {
+    await ffmpeg.writeFile(IN, await fetchFile(file))
+    const code = await ffmpeg.exec([
+      '-ss', (Math.max(0, startMs) / 1000).toFixed(3),
+      '-i', IN,
+      '-t', (Math.max(0, endMs - startMs) / 1000).toFixed(3),
+      '-c', 'copy', '-avoid_negative_ts', 'make_zero',
+      OUT,
+    ])
+    if (code !== 0) throw new Error(`trim failed (ffmpeg exit ${code})`)
+    const data = await ffmpeg.readFile(OUT)
+    const bytes = data as Uint8Array
+    const copy = new Uint8Array(bytes.byteLength)
+    copy.set(bytes)
+    return new File([copy], file.name, { type: file.type })
+  } finally {
+    await ffmpeg.deleteFile(IN).catch(() => {})
+    await ffmpeg.deleteFile(OUT).catch(() => {})
+  }
+}

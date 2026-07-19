@@ -138,13 +138,17 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, se
       {/* 합성 시작 / 재시도 */}
       {!isCompleted && !busy && (
         isHost ? (
-          <button
-            onClick={() => void run()}
-            disabled={!allSynced}
-            className="mt-2 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
-          >
-            {isCompositing || phase === 'error' ? t('dub.compositeRetryButton') : t('dub.compositeStartButton')}
-          </button>
+          <>
+            <button
+              onClick={() => void run()}
+              disabled={!allSynced}
+              className="mt-2 rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
+            >
+              {isCompositing || phase === 'error' ? t('dub.compositeRetryButton') : t('dub.compositeStartButton')}
+            </button>
+            {/* 감사 픽스: 비활성 이유 명시 — "버튼이 왜 회색인가" 해소 */}
+            {!allSynced && <p className="mt-1 text-[11px] text-stage-text-muted">{t('dub.compositeWaitHint')}</p>}
+          </>
         ) : (
           <p className="mt-2 text-sm text-stage-text-muted">
             {isCompositing ? t('dub.hostCompositing') : t('dub.hostCompositeReady')}
