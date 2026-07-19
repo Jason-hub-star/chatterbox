@@ -32,11 +32,14 @@ Deno.serve(async (req) => {
 
   const { data: track } = await service
     .from("dub_tracks")
-    .select("id, participant_id, dub_sessions(room_id, status)")
+    .select("id, participant_id, status, dub_sessions(room_id, status)")
     .eq("id", body.dub_track_id)
     .maybeSingle();
   if (!track) return json({ error: "트랙을 찾을 수 없어요." }, 404);
   if (track.participant_id !== userId) return json({ error: "본인 트랙만 제출할 수 있어요." }, 403);
+  // DUB-RETAKE 정합 게이트: 호스트 확정(synced)된 트랙은 API 직접호출로도 못 덮어쓴다 —
+  // 되돌리려면 호스트가 confirm-dub-track { undo } 로 확정 해제 후 재제출.
+  if (track.status === "synced") return json({ error: "확정된 트랙은 재제출할 수 없어요 — 호스트 확정 해제 후 다시 제출하세요." }, 409);
   const sess = track.dub_sessions as unknown as { room_id: string; status: string };
   if (sess.status !== "recording") return json({ error: `현재 상태(${sess.status})에선 제출 불가` }, 409);
   // 경로 조작 방지(SEC-2): 이 방 recordings/ 아래 안전한 키만(../·여분 슬래시 차단)

@@ -16,7 +16,7 @@ import { usePollStore } from '@/stores/pollStore'
 import { useAudioStore, mixedVolume } from '@/stores/audioStore'
 import { fetchRoomToken, mapParticipant } from '@/lib/livekit'
 import { playSfx } from '@/lib/sound'
-import { sendReactionRelay, advanceScriptCueRelay, sendChatRelay } from '@/lib/rooms'
+import { sendReactionRelay, advanceScriptCueRelay, sendChatRelay, joinRoom, joinRoomAsViewer } from '@/lib/rooms'
 import { sanitizeChatInput } from '@/lib/chatSanitize'
 import { toast } from '@/hooks/useToast'
 import i18n from '@/i18n'
@@ -373,14 +373,37 @@ export function useLiveKitRoom(
       }
     })
 
+    // RM-REJOIN 자가치유: 절전/백그라운드 중 LiveKit 연결이 죽으면 livekit-webhook 이 내 참가 행을
+    // soft-leave 로 회수한다 → 복귀 후 토큰 재발급이 403 "Not a participant" 로 종착(새로고침 강요).
+    // 멱등 재조인(join-public-room 이 left 행을 재활성) 후 재시도. 이탈 이벤트는 접속당 1발이라
+    // 재조인↔웹훅 늦도착 레이스가 겹쳐도 2회면 수렴한다. 잠금방은 비번이 필요해 치유 불가(에러 유지).
+    const fetchTokenWithRejoin = async () => {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await fetchRoomToken(roomId, session.access_token)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : ''
+          if (cancelled || attempt >= 2 || !msg.includes('Not a participant')) throw err
+          const rejoin =
+            useRoomStore.getState().myRole === 'viewer' ? joinRoomAsViewer : joinRoom
+          const r = await rejoin(session.access_token, roomId)
+          // 재조인은 새 행(새 슬롯)일 수 있다 — 방 컨텍스트를 서버 진실로 갱신.
+          useRoomStore.getState().setRoomContext({
+            currentRoomId: roomId,
+            myParticipantId: r.participant_id,
+            mySlotIndex: r.slot_index,
+            myRole: r.role === 'viewer' ? 'viewer' : 'actor',
+          })
+          if (import.meta.env.DEV) console.info('[RM-REJOIN] soft-left 행 재활성 후 토큰 재시도', attempt + 1)
+        }
+      }
+    }
+
     ;(async () => {
       try {
         setConnectionState('CONNECTING')
         setError(null)
-        const { server_url, token } = await fetchRoomToken(
-          roomId,
-          session.access_token,
-        )
+        const { server_url, token } = await fetchTokenWithRejoin()
         if (cancelled) return
         await room.connect(server_url, token)
         if (cancelled) return

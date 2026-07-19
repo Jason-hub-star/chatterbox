@@ -105,9 +105,11 @@ export const submitDubTrack = (accessToken: string, dubTrackId: string, recordin
     { dub_track_id: dubTrackId, recording_path: recordingPath, duration_ms: durationMs, calibration_offset_ms: calibrationMs },
   )
 
-export const confirmDubTrack = (accessToken: string, dubTrackId: string) =>
+// undo=true(DUB-RETAKE): 호스트가 synced → submitted 확정 해제 — 배우 [● 녹음] 재활성.
+export const confirmDubTrack = (accessToken: string, dubTrackId: string, undo = false) =>
   callFn<{ track_id: string; status: string; all_synced: boolean }>(
-    'confirm-dub-track', accessToken, { dub_track_id: dubTrackId },
+    'confirm-dub-track', accessToken,
+    undo ? { dub_track_id: dubTrackId, undo: true } : { dub_track_id: dubTrackId },
   )
 
 // ── 합성(DUB-05, 원본 재더빙) ───────────────────────────────────────

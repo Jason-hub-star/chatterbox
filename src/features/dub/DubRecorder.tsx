@@ -29,16 +29,18 @@ function MicLevelMeter({ stream }: { stream: MediaStream }) {
 
   useEffect(() => {
     const ctx = new AudioContext()
+    void ctx.resume() // autoplay 정책 suspended 방지(DUB-RETAKE 하드닝 — suspended 미터=0 오탐)
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 2048
     const buf = new Uint8Array(analyser.frequencyBinCount) // 1회 생성·재사용
     const src = ctx.createMediaStreamSource(stream)
     src.connect(analyser)
-    const startedAt = performance.now()
+    let startedAt = performance.now()
     let peak = 0
     let display = 0
     let raf = requestAnimationFrame(function tick() {
       raf = requestAnimationFrame(tick)
+      if (ctx.state !== 'running') startedAt = performance.now() // 측정 불가 구간은 무음 판정에 미산입
       analyser.getByteTimeDomainData(buf)
       let max = 0
       for (const v of buf) { const d = Math.abs(v - 128); if (d > max) max = d }
@@ -210,11 +212,11 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
     })
   }, [preview, tracks, calMs])
 
-  const confirm = useCallback(async (trackId: string) => {
+  const confirm = useCallback(async (trackId: string, undo = false) => {
     if (!token) return
     setBusy(true); setError(null)
-    try { await confirmDubTrack(token, trackId); await onChanged() }
-    catch (e) { setError(e instanceof Error ? e.message : t('dub.confirmError')) }
+    try { await confirmDubTrack(token, trackId, undo); await onChanged() }
+    catch (e) { setError(e instanceof Error ? e.message : t(undo ? 'dub.unconfirmError' : 'dub.confirmError')) }
     finally { setBusy(false) }
   }, [token, onChanged, t])
 
@@ -309,6 +311,13 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
                 <button onClick={() => confirm(track.id)} disabled={busy}
                   className="mt-2 rounded-lg border border-stage-border px-3 py-1.5 text-xs hover:bg-stage-border/30 disabled:opacity-40">
                   {t('dub.confirmButton')}
+                </button>
+              )}
+              {/* DUB-RETAKE: 확정 해제 → submitted 복귀 → 배우 [● 녹음] 재활성(Realtime 이 전파) */}
+              {isHost && track.status === 'synced' && (
+                <button onClick={() => confirm(track.id, true)} disabled={busy}
+                  className="mt-2 rounded-lg border border-stage-border px-3 py-1.5 text-xs text-stage-text-muted hover:bg-stage-border/30 disabled:opacity-40">
+                  {t('dub.unconfirmButton')}
                 </button>
               )}
             </li>
