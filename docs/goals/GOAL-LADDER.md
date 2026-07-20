@@ -97,6 +97,17 @@ tags: [status, goals]
 | U4 | 우패널 레일 축소 | 세그별 트랙 행 제거 → 진행 n/m+호스트 확정 컴팩트만 | 실렌더(행 스팸 소멸)+다인 무회귀 | **DONE**(2026-07-20: 4/4 — rail 행 0→제출분만 1·확정/해제 동작·RETAKE 재녹음 경로(myTurnRanges submitted 확장). 원본 오디오·번역 토글·"확인(synced)" 잔재 정리) |
 | U5 | 실증 총괄·마감 | 원버튼 e2e·탭 전환 녹음 지속·솔로 무회귀·문서 마감 | 통합 실렌더 + check:all | **DONE**(2026-07-20: U5 3/3×3(솔로 체인·탭 전환 녹음 지속·비활성 탭 완주)+U2 6/6·U3 4/4 재확인+F 회귀 10/10·check:all 0. 부수 정수정: refresh out-of-order seq 가드(레이스 실포착)) |
 
+## 골 사다리 W — 더빙 녹음 흐름 통제권 (2026-07-20 프로드 실 워크스루 3발견 · 브리프 `GOAL-dub-record-flow.md`)
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| W0 | 문서화 | §0 3항목 등재 + 브리프 + 이 표 | docs:check·links | **DONE**(2026-07-20) |
+| W1 | DUB-VIDEO-STALL(P1) | `<video>` 스톨 워치독(.load() 자동 재시도)+onError/onStalled — 첫 진입 검은 화면 자가복구 | check:all + 실렌더 | **DONE**(2026-07-20: armStallWatchdog·MAX_RETRY 2·실렌더 4/4) |
+| W2 | DUB-COMPLETE-FLOW(High) | 제출→다음 세그 자동 이동+키보드 + 호스트 일괄 확정 + 솔로 제출=확정 자동 | check:all + 실렌더 DB | **DONE**(2026-07-20: 솔로 자동확정·자동시크·전부확정·Space/Enter·실렌더 4/4) |
+| W3 | DUB-RECORD-CONTROL(Med) | 구간 카운트다운+루프 재생 토글+(옵션)구간 끝 자동중지 | check:all + 실렌더 | **DONE**(2026-07-20 A안: 3‑2‑1 프리롤+preroll 정지+구간 루프 🔁·실렌더 3/3) |
+| W4 | 실증·마감 | 통합 실렌더+비더빙 무회귀+§0 [x]+probe·GAP·AGENT-OPS | check:all + 통합 실렌더 | **DONE**(2026-07-20: W1~W3 개별 통과·교차(W2 카운트다운+자동확정+자동이동)·F 회귀 10/10·check:all 0) |
+| W5 | DUB-PREVIEW-PAUSE | 미리보기·시사회 Web Audio 를 영상 pause/play 에 묶음(정지 시 백그라운드 재생 정지) | check:all + 실렌더 | **DONE**(2026-07-20 주인님 관측 후속: handle pause/resume=ctx.suspend/resume·실렌더 3/3 running→suspended→running) |
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

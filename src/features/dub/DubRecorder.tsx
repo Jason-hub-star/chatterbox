@@ -201,18 +201,27 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
           audioUrl: url,
         })
       })
+      if (useDubStore.getState().screening) useDubStore.getState().setScreening(false) // 시사회 오디오와 겹침 방지(호스트면 전원 종료 broadcast)
+      // W3 프리롤: 마이크는 이미 획득 → 구간 시작 프레임 정지(preroll) + 3‑2‑1 카운트다운 후 재생+녹음.
+      //   즉시 달려나가 "영상이 먼저 흐르는" 통제권 부재 해소. 레벨미터는 카운트다운 중에도(스트림 세팅).
+      setRec({ recMicStream: stream })
+      useDubStore.getState().setLocalMode({
+        kind: 'record', startMs: track.startTimeMs, endMs: track.endTimeMs, audioUrl: null, preroll: true,
+      })
+      for (let n = 3; n >= 1; n--) { setRec({ recCountdown: n }); await new Promise((r) => setTimeout(r, 450)) }
+      setRec({ recCountdown: null })
+      if (streamRef.current !== stream) return // 카운트다운 중 취소/전환(스트림 교체) 시 이 테이크 폐기
+      // 실제 녹음 시작 → 센터 영상이 이 구간을 음소거 재생(내 화면만 — MainView 가 vodSync 일시 해제).
+      // ponytail: 시크 완료와 녹음 시작 사이 수백 ms 오차 가능 — P4 캘리브레이션(±200ms)이 보정 경로.
       startedAtRef.current = performance.now()
       recorderRef.current = rec
-      setRec({ recTrackId: track.id, recMicStream: stream })
+      setRec({ recTrackId: track.id })
       rec.start()
-      // G9-P2: 녹음 시작 → 센터 영상이 이 구간을 음소거 재생(내 화면만 — MainView 가 vodSync 일시 해제).
-      // ponytail: 시크 완료와 녹음 시작 사이 수백 ms 오차 가능 — P4 캘리브레이션(±200ms)이 보정 경로.
-      if (useDubStore.getState().screening) useDubStore.getState().setScreening(false) // 시사회 오디오와 겹침 방지(호스트면 전원 종료 broadcast)
       useDubStore.getState().setLocalMode({
         kind: 'record', startMs: track.startTimeMs, endMs: track.endTimeMs, audioUrl: null,
       })
     } catch (e) {
-      setRec({ recError: e instanceof Error ? e.message : t('dub.micAccessError') })
+      setRec({ recError: e instanceof Error ? e.message : t('dub.micAccessError'), recCountdown: null })
     }
   }, [isRecording, setRec, t])
 
@@ -221,20 +230,33 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
   const submit = useCallback(async () => {
     const blob = previewBlobRef.current
     if (!token || !preview || !blob) return
+    const submittedId = preview.trackId
+    const submittedTrack = tracks.find((tr) => tr.id === submittedId)
     setRec({ recBusy: true, recError: null })
     try {
-      const path = await uploadDubRecording(token, preview.trackId, blob)
-      await submitDubTrack(token, preview.trackId, path, preview.durationMs, calMs)
+      const path = await uploadDubRecording(token, submittedId, blob)
+      await submitDubTrack(token, submittedId, path, preview.durationMs, calMs)
       useDubStore.getState().setLocalMode(null) // 제출 → 로컬모드 해제(동기 복귀), objectURL 소멸 전에
       URL.revokeObjectURL(preview.url)
       previewBlobRef.current = null
       setRec({ recPreview: null })
+      // W2 솔로 자동확정: 모든 트랙이 내 것(솔로 더빙)이면 제출=확정 자동(확정 단계 생략·완료 카운트 즉시↑). 실패는 비치명(수동 확정 가능).
+      const solo = isHost && tracks.length > 0 && tracks.every((tr) => tr.participantId === myId)
+      if (solo) { try { await confirmDubTrack(token, submittedId) } catch { /* 수동 확정 폴백 */ } }
       toast.success(t('dub.submitSuccess')) // 감사 픽스: "제출됐나?" 무피드백 해소
+      // W2 자동 다음 이동: 다음 미제출 내 차례 세그로 센터 시크(다음 🎙 준비 — 49세그 스크롤 탐색 제거)
+      if (submittedTrack) {
+        const remaining = tracks
+          .filter((tr) => tr.participantId === myId && tr.id !== submittedId && (tr.status === 'assigned' || tr.status === 'recording'))
+          .sort((a, b) => a.startTimeMs - b.startTimeMs)
+        const next = remaining.find((tr) => tr.startTimeMs > submittedTrack.startTimeMs) ?? remaining[0]
+        if (next) useDubStore.getState().setSeekRequest({ ms: next.startTimeMs, nonce: Date.now() })
+      }
       await onChanged()
     } catch (e) {
       setRec({ recError: e instanceof Error ? e.message : t('dub.submitError') })
     } finally { setRec({ recBusy: false }) }
-  }, [token, preview, calMs, setRec, onChanged, t])
+  }, [token, preview, calMs, setRec, onChanged, t, tracks, myId, isHost])
 
   // G9-P4: 보정 슬라이더 반영해 센터 미리보기 재재생(오디오를 calMs 만큼 이동)
   const replayPreview = useCallback(() => {
@@ -257,6 +279,30 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
     catch (e) { setRec({ recError: e instanceof Error ? e.message : t(undo ? 'dub.unconfirmError' : 'dub.confirmError') }) }
     finally { setRec({ recBusy: false }) }
   }, [token, setRec, onChanged, t])
+
+  // W2 호스트 일괄 확정: submitted 트랙 전부 confirmDubTrack 순차(기존 Edge·새 Edge 0). 하나씩 확정 클릭 제거.
+  const confirmAll = useCallback(async () => {
+    if (!token) return
+    const pending = tracks.filter((tr) => tr.status === 'submitted')
+    if (pending.length === 0) return
+    setRec({ recBusy: true, recError: null })
+    try { for (const tr of pending) await confirmDubTrack(token, tr.id); await onChanged() }
+    catch (e) { setRec({ recError: e instanceof Error ? e.message : t('dub.confirmError') }) }
+    finally { setRec({ recBusy: false }) }
+  }, [token, tracks, setRec, onChanged, t])
+
+  // W2 키보드: 녹음 중 Space=중지 · 미리보기 중 Space/Enter=제출(반복 마우스 왕복 제거). 입력 포커스 시 무시.
+  //   Space-시작은 대상 세그 모호(playhead 미보유)라 defer — 시작은 좌패널 🎙/센터 배너 유지.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (e.code === 'Space' && isRecording) { e.preventDefault(); stopRec() }
+      else if ((e.code === 'Space' || e.key === 'Enter') && preview && !busy) { e.preventDefault(); void submit() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isRecording, preview, busy, stopRec, submit])
 
   // U1: 엔진 레지스트리 — 좌패널·센터 HUD 가 패널 무소속으로 호출(F8 recordRequest nonce 브리지 대체).
   // start 가드는 F8 소비 effect 와 동형: 내 트랙만·녹음/busy 중 무시.
@@ -286,6 +332,14 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
       {/* U4 레일: 세그별 조작 행 제거(녹음·프리뷰·제출은 좌패널 🎙+센터 HUD 가 정본) — 조작 소재 안내 1줄 */}
       {myPending && (
         <p className="text-[11px] text-stage-text-muted" role="note">{t('dub.railRecordHint')}</p>
+      )}
+
+      {/* W2 호스트 일괄 확정 — 제출 대기 2건 이상일 때만(하나면 개별 버튼으로 충분) */}
+      {isHost && tracks.filter((tr) => tr.status === 'submitted').length > 1 && (
+        <button onClick={confirmAll} disabled={busy} data-dub-confirm-all
+          className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
+          {t('dub.confirmAll', { count: tracks.filter((tr) => tr.status === 'submitted').length })}
+        </button>
       )}
 
       {/* 확정 대기/확정 목록(고유 기능만 존치): 호스트=확정·되돌리기, 배우=내 제출 대기 표시 */}

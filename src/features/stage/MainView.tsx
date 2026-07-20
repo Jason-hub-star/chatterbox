@@ -51,6 +51,8 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
   const recCalMs = useDubStore((s) => s.recCalMs)
   const recBusy = useDubStore((s) => s.recBusy)
   const recError = useDubStore((s) => s.recError)
+  const recCountdown = useDubStore((s) => s.recCountdown) // W3 구간 진입 3‑2‑1 프리롤
+  const recLoop = useDubStore((s) => s.recLoop)           // W3 구간 루프 재생 토글
   const videoRef = useRef<HTMLVideoElement>(null)
   const [dubDurMs, setDubDurMs] = useState(0) // DUB-EDIT: 타임라인 스케일(loadedmetadata 실측)
   const [rate, setRate] = useState(1) // 호스트 배속 칩 활성 표시용(진실은 video.playbackRate)
@@ -58,6 +60,33 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
   const localActiveRef = useRef(false) // vodSync 게이트(이벤트 리스너·applier 가 클로저 밖에서 읽음)
   const localPrevRef = useRef<{ ms: number; paused: boolean } | null>(null) // 로컬모드 진입 전 위치(복귀용)
   const previewHandleRef = useRef<DubPreviewHandle | null>(null)
+
+  // W1 DUB-VIDEO-STALL: 첫 진입에 소스가 readyState 0 에 고착(error 미발생)해 무한 스피너 되는 걸 자가복구.
+  //   loadstart 후 STALL_MS 내 loadedmetadata 없으면 .load() 재시도(최대 MAX_RETRY). onError/onStalled 도 합류.
+  //   readyState>=1(메타데이터 도착) 이면 재시도 안 함 — 정상 로드·재생 중 버퍼링 오탐 방지.
+  const stallTimerRef = useRef<number | null>(null)
+  const loadRetryRef = useRef(0)
+  const STALL_MS = 4000
+  const MAX_RETRY = 2
+  const retryVideoLoad = () => {
+    const v = videoRef.current
+    if (!v || v.readyState >= 1 || loadRetryRef.current >= MAX_RETRY) return
+    loadRetryRef.current += 1
+    if (import.meta.env.DEV) {
+      ;(window as unknown as { __dubStallRetries?: number }).__dubStallRetries = loadRetryRef.current
+      console.warn(`[dub] 소스 로드 stall — .load() 재시도 ${loadRetryRef.current}/${MAX_RETRY}`)
+    }
+    v.load() // → onLoadStart 재발화 → 워치독 재무장
+  }
+  const armStallWatchdog = () => {
+    if (stallTimerRef.current) window.clearTimeout(stallTimerRef.current)
+    stallTimerRef.current = window.setTimeout(retryVideoLoad, STALL_MS)
+  }
+  const clearStallWatchdog = () => {
+    if (stallTimerRef.current) { window.clearTimeout(stallTimerRef.current); stallTimerRef.current = null }
+  }
+  // 새 소스마다 재시도 카운터 리셋(소스당 MAX_RETRY 독립)
+  useEffect(() => { loadRetryRef.current = 0 }, [centerUrl])
 
   // 타임라인 동기(ROOM-01): 호스트=상태 리더+play/pause/seeked/ratechange 발행 / 비호스트=수신 보정.
   // 비호스트 controls 는 유지(스크럽해도 다음 호스트 이벤트·5s 하트비트에서 ±200ms 로 복귀 — 계약 §Scrubber 편차).
@@ -110,16 +139,25 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
       localActiveRef.current = true
       if (localMode.kind === 'record') {
         v.currentTime = localMode.startMs / 1000
-        void v.play().catch(() => {})
+        if (localMode.preroll) v.pause() // W3: 카운트다운 중 구간 시작 프레임 정지(준비) — 끝나면 record(preroll 없음)로 재생
+        else void v.play().catch(() => {})
         return
       }
       if (!localMode.audioUrl) return
       let cancelled = false
+      // W5: 미리보기 오디오(Web Audio)를 영상 pause/play 에 묶는다(정지 시 백그라운드 재생 방지)
+      const onPause = () => previewHandleRef.current?.pause()
+      const onPlay = () => previewHandleRef.current?.resume()
       // S2 각인 #2: 미리보기를 배경 스템 베드 위에서 — "배경음 위 내 목소리"가 즉시 들림
       void playDubPreview(v, [{ url: localMode.audioUrl, startMs: localMode.startMs, calMs: localMode.calMs }], localMode.startMs, useDubStore.getState().bedUrls)
-        .then((h) => { if (cancelled) h.stop(); else previewHandleRef.current = h })
+        .then((h) => {
+          if (cancelled) { h.stop(); return }
+          previewHandleRef.current = h
+          v.addEventListener('pause', onPause)
+          v.addEventListener('play', onPlay)
+        })
         .catch(() => {})
-      return () => { cancelled = true }
+      return () => { cancelled = true; v.removeEventListener('pause', onPause); v.removeEventListener('play', onPlay) }
     }
     // 해제 → 진입 전 위치·재생상태 복원(호스트면 seeked/play 발행이 동기 재개)
     localActiveRef.current = false
@@ -132,8 +170,8 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
     }
   }, [localMode])
 
-  // 언마운트 시 미리보기 오디오 정리(위 효과의 상단 정리는 재실행 시에만 돈다)
-  useEffect(() => () => { previewHandleRef.current?.stop() }, [])
+  // 언마운트 시 미리보기 오디오 정리(위 효과의 상단 정리는 재실행 시에만 돈다) + W1 워치독 타이머 정리
+  useEffect(() => () => { previewHandleRef.current?.stop(); clearStallWatchdog() }, [])
 
   // F2 텔레포트: 좌패널 대사 클릭 → 센터 시크(DOM 조작만 — setState 없음). nonce 로 재클릭 재발화.
   const seekRequest = useDubStore((s) => s.seekRequest)
@@ -199,11 +237,18 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
       })
       .catch(() => {})
     const onEnded = () => useDubStore.getState().setScreening(false) // 영상 끝 → 각자 종료(전원 동기라 동시 도달)
+    // W5: 시사회 오디오도 영상 pause/play 에 묶는다(정지 시 백그라운드 재생 방지)
+    const onPause = () => handle?.pause()
+    const onPlay = () => handle?.resume()
     v.addEventListener('ended', onEnded)
+    v.addEventListener('pause', onPause)
+    v.addEventListener('play', onPlay)
     return () => {
       cancelled = true
       handle?.stop()
       v.removeEventListener('ended', onEnded)
+      v.removeEventListener('pause', onPause)
+      v.removeEventListener('play', onPlay)
     }
   }, [screening])
 
@@ -240,7 +285,11 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
         autoPlay
         controls
         muted={isDub ? (effectiveBed || !!localMode || screening) : false}
+        onLoadStart={isDub ? armStallWatchdog : undefined}
+        onStalled={isDub ? retryVideoLoad : undefined}
+        onError={isDub ? retryVideoLoad : undefined}
         onLoadedMetadata={isDub ? (e) => {
+          clearStallWatchdog() // W1: 메타데이터 도착 = 정상 로드, 워치독 해제
           const d = e.currentTarget.duration
           setDubDurMs(Number.isFinite(d) && d > 0 ? Math.round(d * 1000) : 0)
           // S3: 소스 AR → 더빙 무대 fit 재료(Stage 가 읽음)
@@ -258,11 +307,16 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           // U4: submitted 는 배너 제외(재녹음 진입은 좌패널 🎙) — 배너 = "아직 미제출" 유도만
           const turn = useDubStore.getState().myTurnRanges.find((r) => !r.submitted && ms >= r.startMs && ms < r.endMs)
           setMyTurnTrackId(turn ? turn.trackId : null) // 동값이면 리렌더 스킵
-          // G9-P2: 구간 끝 도달 시 정지 — record 는 [중지] 유도, preview 는 재생 종료(로컬모드는 제출/재녹음까지 유지)
+          // G9-P2/W3: 구간 끝 도달 — record+루프 ON 이면 구간 시작으로 되돌아 반복(타이밍 재시도),
+          //   아니면 정지(record=[중지] 유도·preview=재생 종료). 로컬모드는 제출/재녹음까지 유지.
           const lm = useDubStore.getState().localMode
           if (lm && ms >= lm.endMs && !v.paused) {
-            v.pause()
-            if (lm.kind === 'record') setEndedFor(lm)
+            if (lm.kind === 'record' && useDubStore.getState().recLoop) {
+              v.currentTime = lm.startMs / 1000 // W3 구간 루프
+            } else {
+              v.pause()
+              if (lm.kind === 'record') setEndedFor(lm)
+            }
           }
         } : undefined}
         className="h-full w-full object-contain"
@@ -326,16 +380,31 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           </span>
         </div>
       )}
-      {/* U2 녹음 HUD — 레벨미터+중지(센터에서 시작한 녹음을 센터에서 끝냄) */}
+      {/* W3 구간 진입 카운트다운(3‑2‑1) — 즉시 재생 대신 준비 시간, 그동안 구간 시작 프레임 정지 */}
+      {isDub && recCountdown != null && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center" role="status" aria-label={t('dub.countdownLabel')}>
+          <span className="text-7xl font-bold text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.9)]">{recCountdown}</span>
+        </div>
+      )}
+      {/* U2 녹음 HUD — 레벨미터+중지 + W3 구간 루프 토글(센터에서 시작한 녹음을 센터에서 끝냄) */}
       {isDub && localMode?.kind === 'record' && (
         <div className="absolute inset-x-0 top-2 z-10 flex justify-center">
-          <div className="flex w-64 max-w-[85%] items-center gap-2 rounded bg-black/70 px-3 py-1.5">
+          <div className="flex w-72 max-w-[90%] items-center gap-2 rounded bg-black/70 px-3 py-1.5">
             {recMicStream && <MicLevelMeter stream={recMicStream} />}
             <button
               onClick={() => useDubStore.getState().recEngine?.stop()}
               className="shrink-0 rounded-lg bg-fire-hot px-3 py-1 text-xs font-semibold text-stage-base"
             >
               {t('dub.stopButton')}
+            </button>
+            {/* W3 구간 반복 — ON 이면 구간 끝에서 되돌아 반복(타이밍 재시도), OFF 면 끝에서 정지 */}
+            <button
+              onClick={() => useDubStore.getState().setRecLoop(!recLoop)}
+              aria-pressed={recLoop}
+              title={t('dub.loopHint')}
+              className={`shrink-0 rounded-lg px-2 py-1 text-xs ${recLoop ? 'bg-fire-amber text-stage-base' : 'text-stage-text hover:text-fire-amber'}`}
+            >
+              🔁
             </button>
           </div>
         </div>

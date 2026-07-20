@@ -11,6 +11,8 @@ export interface DubPreviewTrack {
 
 export interface DubPreviewHandle {
   stop: () => void
+  pause: () => void   // W5: 영상 pause 에 맞춰 오디오 정지(ctx.suspend)
+  resume: () => void  // W5: 영상 play 에 맞춰 오디오 재개(ctx.resume)
 }
 
 const CACHE_MAX = 32
@@ -71,6 +73,7 @@ export async function playDubPreview(
       fromMs,
       cals: tracks.map((t) => t.calMs ?? 0),
     }
+    ;(window as unknown as Record<string, unknown>).__dubPreviewCtx = ctx // W5 검증: pause/play 시 state 관측
   }
   let stopped = false
   return {
@@ -80,5 +83,9 @@ export async function playDubPreview(
       for (const n of [...nodes, ...bedNodes]) { try { n.stop() } catch { /* 이미 종료 */ } }
       void ctx.close()
     },
+    // W5 DUB-PREVIEW-PAUSE: 오디오는 AudioContext 시계로 도므로 영상 pause 를 안 따라간다.
+    //   ctx.suspend/resume 로 스케줄 전체를 영상 pause/play 에 묶는다(호출측이 video 이벤트에 배선).
+    pause: () => { if (!stopped && ctx.state === 'running') void ctx.suspend() },
+    resume: () => { if (!stopped && ctx.state === 'suspended') void ctx.resume() },
   }
 }
