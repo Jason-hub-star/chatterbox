@@ -86,6 +86,17 @@ tags: [status, goals]
 | F8 | PANEL-UNIFY v1 | 좌패널 [🎙 이 대사 녹음]→recordRequest 브리지로 REC 시작 | 실렌더 | **DONE**(2026-07-19: 좌 클릭→■ 중지 노출·stale nonce 마운트 가드) |
 | — | DUB-HAIR-MATTE | **HOLD(크로스레포)** — Vtube 매팅 개선, 병행세션 확인 선행 | Vtube 세션 | HOLD |
 
+## 골 사다리 U — PANEL-UNIFY-V2 3패널 정본 재배치 (2026-07-20 플랜모드 승인 · 브리프 `GOAL-dub-panel-unify.md`)
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| U0 | 문서화 | 브리프+사다리+§0 갱신 | docs:check·links | **DONE**(2026-07-20 — 이 등재+stale ⏳ 3건 정정, docs 3종 0) |
+| U1 | 엔진 헤드리스 승격 | dubStore recEngine 레지스트리·recordRequest 브리지 삭제·좌패널 직결(동작 등가) | check:all + 실렌더(F8 등가) | **DONE**(2026-07-20: rec 상태 6종 store 승격+blob ref·실렌더 10/10·probe 승계 recEngine — drift 가 recordRequest 삭제를 REGRESSION 으로 실포착) |
+| U2 | 센터 녹음 HUD | [🎙 지금 녹음] 원버튼·녹음/프리뷰 HUD(레벨미터·캘리브·제출) | 실렌더 DB 실측 + 360px | **DONE**(2026-07-20: 6/6 — 원버튼→HUD→테이크루프→360px→제출 DB(cal 100). 부수 결함 2: 솔로 초대 필 z-20 클릭 가로챔→더빙 중 숨김·프리뷰 배지 중복→제거) |
+| U3 | 더빙 상태 시각화 | 타임라인·좌패널 세그 상태(미녹음/제출/확정✓)+프리뷰 미니 파형 | 실렌더(스타일 변화·파형 픽셀) | **DONE**(2026-07-20: 4/4 — assigned opacity 0.5→submitted 1→synced ✓ 양패널·파형 690px 실측) |
+| U4 | 우패널 레일 축소 | 세그별 트랙 행 제거 → 진행 n/m+호스트 확정 컴팩트만 | 실렌더(행 스팸 소멸)+다인 무회귀 | **DONE**(2026-07-20: 4/4 — rail 행 0→제출분만 1·확정/해제 동작·RETAKE 재녹음 경로(myTurnRanges submitted 확장). 원본 오디오·번역 토글·"확인(synced)" 잔재 정리) |
+| U5 | 실증 총괄·마감 | 원버튼 e2e·탭 전환 녹음 지속·솔로 무회귀·문서 마감 | 통합 실렌더 + check:all | **DONE**(2026-07-20: U5 3/3×3(솔로 체인·탭 전환 녹음 지속·비활성 탭 완주)+U2 6/6·U3 4/4 재확인+F 회귀 10/10·check:all 0. 부수 정수정: refresh out-of-order seq 가드(레이스 실포착)) |
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

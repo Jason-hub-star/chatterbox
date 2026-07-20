@@ -5,6 +5,7 @@ import { useDubStore } from '@/stores/dubStore'
 import { useUserStore } from '@/stores/userStore'
 import { playDubPreview, type DubPreviewHandle } from '@/lib/dubPreview'
 import DubTimeline from '@/features/dub/DubTimeline'
+import { MicLevelMeter, TakeWaveform } from '@/features/dub/DubRecorder'
 import { fetchDubRecordings } from '@/lib/dub'
 import {
   publishVodSync,
@@ -43,7 +44,13 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
   const [subtitle, setSubtitle] = useState('')
   // record 중 구간 끝 도달 → 중지 유도. localMode 객체 정체성에 귀속 — 모드가 바뀌면 자동 무효(별도 리셋 불필요).
   const [endedFor, setEndedFor] = useState<object | null>(null)
-  const [myTurn, setMyTurn] = useState(false) // G9-P4: 재생 위치가 내 미제출 트랙 구간(배너)
+  const [myTurnTrackId, setMyTurnTrackId] = useState<string | null>(null) // G9-P4→U2: 재생 위치의 내 미제출 트랙(배너+원버튼)
+  // U2 센터 녹음 HUD: 엔진 렌더 상태(U1 승격분) — 조작은 recEngine(getState 호출·구독 불필요)
+  const recMicStream = useDubStore((s) => s.recMicStream)
+  const recPreview = useDubStore((s) => s.recPreview)
+  const recCalMs = useDubStore((s) => s.recCalMs)
+  const recBusy = useDubStore((s) => s.recBusy)
+  const recError = useDubStore((s) => s.recError)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [dubDurMs, setDubDurMs] = useState(0) // DUB-EDIT: 타임라인 스케일(loadedmetadata 실측)
   const [rate, setRate] = useState(1) // 호스트 배속 칩 활성 표시용(진실은 video.playbackRate)
@@ -248,7 +255,9 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           const seg = dubSegments.find((s) => ms >= s.start_ms && ms < s.end_ms)
           setSubtitle(seg ? (seg.translated_text || seg.text) : '')
           setDubSegment(seg ? seg.id : null)
-          setMyTurn(useDubStore.getState().myTurnRanges.some((r) => ms >= r.startMs && ms < r.endMs)) // 동값이면 리렌더 스킵
+          // U4: submitted 는 배너 제외(재녹음 진입은 좌패널 🎙) — 배너 = "아직 미제출" 유도만
+          const turn = useDubStore.getState().myTurnRanges.find((r) => !r.submitted && ms >= r.startMs && ms < r.endMs)
+          setMyTurnTrackId(turn ? turn.trackId : null) // 동값이면 리렌더 스킵
           // G9-P2: 구간 끝 도달 시 정지 — record 는 [중지] 유도, preview 는 재생 종료(로컬모드는 제출/재녹음까지 유지)
           const lm = useDubStore.getState().localMode
           if (lm && ms >= lm.endMs && !v.paused) {
@@ -302,17 +311,77 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           {endedFor === localMode && <span className="text-fire-amber">{t('dub.segmentEndHint')}</span>}
         </div>
       )}
-      {isDub && localMode?.kind === 'preview' && (
-        <div className="pointer-events-none absolute left-2 top-2 rounded bg-black/70 px-2 py-1 text-xs text-fire-amber" role="status">
-          {t('dub.previewBadge')}
+      {/* U2: 프리뷰 배지는 제거 — 프리뷰 HUD(재재생·제출)가 상태를 대변, 360px 에서 배지-HUD 겹침 해소 */}
+      {/* G9-P4→U2: 내 차례 배너 + [지금 녹음] 원버튼 — 영상 보다가 그 자리에서 녹음 진입(recEngine 직결) */}
+      {isDub && myTurnTrackId && !localMode && (
+        <div className="absolute inset-x-0 top-2 z-10 flex justify-center" role="status">
+          <span className="flex items-center gap-2 rounded bg-fire-amber/90 px-3 py-1 text-xs font-semibold text-stage-base">
+            🎙 {t('dub.myTurnBanner')}
+            <button
+              onClick={() => useDubStore.getState().recEngine?.start(myTurnTrackId)}
+              className="rounded bg-stage-base/90 px-2 py-0.5 text-fire-amber hover:brightness-110"
+            >
+              {t('dub.recordNow')}
+            </button>
+          </span>
         </div>
       )}
-      {/* G9-P4: 내 차례 배너 — 재생 위치가 내 미제출 트랙 구간(녹음 유도, DubRecorder.md §4) */}
-      {isDub && myTurn && !localMode && (
-        <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center" role="status">
-          <span className="rounded bg-fire-amber/90 px-3 py-1 text-xs font-semibold text-stage-base">
-            🎙 {t('dub.myTurnBanner')}
-          </span>
+      {/* U2 녹음 HUD — 레벨미터+중지(센터에서 시작한 녹음을 센터에서 끝냄) */}
+      {isDub && localMode?.kind === 'record' && (
+        <div className="absolute inset-x-0 top-2 z-10 flex justify-center">
+          <div className="flex w-64 max-w-[85%] items-center gap-2 rounded bg-black/70 px-3 py-1.5">
+            {recMicStream && <MicLevelMeter stream={recMicStream} />}
+            <button
+              onClick={() => useDubStore.getState().recEngine?.stop()}
+              className="shrink-0 rounded-lg bg-fire-hot px-3 py-1 text-xs font-semibold text-stage-base"
+            >
+              {t('dub.stopButton')}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* U2 프리뷰 HUD — 캘리브레이션·재재생·다시 녹음·제출(우패널 왕복 제거) */}
+      {isDub && localMode?.kind === 'preview' && recPreview && (
+        <div className="absolute inset-x-0 top-2 z-10 flex justify-center">
+          <div className="flex max-w-[95%] flex-wrap items-center justify-center gap-2 rounded bg-black/70 px-3 py-1.5 text-xs text-white">
+            <TakeWaveform url={recPreview.url} />
+            <label className="flex items-center gap-1 text-stage-text-muted">
+              {t('dub.calibrationLabel')}
+              <input
+                type="range" min={-200} max={200} step={10} value={recCalMs}
+                onChange={(e) => useDubStore.getState().setRec({ recCalMs: Number(e.target.value) })}
+                className="w-24 accent-fire-amber"
+              />
+              <span className="w-12 text-right tabular-nums">{recCalMs > 0 ? `+${recCalMs}` : recCalMs}ms</span>
+            </label>
+            <button
+              onClick={() => useDubStore.getState().recEngine?.replay()}
+              disabled={recBusy}
+              className="rounded-lg border border-stage-border px-2 py-1 hover:bg-white/10 disabled:opacity-40"
+            >
+              {t('dub.replayPreview')}
+            </button>
+            <button
+              onClick={() => useDubStore.getState().recEngine?.start(recPreview.trackId)}
+              disabled={recBusy}
+              className="rounded-lg border border-stage-border px-2 py-1 hover:bg-white/10 disabled:opacity-40"
+            >
+              🎙 {t('dub.retake')}
+            </button>
+            <button
+              onClick={() => useDubStore.getState().recEngine?.submit()}
+              disabled={recBusy}
+              className="rounded-lg bg-fire-amber px-3 py-1 font-semibold text-stage-base disabled:opacity-40"
+            >
+              {recBusy ? t('dub.submitLoading') : t('dub.submitButton')}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* U2: 엔진 오류(마이크 거부 등)를 센터에도 — 좌패널/센터 트리거 시 우패널이 hidden 이어도 보이게 */}
+      {isDub && recError && (
+        <div className="pointer-events-none absolute inset-x-0 top-10 z-10 flex justify-center" role="alert">
+          <span className="max-w-[90%] truncate rounded bg-fire-hot/90 px-2 py-0.5 text-[11px] text-white">{recError}</span>
         </div>
       )}
       {/* G9-P3: 시사회 배지(전원) + 호스트 토글 */}

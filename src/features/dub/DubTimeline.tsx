@@ -35,6 +35,7 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
   const currentSegmentId = useDubStore((s) => s.currentSegmentId)
   const selectedSegmentId = useDubStore((s) => s.selectedSegmentId)
   const assignees = useDubStore((s) => s.segmentAssignees)
+  const segStatus = useDubStore((s) => s.segmentStatus) // U3: 미녹음=반투명 점선 / 제출=채움 / 확정=✓
   const editingBadge = useDubStore((s) => s.editingBadge)
   const playheadRef = useRef<HTMLDivElement | null>(null)
   const stripRef = useRef<HTMLDivElement | null>(null)
@@ -169,11 +170,14 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
             const left = (startMs / durationMs) * 100
             const width = Math.max(0.4, ((endMs - startMs) / durationMs) * 100)
             const name = assignees[seg.id]
+            const st = segStatus[seg.id]
+            const recorded = st === 'submitted' || st === 'synced' // U3: 녹음물 존재 = 채움
             const selected = seg.id === selectedSegmentId
             const playing = seg.id === currentSegmentId
             return (
               <button
                 key={seg.id}
+                data-dub-seg-status={st ?? 'none'}
                 onClick={() => {
                   const v = videoRef.current
                   if (v) v.currentTime = seg.start_ms / 1000
@@ -191,9 +195,11 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
                 style={{ left: `${left}%`, width: `${width}%` }}
                 className={`absolute inset-y-2 overflow-hidden whitespace-nowrap rounded border px-0.5 text-left text-[9px] leading-none text-white/90
                   ${name ? colorFor(name) : 'bg-stage-border/60'}
-                  ${selected ? 'z-10 border-fire-amber ring-1 ring-fire-amber' : 'border-black/30'}
+                  ${recorded ? '' : 'border-dashed opacity-50'}
+                  ${selected ? 'z-10 border-fire-amber ring-1 ring-fire-amber' : recorded ? 'border-black/30' : 'border-white/40'}
                   ${playing ? 'brightness-125' : 'hover:brightness-110'}`}
               >
+                {st === 'synced' && <span aria-hidden className="mr-0.5 text-emerald-300">✓</span>}
                 {name ? name.slice(0, 2) : ''}
                 {/* 확대돼 블록이 넓어지면 대사 미리보기(캡컷 클립 내용 표시) */}
                 {width * zoom > 8 && <span className="ml-1 opacity-80">{(seg.translated_text || seg.text).slice(0, 30)}</span>}

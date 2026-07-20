@@ -3,14 +3,17 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useDubStore } from '@/stores/dubStore'
 import {
-  getDubSourceUrl, uploadDubRecording, submitDubTrack, confirmDubTrack,
+  uploadDubRecording, submitDubTrack, confirmDubTrack,
   type DubTrack, type RoomMember,
 } from '@/lib/dub'
 import { toast } from '@/hooks/useToast'
 
 // Phase 3B 슬라이스 2: 더빙 녹음(DUB-04) 최소 UI.
 // 계약(DubRecorder.md) 준수: 원본 음소거 재생·본인 트랙만·미리보기 필수 저장·assigned→submitted→synced.
-// ponytail defer: 청크/resume·IndexedDB 백업(ROOM-23)·calibration 슬라이더·Realtime·전체 재촬영·비프/자동차례.
+// ponytail defer: 청크/resume·IndexedDB 백업(ROOM-23)·Realtime·전체 재촬영·비프/자동차례.
+// U1 PANEL-UNIFY-V2: 캡처 엔진 헤드리스 — 렌더 상태(recTrackId·recPreview 등)는 dubStore, 액션은
+//   recEngine 레지스트리로 등록(blob 만 엔진 ref). 좌패널·센터 HUD 가 패널 무소속으로 조작한다.
+//   우패널 탭은 hidden 유지(RightPanel "MUST NOT 언마운트")라 이 컴포넌트가 recording 동안 상시 마운트.
 
 const MIME = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
 function pickMime(): string {
@@ -23,7 +26,7 @@ function pickMime(): string {
 const SILENT_AFTER_MS = 2500
 const SILENT_PEAK = 0.02
 
-function MicLevelMeter({ stream }: { stream: MediaStream }) {
+export function MicLevelMeter({ stream }: { stream: MediaStream }) {
   const { t } = useTranslation()
   const [level, setLevel] = useState(0)
   const [silent, setSilent] = useState(false)
@@ -76,8 +79,48 @@ function MicLevelMeter({ stream }: { stream: MediaStream }) {
   )
 }
 
+// U3: 방금 녹음 테이크의 미니 파형 — 무음/클리핑을 눈으로 확인(프리뷰 HUD 재료).
+// objectURL fetch→decodeAudioData→피크 다운샘플→canvas. 실패는 비치명(파형 없이 진행).
+export function TakeWaveform({ url }: { url: string }) {
+  const { t } = useTranslation()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const buf = await fetch(url).then((r) => r.arrayBuffer())
+        const actx = new AudioContext()
+        const audio = await actx.decodeAudioData(buf).finally(() => void actx.close())
+        const canvas = canvasRef.current
+        if (cancelled || !canvas) return
+        const g = canvas.getContext('2d')
+        if (!g) return
+        const { width, height } = canvas
+        g.clearRect(0, 0, width, height)
+        g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-fire-amber').trim() || '#ff8c2a'
+        const data = audio.getChannelData(0)
+        const step = Math.max(1, Math.floor(data.length / width))
+        for (let x = 0; x < width; x++) {
+          let peak = 0
+          const off = x * step
+          for (let i = 0; i < step; i += 16) { const v = Math.abs(data[off + i] ?? 0); if (v > peak) peak = v }
+          const h = Math.max(1, peak * height)
+          g.fillRect(x, (height - h) / 2, 1, h)
+        }
+      } catch { /* 파형 실패 비치명 */ }
+    })()
+    return () => { cancelled = true }
+  }, [url])
+  return (
+    <canvas
+      ref={canvasRef} width={192} height={28} data-dub-waveform
+      role="img" aria-label={t('dub.waveformLabel')}
+      className="h-7 w-48 rounded bg-black/40"
+    />
+  )
+}
+
 interface Props {
-  dubSessionId: string
   myId: string | null
   isHost: boolean
   tracks: DubTrack[]
@@ -85,7 +128,7 @@ interface Props {
   onChanged: () => void | Promise<void>
 }
 
-export default function DubRecorder({ dubSessionId, myId, isHost, tracks, members, onChanged }: Props) {
+export default function DubRecorder({ myId, isHost, tracks, members, onChanged }: Props) {
   const { t } = useTranslation()
   const token = useUserStore((s) => s.session?.access_token)
 
@@ -98,35 +141,24 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
     }
     return marks[status]
   }
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null)
-  const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null)
-  const [preview, setPreview] = useState<{ trackId: string; url: string; blob: Blob; durationMs: number } | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [showTranslation, setShowTranslation] = useState(false)
-  const [micStream, setMicStream] = useState<MediaStream | null>(null)
-  const [calMs, setCalMs] = useState(0) // G9-P4 ±200ms 캘리브레이션(테이크마다 0 리셋)
+  // U1: 렌더 상태는 dubStore(좌패널·센터 HUD 공유), blob 만 엔진 내부 ref
+  // U4: 세그별 조작 행·원본 오디오 플레이어·번역 토글 제거 — 재생/녹음/프리뷰는 센터가 정본,
+  //     이 컴포넌트는 캡처 엔진 + 얇은 레일(확정 대기 목록·진행)만 남는다.
+  const recordingTrackId = useDubStore((s) => s.recTrackId)
+  const preview = useDubStore((s) => s.recPreview)
+  const busy = useDubStore((s) => s.recBusy)
+  const error = useDubStore((s) => s.recError)
+  const calMs = useDubStore((s) => s.recCalMs)
+  const setRec = useDubStore((s) => s.setRec)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
   const startedAtRef = useRef(0)
+  const previewBlobRef = useRef<Blob | null>(null)
 
   const memberName = (uid: string) => members.find((m) => m.userId === uid)?.displayName ?? uid.slice(0, 8)
   const isRecording = recordingTrackId !== null
-
-  // 소스 재생 URL (원본 음소거 재생용)
-  useEffect(() => {
-    if (!token) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const url = await getDubSourceUrl(token, dubSessionId)
-        if (!cancelled) setSourceUrl(url)
-      } catch { /* 재생 없이도 진행 가능 */ }
-    })()
-    return () => { cancelled = true }
-  }, [token, dubSessionId])
 
   // 언마운트 시 스트림 정리
   useEffect(() => () => {
@@ -135,12 +167,16 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
   }, [preview])
 
   // 언마운트 시 로컬모드 해제 — 센터를 잔존 record/preview 상태로 두지 않는다(G9-P2)
-  useEffect(() => () => { useDubStore.getState().setLocalMode(null) }, [])
+  // U1: store 로 승격된 rec 상태도 함께 리셋(세션 전환 후 stale 미리보기/녹음중 표기 방지)
+  useEffect(() => () => {
+    useDubStore.getState().setLocalMode(null)
+    previewBlobRef.current = null
+    useDubStore.getState().setRec({ recTrackId: null, recPreview: null, recBusy: false, recCalMs: 0, recMicStream: null, recError: null })
+  }, [])
 
   const startRec = useCallback(async (track: DubTrack) => {
     if (isRecording) return
-    setError(null)
-    setCalMs(0)
+    setRec({ recError: null, recCalMs: 0 })
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
@@ -154,10 +190,9 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
         const durationMs = Math.round(performance.now() - startedAtRef.current)
         stream.getTracks().forEach((t) => t.stop())
         streamRef.current = null
-        setMicStream(null)
         const url = URL.createObjectURL(blob)
-        setPreview({ trackId: track.id, url, blob, durationMs })
-        setRecordingTrackId(null)
+        previewBlobRef.current = blob
+        setRec({ recPreview: { trackId: track.id, url, durationMs }, recTrackId: null, recMicStream: null })
         // G9-P2: 정지 즉시 센터에서 방금 녹음 자동 미리보기(녹음이 구간보다 길면 그만큼 연장)
         useDubStore.getState().setLocalMode({
           kind: 'preview',
@@ -168,8 +203,7 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
       })
       startedAtRef.current = performance.now()
       recorderRef.current = rec
-      setRecordingTrackId(track.id)
-      setMicStream(stream)
+      setRec({ recTrackId: track.id, recMicStream: stream })
       rec.start()
       // G9-P2: 녹음 시작 → 센터 영상이 이 구간을 음소거 재생(내 화면만 — MainView 가 vodSync 일시 해제).
       // ponytail: 시크 완료와 녹음 시작 사이 수백 ms 오차 가능 — P4 캘리브레이션(±200ms)이 보정 경로.
@@ -178,39 +212,29 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
         kind: 'record', startMs: track.startTimeMs, endMs: track.endTimeMs, audioUrl: null,
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('dub.micAccessError'))
+      setRec({ recError: e instanceof Error ? e.message : t('dub.micAccessError') })
     }
-  }, [isRecording, t])
+  }, [isRecording, setRec, t])
 
   const stopRec = useCallback(() => { recorderRef.current?.stop() }, [])
 
-  // F8 PANEL-UNIFY v1: 좌패널 [🎙 이 대사 녹음] → store 브리지 소비(nonce 1회, 내 트랙만).
-  // 초기값 = 마운트 시점 nonce — 마운트 전(탭 닫힘) 요청은 무시(탭 여는 순간 기습 녹음 방지).
-  const recordRequest = useDubStore((s) => s.recordRequest)
-  const consumedRecReqRef = useRef(useDubStore.getState().recordRequest?.nonce ?? 0)
-  useEffect(() => {
-    if (!recordRequest || recordRequest.nonce === consumedRecReqRef.current) return
-    consumedRecReqRef.current = recordRequest.nonce
-    const track = tracks.find((tr) => tr.id === recordRequest.trackId)
-    if (!track || track.participantId !== myId || isRecording || busy) return
-    ;(async () => { await startRec(track) })()
-  }, [recordRequest, tracks, myId, isRecording, busy, startRec])
-
   const submit = useCallback(async () => {
-    if (!token || !preview) return
-    setBusy(true); setError(null)
+    const blob = previewBlobRef.current
+    if (!token || !preview || !blob) return
+    setRec({ recBusy: true, recError: null })
     try {
-      const path = await uploadDubRecording(token, preview.trackId, preview.blob)
+      const path = await uploadDubRecording(token, preview.trackId, blob)
       await submitDubTrack(token, preview.trackId, path, preview.durationMs, calMs)
       useDubStore.getState().setLocalMode(null) // 제출 → 로컬모드 해제(동기 복귀), objectURL 소멸 전에
       URL.revokeObjectURL(preview.url)
-      setPreview(null)
+      previewBlobRef.current = null
+      setRec({ recPreview: null })
       toast.success(t('dub.submitSuccess')) // 감사 픽스: "제출됐나?" 무피드백 해소
       await onChanged()
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('dub.submitError'))
-    } finally { setBusy(false) }
-  }, [token, preview, calMs, onChanged, t])
+      setRec({ recError: e instanceof Error ? e.message : t('dub.submitError') })
+    } finally { setRec({ recBusy: false }) }
+  }, [token, preview, calMs, setRec, onChanged, t])
 
   // G9-P4: 보정 슬라이더 반영해 센터 미리보기 재재생(오디오를 calMs 만큼 이동)
   const replayPreview = useCallback(() => {
@@ -228,120 +252,67 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
 
   const confirm = useCallback(async (trackId: string, undo = false) => {
     if (!token) return
-    setBusy(true); setError(null)
+    setRec({ recBusy: true, recError: null })
     try { await confirmDubTrack(token, trackId, undo); await onChanged() }
-    catch (e) { setError(e instanceof Error ? e.message : t(undo ? 'dub.unconfirmError' : 'dub.confirmError')) }
-    finally { setBusy(false) }
-  }, [token, onChanged, t])
+    catch (e) { setRec({ recError: e instanceof Error ? e.message : t(undo ? 'dub.unconfirmError' : 'dub.confirmError') }) }
+    finally { setRec({ recBusy: false }) }
+  }, [token, setRec, onChanged, t])
+
+  // U1: 엔진 레지스트리 — 좌패널·센터 HUD 가 패널 무소속으로 호출(F8 recordRequest nonce 브리지 대체).
+  // start 가드는 F8 소비 effect 와 동형: 내 트랙만·녹음/busy 중 무시.
+  const startById = useCallback((trackId: string) => {
+    const track = tracks.find((tr) => tr.id === trackId)
+    if (!track || track.participantId !== myId || isRecording || busy) return
+    void startRec(track)
+  }, [tracks, myId, isRecording, busy, startRec])
+  useEffect(() => {
+    useDubStore.getState().setRecEngine({ start: startById, stop: stopRec, replay: replayPreview, submit })
+    return () => { useDubStore.getState().setRecEngine(null) }
+  }, [startById, stopRec, replayPreview, submit])
 
   const syncedCount = tracks.filter((t) => t.status === 'synced').length
   const allSynced = tracks.length > 0 && syncedCount === tracks.length
 
+  const myPending = tracks.some((tr) => tr.participantId === myId && (tr.status === 'assigned' || tr.status === 'recording'))
+  const railTracks = tracks.filter((tr) => tr.status === 'submitted' || tr.status === 'synced')
+  // 대사 번호(친화 폴백) — 시작시각 순서. speaker_name 은 "Segment N"(영어 합성 라벨)이라 직노출 금지.
+  const lineNoById = new Map([...tracks].sort((a, b) => a.startTimeMs - b.startTimeMs).map((tr, i) => [tr.id, i + 1]))
+  const lineText = (track: DubTrack) => track.translatedText || track.transcriptText || t('dub.lineLabel', { n: lineNoById.get(track.id) ?? 0 })
+
   return (
-    <div className="mt-3 space-y-4">
+    <div className="mt-3 space-y-3">
       {error && <p className="rounded bg-fire-hot/10 px-3 py-2 text-sm text-fire-hot" role="alert">{error}</p>}
 
-      {/* 원본 재생 (녹음 중엔 음소거 — 마이크 유입 방지, 헤드폰 권장) */}
-      {sourceUrl && (
-        <div>
-          <h3 className="text-xs font-semibold text-stage-text-muted">{t('dub.sourceLabel')}</h3>
-          <audio src={sourceUrl} controls muted={isRecording} className="mt-1 w-full">
-            <track kind="captions" />
-          </audio>
-          {isRecording && <p className="text-xs text-stage-text-muted">{t('dub.mutedInfo')}</p>}
+      {/* U4 레일: 세그별 조작 행 제거(녹음·프리뷰·제출은 좌패널 🎙+센터 HUD 가 정본) — 조작 소재 안내 1줄 */}
+      {myPending && (
+        <p className="text-[11px] text-stage-text-muted" role="note">{t('dub.railRecordHint')}</p>
+      )}
+
+      {/* 확정 대기/확정 목록(고유 기능만 존치): 호스트=확정·되돌리기, 배우=내 제출 대기 표시 */}
+      {railTracks.map((track) => (
+        <div key={track.id} data-dub-rail-track className="flex items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm">
+          <span className="w-12 shrink-0 text-xs text-stage-text-muted">{(track.startTimeMs / 1000).toFixed(1)}s</span>
+          <span className="min-w-0 flex-1 truncate text-xs">
+            {lineText(track)} · {memberName(track.participantId)} · {getStatusMark(track.status)}
+          </span>
+          {isHost && track.status === 'submitted' && (
+            <button onClick={() => confirm(track.id)} disabled={busy}
+              className="shrink-0 rounded-lg border border-stage-border px-3 py-1.5 text-xs hover:bg-stage-border/30 disabled:opacity-40">
+              {t('dub.confirmButton')}
+            </button>
+          )}
+          {/* DUB-RETAKE: 확정 해제 → submitted 복귀 → 배우 재녹음 재활성(Realtime 이 전파) */}
+          {isHost && track.status === 'synced' && (
+            <button onClick={() => confirm(track.id, true)} disabled={busy}
+              className="shrink-0 rounded-lg border border-stage-border px-3 py-1.5 text-xs text-stage-text-muted hover:bg-stage-border/30 disabled:opacity-40">
+              {t('dub.unconfirmButton')}
+            </button>
+          )}
+          {!isHost && track.status === 'submitted' && track.participantId === myId && (
+            <span className="shrink-0 text-[11px] text-stage-text-muted" role="status">{t('dub.waitingConfirmHint')}</span>
+          )}
         </div>
-      )}
-
-      {/* 트랙 목록 + 내 트랙 녹음 */}
-      {tracks.some((track) => track.translatedText) && (
-        <button
-          onClick={() => setShowTranslation((v) => !v)}
-          className="rounded border border-stage-border px-2 py-0.5 text-xs text-stage-text-muted hover:text-stage-text"
-        >
-          {showTranslation ? t('dub.showOriginal') : t('dub.showTranslation')}
-        </button>
-      )}
-      <ul className="space-y-2">
-        {tracks.map((track) => {
-          const mine = track.participantId === myId
-          const previewing = preview?.trackId === track.id
-          return (
-            <li key={track.id} className="rounded-lg border border-stage-border px-3 py-2 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-14 shrink-0 text-xs text-stage-text-muted">
-                  {(track.startTimeMs / 1000).toFixed(1)}s
-                </span>
-                <span className="flex-1 truncate">{track.speakerName} · {showTranslation && track.translatedText ? track.translatedText : track.transcriptText}</span>
-                <span className="shrink-0 text-xs text-stage-text-muted">
-                  {memberName(track.participantId)} · {getStatusMark(track.status)}
-                </span>
-              </div>
-
-              {mine && track.status !== 'synced' && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {recordingTrackId === track.id ? (
-                    <>
-                      <button onClick={stopRec}
-                        className="rounded-lg bg-fire-hot px-3 py-1.5 text-xs font-semibold text-stage-base">
-                        {t('dub.stopButton')}
-                      </button>
-                      {micStream && <MicLevelMeter stream={micStream} />}
-                    </>
-                  ) : (
-                    <button onClick={() => startRec(track)} disabled={isRecording || busy}
-                      className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
-                      {t('dub.recordButton')}
-                    </button>
-                  )}
-                  {/* 감사 픽스: submitted = 호스트 확정 대기 — 배우가 "뭘 해야 하나" 무피드백 해소 */}
-                  {track.status === 'submitted' && !previewing && (
-                    <span className="text-[11px] text-stage-text-muted" role="status">{t('dub.waitingConfirmHint')}</span>
-                  )}
-                  {previewing && (
-                    <>
-                      <audio src={preview.url} controls className="h-8">
-                        <track kind="captions" />
-                      </audio>
-                      {/* G9-P4 캘리브레이션 — 미리보기로 맞추고 제출하면 합성에도 동일 적용 */}
-                      <label className="flex items-center gap-1 text-xs text-stage-text-muted">
-                        {t('dub.calibrationLabel')}
-                        <input
-                          type="range" min={-200} max={200} step={10} value={calMs}
-                          onChange={(e) => setCalMs(Number(e.target.value))}
-                          className="w-24 accent-fire-amber"
-                        />
-                        <span className="w-14 text-right tabular-nums">{calMs > 0 ? `+${calMs}` : calMs}ms</span>
-                      </label>
-                      <button onClick={replayPreview} disabled={busy}
-                        className="rounded-lg border border-stage-border px-3 py-1.5 text-xs hover:bg-stage-border/30 disabled:opacity-40">
-                        {t('dub.replayPreview')}
-                      </button>
-                      <button onClick={submit} disabled={busy}
-                        className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
-                        {busy ? t('dub.submitLoading') : t('dub.submitButton')}
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {isHost && track.status === 'submitted' && (
-                <button onClick={() => confirm(track.id)} disabled={busy}
-                  className="mt-2 rounded-lg border border-stage-border px-3 py-1.5 text-xs hover:bg-stage-border/30 disabled:opacity-40">
-                  {t('dub.confirmButton')}
-                </button>
-              )}
-              {/* DUB-RETAKE: 확정 해제 → submitted 복귀 → 배우 [● 녹음] 재활성(Realtime 이 전파) */}
-              {isHost && track.status === 'synced' && (
-                <button onClick={() => confirm(track.id, true)} disabled={busy}
-                  className="mt-2 rounded-lg border border-stage-border px-3 py-1.5 text-xs text-stage-text-muted hover:bg-stage-border/30 disabled:opacity-40">
-                  {t('dub.unconfirmButton')}
-                </button>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+      ))}
 
       {/* 하단: 진행도 (전 트랙 synced 시 DubPanel 이 DubCompositor 마운트) */}
       <div className="flex items-center justify-between border-t border-stage-border pt-3" role="status" aria-live="polite">

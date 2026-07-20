@@ -11,6 +11,7 @@ import {
   startTranscription, translateDubScript, separateDubAudio, revertDubSession,
   fetchRoomMembers, fetchActiveDubSession,
   fetchMyUserId, fetchRoomHostId, fetchDubTracks, getDubSourceUrl,
+  DUB_SESSION_STATUS_I18N,
   type DubSegment, type DubTrack, type RoomMember, type DubLang,
 } from '@/lib/dub'
 // 674줄 분할(2026-07-19, 계약 정렬): 업로드/트림 = DubSessionSelector · READY(대본·역할·동의·솔로) = DubRoleAssigner.
@@ -41,6 +42,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   const [members, setMembers] = useState<RoomMember[]>([])
   const [tracks, setTracks] = useState<DubTrack[]>([])
   const bedProbedRef = useRef<string | null>(null) // S1: 세션당 베드 프로브 1회 가드
+  const refreshSeqRef = useRef(0) // U5: refresh out-of-order 가드(최신 호출만 적용)
   // DUB-LANG: 소스(원본) 언어 — 방 UI 언어와 분리. 기본 ja(더빙 1차 용도 = 애니 JP→KR).
   const [sourceLanguage, setSourceLanguage] = useState<DubLang>('ja')
   // 의상실식 자동 파이프라인 단계 표시(업로드→대본추출→번역). 사람 게이트(역할배정) 전까지 자동 연쇄.
@@ -56,11 +58,18 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
 
   const refresh = useCallback(async () => {
     if (!token) return
+    // U5 레이스 정수정: 연속 refresh(솔로 체인 = Realtime×3+onChanged)의 늦은 응답이 최신 상태를
+    // 덮어쓰면 recording→ready 로 역행해 DubRecorder 가 언마운트(recEngine 사망·조작 무반응).
+    // 시퀀스 토큰으로 최신 호출만 적용(latest-wins) — await 마다 재검사.
+    const seq = ++refreshSeqRef.current
     const [s, m] = await Promise.all([fetchActiveDubSession(roomId), fetchRoomMembers(token, roomId)])
+    if (seq !== refreshSeqRef.current) return
     setSession(s as Session | null)
     setMembers(m)
     if (s && ['ready', 'recording', 'compositing', 'completed'].includes(s.status)) {
-      setTracks(await fetchDubTracks(s.id))
+      const trs = await fetchDubTracks(s.id)
+      if (seq !== refreshSeqRef.current) return
+      setTracks(trs)
     } else {
       setTracks([])
     }
@@ -72,6 +81,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       if (prev.activeSessionId !== s.id) {
         sourceUrl = null
         try { sourceUrl = await getDubSourceUrl(token, s.id) } catch { /* 소스 아직 없음(uploaded 전) */ }
+        if (seq !== refreshSeqRef.current) return
       }
       useDubStore.getState().setActive({ activeSessionId: s.id, status: s.status, segments: segs, sourceUrl })
       // S1 베드 로드: 캐시 프로브(cache_only — fal 비발화·멤버 포함). 세션당 1회, 미스(404)는 조용히.
@@ -89,13 +99,13 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   // 방 이탈(언마운트) 시 더빙 공유상태 초기화 — 다른 방으로 잔상 누출 방지.
   useEffect(() => () => useDubStore.getState().clear(), [])
 
-  // G9-P4: 내 미제출(assigned/recording) 트랙 구간 → dubStore(센터 "내 차례" 배너 재료)
+  // G9-P4→U4: 내 미확정(synced 제외) 트랙 구간 → dubStore. submitted 는 배너 제외·좌패널 🎙 재녹음용(RETAKE 진입점).
   useEffect(() => {
     useDubStore.getState().setMyTurnRanges(
       myId
         ? tracks
-          .filter((tr) => tr.participantId === myId && (tr.status === 'assigned' || tr.status === 'recording'))
-          .map((tr) => ({ trackId: tr.id, startMs: tr.startTimeMs, endMs: tr.endTimeMs }))
+          .filter((tr) => tr.participantId === myId && tr.status !== 'synced')
+          .map((tr) => ({ trackId: tr.id, startMs: tr.startTimeMs, endMs: tr.endTimeMs, submitted: tr.status === 'submitted' }))
         : [],
     )
   }, [tracks, myId])
@@ -106,13 +116,16 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   useEffect(() => {
     const byStart = new Map(segments.map((s) => [s.start_ms, s.id]))
     const map: Record<number, string> = {}
+    const statusMap: Record<number, DubTrack['status']> = {} // U3: 같은 매칭으로 세그 상태도 파생(타임라인/좌패널 시각화)
     for (const tr of tracks) {
       const segId = byStart.get(tr.startTimeMs)
       if (segId !== undefined) {
         map[segId] = members.find((m) => m.userId === tr.participantId)?.displayName ?? tr.participantId.slice(0, 8)
+        statusMap[segId] = tr.status
       }
     }
     useDubStore.getState().setSegmentAssignees(map)
+    useDubStore.getState().setSegmentStatus(statusMap)
   }, [tracks, members, segments])
 
   useEffect(() => {
@@ -194,7 +207,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
     <section className="mt-8 rounded-lg border border-stage-border p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-stage-text-muted">
-          {t('dub.header')} {status && <span className="ml-2 rounded bg-stage-border px-2 py-0.5 text-xs">{status}</span>}
+          {t('dub.header')} {status && <span className="ml-2 rounded bg-stage-border px-2 py-0.5 text-xs">{DUB_SESSION_STATUS_I18N[status] ? t(DUB_SESSION_STATUS_I18N[status]) : status}</span>}
         </h2>
       </div>
 
@@ -319,7 +332,6 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
             </button>
           )}
           <DubRecorder
-            dubSessionId={session!.id}
             myId={myId}
             isHost={isHost}
             tracks={tracks}

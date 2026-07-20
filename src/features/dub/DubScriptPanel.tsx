@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDubStore } from '@/stores/dubStore'
 import { useUserStore } from '@/stores/userStore'
-import { updateDubSegmentText } from '@/lib/dub'
+import { updateDubSegmentText, DUB_SESSION_STATUS_I18N } from '@/lib/dub'
 
 // DUB-UX: 좌도크 더빙 대본 텔레프롬프터 — 센터 영상 재생 위치(currentSegmentId)에 맞춰 현재 대사
 //   하이라이트+auto-scroll. 오른쪽 패널은 좁아 긴 대사가 잘리므로, 전체 텍스트는 여기서 줄바꿈으로
@@ -14,6 +14,7 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
   const status = useDubStore((s) => s.status)
   const sessionId = useDubStore((s) => s.activeSessionId)
   const myTurnRanges = useDubStore((s) => s.myTurnRanges) // F8: 내 미제출 트랙(좌패널 [녹음] 매칭)
+  const segStatus = useDubStore((s) => s.segmentStatus) // U3: 세그별 더빙 상태 마크(✓)
   const token = useUserStore((s) => s.session?.access_token)
   const activeRef = useRef<HTMLLIElement>(null)
   const [editing, setEditing] = useState<{ id: number; value: string } | null>(null)
@@ -46,7 +47,7 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
     <div className="rounded-lg border border-stage-border p-3">
       <h2 className="text-xs font-semibold text-stage-text-muted">
         {t('dub.scriptPanelTitle')}
-        {status && <span className="ml-2 rounded bg-stage-border px-2 py-0.5 text-[10px]">{status}</span>}
+        {status && <span className="ml-2 rounded bg-stage-border px-2 py-0.5 text-[10px]">{DUB_SESSION_STATUS_I18N[status] ? t(DUB_SESSION_STATUS_I18N[status]) : status}</span>}
       </h2>
       {/* F7: 비호스트에게 편집 권한 소재 안내(✏️ 부재가 버그처럼 보이는 것 방지) */}
       {!isHost && segments.length > 0 && (
@@ -107,13 +108,22 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
                       >
                         {shown}
                       </button>
-                      {/* F8 PANEL-UNIFY v1: 녹음 중 내 차례 대사는 좌패널에서 바로 녹음 시작(store 브리지) */}
+                      {/* U3: 더빙 상태 마크 — 제출=amber ✓(확정 대기)·확정=green ✓ */}
+                      {(segStatus[seg.id] === 'submitted' || segStatus[seg.id] === 'synced') && (
+                        <span
+                          data-dub-line-status={segStatus[seg.id]}
+                          title={t(segStatus[seg.id] === 'synced' ? 'dub.segConfirmed' : 'dub.segRecorded')}
+                          className={`shrink-0 text-xs ${segStatus[seg.id] === 'synced' ? 'text-emerald-400' : 'text-fire-amber'}`}
+                        >
+                          ✓
+                        </span>
+                      )}
+                      {/* F8→U1 PANEL-UNIFY: 녹음 중 내 차례 대사는 좌패널에서 바로 녹음 시작(recEngine 직결) */}
                       {status === 'recording' && myTurnRanges.some((r) => r.startMs === seg.start_ms) && (
                         <button
-                          onClick={() => useDubStore.getState().setRecordRequest({
-                            trackId: myTurnRanges.find((r) => r.startMs === seg.start_ms)!.trackId,
-                            nonce: Date.now(),
-                          })}
+                          onClick={() => useDubStore.getState().recEngine?.start(
+                            myTurnRanges.find((r) => r.startMs === seg.start_ms)!.trackId,
+                          )}
                           aria-label={t('dub.recordFromScript')}
                           title={t('dub.recordFromScript')}
                           className="shrink-0 text-xs text-fire-amber hover:brightness-125"

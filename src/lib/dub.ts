@@ -18,6 +18,18 @@ export type DubStatus =
 // DUB-LANG: 소스(원본) 언어 — STT/번역 힌트. 방 UI 언어와 분리(create-room LANGS 동형).
 export type DubLang = 'ko' | 'en' | 'ja'
 
+// 세션 상태 → 사용자 친화 i18n 키(raw DB status "recording"/"ready" 직노출 방지).
+// 미지의 status 는 매핑 없음 → 호출부가 defaultValue 로 원문 폴백.
+export const DUB_SESSION_STATUS_I18N: Record<string, string> = {
+  uploaded: 'dub.sessUploaded',
+  transcribing: 'dub.sessTranscribing',
+  ready: 'dub.sessReady',
+  recording: 'dub.sessRecording',
+  compositing: 'dub.sessCompositing',
+  completed: 'dub.sessCompleted',
+  failed: 'dub.sessFailed',
+}
+
 export interface DubSegment { id: number; start_ms: number; end_ms: number; text: string; translated_text?: string }
 export interface DubTrack {
   id: string

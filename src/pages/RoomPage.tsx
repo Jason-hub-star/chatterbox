@@ -922,8 +922,9 @@ export default function RoomPage() {
               <span aria-hidden className="h-2 w-2 animate-pulse rounded-full bg-fire-hot" /> REC
             </span>
           )}
-          {/* U-0 온보딩 데드엔드: 혼자 입장 시 빈 무대 안내 + 초대 CTA(F-3 공유 재사용). */}
-          {connected && participants.length === 1 && (
+          {/* U-0 온보딩 데드엔드: 혼자 입장 시 빈 무대 안내 + 초대 CTA(F-3 공유 재사용).
+              U2: 더빙 중엔 숨김 — 같은 자리(top-3 center·z-20)가 내차례 배너/녹음 HUD(z-10)를 덮어 클릭 가로챔. */}
+          {connected && participants.length === 1 && !dubActive && (
             <button
               type="button"
               onClick={handleShareLink}
