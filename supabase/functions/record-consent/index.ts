@@ -37,25 +37,29 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!sess) return json({ error: "세션을 찾을 수 없어요." }, 404);
 
-  // 호출자가 방의 활성 참가자인지 확인(자기 동의만 기록)
+  // 호출자가 방의 활성 참가자인지 확인(자기 동의만 기록). F1(DUB-CONSENT-VIEWER):
+  // 관전자는 녹음 주체가 아니므로 동의 대상에서 제외 — 기록도 계수도 배우만.
   const { data: me } = await service
     .from("room_participants")
-    .select("id")
+    .select("id, role")
     .eq("room_id", sess.room_id)
     .eq("user_id", userId)
     .neq("state", "left")
     .maybeSingle();
   if (!me) return json({ error: "방 참가자만 동의할 수 있어요." }, 403);
+  if (me.role === "viewer") return json({ error: "관전자는 동의 대상이 아니에요." }, 403);
 
   const consent: ConsentJson = sess.consent_json ?? { participants: {}, all_consented: false };
   consent.participants[userId] = { consented, consented_at: new Date().toISOString() };
 
-  // 활성 참가자 전원 동의 여부 재계산
+  // 활성 **배우** 전원 동의 여부 재계산 — F1: 뷰어를 계수하면 관전자 입장만으로
+  // all_consented 가 영구 미충족 = 녹음 시작 차단(High 결함, /감사 2026-07-19).
   const { data: parts } = await service
     .from("room_participants")
     .select("user_id")
     .eq("room_id", sess.room_id)
-    .neq("state", "left");
+    .neq("state", "left")
+    .neq("role", "viewer");
   const allConsented = (parts ?? []).length > 0 &&
     (parts ?? []).every((p) => consent.participants[p.user_id]?.consented === true);
   consent.all_consented = allConsented;

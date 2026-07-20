@@ -184,6 +184,18 @@ export default function DubRecorder({ dubSessionId, myId, isHost, tracks, member
 
   const stopRec = useCallback(() => { recorderRef.current?.stop() }, [])
 
+  // F8 PANEL-UNIFY v1: 좌패널 [🎙 이 대사 녹음] → store 브리지 소비(nonce 1회, 내 트랙만).
+  // 초기값 = 마운트 시점 nonce — 마운트 전(탭 닫힘) 요청은 무시(탭 여는 순간 기습 녹음 방지).
+  const recordRequest = useDubStore((s) => s.recordRequest)
+  const consumedRecReqRef = useRef(useDubStore.getState().recordRequest?.nonce ?? 0)
+  useEffect(() => {
+    if (!recordRequest || recordRequest.nonce === consumedRecReqRef.current) return
+    consumedRecReqRef.current = recordRequest.nonce
+    const track = tracks.find((tr) => tr.id === recordRequest.trackId)
+    if (!track || track.participantId !== myId || isRecording || busy) return
+    ;(async () => { await startRec(track) })()
+  }, [recordRequest, tracks, myId, isRecording, busy, startRec])
+
   const submit = useCallback(async () => {
     if (!token || !preview) return
     setBusy(true); setError(null)

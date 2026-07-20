@@ -19,13 +19,14 @@ interface Props {
   myId: string | null
   isHost: boolean
   isSolo: boolean
+  isViewer?: boolean // F1: 관전자 — 동의/배정 액션 미노출(대본 열람만)
   allConsented: boolean
   myConsent: boolean
   busy: boolean
   run: (fn: () => Promise<unknown>) => void
 }
 
-export default function DubRoleAssigner({ token, sessionId, segments, tracks, members, myId, isHost, isSolo, allConsented, myConsent, busy, run }: Props) {
+export default function DubRoleAssigner({ token, sessionId, segments, tracks, members, myId, isHost, isSolo, isViewer = false, allConsented, myConsent, busy, run }: Props) {
   const { t } = useTranslation()
   // 번역본이 있으면 기본으로 번역(한국어 등)을 보여준다 — 더빙 대본의 주 사용본은 번역본.
   const [showTranslation, setShowTranslation] = useState(true)
@@ -195,11 +196,13 @@ export default function DubRoleAssigner({ token, sessionId, segments, tracks, me
             })}
             className="w-full rounded-lg bg-fire-amber px-4 py-3 text-sm font-semibold text-stage-base transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-fire-amber focus-visible:ring-offset-1 disabled:opacity-40"
           >
-            🎙 {t('dub.soloStartButton')}
+            🎙 {busy ? t('dub.soloStarting') : t('dub.soloStartButton')}
           </button>
         </div>
       ) : (
       <>
+      {/* F1: 관전자는 동의 대상 아님(서버 403 동형) — 액션 미노출, 대본 열람만 */}
+      {!isViewer && (
       <div>
         <h3 className="text-xs font-semibold text-stage-text-muted">
           {t('dub.consentLabel')} {allConsented ? t('dub.consentDone') : t('dub.consentWaiting')}
@@ -213,6 +216,7 @@ export default function DubRoleAssigner({ token, sessionId, segments, tracks, me
         </button>
         <p className="mt-1 text-[11px] text-stage-text-muted">{t('dub.consentNextHint')}</p>
       </div>
+      )}
 
       {isHost && (
         <div>

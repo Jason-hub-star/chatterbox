@@ -44,6 +44,9 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
   // 가로 스크롤 + 재생 중 플레이헤드 자동 추적. 1=전체 fit … 16.
   const [zoom, setZoom] = useState(1)
   const lastCastRef = useRef(0)
+  // F7 a11y: 키보드 retime 커밋 디바운스(키 반복 연타 → 서버 호출 1회로 수렴)
+  const keyTimerRef = useRef<number | null>(null)
+  const keyPendingRef = useRef<{ segId: number; startMs: number; endMs: number } | null>(null)
 
   // 플레이헤드: rAF 로 left % 직접 갱신 — timeupdate(4Hz)보다 부드럽고 React 리렌더 0.
   // 줌 상태에선 재생 중 플레이헤드가 화면 밖으로 나가면 중앙으로 따라간다(캡컷 follow).
@@ -118,6 +121,33 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
     window.addEventListener('pointerup', onUp)
   }
 
+  // F7 DUB-A11Y-M: 키보드 retime — ←/→ = 끝점 ±100ms · Shift+←/→ = 시작점(핸들 드래그의 키보드 대안).
+  // 낙관 반영은 drag 정체성 트릭 동형 · 커밋은 300ms 디바운스(키 반복이 요청 폭주가 되지 않게).
+  const KEY_STEP_MS = 100
+  const retimeBy = (seg: DubSegment, side: 'start' | 'end', delta: number) => {
+    if (!token || !sessionId) return
+    const base = activeDrag?.segId === seg.id
+      ? { start: activeDrag.startMs, end: activeDrag.endMs }
+      : { start: seg.start_ms, end: seg.end_ms }
+    const startMs = side === 'start'
+      ? Math.round(Math.min(Math.max(0, base.start + delta), base.end - MIN_SEG_MS)) : base.start
+    const endMs = side === 'end'
+      ? Math.round(Math.max(base.start + MIN_SEG_MS, Math.min(durationMs, base.end + delta))) : base.end
+    if (startMs === base.start && endMs === base.end) return
+    setDrag({ segId: seg.id, startMs, endMs, forSegments: segments })
+    keyPendingRef.current = { segId: seg.id, startMs, endMs }
+    if (keyTimerRef.current !== null) window.clearTimeout(keyTimerRef.current)
+    keyTimerRef.current = window.setTimeout(() => {
+      const p = keyPendingRef.current
+      keyPendingRef.current = null
+      if (!p) return
+      editDubSegment(token, sessionId, 'retime', p.segId, p.startMs, p.endMs)
+        .catch(() => { toast.error(t('dub.editFailed')); setDrag(null) })
+    }, 300)
+    const now = performance.now()
+    if (now - lastCastRef.current > 200) { lastCastRef.current = now; onDubEdit?.(seg.id) }
+  }
+
   const deleteSelected = () => {
     if (!token || !sessionId || !selectedSeg) return
     editDubSegment(token, sessionId, 'delete', selectedSeg.id)
@@ -151,6 +181,12 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
                 }}
                 aria-label={`${t('dub.timelineSegLabel')} ${seg.id}${name ? ` · ${name}` : ''}`}
                 aria-pressed={selected}
+                onKeyDown={(e) => {
+                  if (!isHost || !selected) return
+                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+                  e.preventDefault()
+                  retimeBy(seg, e.shiftKey ? 'start' : 'end', e.key === 'ArrowLeft' ? -KEY_STEP_MS : KEY_STEP_MS)
+                }}
                 title={`${(startMs / 1000).toFixed(1)}s · ${seg.translated_text || seg.text}`}
                 style={{ left: `${left}%`, width: `${width}%` }}
                 className={`absolute inset-y-2 overflow-hidden whitespace-nowrap rounded border px-0.5 text-left text-[9px] leading-none text-white/90
@@ -164,8 +200,8 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
                 {/* E3: 선택된 블록에만 양끝 트림 핸들(호스트) — 버튼 안 span 이라 클릭(시크)과 분리 */}
                 {isHost && selected && (
                   <>
-                    <span onPointerDown={(e) => beginDrag(e, seg, 'start')} className="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-white/60" aria-hidden />
-                    <span onPointerDown={(e) => beginDrag(e, seg, 'end')} className="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-white/60" aria-hidden />
+                    <span onPointerDown={(e) => beginDrag(e, seg, 'start')} className="touch-handle absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-white/60" aria-hidden />
+                    <span onPointerDown={(e) => beginDrag(e, seg, 'end')} className="touch-handle absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-white/60" aria-hidden />
                   </>
                 )}
               </button>
@@ -191,17 +227,17 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
             onClick={deleteSelected}
             aria-label={t('dub.deleteSegLabel')}
             title={t('dub.deleteSegLabel')}
-            className="rounded bg-stage-base/80 px-1.5 text-[11px] text-fire-hot hover:bg-stage-border/60"
+            className="touch-target rounded bg-stage-base/80 px-1.5 text-[11px] text-fire-hot hover:bg-stage-border/60"
           >
             ✕
           </button>
         )}
         <button onClick={() => applyZoom(zoom / 1.5)} disabled={zoom <= 1} aria-label={t('dub.zoomOut')} title={t('dub.zoomOut')}
-          className="rounded bg-stage-base/80 px-1.5 text-[11px] text-stage-text hover:text-fire-amber disabled:opacity-40">−</button>
+          className="touch-target rounded bg-stage-base/80 px-1.5 text-[11px] text-stage-text hover:text-fire-amber disabled:opacity-40">−</button>
         <button onClick={() => applyZoom(1)} disabled={zoom <= 1} aria-label={t('dub.zoomFit')} title={t('dub.zoomFit')}
-          className="rounded bg-stage-base/80 px-1.5 text-[10px] text-stage-text hover:text-fire-amber disabled:opacity-40">{t('dub.zoomFitShort')}</button>
+          className="touch-target rounded bg-stage-base/80 px-1.5 text-[10px] text-stage-text hover:text-fire-amber disabled:opacity-40">{t('dub.zoomFitShort')}</button>
         <button onClick={() => applyZoom(zoom * 1.5)} disabled={zoom >= 16} aria-label={t('dub.zoomIn')} title={t('dub.zoomIn')}
-          className="rounded bg-stage-base/80 px-1.5 text-[11px] text-stage-text hover:text-fire-amber disabled:opacity-40">＋</button>
+          className="touch-target rounded bg-stage-base/80 px-1.5 text-[11px] text-stage-text hover:text-fire-amber disabled:opacity-40">＋</button>
       </div>
     </div>
   )

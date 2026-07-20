@@ -419,3 +419,10 @@ body {
   }
   .stage-fire { animation: fire-flick 2.6s ease-in-out infinite; }
 }
+
+/* F7 DUB-A11Y-M: 터치 기기(coarse pointer)에서만 조작 타겟 확대 — 데스크톱 시각 밀도는 유지.
+   핸들은 44px 시 짧은 세그 블록을 덮어 드래그가 오히려 깨짐 → 24px + 키보드 retime(←/→)이 등가 대안. */
+@media (pointer: coarse) {
+  .touch-target { min-width: 44px; min-height: 44px; }
+  .touch-handle { width: 24px; }
+}

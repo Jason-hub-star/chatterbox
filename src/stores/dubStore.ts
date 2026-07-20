@@ -27,9 +27,11 @@ interface DubStore {
   bedUrls: string[]                     // S1: 배경 스템 서명 URL(기존 목소리 제거본) — 센터 베드·미리보기가 소비
   bedMode: 'original' | 'bed'           // S2 A/B 토글(각인 #1) — 로컬 취향(broadcast 없음). 유효 모드는 bedUrls 있어야 bed
   sourceAR: number | null               // S3: 소스 영상 가로/세로 비(loadedmetadata 실측) — 더빙 무대 AR fit 재료
+  seekRequest: { ms: number; nonce: number } | null // F2: 좌패널→센터 텔레포트(nonce 로 동일 세그 재클릭 재발화)
+  recordRequest: { trackId: string; nonce: number } | null // F8: 좌패널 [녹음]→DubRecorder 시작 브리지
   localMode: DubLocalMode | null
   screening: boolean                    // G9-P3 누적 시사회 — 호스트 토글, 전원 공유(room-authority dub_screening)
-  myTurnRanges: Array<{ startMs: number; endMs: number }> // G9-P4 내 미제출 트랙 구간(센터 "내 차례" 배너)
+  myTurnRanges: Array<{ trackId: string; startMs: number; endMs: number }> // G9-P4 내 미제출 트랙 구간(배너·F8 좌패널 녹음 매칭)
   setActive: (s: { activeSessionId: string; status: string; segments: DubSegment[]; sourceUrl: string | null }) => void
   setCurrentSegment: (id: number | null) => void
   setSelectedSegment: (id: number | null) => void
@@ -38,9 +40,11 @@ interface DubStore {
   setBedUrls: (urls: string[]) => void
   setBedMode: (m: 'original' | 'bed') => void
   setSourceAR: (ar: number | null) => void
+  setSeekRequest: (r: { ms: number; nonce: number } | null) => void
+  setRecordRequest: (r: { trackId: string; nonce: number } | null) => void
   setLocalMode: (m: DubLocalMode | null) => void
   setScreening: (on: boolean) => void
-  setMyTurnRanges: (r: Array<{ startMs: number; endMs: number }>) => void
+  setMyTurnRanges: (r: Array<{ trackId: string; startMs: number; endMs: number }>) => void
   clear: () => void
 }
 
@@ -56,6 +60,8 @@ export const useDubStore = create<DubStore>((set) => ({
   bedUrls: [],
   bedMode: 'bed',
   sourceAR: null,
+  seekRequest: null,
+  recordRequest: null,
   localMode: null,
   screening: false,
   myTurnRanges: [],
@@ -68,8 +74,10 @@ export const useDubStore = create<DubStore>((set) => ({
   setBedUrls: (bedUrls) => set({ bedUrls }),
   setBedMode: (bedMode) => set({ bedMode }),
   setSourceAR: (sourceAR) => set({ sourceAR }),
+  setSeekRequest: (seekRequest) => set({ seekRequest }),
+  setRecordRequest: (recordRequest) => set({ recordRequest }),
   setLocalMode: (localMode) => set({ localMode }),
   setScreening: (screening) => set({ screening }),
   setMyTurnRanges: (myTurnRanges) => set({ myTurnRanges }),
-  clear: () => set({ activeSessionId: null, status: null, segments: [], sourceUrl: null, currentSegmentId: null, selectedSegmentId: null, segmentAssignees: {}, editingBadge: null, bedUrls: [], bedMode: 'bed', sourceAR: null, localMode: null, screening: false, myTurnRanges: [] }),
+  clear: () => set({ activeSessionId: null, status: null, segments: [], sourceUrl: null, currentSegmentId: null, selectedSegmentId: null, segmentAssignees: {}, editingBadge: null, bedUrls: [], bedMode: 'bed', sourceAR: null, seekRequest: null, recordRequest: null, localMode: null, screening: false, myTurnRanges: [] }),
 }))

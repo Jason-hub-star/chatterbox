@@ -92,6 +92,12 @@ export const recordConsent = (accessToken: string, dubSessionId: string, consent
     'record-consent', accessToken, { dub_session_id: dubSessionId, consented },
   )
 
+// F5 DUB-STEP-BACK: 녹음 → 역할·대본 단계 역전이(호스트) — 트랙·기녹음·동의 보존.
+export const revertDubSession = (accessToken: string, dubSessionId: string) =>
+  callFn<{ dub_session_id: string; status: DubStatus }>(
+    'revert-dub-session', accessToken, { dub_session_id: dubSessionId },
+  )
+
 export const startRecording = (accessToken: string, dubSessionId: string) =>
   callFn<{ dub_session_id: string; status: DubStatus; role_version: number }>(
     'start-dub-recording', accessToken, { dub_session_id: dubSessionId },

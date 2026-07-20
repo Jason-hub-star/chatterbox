@@ -13,11 +13,13 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
   const currentId = useDubStore((s) => s.currentSegmentId)
   const status = useDubStore((s) => s.status)
   const sessionId = useDubStore((s) => s.activeSessionId)
+  const myTurnRanges = useDubStore((s) => s.myTurnRanges) // F8: 내 미제출 트랙(좌패널 [녹음] 매칭)
   const token = useUserStore((s) => s.session?.access_token)
   const activeRef = useRef<HTMLLIElement>(null)
   const [editing, setEditing] = useState<{ id: number; value: string } | null>(null)
   const [saving, setSaving] = useState(false)
-  const canEdit = isHost && status === 'ready' && !!token && !!sessionId
+  // F5: 대사 문구는 녹음 중에도 수정 가능(서버 게이트 동형) — 시간/구조 편집은 ready 잠금 유지.
+  const canEdit = isHost && (status === 'ready' || status === 'recording') && !!token && !!sessionId
 
   useEffect(() => {
     if (!editing) activeRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -46,6 +48,10 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
         {t('dub.scriptPanelTitle')}
         {status && <span className="ml-2 rounded bg-stage-border px-2 py-0.5 text-[10px]">{status}</span>}
       </h2>
+      {/* F7: 비호스트에게 편집 권한 소재 안내(✏️ 부재가 버그처럼 보이는 것 방지) */}
+      {!isHost && segments.length > 0 && (
+        <p className="mt-1 text-[10px] text-stage-text-muted">{t('dub.hostOnlyEditHint')}</p>
+      )}
       {segments.length === 0 ? (
         <p className="mt-2 text-xs text-stage-text-muted">{t('dub.scriptPanelEmpty')}</p>
       ) : (
@@ -90,7 +96,31 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
                     </div>
                   ) : (
                     <>
-                      <span className={`flex-1 ${active ? 'font-medium' : ''}`}>{shown}</span>
+                      {/* F2 텔레포트: 대사 클릭 → 센터 영상 시크 + 타임라인 선택 */}
+                      <button
+                        onClick={() => {
+                          useDubStore.getState().setSelectedSegment(seg.id)
+                          useDubStore.getState().setSeekRequest({ ms: seg.start_ms, nonce: Date.now() })
+                        }}
+                        title={t('dub.teleportLabel')}
+                        className={`flex-1 text-left ${active ? 'font-medium' : ''} hover:text-stage-text`}
+                      >
+                        {shown}
+                      </button>
+                      {/* F8 PANEL-UNIFY v1: 녹음 중 내 차례 대사는 좌패널에서 바로 녹음 시작(store 브리지) */}
+                      {status === 'recording' && myTurnRanges.some((r) => r.startMs === seg.start_ms) && (
+                        <button
+                          onClick={() => useDubStore.getState().setRecordRequest({
+                            trackId: myTurnRanges.find((r) => r.startMs === seg.start_ms)!.trackId,
+                            nonce: Date.now(),
+                          })}
+                          aria-label={t('dub.recordFromScript')}
+                          title={t('dub.recordFromScript')}
+                          className="shrink-0 text-xs text-fire-amber hover:brightness-125"
+                        >
+                          🎙
+                        </button>
+                      )}
                       {canEdit && (
                         <button
                           onClick={() => setEditing({ id: seg.id, value: shown })}

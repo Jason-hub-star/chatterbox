@@ -72,6 +72,20 @@ tags: [status, goals]
 | S4 | 솔로 원버튼+용어 | [이 장면, 내 목소리로] 1클릭 녹음 진입·원어→기존 | 솔로 E2E(DB 실측) | **DONE**(2026-07-19: 1클릭→전세그 배정·all_consented·recording·표시기 숨김 + 원어→기존 3국어) |
 | S5 | 실증 총괄·마감 | §0 [x]+probe·사다리 DONE·GAP-MATRIX | docs 게이트 3종 | **DONE**(2026-07-19: §0 [x]×2+probe·사다리·GAP-MATRIX — S5 총괄 9/9) |
 
+## 골 사다리 F — 더빙 폴리시(피드백 배치+/감사 3기 전량) (2026-07-19 "전부 ㄱ" 승인 · 브리프 `GOAL-dub-polish.md`)
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| F1 | DUB-CONSENT-VIEWER(High) | 동의 계수·게이트 배우만·뷰어 403+UI 게이트 | deno + 프로드 통합 | **DONE**(2026-07-19: record-consent **v10 배포**·프로드 3/3 — 뷰어 403·배우만 all_consented·start 200) |
+| F2 | DUB-SCRIPT-TELEPORT | 좌패널 대사 클릭→센터 시크+타임라인 선택 | 실렌더 | **DONE**(2026-07-19: seekRequest 브리지 — 클릭→currentTime 8.5s) |
+| F3 | 신호·통지 묶음 | 체인 완료 toast·솔로 진행 라벨·내 트랙 변경 toast·"내 화면만" | `check:all` | **DONE**(2026-07-19: chainDone/soloStarting/myTrackMoved·Unconfirmed/bedLocalTag ×3로케일) |
+| F4 | DUB-NEW | completed/failed→[새 영상] 업로드 재개방+복귀+새 세션 자동 전환 | 실렌더 | **DONE**(2026-07-19: startNewFor 정체성 viewStatus — 실렌더 3/3 failed→업로드 UI↔복귀) |
+| F5 | DUB-STEP-BACK | recording→ready 역전이(잠금해제·기녹음 보존)+텍스트 recording 허용 | deno + 프로드 통합 | **DONE**(2026-07-19: revert-dub-session **v1**·update-dub-segment-text **v6 배포**·프로드 6/6 — 403/200/409/보존/재시작 v++) |
+| F6 | DUB-AVATAR-DRAG | 오버레이 줄 드래그 재배치(로컬 v1·박스 클램프) | 실렌더 | **DONE**(2026-07-19: 드래그 left 8→148px·클램프 PASS) |
+| F7 | DUB-A11Y-M | 키보드 retime·터치 타겟(coarse 44px/핸들 24px)·비호스트 안내·시사회 카피 | `check:all` + 실렌더 스팟 | **DONE**(2026-07-19: → 키press→DB 6000→6100·360px 오버플로 0·카피 ×3) |
+| F8 | PANEL-UNIFY v1 | 좌패널 [🎙 이 대사 녹음]→recordRequest 브리지로 REC 시작 | 실렌더 | **DONE**(2026-07-19: 좌 클릭→■ 중지 노출·stale nonce 마운트 가드) |
+| — | DUB-HAIR-MATTE | **HOLD(크로스레포)** — Vtube 매팅 개선, 병행세션 확인 선행 | Vtube 세션 | HOLD |
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

@@ -101,6 +101,31 @@ export default function Stage({
     ro.observe(el)
     return () => ro.disconnect()
   }, [isDubStage])
+  // F6 DUB-AVATAR-DRAG: 오버레이 아바타 줄 드래그 재배치(로컬 v1 — 방 공유 없음). null=기본(하단-좌측).
+  const ovRef = useRef<HTMLDivElement | null>(null)
+  const [ovPos, setOvPos] = useState<{ x: number; y: number } | null>(null)
+  const beginOverlayDrag = (e: React.PointerEvent) => {
+    const strip = ovRef.current
+    const box = strip?.parentElement
+    if (!strip || !box) return
+    e.preventDefault()
+    const boxR = box.getBoundingClientRect()
+    const stripR = strip.getBoundingClientRect()
+    const dx = e.clientX - stripR.left
+    const dy = e.clientY - stripR.top
+    const onMove = (ev: PointerEvent) => {
+      setOvPos({
+        x: Math.min(Math.max(ev.clientX - boxR.left - dx, 0), Math.max(0, boxR.width - stripR.width)),
+        y: Math.min(Math.max(ev.clientY - boxR.top - dy, 0), Math.max(0, boxR.height - stripR.height)),
+      })
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
   // 최대 6석(§6.4; 8인 배치는 defer). slot_index 절대좌석 — key=identity 라 재배치돼도 캔버스 보존.
   const seats = seatParticipants(participants, slotOf, SLOTS.length)
   // 아바타 크게보기(무대 클릭, 전원 대상). 원격은 registry 이동이라 확대 중 무대 슬롯을 비운다(placeholder). self 는 구독이라 무대 유지.
@@ -122,8 +147,17 @@ export default function Stage({
       <div ref={dubBoxRef} data-dub-stage className="relative flex h-full w-full items-center justify-center">
         <div className="relative" style={fit ?? { width: '100%', height: '100%' }}>
           <MainView isHost={isHost} onStop={onStopShare} onDubEdit={onDubEdit} />
-          {/* 아바타 오버레이: 스프라이트만(크림 원·라벨·좌석 없음) — 타임라인 위 하단-좌측 가로줄 */}
-          <div className="pointer-events-none absolute left-2 z-10 flex items-end gap-1" style={{ bottom: TL_H + 8 }}>
+          {/* 아바타 오버레이: 스프라이트만(크림 원·라벨·좌석 없음) — 기본 하단-좌측, 드래그로 재배치(F6) */}
+          <div
+            ref={ovRef}
+            data-dub-overlay-strip
+            onPointerDown={beginOverlayDrag}
+            title={t('dub.avatarDragHint')}
+            className="absolute z-10 flex cursor-move touch-none select-none items-end gap-1"
+            style={ovPos && fit
+              ? { left: Math.min(ovPos.x, Math.max(0, fit.width - overlaySize)), top: Math.min(ovPos.y, Math.max(0, fit.height - overlaySize)) }
+              : { left: 8, bottom: TL_H + 8 }}
+          >
             {present.map((p) => (
               <div key={p.identity} data-dub-overlay-avatar={p.identity}>
                 {p.isLocal ? (

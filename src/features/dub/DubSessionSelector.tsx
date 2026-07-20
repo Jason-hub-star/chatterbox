@@ -7,6 +7,7 @@ import {
   type DubLang,
 } from '@/lib/dub'
 import { trimVideo, clampTrimRange, estimateTrimBytes, type TrimRange } from '@/lib/ffmpeg'
+import { toast } from '@/hooks/useToast'
 
 // 계약: contracts/DubSessionSelector.md — 세션 생성(호스트): 파일 선택 → 트림(DUB-TRIM) → 원본 언어 →
 // 업로드 → STT → 번역 → 분리(S1) 자동 연쇄. DubPanel 674줄 분할(2026-07-19) — 동작 불변 추출:
@@ -199,6 +200,7 @@ export default function DubSessionSelector({ token, roomId, busy, phase, setPhas
               await separateDubAudio(token, sess.dub_session_id)
                 .then((r) => useDubStore.getState().setBedUrls(r.background_urls))
                 .catch(() => {})
+              toast.success(t('dub.chainDone')) // F3: 자동 체인 완료 신호(phase null 만으론 인지 불가)
             } finally { setPhase(null) }
           })}
           className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-fire-amber focus-visible:ring-offset-1 disabled:opacity-40"

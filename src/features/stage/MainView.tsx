@@ -128,6 +128,14 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
   // 언마운트 시 미리보기 오디오 정리(위 효과의 상단 정리는 재실행 시에만 돈다)
   useEffect(() => () => { previewHandleRef.current?.stop() }, [])
 
+  // F2 텔레포트: 좌패널 대사 클릭 → 센터 시크(DOM 조작만 — setState 없음). nonce 로 재클릭 재발화.
+  const seekRequest = useDubStore((s) => s.seekRequest)
+  useEffect(() => {
+    const v = videoRef.current
+    if (!seekRequest || !isDub || !v) return
+    v.currentTime = seekRequest.ms / 1000
+  }, [seekRequest, isDub])
+
   // S2 베드 슬레이브: video 에 play/pause/seek/rate 미러 + 1s 드리프트 보정(±0.3s — vodSync applier 축소판).
   // 로컬모드·시사회 중엔 정지(그쪽 오디오는 dubPreview 스케줄러 소유 — 이중 방지).
   useEffect(() => {
@@ -280,6 +288,10 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           >
             {t('dub.bedOnly')}
           </button>
+          {/* F3: 토글이 각자 로컬임을 명시 — 협업 시 서로 다른 소리를 듣는 상태 인지 */}
+          <span className="self-center px-1 text-[9px] text-stage-text-muted" title={t('dub.bedLocalHint')}>
+            {t('dub.bedLocalTag')}
+          </span>
         </div>
       )}
       {/* G9-P2: 로컬모드 배지 — 녹음 중 REC(+구간 끝 힌트) / 미리보기 재생 중 */}
@@ -313,7 +325,8 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
         <div className="absolute right-1 top-1">
           <button
             onClick={() => useDubStore.getState().setScreening(!screening)}
-            className="rounded bg-stage-base/70 px-2 py-0.5 text-[11px] text-stage-text hover:text-fire-amber"
+            title={t('dub.screeningHint')}
+            className="touch-target rounded bg-stage-base/70 px-2 py-0.5 text-[11px] text-stage-text hover:text-fire-amber"
           >
             {screening ? t('dub.screeningStop') : t('dub.screeningStart')}
           </button>

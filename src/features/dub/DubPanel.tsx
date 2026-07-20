@@ -8,7 +8,7 @@ import { useRealtimeRow } from '@/hooks/useRealtimeRow'
 import DubRecorder from '@/features/dub/DubRecorder'
 import DubCompositor from '@/features/dub/DubCompositor'
 import {
-  startTranscription, translateDubScript, separateDubAudio,
+  startTranscription, translateDubScript, separateDubAudio, revertDubSession,
   fetchRoomMembers, fetchActiveDubSession,
   fetchMyUserId, fetchRoomHostId, fetchDubTracks, getDubSourceUrl,
   type DubSegment, type DubTrack, type RoomMember, type DubLang,
@@ -17,6 +17,7 @@ import {
 // 이 셸은 세션 로드·Realtime·store 파생·단계표시기·상태 분기만 담당.
 import DubSessionSelector, { type DubPipelinePhase } from '@/features/dub/DubSessionSelector'
 import DubRoleAssigner from '@/features/dub/DubRoleAssigner'
+import { toast } from '@/hooks/useToast'
 
 // 더빙 탭 셸 — 계약 3분할 완성(2026-07-19): DubSessionSelector(생성)·DubRoleAssigner(READY)·
 // DubRecorder(녹음)·DubCompositor(합성). 셸 담당 = 세션/트랙/멤버 로드·Realtime 구독·dubStore 파생·
@@ -94,7 +95,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       myId
         ? tracks
           .filter((tr) => tr.participantId === myId && (tr.status === 'assigned' || tr.status === 'recording'))
-          .map((tr) => ({ startMs: tr.startTimeMs, endMs: tr.endTimeMs }))
+          .map((tr) => ({ trackId: tr.id, startMs: tr.startTimeMs, endMs: tr.endTimeMs }))
         : [],
     )
   }, [tracks, myId])
@@ -126,6 +127,22 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
     return () => { cancelled = true }
   }, [roomId, refresh])
 
+  // F3 DUB-CHANGE-NOTICE: 내 트랙의 시간 이동/확정 해제를 통지 — 상태는 Realtime 이 이미 수렴(E2 실측),
+  // "왜 바뀌었지?" 인지 공백만 메운다. id 동일 트랙의 델타만 비교(신규/삭제는 별개 흐름).
+  const prevTracksRef = useRef<DubTrack[] | null>(null)
+  useEffect(() => {
+    const prev = prevTracksRef.current
+    prevTracksRef.current = tracks
+    if (!prev || !myId) return
+    for (const tr of tracks) {
+      if (tr.participantId !== myId) continue
+      const old = prev.find((p) => p.id === tr.id)
+      if (!old) continue
+      if (old.startTimeMs !== tr.startTimeMs || old.endTimeMs !== tr.endTimeMs) toast.info(t('dub.myTrackMoved'))
+      if (old.status === 'synced' && tr.status === 'submitted') toast.info(t('dub.myTrackUnconfirmed'))
+    }
+  }, [tracks, myId, t])
+
   // 수동 새로고침 제거(A-SEAM-3): 세션 생명주기(uploaded→…→completed)·트랙 상태(assigned→synced)를
   // Realtime 으로 구독 → 변경 시 신뢰 소스 재조회. dub_* 는 supabase_realtime publication 에 등록됨.
   useRealtimeRow('dub_sessions', 'room_id', roomId, refresh)
@@ -149,15 +166,18 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   }
 
   const status = session?.status ?? null
+  // F4 DUB-NEW: [새 영상으로 더빙] — 세션 id 정체성 귀속(새 세션이 오면 자동 복귀·effect 리셋 불필요)
+  const [startNewFor, setStartNewFor] = useState<string | null>(null)
+  const viewStatus = startNewFor !== null && startNewFor === (session?.id ?? 'none') ? null : status
   const allSynced = tracks.length > 0 && tracks.every((t) => t.status === 'synced')
   // DUB-UX 흐름 명료화: 솔로(멤버 1)면 역할 배정이 자명 · 상단 단계 표시기(①업로드 ②역할 ③동의 ④녹음 ⑤완성).
   const isSolo = members.length <= 1
-  const currentStep = !status ? 1
-    : status === 'uploaded' || status === 'transcribing' ? 2
-    : status === 'ready' && tracks.length === 0 ? 2
-    : status === 'ready' && !allConsented ? 3
-    : status === 'recording' || status === 'ready' ? 4
-    : status === 'compositing' || status === 'completed' ? 5
+  const currentStep = !viewStatus ? 1
+    : viewStatus === 'uploaded' || viewStatus === 'transcribing' ? 2
+    : viewStatus === 'ready' && tracks.length === 0 ? 2
+    : viewStatus === 'ready' && !allConsented ? 3
+    : viewStatus === 'recording' || viewStatus === 'ready' ? 4
+    : viewStatus === 'compositing' || viewStatus === 'completed' ? 5
     : 1
   const dubSteps = ['stepUpload', 'stepRole', 'stepConsent', 'stepRecord', 'stepDone'] as const
 
@@ -179,7 +199,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       </div>
 
       {/* DUB-UX 단계 표시기: 현재 위치·다음 단계를 항상 보이게. S4: 솔로 ready 는 원버튼 하나라 숨김(3막 체감). */}
-      {!(isSolo && status === 'ready') && (
+      {!(isSolo && viewStatus === 'ready') && (
       <ol className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-1 text-[10px]" aria-label={t('dub.stepsLabel')}>
         {dubSteps.map((k, i) => {
           const n = i + 1
@@ -202,8 +222,8 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
 
       {error && <p className="mt-3 rounded bg-fire-hot/10 px-3 py-2 text-sm text-fire-hot" role="alert">{error}</p>}
 
-      {/* 세션 없음 — 생성 UI 는 DubSessionSelector(계약 분할) */}
-      {!status && (
+      {/* 세션 없음/새 영상(F4) — 생성 UI 는 DubSessionSelector(계약 분할) */}
+      {!viewStatus && (
         isHost && token ? (
           <DubSessionSelector
             token={token}
@@ -221,7 +241,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       )}
 
       {/* 업로드됨 → STT */}
-      {status === 'uploaded' && (
+      {viewStatus === 'uploaded' && (
         isHost ? (
           <button
             disabled={busy}
@@ -233,11 +253,11 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
         ) : <p className="mt-3 text-sm text-stage-text-muted">{t('dub.hostTranscribing')}</p>
       )}
 
-      {status === 'transcribing' && (
+      {viewStatus === 'transcribing' && (
         <p className="mt-3 text-sm text-stage-text-muted">{t('dub.waitingForTranscribe')}</p>
       )}
 
-      {status === 'failed' && (
+      {viewStatus === 'failed' && (
         <div className="mt-3 space-y-2">
           <p className="text-sm text-fire-hot">{t('dub.processingFailed')}</p>
           {isHost && (
@@ -266,7 +286,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       )}
 
       {/* READY: 대본·역할·동의·솔로 원버튼 — DubRoleAssigner(계약 분할) */}
-      {status === 'ready' && token && (
+      {viewStatus === 'ready' && token && (
         <DubRoleAssigner
           token={token}
           sessionId={session!.id}
@@ -276,6 +296,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
           myId={myId}
           isHost={isHost}
           isSolo={isSolo}
+          isViewer={isViewer}
           allConsented={allConsented}
           myConsent={myConsent}
           busy={busy}
@@ -284,8 +305,19 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       )}
 
       {/* RECORDING: 실제 녹음 캡처 (DUB-04) + 전 트랙 synced 시 합성 진입 */}
-      {status === 'recording' && (
+      {viewStatus === 'recording' && (
         <>
+          {/* F5 DUB-STEP-BACK: 역할·대본 단계로 역전이(트랙·기녹음·동의 보존 — 서버가 보장) */}
+          {isHost && (
+            <button
+              disabled={busy}
+              onClick={() => run(() => revertDubSession(token!, session!.id))}
+              title={t('dub.stepBackHint')}
+              className="mb-2 rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:bg-stage-border/30 disabled:opacity-40"
+            >
+              ← {t('dub.stepBackButton')}
+            </button>
+          )}
           <DubRecorder
             dubSessionId={session!.id}
             myId={myId}
@@ -297,7 +329,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
           {allSynced && (
             <DubCompositor
               dubSessionId={session!.id}
-              status={status}
+              status={viewStatus}
               isHost={isHost}
               tracks={tracks}
               segments={segments}
@@ -307,11 +339,29 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
         </>
       )}
 
+      {/* F4: 완료/실패 후 새 영상으로 — Selector 재표시(기존 세션·산출물은 보존, 새 세션이 최신 우선) */}
+      {isHost && (viewStatus === 'completed' || viewStatus === 'failed') && (
+        <button
+          onClick={() => setStartNewFor(session?.id ?? 'none')}
+          className="mt-3 rounded-lg border border-stage-border px-4 py-2 text-sm text-stage-text hover:border-fire-amber/60 hover:bg-stage-border/30"
+        >
+          🎬 {t('dub.newSessionButton')}
+        </button>
+      )}
+      {viewStatus === null && status !== null && (
+        <button
+          onClick={() => setStartNewFor(null)}
+          className="mt-2 text-xs text-stage-text-muted underline hover:text-stage-text"
+        >
+          ← {t('dub.newSessionBack')}
+        </button>
+      )}
+
       {/* COMPOSITING / COMPLETED: 합성 진행·완성본 (DUB-05) */}
-      {(status === 'compositing' || status === 'completed') && (
+      {(viewStatus === 'compositing' || viewStatus === 'completed') && (
         <DubCompositor
           dubSessionId={session!.id}
-          status={status}
+          status={viewStatus}
           isHost={isHost}
           tracks={tracks}
           segments={segments}

@@ -3,7 +3,7 @@
 // 입력: { dub_session_id, segment_id, text? | translated_text? }  출력: { dub_session_id, segment_id }
 //
 // 설계(translate-dub-script 와 동일 저장 구조):
-//  - status='ready' 에서만(편집 UI 가 READY 대본 목록에만 있음 — 녹음 시작 후엔 프롬프터 고정).
+//  - status='ready'|'recording'(F5: 녹음 중 대사 문구 수정 허용 — 시간/구조 편집은 ready 잠금 유지).
 //  - 저장(주): dub_sessions.diarization_result_json.segments[].{text,translated_text}
 //  - 저장(부): dub_tracks 이미 있으면 start_time_ms 매칭으로 transcript_text/translated_text 미러
 //    (녹음 프롬프터·합성 자막이 같은 텍스트를 보게 — translate-dub-script:97-105 패턴).
@@ -48,7 +48,9 @@ Deno.serve(async (req) => {
   if (!sess) return json({ error: "세션을 찾을 수 없어요." }, 404);
   const room = sess.rooms as unknown as { host_id: string };
   if (room.host_id !== userId) return json({ error: "호스트만 대사를 수정할 수 있어요." }, 403);
-  if (sess.status !== "ready") return json({ error: `현재 상태(${sess.status})에선 수정 불가` }, 409);
+  if (sess.status !== "ready" && sess.status !== "recording") {
+    return json({ error: `현재 상태(${sess.status})에선 수정 불가` }, 409);
+  }
 
   const segments: Segment[] = (sess.diarization_result_json?.segments ?? []);
   const seg = segments.find((s) => s.id === body.segment_id);
