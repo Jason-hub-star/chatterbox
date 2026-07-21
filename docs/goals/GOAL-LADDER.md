@@ -108,6 +108,19 @@ tags: [status, goals]
 | W4 | 실증·마감 | 통합 실렌더+비더빙 무회귀+§0 [x]+probe·GAP·AGENT-OPS | check:all + 통합 실렌더 | **DONE**(2026-07-20: W1~W3 개별 통과·교차(W2 카운트다운+자동확정+자동이동)·F 회귀 10/10·check:all 0) |
 | W5 | DUB-PREVIEW-PAUSE | 미리보기·시사회 Web Audio 를 영상 pause/play 에 묶음(정지 시 백그라운드 재생 정지) | check:all + 실렌더 | **DONE**(2026-07-20 주인님 관측 후속: handle pause/resume=ctx.suspend/resume·실렌더 3/3 running→suspended→running) |
 
+## 골 사다리 N — 룸페이지 감사 2(새드패스+하드닝) (2026-07-21 dogfood 4차 후속 · 브리프 `GOAL-room-audit2.md`)
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| N0 | 문서화 선행 | §0 A-P1f(보안3+UX High) + 트랙B(프레젠테이션7) 등재 + 브리프 + 이 표 | docs:check + docs:links | **DONE**(2026-07-21 — 이 등재가 산출물) |
+| N1 | 보안 하드닝 | SEC-KICK-TOKEN(ttl 600→300)·SEC-INVITE-FLOOD(check_rate_limit)·SEC-REAPER-TIMING(timingSafeEqual) | deno check ×3 + 격리 pg/시딩 통합(무과금) | **DONE**(2026-07-21: 3편집·deno check ×3 clean·timingSafeEqual 4/4·check:all 0 — 라이브 통합은 `/배포` 게이트. 120→300 실측 정정) |
+| N2 | 세션 중 새드패스 | RM-DEADROOM(방종료/재접속 모달·ended vs reconnecting 구분) + RM-JOIN-RETRY(입장 실패 인라인 재시도+원인별 카피) | check:all + 실렌더(연결끊김·403 주입) | **DONE**(2026-07-21: RoomJoinGate onRetry+친화 에러 매핑·RoomPage rejoinNonce/leaving/retryJoin·DISCONNECTED 방종료 Modal(RECONNECTING 제외·재연결=멱등 재조인이 ended 수렴)·i18n 4키×3 — check:all 165/165·build·docs 0) |
+| NR | RoomPage 분해(주인님 지적) | useRoomJoin(조인/연결/재시도/방종료)+useReactionWheel(휠/터치/숫자키)+useRoomAuthority(broadcast 스위치) 추출 — 동작 등가 | check:all + 2탭 E2E 무회귀(N6 통합) | **DONE**(2026-07-21: 3훅 verbatim 추출 — RoomPage **1086→868**(−218·−20%), useRoomJoin 140·useReactionWheel 82·useRoomAuthority 105. object-shorthand 로 setter 스왑 봉쇄·훅 호출순서 정적. tsc·lint·test 165/165·build·docs 0. ~600 은 렌더 조립부(topBar/leftDock/rightDock/bottomBar ~250 LOC) 추출까지 필요 — 별도 여지) |
+| N3 | 입장 온보딩 | RM-JOIN-ROLE(게이트 배우/관전 선택 + 카메라 거부 처방) | check:all + 실렌더(카메라 거부→처방·관전 경로) | **DONE**(2026-07-21: useRoomJoin roleChoice(?watch=1=관전 자동, else choose 게이트·자동 배우입장 제거)+RoomJoinGate choose 단계 2버튼+SelfAvatar 카메라 불가시 [관전으로] 처방(?watch=1 재진입)+i18n 5키×3 — check:all 165/165·**실렌더 3/3**(게이트 노출·배우→무대·watch 건너뜀). ⚠️E2E 하네스는 배우 버튼 클릭 선행 필요) |
+| N4 | 호스트 콘솔 폴리시 | RM-POLICY-VALIDATE(금지어 라이브 카운트 n/50) + RM-MUTE-REMAIN(남은시간 표기) · RM-XFER-FEEDBACK=**Refuted** | check:all + 실렌더 스팟 | **DONE**(2026-07-21: 금지어 카운트 힌트(>50 경고색)·slowSec 은 select라 이미 bounded · mutedUntilLabel 절대시각→"약 N분 남음"(now 30s 틱·Date.now 렌더금지·동기setState 회피 우회)·i18n 3키×3 — check:all 165/165. **RM-XFER-FEEDBACK 반증**: doTransfer 가 이미 옛 호스트에 toast.transferDone("방장을 넘겼어요") — 정찰 과대) |
+| N5 | 가시성·a11y·반응형(트랙B) | RM-STATUS-TEXT(연결 poor/lost 가시텍스트 무대+콘솔)·RM-REACT-HINT(휠 aria 숫자키)·RM-VIEWER-VGEN(뷰어 안내)·RM-PANEL-360(검증)·RM-BG-PROGRESS(적용중) | check:responsive + 실렌더(360px)·i18nCoverage | **DONE**(2026-07-21: 5건 — Stage 배지 pill+텍스트·HostConsole qualityText·reaction.wheelLabel 키힌트·VgenStatusTab isViewer 안내·bgApplying·i18n 5키×3 — check:all 165/165·**360px 실렌더 3/3**(무대·DUB·VGEN 오버플로 0=RM-PANEL-360 반증)) |
+| N6 | 실증·마감 | 통합 실렌더 + 비회귀(기존 룸/더빙 무대) + §0 [x]+probe·이 표 DONE·GAP-MATRIX·AGENT-OPS | check:all + 통합 실렌더 | **DONE**(2026-07-21: 통합 회귀 dub 완성동선 `dub-w2-spot.mjs`(choose 게이트 패치) **4/4** 리팩터 후 무회귀 + N3 3/3 + 360 3/3 · check:all 165/165 · §0 14항목 [x]+probe(반증 2) · GAP-MATRIX · AGENT-OPS ISS-10) |
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

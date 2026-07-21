@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent, type TouchEvent as ReactTouchEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
-import { useReactionStore } from '@/stores/reactionStore'
 import { useUserStore } from '@/stores/userStore'
-import { joinRoom, joinRoomAsViewer, joinRoomWithPassword, leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, transferHost, updateRoomSettings, leaveRoomKeepalive, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus } from '@/lib/rooms'
+import { leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, transferHost, updateRoomSettings, leaveRoomKeepalive, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus } from '@/lib/rooms'
 import { useRoomRecording } from '@/features/room/useRoomRecording'
 import { useRoomMembers } from '@/features/room/useRoomMembers'
+import { useRoomJoin } from '@/features/room/useRoomJoin'
+import { useRoomAuthority } from '@/features/room/useRoomAuthority'
 import { useScriptSync } from '@/features/script/useScriptSync'
 import { toast } from '@/hooks/useToast'
 import { getVgenUrl } from '@/lib/vgen'
@@ -20,6 +21,7 @@ import { useInterior } from '@/pages/lobby/useInterior'
 import { isNewerSeq, type BlendshapeFrame } from '@/lib/blendshapeCodec'
 import Stage from '@/features/stage/Stage'
 import ReactionWheel from '@/features/reaction/ReactionWheel'
+import { useReactionWheel } from '@/features/reaction/useReactionWheel'
 import ReactionOverlay from '@/features/reaction/ReactionOverlay'
 import PollBar from '@/features/room/PollBar'
 import type { RemoteFrameSink } from '@/features/avatar/RemoteAvatar'
@@ -33,7 +35,7 @@ import RightPanel, { type RightPanelTab } from '@/features/room/RightPanel'
 import { useRightPanelStore } from '@/stores/rightPanelStore'
 import ModeBanner from '@/features/room/ModeBanner'
 import AudioMixerPanel from '@/features/room/AudioMixerPanel'
-import { applyVodSync, readVodSyncState, setVodSyncPublisher } from '@/features/stage/vodSync'
+import { readVodSyncState, setVodSyncPublisher } from '@/features/stage/vodSync'
 import DirectorNotesTab from '@/features/room/DirectorNotesTab'
 import ChatNotesTab from '@/features/room/ChatNotesTab'
 import HostConsole from '@/features/room/HostConsole'
@@ -63,69 +65,14 @@ export default function RoomPage() {
   const myIdentity = session?.user?.id ?? '' // LiveKit identity = auth uid
   const joinBackdrop = useInterior('rooms')?.hero // 조인 대기 백드롭 — 분장실과 같은 대극장 원화(시각 연속)
 
-  // 입장 단계: LiveKit 연결 전에 반드시 room_participants 행을 만든다(멱등).
-  // livekit-token 게이트가 활성 참가자 행을 요구하므로, join 성공 후에만 연결(enabled).
-  const [joinPhase, setJoinPhase] = useState<'joining' | 'entering' | 'ready' | 'error' | 'password'>('joining')
-  const [joinError, setJoinError] = useState<string | null>(null)
-  const [kicked, setKicked] = useState(false)
-  const [kickReason, setKickReason] = useState<string | null>(null) // 서버발 강퇴 사유(room-authority 'kicked') — 표시는 kicked 게이트
-  // 잠금방: join-public-room 이 "Room is locked" 로 거부하면 비번 입력 단계로. 입장 성공 시 roomLocked=true.
-  // (비번 입력 폼의 로컬 상태는 RoomJoinGate 소유 — R-커밋 분리)
-  const [roomLocked, setRoomLocked] = useState(false)
   const [loadoutOpen, setLoadoutOpen] = useState(false) // 이모트 로드아웃 편집 모달(우클릭 휠에서 진입 — 우측패널 카드 대체)
 
-  // 취소 버튼(트랙 B)이 진행 중 join fetch 를 끊을 수 있게 컨트롤러를 ref 로 노출.
-  const joinAbortRef = useRef<AbortController | null>(null)
-
-  // 입장 연출(U-6): join 성공 → 네온 green 'entering' 을 잠깐 경유 후 ready. reduced-motion=즉시.
-  const enterWithGreen = useCallback((isStale?: () => boolean) => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setJoinPhase('ready')
-      return
-    }
-    setJoinPhase('entering')
-    window.setTimeout(() => {
-      if (!isStale?.()) setJoinPhase('ready')
-    }, 650)
-  }, [])
-  useEffect(() => {
-    if (!session || !roomId) return
-    let cancelled = false
-    const ac = new AbortController()
-    joinAbortRef.current = ac
-    ;(async () => {
-      setJoinPhase('joining')
-      try {
-        // ?watch=1 → 관전 입장(ViewerGate MVP): 좌석 비점유·발행권 없음. 이미 뷰어로 조인된 상태라면
-        // 어느 경로든 rejoined 가 실제 role 을 돌려주므로(마이그 v2) myRole 은 항상 서버 진실.
-        const watch = new URLSearchParams(window.location.search).has('watch')
-        const r = watch
-          ? await joinRoomAsViewer(session.access_token, roomId, ac.signal)
-          : await joinRoom(session.access_token, roomId, ac.signal)
-        if (cancelled) return
-        useRoomStore.getState().setRoomContext({
-          currentRoomId: roomId,
-          myParticipantId: r.participant_id,
-          mySlotIndex: r.slot_index,
-          myRole: r.role === 'viewer' ? 'viewer' : 'actor',
-        })
-        enterWithGreen(() => cancelled)
-      } catch (e) {
-        if (cancelled) return
-        if (e instanceof DOMException && e.name === 'AbortError') return // 사용자 취소 — 내비게이션이 처리(에러 화면 금지)
-        const msg = e instanceof Error ? e.message : ''
-        if (msg === 'Room is locked') { setJoinPhase('password'); return } // 비번 입력 단계로
-        setJoinError(msg || t('room.joinError'))
-        setJoinPhase('error')
-      }
-    })()
-    return () => {
-      cancelled = true
-      ac.abort() // 언마운트/재조인 시 고아 fetch 정리
-      useStageStore.getState().clearMainVideo() // 방 이탈/전환 시 공유 영상 초기화
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t 는 안정적, 언어 변경 시 재조인 방지 위해 제외
-  }, [session, roomId])
+  // 입장·연결 라이프사이클(NR 분리 → useRoomJoin): 조인 상태머신 + 멱등 재조인(RM-JOIN-RETRY) + 세션 중
+  // 종단 끊김 판별(RM-DEADROOM). kicked/kickReason·roomLocked setter 는 아래 수신핸들러·HostConsole 이 쓴다.
+  const {
+    joinPhase, gatePhase, deadRoom, joinError, setKicked, kickReason, setKickReason,
+    roomLocked, setRoomLocked, retryJoin, submitJoinPassword, cancelJoin, setLeaving, chooseRole,
+  } = useRoomJoin(roomId)
 
   // 채팅 히스토리 백필(ChatPanel.md): join 성공 후 1회 RLS(멤버) SELECT — 라이브 수신분과 id dedupe 병합.
   useEffect(() => {
@@ -256,83 +203,16 @@ export default function RoomPage() {
       useStageStore.getState().setMainVideo(url, jobId)
     } catch { /* 접근 불가·미완성 → 무시(서버 get-vgen-url 이 멤버십·visibility 게이트) */ }
   }, [session])
-  const dubEditBadgeTimer = useRef<number | null>(null) // DUB-EDIT: 편집중 배지 decay 타이머
   const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
   const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
   // V-3 녹화: useRoomRecording 은 isHost(아래 파생) 뒤에 호출되므로 ref 브리지로 수신을 위임(TDZ 회피).
   const recAuthorityRef = useRef<((msg: { type: string; recording_id?: string; all_consented?: boolean }) => void) | null>(null)
   const recAudioRef = useRef<((track: MediaStreamTrack) => void) | null>(null)
-  const handleRoomAuthority = useCallback((msg: { type: string; jobId?: string; url?: string | null; mode?: string; target_auth_id?: string; auth_id?: string; slot_index?: number | null; reason?: string; new_mode?: string; position_ms?: number; playing?: boolean; at_ms?: number; rate?: number; recording_id?: string; all_consented?: boolean; new_host_auth_id?: string; title?: string; genre?: string | null; on?: boolean; segment_id?: number; name?: string }) => {
-    if (msg.type === 'vgen_result' && typeof msg.jobId === 'string') void playSharedVgen(msg.jobId)
-    else if (msg.type === 'vgen_stop') useStageStore.getState().clearMainVideo()
-    else if (msg.type === 'bg_change') useStageStore.getState().setBackground(msg.url ?? null)
-    else if (msg.type === 'script_mode') {
-      // 대본 모드 전환(ROOM-14, set-script-mode Edge 발). 호스트 자신도 echo 를 받지만 같은 값 → 멱등.
-      applyServerScriptMode(msg.mode)
-    }
-    else if (msg.type === 'raise_hand') setRaiseHandRefetch((n) => n + 1) // 손든 관객 변동 → 큐 재조회(호스트 UI)
-    else if (msg.type === 'room_update') {
-      // 방 설정 편집(R2, update-room-settings Edge 발) — 전원 상단바 즉시 반영(서버가 최종값 전달).
-      if (typeof msg.title === 'string') setRoomName(msg.title)
-      if (msg.genre !== undefined) setRoomGenre(msg.genre ?? '')
-    }
-    else if (msg.type === 'host_change') {
-      // 호스트 명시 이양(R1, transfer-host Edge 발) — 전원 멤버 재조회로 hostId 재파생(isHost·왕관·콘솔 탭·vod publisher 전환).
-      setRaiseHandRefetch((n) => n + 1)
-      if (msg.new_host_auth_id === useUserStore.getState().user?.id) toast.success(t('host.transferReceived'))
-    }
-    else if (msg.type === 'vod_sync') {
-      // ROOM-01 동기: 적용자(applier)는 비호스트 MainView 만 등록 → 호스트/미재생 화면엔 no-op. 형태 검증 후 적용.
-      if (
-        typeof msg.position_ms === 'number' && Number.isFinite(msg.position_ms) && msg.position_ms >= 0 &&
-        typeof msg.at_ms === 'number' && Number.isFinite(msg.at_ms)
-      ) {
-        // rate 는 후행 추가(U-3) — 구 페이로드 하위호환 1 폴백 + 형태검증(0<r≤4)
-        const rate = typeof msg.rate === 'number' && Number.isFinite(msg.rate) && msg.rate > 0 && msg.rate <= 4 ? msg.rate : 1
-        applyVodSync({ positionMs: msg.position_ms, playing: msg.playing === true, atMs: msg.at_ms, rate })
-      }
-    }
-    else if (msg.type === 'dub_screening') {
-      // G9-P3 누적 시사회: SEC-RA-1 게이트(HOST_CLIENT_TYPES + 발신자=호스트 identity) 통과분만 도달.
-      // 각 클라가 자기 브라우저에서 get-dub-recordings(멤버 게이트)로 트랙을 받아 스케줄(MainView).
-      useDubStore.getState().setScreening(msg.on === true)
-    }
-    else if (msg.type === 'dub_edit') {
-      // DUB-EDIT E3: 편집중 배지(name 은 수신측 useLiveKitRoom 이 발신자 identity 로 확정) — 3s 무신호 소멸.
-      if (Number.isInteger(msg.segment_id)) {
-        useDubStore.getState().setEditingBadge({ segmentId: msg.segment_id!, name: msg.name ?? '' })
-        if (dubEditBadgeTimer.current) window.clearTimeout(dubEditBadgeTimer.current)
-        dubEditBadgeTimer.current = window.setTimeout(() => useDubStore.getState().setEditingBadge(null), 3000)
-      }
-    }
-    else if (msg.type === 'mode_change') {
-      // G-261: 서버(set-room-mode) broadcast. 배너 표출+탭 자동전환은 stageStore 구독측(ModeBanner·RightPanel).
-      if (msg.new_mode === 'normal' || msg.new_mode === 'vgen' || msg.new_mode === 'dub') {
-        useStageStore.getState().announceMode(msg.new_mode)
-      }
-    }
-    else if (msg.type === 'kicked') {
-      // 강퇴 사유(HOST-01): 서버(kick-participant)가 절단 직전 대상에게만 전송(destinationIdentities).
-      // 표시는 kicked 상태(PARTICIPANT_REMOVED)에 게이트 — 참가자 스푸핑만으로는 화면에 못 띄운다.
-      if (typeof msg.reason === 'string' && msg.reason) setKickReason(msg.reason.slice(0, 200))
-    }
-    else if (msg.type === 'stage_invite') {
-      // 무대 초대(ROOM-21) — 대상 본인만 수락 모달, 다른 참가자는 무시.
-      if (msg.target_auth_id === useUserStore.getState().user?.id) setStageInvite(true)
-    } else if (msg.type.startsWith('recording_')) {
-      // V-3 녹화 이벤트(consent/consent_update/started/done) — useRoomRecording 에 위임.
-      recAuthorityRef.current?.(msg)
-    } else if (msg.type === 'promoted') {
-      setRaiseHandRefetch((n) => n + 1) // 전원 좌석 갱신(승격자 새 slot 반영)
-      if (msg.auth_id === useUserStore.getState().user?.id) {
-        // 본인 승격 → actor 전환 + 재연결(새 토큰 canPublish=true). 수락 모달 닫기.
-        toast.success(t('room.stagePromoted')) // R7: 재연결·웹캠 권한 요청이 무고지로 진행되던 것 안내
-        setStageInvite(false)
-        useRoomStore.getState().setRoomContext({ myRole: 'actor', mySlotIndex: msg.slot_index ?? null })
-        setReconnectNonce((n) => n + 1)
-      }
-    }
-  }, [playSharedVgen, applyServerScriptMode, t])
+  // room-authority 수신 프로토콜(NR 분리 → useRoomAuthority): broadcast 이벤트 스위치. dubEditBadgeTimer 는 훅 소유.
+  const handleRoomAuthority = useRoomAuthority({
+    playSharedVgen, applyServerScriptMode, setRaiseHandRefetch, setRoomName, setRoomGenre,
+    setKickReason, setStageInvite, setReconnectNonce, recAuthorityRef,
+  })
 
   const { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave, getAudioTracks } = useLiveKitRoom(roomId, {
     onBlendshapes: handleBlendshapes,
@@ -394,71 +274,12 @@ export default function RoomPage() {
   const slotOf = useCallback((identity: string) => memberSlots[identity], [memberSlots])
 
   // 리액션 휠: 무대 우클릭(button 2)으로 커서 위치에 개화(홀드-드래그-릴리즈). origin=null=닫힘.
-  const [reactionOrigin, setReactionOrigin] = useState<{ x: number; y: number } | null>(null)
-  const [reactionSticky, setReactionSticky] = useState(false) // 터치 개화는 sticky(탭 선택) 모드로 시작
   const [mixerOpen, setMixerOpen] = useState(false) // ROOM-08 음량 믹서 개방(하단바 🎧 소유)
-  const openReactionWheel = useCallback((e: MouseEvent) => {
-    if (e.button !== 2) return
-    e.preventDefault()
-    setReactionSticky(false)
-    setReactionOrigin({ x: e.clientX, y: e.clientY })
-  }, [])
-  const closeReactionWheel = useCallback(() => setReactionOrigin(null), [])
-
-  // 터치 롱프레스(≥500ms) → 휠 sticky 개화(P-5 — 우클릭의 모바일 등가). 10px 이동 = 스크롤 의도 → 취소.
-  const touchTimer = useRef<number | null>(null)
-  const touchStart = useRef<{ x: number; y: number } | null>(null)
-  const touchFired = useRef(false)
-  const cancelStageTouch = useCallback(() => {
-    if (touchTimer.current != null) { clearTimeout(touchTimer.current); touchTimer.current = null }
-  }, [])
-  const onStageTouchStart = useCallback((e: ReactTouchEvent) => {
-    if (e.touches.length !== 1) return
-    const t0 = e.touches[0]
-    touchStart.current = { x: t0.clientX, y: t0.clientY }
-    touchFired.current = false
-    touchTimer.current = window.setTimeout(() => {
-      touchTimer.current = null
-      touchFired.current = true
-      setReactionSticky(true)
-      setReactionOrigin(touchStart.current)
-    }, 500)
-  }, [])
-  const onStageTouchMove = useCallback((e: ReactTouchEvent) => {
-    const s = touchStart.current
-    if (!s || touchTimer.current == null) return
-    const t0 = e.touches[0]
-    if (Math.hypot(t0.clientX - s.x, t0.clientY - s.y) > 10) cancelStageTouch()
-  }, [cancelStageTouch])
-  const onStageTouchEnd = useCallback((e: ReactTouchEvent) => {
-    cancelStageTouch()
-    // 개화 직후의 합성 마우스 이벤트 억제 — 없으면 mousedown 이 sticky 백드롭을 즉시 닫는다.
-    if (touchFired.current) e.preventDefault()
-  }, [cancelStageTouch])
-
-  // 숫자키 1~N 핫키(P-5): 입력 필드 밖에서 숫자키 → 해당 슬롯 리액션 즉발(휠 안 거침).
-  useEffect(() => {
-    if (!connected) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      const el = e.target as HTMLElement
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return
-      const n = Number(e.key)
-      if (!Number.isInteger(n) || n < 1 || n > 9) return
-      const slots = useReactionStore.getState().slots
-      if (n <= slots.length) sendReaction(slots[n - 1].emoji)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [connected, sendReaction])
-
-  // dev 전용: 헤드리스 E2E 에서 리액션 DataChannel 왕복을 검증하는 주입 훅(SelfAvatar.__room 패턴과 동형).
-  useEffect(() => {
-    if (!import.meta.env.DEV) return
-    const w = window as unknown as { __reactionE2E?: { send: (e: string) => void; floats: () => unknown[] } }
-    w.__reactionE2E = { send: sendReaction, floats: () => useReactionStore.getState().floats }
-    return () => { delete w.__reactionE2E }
-  }, [sendReaction])
+  // 리액션 휠(NR 분리 → useReactionWheel): 우클릭·롱프레스 개화 + 숫자키 1~N 즉발 + DEV E2E 훅.
+  const {
+    reactionOrigin, reactionSticky, openReactionWheel, closeReactionWheel,
+    onStageTouchStart, onStageTouchMove, onStageTouchEnd, cancelStageTouch,
+  } = useReactionWheel({ sendReaction, connected })
 
   // V-3 인앱 녹화(ROOM-13): 동의 게이트→무대 합성 캡처→R2→작품. room-authority 수신·오디오 증감은 ref 브리지.
   const recording = useRoomRecording({ roomId, isHost, joined: joinPhase === 'ready', getAudioTracks })
@@ -585,7 +406,7 @@ export default function RoomPage() {
       setRoomLocked(r.is_locked)
       return r.is_locked
     },
-    [session, roomId, roomLocked],
+    [session, roomId, roomLocked, setRoomLocked],
   )
   // 무대 배경 교체/해제(HOST-04·05) → 서버 검증·broadcast. 성공 시 로컬 즉시 반영(서버 echo 는 같은 값 멱등).
   const changeBackground = useCallback(
@@ -736,7 +557,7 @@ export default function RoomPage() {
       />
     ) },
     { id: 'dub', label: t('room.tabDub'), render: () => <DubPanel roomId={roomId} isViewer={isViewer} /> },
-    { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} onShare={shareVgen} /> },
+    { id: 'vgen', label: t('room.tabVgen'), render: () => <VgenStatusTab roomId={roomId} isHost={isHost} isViewer={isViewer} onShare={shareVgen} /> },
   ]
   if (isHost) {
     tabs.push({
@@ -778,22 +599,8 @@ export default function RoomPage() {
     })
   }
 
-  // 잠금방 비번 입장(입장 단계 'password'). 성공 시 roomLocked=true(호스트면 콘솔에 잠금 상태 반영).
-  // 실패는 throw — RoomJoinGate 가 오류 표시·busy 해제를 소유(R-커밋).
-  const submitJoinPassword = useCallback(async (password: string) => {
-    if (!session) throw new Error('no session')
-    const r = await joinRoomWithPassword(session.access_token, roomId, password)
-    useRoomStore.getState().setRoomContext({
-      currentRoomId: roomId,
-      myParticipantId: r.participant_id,
-      mySlotIndex: r.slot_index,
-      myRole: r.role === 'viewer' ? 'viewer' : 'actor',
-    })
-    setRoomLocked(true)
-    enterWithGreen()
-  }, [session, roomId, enterWithGreen])
-
   async function onLeave() {
+    setLeaving(true) // DISCONNECTED 전이로 방종료 모달이 잠깐 뜨는 것 방지
     if (session) {
       try {
         await leaveRoom(session.access_token, roomId) // DB soft-leave + 호스트 승계
@@ -828,8 +635,7 @@ export default function RoomPage() {
     }
   }, [roomId, isViewer, isHost, createInvite, t])
 
-  // 입장 게이트(joining/entering/error/password/kicked) — RoomJoinGate 로 분리(R-커밋).
-  const gatePhase = kicked ? ('kicked' as const) : joinPhase !== 'ready' ? joinPhase : null
+  // 입장 게이트(joining/entering/error/password/kicked) — gatePhase 는 useRoomJoin 파생.
   if (gatePhase) {
     return (
       <RoomJoinGate
@@ -837,11 +643,14 @@ export default function RoomPage() {
         backdrop={joinBackdrop}
         joinError={joinError}
         kickReason={kickReason}
-        onCancel={() => { joinAbortRef.current?.abort(); navigate('/lobby', { replace: true }) }}
+        onCancel={cancelJoin}
         onSubmitPassword={submitJoinPassword}
+        onRetry={retryJoin}
+        onChooseRole={chooseRole}
       />
     )
   }
+
 
   // 반응형: 태그는 장르 하나만(공간 제한)
   const roomTags = roomGenre ? [roomGenre] : []
@@ -991,6 +800,28 @@ export default function RoomPage() {
         rightDock={rightDockContent}
         bottomBar={bottomBarContent}
       />
+
+      {/* RM-DEADROOM: 세션 중 연결 종단 끊김 — 얼어붙은 무대 대신 사유+행동. Esc/재연결=멱등 재조인
+          (방 종료면 join 이 'Room ended' 로 error 단계 수렴), 로비=이탈. */}
+      {deadRoom && (
+        <Modal title={t('room.connLostTitle')} onClose={retryJoin}>
+          <p className="mt-2 text-sm text-stage-text-muted">{t('room.connLostBody')}</p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={retryJoin}
+              className="flex-1 rounded-lg bg-fire-amber px-3 py-2 text-sm font-semibold text-stage-base hover:opacity-90"
+            >
+              {t('room.reconnect')}
+            </button>
+            <button
+              onClick={() => void onLeave()}
+              className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+            >
+              {t('room.backToLobby')}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* 녹화 동의 모달(V-3·§11.1.1) — 닫기(Esc)도 거절로 기록(무응답 방치 방지, 호스트는 취소 가능). */}
       {recording.consentRequest && (

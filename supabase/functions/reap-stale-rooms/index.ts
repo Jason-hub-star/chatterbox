@@ -15,6 +15,17 @@ import { roomServiceClient } from "../_shared/livekit.ts";
 const GRACE_MS = 10 * 60 * 1000; // 생성 직후 접속 유예
 const MAX_PER_TICK = 100; // 틱당 상한(초과분은 다음 틱)
 
+// 상수시간 문자열 비교(SEC-REAPER-TIMING) — 조기종료 없는 XOR 누적. 길이 불일치는 즉시 false
+// (시크릿 길이는 비밀 아님). 외부 의존성 0(Deno-safe).
+function timingSafeEqual(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
+  return diff === 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -23,7 +34,9 @@ Deno.serve(async (req) => {
   // fail-closed: 시크릿 미설정(expected="")이면 모든 요청 401.
   const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   const expected = Deno.env.get("REAPER_SECRET") ?? "";
-  if (!expected || bearer !== expected) return json({ error: "Unauthorized" }, 401);
+  // SEC-REAPER-TIMING(하드닝): 상수시간 비교 — bearer!==expected 는 조기종료라 타이밍 사이드채널.
+  // 실제 원격 추출은 네트워크 지터가 압도해 사실상 불가하나 방어심층. 길이 불일치는 즉시 false(고정길이 시크릿).
+  if (!expected || !timingSafeEqual(bearer, expected)) return json({ error: "Unauthorized" }, 401);
 
   const service = serviceClient();
   const cutoff = new Date(Date.now() - GRACE_MS).toISOString();

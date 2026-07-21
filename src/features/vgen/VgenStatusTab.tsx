@@ -43,10 +43,12 @@ function VgenProgress({ statusText, createdAt }: { statusText: string; createdAt
 export default function VgenStatusTab({
   roomId,
   isHost,
+  isViewer,
   onShare,
 }: {
   roomId: string
   isHost: boolean
+  isViewer?: boolean // RM-VIEWER-VGEN: 관전자는 생성 불가 — 못 쓰는 탭 안내
   onShare?: (jobId: string) => Promise<void> // 룸 공유(방에 게시). 쇼츠 제작소(스튜디오)는 공유 대상이 없어 미전달 → 버튼 숨김.
 }) {
   const { t } = useTranslation()
@@ -106,6 +108,10 @@ export default function VgenStatusTab({
         <h2 className="text-sm font-semibold text-stage-text-muted">🎬 {t('vgen.tabTitle')}</h2>
         <span className="text-xs text-stage-text-muted">{t('vgen.creditBalance', { balance })}</span>
       </div>
+
+      {isViewer && (
+        <p className="mt-2 rounded-lg bg-stage-panel/60 px-3 py-2 text-xs text-stage-text-muted">{t('vgen.viewerHint')}</p>
+      )}
 
       {isHost && !showPrompt && (
         <button onClick={() => setShowPrompt(true)}

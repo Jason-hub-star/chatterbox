@@ -122,6 +122,14 @@ export default function HostConsole({
       cancelled = true
     }
   }, [loadChatPolicy])
+  // RM-MUTE-REMAIN: 남은시간 표기용 now — 렌더 중 Date.now() 금지(순수성) + effect 동기 setState 금지라
+  // 초기값은 setTimeout(0) 비동기 세팅, 이후 30s 틱. now=0(첫 프레임)이면 라벨 숨김(다음 틱에 즉시 표출).
+  const [now, setNow] = useState(0)
+  useEffect(() => {
+    const t0 = window.setTimeout(() => setNow(Date.now()), 0)
+    const id = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => { window.clearTimeout(t0); window.clearInterval(id) }
+  }, [])
   const saveChatPolicy = async () => {
     setChatErr(null)
     setChatBusy(true)
@@ -352,13 +360,19 @@ export default function HostConsole({
       setMuting(null)
     }
   }
-  // R4 잔여 표시: 시간제 음소거된 참가자의 만료 시각(HH:MM) — 서버 진실(mutedUntil) 파생.
+  // R4 잔여 표시(RM-MUTE-REMAIN): 절대시각(HH:MM) 대신 남은 시간 — "몇 분 남았나" 암산 제거.
+  // 렌더 시점 계산(라이브 룸의 잦은 리렌더로 갱신) · 분 올림(과도한 정밀 회피, 만료는 isMutedNow 가 파생 해제).
   const mutedUntilLabel = (identity: string): string | null => {
     const iso = mutedUntil?.[identity]
-    if (!iso || !isMutedNow(identity)) return null
-    const d = new Date(iso)
-    return t('host.mutedUntil', { time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` })
+    if (!iso || !isMutedNow(identity) || !now) return null
+    const remainMin = Math.max(1, Math.ceil((new Date(iso).getTime() - now) / 60000))
+    return t('host.mutedRemaining', { min: remainMin })
   }
+  // RM-POLICY-VALIDATE: 금칙어 라이브 카운트(서버 저장은 50개 상한) — 저장 실패 후 원인 추측 대신 사전 고지.
+  const bannedWordCount = bannedInput.split(',').map((w) => w.trim()).filter(Boolean).length
+  // RM-STATUS-TEXT: 연결 열화(poor/lost)만 가시 텍스트 — 아이콘+색상 단독 스캔 부담 완화(정상은 미표시로 클린).
+  const qualityText = (q?: RoomParticipant['connectionQuality']): string | null =>
+    q === 'poor' ? t('stage.statusConnPoor') : q === 'lost' ? t('stage.statusConnLost') : null
 
   const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -462,6 +476,7 @@ export default function HostConsole({
             </button>
           ))}
         </div>
+        {bgBusy && <p className="mt-1 text-xs text-stage-text-muted" role="status">{t('host.bgApplying')}</p>}
         {bgErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{bgErr}</p>}
       </section>
 
@@ -577,6 +592,9 @@ export default function HostConsole({
           placeholder={t('host.bannedWordsPlaceholder')}
           className="mt-2 w-full rounded border border-stage-border bg-transparent px-3 py-1.5 text-sm"
         />
+        <p className={`mt-1 text-[10px] ${bannedWordCount > 50 ? 'text-fire-hot' : 'text-stage-text-muted'}`}>
+          {t('host.bannedCount', { n: bannedWordCount })}{bannedWordCount > 50 && ` · ${t('host.bannedOver')}`}
+        </p>
         <div className="mt-2 flex gap-2">
           <button
             onClick={() => void saveChatPolicy()}
@@ -737,6 +755,9 @@ export default function HostConsole({
                   <span title={p.connectionQuality ?? 'unknown'} aria-label={`connection ${p.connectionQuality ?? 'unknown'}`}>
                     {qualityDot(p.connectionQuality)}
                   </span>
+                  {qualityText(p.connectionQuality) && (
+                    <span className="shrink-0 text-[10px] font-medium text-fire-hot">{qualityText(p.connectionQuality)}</span>
+                  )}
                   <span className="min-w-0 flex-1 truncate">
                     {p.name}
                     {mutedUntilLabel(p.identity) && (

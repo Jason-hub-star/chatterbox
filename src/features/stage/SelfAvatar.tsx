@@ -93,6 +93,14 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
       : trackingState === 'ERROR' || trackingState === 'UNSUPPORTED'
         ? STATE_LABEL_KEY[trackingState]
         : null
+  // RM-JOIN-ROLE: 카메라 사용 불가(권한 거부/미지원) = 배우 참여 데드엔드 → 관전으로 참여 처방.
+  // ?watch=1 로 재진입하면 게이트가 관전 자동선택(=joinRoomAsViewer, 좌석·웹캠 없음).
+  const cameraUnusable = trackingState === 'ERROR' || trackingState === 'UNSUPPORTED'
+  const goViewer = () => {
+    const u = new URL(window.location.href)
+    u.searchParams.set('watch', '1')
+    window.location.assign(u.toString())
+  }
 
   return (
     <>
@@ -112,6 +120,15 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
             <span className="flex flex-col items-center gap-0.5 text-[11px] font-medium text-stage-text">
               <span aria-hidden className="text-lg">👤</span>
               {t(fallbackKey)}
+              {cameraUnusable && (
+                <button
+                  onClick={goViewer}
+                  title={t('room.cameraDeniedHint')}
+                  className="pointer-events-auto mt-1 rounded bg-fire-amber/90 px-2 py-0.5 text-[10px] font-semibold text-stage-base hover:opacity-90"
+                >
+                  {t('room.watchInstead')}
+                </button>
+              )}
             </span>
           </div>
         )}

@@ -36,6 +36,11 @@ Deno.serve(async (req) => {
   if (!gate.ok) return gate.res;
   const room = gate.room as HostRoom & { title: string | null };
 
+  // 레이트리밋(SEC-INVITE-FLOOD): 호스트당 20회/시간 — 지명초대 알림(notifications INSERT) 폭탄 +
+  // room_invites 행 스팸 차단. send-friend-request·create-room 과 동일 프리미티브(check_rate_limit).
+  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `invite:${userId}`, p_max: 20, p_window_sec: 3600 });
+  if (rlOk === false) return json({ error: "초대를 너무 많이 보냈어요. 잠시 후 다시 시도해주세요." }, 429);
+
   if (invitedUserId) {
     const { data: target } = await service
       .from("users").select("id").eq("id", invitedUserId).is("deleted_at", null).maybeSingle();

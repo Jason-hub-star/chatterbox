@@ -47,8 +47,8 @@ function SlotStatus({ muted, quality }: { muted: boolean; quality?: RoomParticip
         </span>
       )}
       {conn && (
-        <span className="grid h-5 w-5 place-items-center rounded-full bg-stage-base/85 text-[11px] shadow" role="img" aria-label={conn.label} title={conn.label}>
-          {conn.icon}
+        <span className="flex items-center gap-0.5 rounded-full bg-stage-base/85 px-1.5 py-0.5 text-[11px] shadow" role="img" aria-label={conn.label} title={conn.label}>
+          {conn.icon}<span className="text-[8px] font-medium leading-none">{conn.label}</span>
         </span>
       )}
     </div>

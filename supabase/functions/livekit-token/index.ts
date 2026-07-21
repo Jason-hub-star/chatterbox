@@ -81,7 +81,11 @@ Deno.serve(async (req) => {
       identity: user.id,
       // F-1(2026-07-12): participant.name = 닉네임 — 무대 이름칩·노트·믹서·로컬 에코가 전부 이 값을 읽는다.
       name: appUser.display_name ?? user.email ?? user.id,
-      ttl: 600, // 10분. 만료 없는 토큰 금지.
+      // SEC-KICK-TOKEN(하드닝): 300s. 강퇴(is_disabled_by_host)는 즉시지만 이미 발급된 JWT 는 LiveKit 층서
+      // 서명·만료만 검증 → 캡처 토큰의 재접속 창을 반토막(600→300). 정상 재접속은 매 connect 직전 새 토큰
+      // 재발급(useLiveKitRoom fetchTokenWithRejoin)이라 무영향·순단은 resume(토큰 무검증). 만료 없는 토큰 금지.
+      // 정본(창 0): participant_joined webhook 에서 token_version 대조 — 후속 골(metadata 이미 심음).
+      ttl: 300,
       metadata: JSON.stringify({ token_version: part.token_version }),
     },
   );
