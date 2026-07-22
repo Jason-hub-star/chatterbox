@@ -109,8 +109,14 @@ export default function GreenRoomPage() {
               <p className="rounded-lg bg-fire-hot/10 px-3 py-2 text-xs text-fire-hot" role="alert">
                 {t('greenroom.micDenied')}
               </p>
+            ) : micLevel === null ? (
+              // GR-MIC-LOADING: getUserMedia+AudioContext 준비 중엔 0 대신 "준비 중" — 0 값 바가
+              // "마이크 안 들림" 오인 유발(권한 프롬프트 지연 시 수 초). 첫 샘플 도착 시 바로 전환.
+              <p className="rounded-lg bg-stage-base/60 px-3 py-2 text-xs text-stage-text-muted" role="status">
+                {t('greenroom.micPreparing')}
+              </p>
             ) : (
-              <ProgressBar value={micLevel ?? 0} label={t('greenroom.micLevel')} />
+              <ProgressBar value={micLevel} label={t('greenroom.micLevel')} />
             )}
           </div>
 

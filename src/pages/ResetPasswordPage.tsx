@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useUserStore } from '@/stores/userStore'
 import { passwordIssue } from '@/lib/authValidation'
+import { toast } from '@/hooks/useToast'
 import AuthShell from '@/components/shared/AuthShell'
 import PasswordStrengthBar from '@/components/shared/PasswordStrengthBar'
 
@@ -32,7 +33,8 @@ export default function ResetPasswordPage() {
     setBusy(true); setError(null)
     const ok = await updatePassword(password)
     setBusy(false)
-    if (ok) navigate('/lobby', { replace: true })
+    // RESET-SUCCESS-SILENT: 성공 시 무피드백 리다이렉트 → 변경 완료 토스트로 확인 신호.
+    if (ok) { toast.success(t('reset.success')); navigate('/lobby', { replace: true }) }
     else setError(t('reset.failed'))
   }
 

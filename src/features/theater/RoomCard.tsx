@@ -34,7 +34,8 @@ export default function RoomCard({ room, onEnter }: { room: LobbyRoom; onEnter: 
         </span>
 
         {room.isLocked && (
-          <span aria-hidden className="absolute bottom-2 right-2 text-sm opacity-85">
+          // ROOMCARD-LOCK-A11Y: aria-hidden 제거 + title/aria-label — 스크린리더가 잠금 방을 인지.
+          <span role="img" aria-label={t('lobby.locked')} title={t('lobby.locked')} className="absolute bottom-2 right-2 text-sm opacity-85">
             🔒
           </span>
         )}

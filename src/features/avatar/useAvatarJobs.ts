@@ -8,8 +8,28 @@ import {
   fetchMyAvatarJobs,
   subscribeToAvatarJob,
   sha256Hex,
+  pickFreshCompleted,
 } from '@/lib/avatarJobs'
 import type { AvatarJob } from '@/types/avatarJob'
+
+// X1(AVATAR-DONE-NOTIFY): "완성 통지했나" 셋 — 옷장 NEW 배지(AtelierPage cb.atelier.seenJobs=입어봤나)와
+// 별개 개념(이 완성을 재진입 배너로 통지했나). 라이브 완성은 토스트로, 자리 비운 사이 완성분은 배너로 1회.
+const NOTIFIED_KEY = 'cb.avatar.notifiedDone'
+function loadNotified(): Set<string> {
+  try {
+    const raw = localStorage.getItem(NOTIFIED_KEY)
+    return raw ? new Set<string>(JSON.parse(raw) as string[]) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+function persistNotified(set: Set<string>) {
+  try {
+    localStorage.setItem(NOTIFIED_KEY, JSON.stringify([...set]))
+  } catch {
+    /* quota/스토리지 비활성 — 통지만 못 기억, 무해 */
+  }
+}
 
 // 커미션 잡 수명주기 훅 — 재진입 복원(fetchMyAvatarJobs) + 활성 잡 Realtime 구독 + 제출.
 // dev 페이지(AvatarForgeDevPage) 배선을 의상실용으로 승격. 활성 잡은 한 번에 1개만 구독.
@@ -21,9 +41,12 @@ export function useAvatarJobs() {
   const [jobs, setJobs] = useState<AvatarJob[]>([])
   const [loaded, setLoaded] = useState(false)
   const [reused, setReused] = useState(false) // 디덥 캐시 히트 인지 배너(§6). 새 제출/닫기로 해제.
+  const [awayDone, setAwayDone] = useState(0) // 자리 비운 사이 완성된 커미션 수(재진입 배너). 닫기로 해제.
   const unsubRef = useRef<(() => void) | null>(null)
   const statusRef = useRef(new Map<string, string>())
+  const notifiedRef = useRef<Set<string> | null>(null) // 완성 통지 셋(localStorage 백업, lazy 로드)
   const dismissReused = useCallback(() => setReused(false), [])
+  const dismissAwayDone = useCallback(() => setAwayDone(0), [])
 
   const upsert = useCallback(
     (job: AvatarJob) => {
@@ -33,6 +56,14 @@ export function useAvatarJobs() {
         if (job.status === 'failed') pushToast('error', t('atelier.commissionFailed'))
       }
       statusRef.current.set(job.id, job.status)
+      // 라이브 완성은 위 토스트로 통지됨 → notified 셋에 기록해 재진입 배너 중복 방지(캐시 히트 재주문 포함).
+      if (job.status === 'done') {
+        const seen = (notifiedRef.current ??= loadNotified())
+        if (!seen.has(job.id)) {
+          seen.add(job.id)
+          persistNotified(seen)
+        }
+      }
       setJobs((list) =>
         list.some((j) => j.id === job.id)
           ? list.map((j) => (j.id === job.id ? job : j))
@@ -52,11 +83,21 @@ export function useAvatarJobs() {
 
   useEffect(() => {
     let cancelled = false
+    const firstRun = localStorage.getItem(NOTIFIED_KEY) === null
+    const seen = (notifiedRef.current ??= loadNotified())
     void fetchMyAvatarJobs().then((list) => {
       if (cancelled) return
       list.forEach((j) => statusRef.current.set(j.id, j.status))
       setJobs(list)
       setLoaded(true)
+      // X1: 자리 비운 사이 완성된 잡 감지 → 재진입 배너. firstRun 은 통지 없이 시딩만(첫 방문 스팸 방지).
+      const doneIds = list.filter((j) => j.status === 'done').map((j) => j.id)
+      const { fresh, seed } = pickFreshCompleted(doneIds, seen, firstRun)
+      if (seed.length > 0) {
+        seed.forEach((id) => seen.add(id))
+        persistNotified(seen)
+      }
+      if (fresh.length > 0) setAwayDone(fresh.length)
       const active = list.find((j) => j.status === 'queued' || j.status === 'running')
       if (active) watch(active.id)
     })
@@ -97,5 +138,5 @@ export function useAvatarJobs() {
     [session, t, upsert, watch, pushToast],
   )
 
-  return { jobs, loaded, submit, reused, dismissReused }
+  return { jobs, loaded, submit, reused, dismissReused, awayDone, dismissAwayDone }
 }

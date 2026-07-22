@@ -225,7 +225,10 @@ export default function TheaterPage() {
             : listed.map((r) => <RoomCard key={r.id} room={r} onEnter={enter} />)}
         </div>
         {!loading && listed.length === 0 && (
-          <p className="py-12 text-center text-sm text-stage-text-muted">{q ? t('lobby.noMatch') : t('lobby.noRooms')}</p>
+          // LOBBY-EMPTY-FILTER: 필터/장르 활성 시 "방 없음"은 오해 — 필터별 문구로 구분(검색>필터>기본).
+          <p className="py-12 text-center text-sm text-stage-text-muted">
+            {q ? t('lobby.noMatch') : filter !== 'all' || genreFilter ? t('lobby.noFilterMatch') : t('lobby.noRooms')}
+          </p>
         )}
       </div>
 

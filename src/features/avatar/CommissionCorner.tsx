@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Modal from '@/components/shared/Modal'
 import ProgressBar from '@/components/shared/ProgressBar'
 import { useToastStore } from '@/stores/toastStore'
-import { AVATAR_UPLOAD_MIME } from '@/lib/avatarJobs'
+import { AVATAR_UPLOAD_MIME, classifyAvatarError } from '@/lib/avatarJobs'
 import type { AvatarJob } from '@/types/avatarJob'
 
 // 커미션 코너(의상실) — 주문 버튼 + 업로드 위저드 모달 + 4스텝 주문서 카드 + 실패 재주문.
@@ -93,7 +93,8 @@ function HowItWorks() {
 function OrderCard({ job }: { job: AvatarJob }) {
   const { t } = useTranslation()
   const idx = job.phase ? PHASES.indexOf(job.phase) : -1
-  const progress = job.status === 'queued' || idx < 0 ? null : (idx + 0.5) / PHASES.length
+  const queued = job.status === 'queued' // COMMISSION-QUEUED-GRAY: 접수 직후 phase 서버반영 전(수 초) 전 스텝 회색 = "안 시작?" 오인
+  const progress = queued || idx < 0 ? null : (idx + 0.5) / PHASES.length
   const [elapsedMin, setElapsedMin] = useState(() => elapsedMinutesSince(job.createdAt))
   useEffect(() => {
     const id = setInterval(() => setElapsedMin(elapsedMinutesSince(job.createdAt)), 30_000)
@@ -102,6 +103,11 @@ function OrderCard({ job }: { job: AvatarJob }) {
   return (
     <div className="rounded-lg border border-stage-border bg-stage-base/50 p-3">
       <p className="text-xs text-stage-text-muted">{t('atelier.commissionEta')}</p>
+      {queued && (
+        <p className="mt-1 text-[11px] font-semibold text-fire-amber motion-safe:animate-pulse" role="status">
+          {t('atelier.commissionQueued')}
+        </p>
+      )}
       <ol className="mt-2 space-y-1" aria-label={t('atelier.commissionTitle')}>
         {PHASES.map((p, i) => {
           const state = idx > i ? 'done' : idx === i ? 'current' : 'pending'
@@ -124,7 +130,9 @@ function OrderCard({ job }: { job: AvatarJob }) {
                     ? 'border-fire-amber/60 text-fire-amber'
                     : state === 'current'
                       ? 'border-fire-amber text-fire-amber motion-safe:animate-pulse'
-                      : 'border-stage-border'
+                      : queued && i === 0
+                        ? 'border-fire-amber/50 text-fire-amber/70 motion-safe:animate-pulse'
+                        : 'border-stage-border'
                 }`}
               >
                 {state === 'done' ? '✓' : i + 1}
@@ -275,6 +283,8 @@ export default function CommissionCorner({
   onWizardToggle,
   reused,
   onDismissReused,
+  awayDone,
+  onDismissAwayDone,
 }: {
   jobs: AvatarJob[]
   onSubmit: (file: File) => Promise<void>
@@ -282,6 +292,8 @@ export default function CommissionCorner({
   onWizardToggle: (open: boolean) => void
   reused: boolean
   onDismissReused: () => void
+  awayDone: number
+  onDismissAwayDone: () => void
 }) {
   const { t } = useTranslation()
   const active = jobs.find((j) => j.status === 'queued' || j.status === 'running')
@@ -294,6 +306,27 @@ export default function CommissionCorner({
       <p className="mt-0.5 text-xs text-stage-text-muted">{t('atelier.commissionDesc')}</p>
 
       <div className="mt-2 space-y-2">
+        {/* X1(AVATAR-DONE-NOTIFY): 자리 비운 사이 완성된 커미션 재진입 통지 — 33분 대기라 방을 나갔다
+            와도 "완성됨" 순간을 놓치지 않게. reused 배너와 같은 문법(재사용 프리미티브). */}
+        {awayDone > 0 && (
+          <div className="rounded-lg border border-spring-green/40 bg-spring-green/10 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold text-spring-green">🎉 {t('atelier.awayDoneTitle')}</p>
+                <p className="mt-1 text-xs text-stage-text-muted">{t('atelier.awayDoneHint', { count: awayDone })}</p>
+              </div>
+              <button
+                type="button"
+                onClick={onDismissAwayDone}
+                aria-label={t('common.close')}
+                className="shrink-0 text-stage-text-muted hover:text-stage-text"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 디덥 캐시 히트 인지 배너(§6) — 같은 그림 재주문이 33분 없이 즉시 완성됐음을 알린다. */}
         {reused && (
           <div className="rounded-lg border border-spring-green/40 bg-spring-green/10 p-3">
@@ -319,8 +352,8 @@ export default function CommissionCorner({
         {lastFailed && (
           <div className="rounded-lg border border-fire-hot/40 bg-fire-hot/10 p-3">
             <p className="text-xs font-semibold text-fire-hot">{t('atelier.commissionFailed')}</p>
-            {/* 실패 원문(파이썬 트레이스백 등)은 잡 레코드에만 — 사용자에겐 일반 안내(2026-07-11 첫 실런). */}
-            <p className="mt-1 text-xs text-stage-text-muted">{t('atelier.commissionFailedHint')}</p>
+            {/* COMMISSION-FAIL-REASON: 원문은 잡 레코드에만(2026-07-11) — 유저에겐 원인 타입별 대응 안내(재시도 vs 다른 그림). */}
+            <p className="mt-1 text-xs text-stage-text-muted">{t(classifyAvatarError(lastFailed.error))}</p>
           </div>
         )}
 

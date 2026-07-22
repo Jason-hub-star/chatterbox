@@ -146,6 +146,24 @@ tags: [audit]
 - [x] **RM-PANEL-360** (Med·Likely) **반증(N5)**: 룸 진입 후 360px 실렌더(`room-360-spot.mjs` 3/3) — 무대·DUB탭·VGEN탭 scrollWidth=360 오버플로 0. 현 상태 무오버플로 확인, 무작업.
 - [x] **RM-BG-PROGRESS** <!-- probe: src/features/room/HostConsole.tsx :: host.bgApplying --> (Low — 로딩 피드백) **구현(N5·bg 적용중 텍스트).** 배경 업로드 진행표시 부재 — `HostConsole.tsx:243-253` 버튼 회색화만(짧아 저영향). **정수정:** 인라인 "적용 중…" 텍스트(P-2 ProgressBar 재사용 옵션).
 
+**X-트랙 (방 밖 표면 감사 2026-07-22 · 4페르소나 Opus 워커 + 메인 직접검증)** — 룸·더빙 소진 후 미답 표면(인증·로비·예약·커미션·소셜) UX 마찰. 사다리 X 로 처리(브리프 `goals/GOAL-outroom-ux.md`). 워커 23건 → 메인 인용라인 직접 대조로 **오탐 1·심각도 강등 5**. 크럭스 = 장기 비동기 잡(커미션 ~33분·vgen)의 **방 밖 완료 통지 부재**.
+- [x] **AVATAR-DONE-NOTIFY** <!-- probe: src/lib/avatarJobs.ts :: pickFreshCompleted --> (High·Confirmed 직접대조) 커미션 ~33분 대기 중 방 밖 이동 시 완성돼도 통지 0 — `useAvatarJobs.ts:53-67` 재마운트가 fetch 상태를 이미 `done` 으로 시딩(`:30-34` 전이 미감지) → 완료 토스트 미발사. 잡 리스트/옷장엔 추가되나 "완성됨" 순간 신호 없음(유료 33분 대기라 방 나감이 실케이스). **정수정:** localStorage `avatar_seen_completed` 셋 ↔ 재진입 시 신규 done 1회 배너(toastStore 재사용). *(X1)*
+- [x] **GR-MIC-LOADING** <!-- probe: src/pages/GreenRoomPage.tsx :: micPreparing --> (Med·Confirmed 직접대조) 분장실 마이크 미터가 로딩 중 `micLevel ?? 0`=0 → "마이크 안 들림" 오인 — `GreenRoomPage.tsx:45,113` getUserMedia+AudioContext 준비 동안 null→0(권한 프롬프트 지연 시 수 초). **정수정:** `micLevel===null && !micErr` 면 "준비 중…" 스켈레톤(0 값과 구분). *(X2)*
+- [x] **COMMISSION-QUEUED-GRAY** <!-- probe: src/features/avatar/CommissionCorner.tsx :: commissionQueued --> (Low·Confirmed 직접대조·흐름바 완화) queued 상태서 스텝 전부 회색(idx=-1) → "안 시작?" — `CommissionCorner.tsx:95-107` phase null→indexOf -1→전 pending. indeterminate 바가 활동은 시사하나 스텝은 무신호. **정수정:** 첫 스텝을 "대기 중" pulsing. *(X2)*
+- [x] **POLL-VOTE-STALE** <!-- probe: src/features/room/PollBar.tsx :: poll.syncing --> (Med·Likely) 투표 실패 후 UI 이전 선택 잔류 → "반영됐나?" 불확신 — `PollBar.tsx:47-74` vote 실패 시 재조회로 복구하나 그 사이 표시 미변. **정수정:** 실패→재조회 중 로딩 배지. *(X2)*
+- [x] **COMMISSION-FAIL-REASON** <!-- probe: src/lib/avatarJobs.ts :: classifyAvatarError --> (Med·Likely) 커미션 실패 원인 `console.error`만·유저엔 일반 문구 → 같은 실패 반복 주문 — `CommissionCorner.tsx:319-324` job.error 로그 전용. **정수정:** error 타입별 로컬라이즈 매핑(sanitize) UI 노출. *(X4)*
+- [x] **REGISTER-PW-CONFIRM** <!-- probe: src/pages/RegisterPage.tsx :: passwordMismatch --> (Med·Confirmed) 비번 확인 불일치를 제출 후에야 통보 — `RegisterPage.tsx:56-70` validate 는 submit 시만. **정수정:** 불일치 시 버튼 disabled + 인라인 표시. *(X3)*
+- [x] **RESET-SUCCESS-SILENT** <!-- probe: src/pages/ResetPasswordPage.tsx :: reset.success --> (Low·Confirmed) 비번 재설정 성공 후 무피드백 로비 이동 — `ResetPasswordPage.tsx:33-35` updatePassword 성공 후 toast 0. **정수정:** `toast.success(reset.success)` 후 navigate. *(X3)*
+- [x] **CHAT-MAXLEN** <!-- probe: src/features/chat/ChatPanel.tsx :: maxLength --> (Low·Confirmed 직접대조) 채팅 입력에 maxLength/카운터 0 → 초과 시 전송 후 서버 거절 — `ChatPanel.tsx:170-186`. **정수정:** `maxLength` 속성(VgenPromptPanel 패턴). *(X3)*
+- [x] **ROOMCARD-LOCK-A11Y** <!-- probe: src/features/theater/RoomCard.tsx :: lobby.locked --> (Med·Confirmed 직접대조) 잠금방 🔒가 `aria-hidden`+텍스트 0 → 스크린리더 잠금 미인지 — `RoomCard.tsx:36-40`. **정수정:** aria-hidden 제거 + `title={t('lobby.locked')}`. *(X3)*
+- [x] **LOBBY-EMPTY-FILTER** <!-- probe: src/pages/lobby/TheaterPage.tsx :: noFilterMatch --> (Low·Likely) 필터별 빈 목록 문구 미구분("참여가능 방 없음"≠"방 없음") — `TheaterPage.tsx:227-229`. **정수정:** filter 별 문구 분기. *(X3)*
+- [x] **FORGOT-PW-NEXTSTEP** <!-- probe: src/i18n/locales/ko.ts :: login.resetSent --> (Low·Likely) 비번찾기 후 메일 링크 절차 카피 모호 — `LoginPage.tsx:62-67` notice 만. **정수정:** "메일 링크로 재설정" 구체 문구. *(X3)*
+- **반증(오탐 억제·무작업)**:
+  - **FRIEND-LIST-STALE** (워커 High→반증): 친구 요청 후 목록 미갱신 주장 — `FriendsButton.tsx:121-126` knownIds 가 pendingOut 포함 + `:67` reload 로 friendStore 새로고침 → 요청 즉시 addable 제외. 정상 동작.
+  - **ONBOARDING-GENRE-ZERO** (워커 Med→반증): 장르 0개 진행 — 선택 개인화 + [건너뛰기] 존재(`OnboardingGuide.tsx:77,83`). 최소1 강제가 오히려 나쁜 UX.
+  - **OAUTH-EMAIL-TOGGLE**: 소셜 우선 배치는 계약(`contracts/AuthPage.md`) 명시 의도.
+- **defer 대장(사다리 X 밖)**: VGEN-NO-CANCEL(생성 중 취소 — fal 발주 후 환불 설계 별도 골)·VGEN-CREDIT-DEADEND(크레딧 충전 경로 — 수익화 시스템 부재)·완성후 "지금 입기" CTA·이모트 최소1 사유·거울 리사이즈 깜빡임·예약 섹션 헤더·단일 활성잡 명시·인증 중 이메일 변경(nit).
+
 ---
 
 ## §1. 보안 — 확정 (심각도순, 메인이 인용라인 직접 대조)

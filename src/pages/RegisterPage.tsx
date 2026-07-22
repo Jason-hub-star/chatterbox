@@ -140,6 +140,10 @@ export default function RegisterPage() {
                 onChange={(e) => setConfirm(e.target.value)}
                 className="w-full rounded-lg border border-stage-border bg-stage-base px-3 py-2 outline-none focus:border-fire-amber"
               />
+              {/* REGISTER-PW-CONFIRM: 제출 전 실시간 불일치 표시 — 확인 오류로 제출이 폐기되는 마찰 제거. */}
+              {confirm.length > 0 && password !== confirm && (
+                <span className="text-xs text-fire-hot">{t('register.errors.passwordMismatch')}</span>
+              )}
             </label>
 
             {(localError || storeError) && (

@@ -172,6 +172,7 @@ export default function ChatPanel({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           disabled={!connected}
+          maxLength={500}
           aria-label={t('room.messageInput')}
           placeholder={connected ? t('room.messagePlaceholder') : t('room.messagePlaceholderDisabled')}
           className="flex-1 rounded-lg border border-stage-border bg-transparent px-3 py-2 text-sm disabled:opacity-40"

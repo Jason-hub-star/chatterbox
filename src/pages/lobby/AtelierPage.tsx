@@ -131,7 +131,7 @@ export default function AtelierPage() {
   const [searchParams] = useSearchParams()
   const avatarUrl = useUserStore((s) => s.avatarUrl)
   const setMyAvatar = useUserStore((s) => s.setMyAvatar)
-  const { jobs, loaded: jobsLoaded, submit, reused, dismissReused } = useAvatarJobs()
+  const { jobs, loaded: jobsLoaded, submit, reused, dismissReused, awayDone, dismissAwayDone } = useAvatarJobs()
   const mirrorSize = useMirrorSize()
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -297,7 +297,7 @@ export default function AtelierPage() {
         {/* 우: 커미션 공방 — 주문서·진행 스텝 상시 패널 */}
         <section className="md:col-start-3 md:row-start-1 md:min-h-0">
           <div className="interior-panel md:h-full md:overflow-y-auto">
-            <CommissionCorner jobs={jobs} onSubmit={submit} wizardOpen={wizardOpen} onWizardToggle={setWizardOpen} reused={reused} onDismissReused={dismissReused} />
+            <CommissionCorner jobs={jobs} onSubmit={submit} wizardOpen={wizardOpen} onWizardToggle={setWizardOpen} reused={reused} onDismissReused={dismissReused} awayDone={awayDone} onDismissAwayDone={dismissAwayDone} />
             <button
               type="button"
               onClick={() => setFeedbackOpen(true)}

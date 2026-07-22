@@ -113,8 +113,9 @@ export default function PollBar({ roomId }: { roomId: string }) {
           )
         })}
       </div>
-      <p className="mt-1.5 text-right text-[11px] text-stage-text-muted">
-        {t('poll.totalVotes', { count: poll.totalVotes })}
+      <p className="mt-1.5 text-right text-[11px] text-stage-text-muted" aria-live="polite">
+        {/* POLL-VOTE-STALE: 투표 제출·실패 재조회 중 "반영 중" — 표가 잠깐 이전 선택으로 보여도 처리 중임을 안내 */}
+        {busy ? t('poll.syncing') : t('poll.totalVotes', { count: poll.totalVotes })}
       </p>
     </div>
   )

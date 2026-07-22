@@ -64,6 +64,34 @@ export async function fetchMyAvatarJobs(limit = 10): Promise<AvatarJob[]> {
   return (data ?? []).map((r) => mapJob(r as Record<string, unknown>))
 }
 
+// X1(AVATAR-DONE-NOTIFY): 재진입 시 "자리 비운 사이 완성된 잡" 골라내기 — 순수(테스트 가능).
+// 커미션은 ~33분이라 대기 중 방을 나가면(훅 언마운트) 재진입 fetch 가 상태를 이미 done 으로 시딩 →
+// 상태 전이 미감지 → 완료 통지 유실. notified(브라우저 기억) 대비 미통지 done 만 배너로 통지한다.
+// firstRun(브라우저에 통지 셋 자체가 없음)이면 기존 완성분은 이미 아는 것 → 통지 없이 전량 시딩만
+// (첫 방문 스팸 방지). 반환 seed = notified 셋에 추가할 id(재진입 중복 통지 차단).
+export function pickFreshCompleted(
+  doneIds: string[],
+  notified: Set<string>,
+  firstRun: boolean,
+): { fresh: string[]; seed: string[] } {
+  if (firstRun) return { fresh: [], seed: doneIds }
+  const fresh = doneIds.filter((id) => !notified.has(id))
+  return { fresh, seed: fresh }
+}
+
+// COMMISSION-FAIL-REASON: 실패 원인을 유저용 로컬라이즈 힌트 키로 분류(순수·테스트 가능). 원문(파이썬
+// 트레이스백 등)은 잡 레코드에만 보존(2026-07-11 결정) — 여기선 어떻게 대응할지(재시도 vs 다른 그림)만 안내.
+// 엣지 기계코드(credit_insufficient·credit_error·signed_url) + Modal 파이프라인 실패문(크로스레포·자유서술)을
+// substring 으로 3버킷(크레딧·일시적→같은 그림 재시도 OK / 이미지→다른 그림 필요)으로 나눈다. 미매치는 일반 안내.
+export function classifyAvatarError(error: string | null): string {
+  const e = (error ?? '').toLowerCase()
+  if (!e) return 'atelier.commissionFailedHint'
+  if (e.includes('credit')) return 'atelier.failCredit'
+  if (/signed_url|timeout|timed out|network|econn|502|503|504|temporar/.test(e)) return 'atelier.failTransient'
+  if (/face|얼굴|detect|decode|image|이미지|format|resolution|size|too large|small/.test(e)) return 'atelier.failImage'
+  return 'atelier.commissionFailedHint'
+}
+
 // job status/phase 실시간 구독(postgres_changes). 파이프라인의 service_role PATCH 가 자동 방송된다.
 export function subscribeToAvatarJob(jobId: string, onChange: (job: AvatarJob) => void): () => void {
   const ch = supabase

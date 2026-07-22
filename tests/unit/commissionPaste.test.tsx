@@ -61,6 +61,8 @@ beforeEach(() => {
         onWizardToggle={() => {}}
         reused={false}
         onDismissReused={() => {}}
+        awayDone={0}
+        onDismissAwayDone={() => {}}
       />,
     ),
   )
@@ -121,6 +123,8 @@ describe('CommissionCorner 붙여넣기(Ctrl/Cmd+V)', () => {
           onWizardToggle={() => {}}
           reused={false}
           onDismissReused={() => {}}
+          awayDone={0}
+          onDismissAwayDone={() => {}}
         />,
       ),
     )

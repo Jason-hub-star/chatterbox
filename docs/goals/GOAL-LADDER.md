@@ -121,6 +121,18 @@ tags: [status, goals]
 | N5 | 가시성·a11y·반응형(트랙B) | RM-STATUS-TEXT(연결 poor/lost 가시텍스트 무대+콘솔)·RM-REACT-HINT(휠 aria 숫자키)·RM-VIEWER-VGEN(뷰어 안내)·RM-PANEL-360(검증)·RM-BG-PROGRESS(적용중) | check:responsive + 실렌더(360px)·i18nCoverage | **DONE**(2026-07-21: 5건 — Stage 배지 pill+텍스트·HostConsole qualityText·reaction.wheelLabel 키힌트·VgenStatusTab isViewer 안내·bgApplying·i18n 5키×3 — check:all 165/165·**360px 실렌더 3/3**(무대·DUB·VGEN 오버플로 0=RM-PANEL-360 반증)) |
 | N6 | 실증·마감 | 통합 실렌더 + 비회귀(기존 룸/더빙 무대) + §0 [x]+probe·이 표 DONE·GAP-MATRIX·AGENT-OPS | check:all + 통합 실렌더 | **DONE**(2026-07-21: 통합 회귀 dub 완성동선 `dub-w2-spot.mjs`(choose 게이트 패치) **4/4** 리팩터 후 무회귀 + N3 3/3 + 360 3/3 · check:all 165/165 · §0 14항목 [x]+probe(반증 2) · GAP-MATRIX · AGENT-OPS ISS-10) |
 
+## 골 사다리 X — 방 밖 표면 UX 마감 (2026-07-22 dogfood 4페르소나 후속 · 브리프 `GOAL-outroom-ux.md`)
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| X0 | 문서화 선행 | §0 X-트랙(11+반증3+defer) 등재 + 브리프 + 이 표 | docs:check + docs:links | **DONE**(2026-07-22 — 이 등재가 산출물) |
+| X1 | AVATAR-DONE-NOTIFY(High·크럭스) | 의상실 재진입 시 자리 비운 사이 완성된 커미션 잡 1회 배너(localStorage seen-set 대조) | check:all + 실렌더(done 시드→재마운트 배너·재재마운트 무통지) | **DONE**(2026-07-22: pickFreshCompleted 순수추출+useAvatarJobs notified셋(firstRun 스팸방지)+CommissionCorner 배너(reused 미러)+i18n 2키×3 — check:all 0·순수 4/4·배너 실렌더 3/3·commissionPaste 회귀 5/5) |
+| X2 | 로딩·상태 착시 묶음(Med) | GR-MIC-LOADING("준비 중" 스켈레톤)·COMMISSION-QUEUED-GRAY(첫 스텝 활성)·POLL-VOTE-STALE(재조회 로딩) | check:all + 실렌더 스팟 | **DONE**(2026-07-22: micLevel null→"준비 중"·queued 배지+첫스텝 pulse·PollBar busy→"반영 중"+i18n 3키×3 — check:all 172 tests 0·queued 배지 실렌더 2/2) |
+| X3 | 폼 명시성·a11y·발견성 묶음(Med/Low) | REGISTER-PW-CONFIRM·RESET-SUCCESS-SILENT·CHAT-MAXLEN·ROOMCARD-LOCK-A11Y·LOBBY-EMPTY-FILTER·FORGOT-PW-NEXTSTEP | check:all + i18nCoverage + 실렌더 스팟 | **DONE**(2026-07-22: 실시간 불일치·재설정 토스트·maxLength500(서버미러)·🔒 aria-label·필터별 빈메시지·비번찾기 카피 — i18n 2신규+1수정 키×3 · check:all 174 tests 0·i18nCoverage 완역) |
+| X4 | 커미션 실패 투명성(Med) | COMMISSION-FAIL-REASON — job.error 타입별 로컬라이즈 매핑(sanitize) UI 노출 | check:all + 실렌더 | **DONE**(2026-07-22: classifyAvatarError 순수분류 3버킷(credit/transient/image)+generic 폴백·원문 미노출·i18n 3키×3 — check:all 178 tests 0·분류기 4/4) |
+| X5 | 실증·마감 | 통합 실렌더 + 비회귀(룸/더빙/로비) + §0 [x]+probe·이 표 DONE·GAP-MATRIX·AGENT-OPS | check:all + 통합 실렌더 | **DONE**(2026-07-22: check:all exit0(178 tests·build)·**docs:drift probe 70 STALE0/REGRESSION0**(신규 11 probe 실존)·비회귀=기존 룸/더빙/로비 42 test파일 그린·§0 11항목 [x]+probe·GAP-MATRIX·AGENT-OPS) |
+| — | **defer 대장(X 밖)** | VGEN-NO-CANCEL(생성 취소=fal 발주 후 환불 설계 별도 골)·VGEN-CREDIT-DEADEND(크레딧 충전=수익화 부재)·완성후 "지금 입기" CTA·이모트 최소1 사유·거울 리사이즈 깜빡임·예약 헤더·단일 활성잡·인증 중 이메일 변경 | | HOLD |
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)
