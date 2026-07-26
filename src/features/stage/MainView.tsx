@@ -2,11 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStageStore } from '@/stores/stageStore'
 import { useDubStore } from '@/stores/dubStore'
-import { useUserStore } from '@/stores/userStore'
-import { playDubPreview, type DubPreviewHandle } from '@/lib/dubPreview'
+import { attachDubLayer, playDubPreview, type DubPreviewHandle } from '@/lib/dubPreview'
 import DubTimeline from '@/features/dub/DubTimeline'
 import { MicLevelMeter, TakeWaveform } from '@/features/dub/DubRecorder'
-import { fetchDubRecordings } from '@/lib/dub'
 import {
   publishVodSync,
   setVodSyncApplier,
@@ -35,15 +33,17 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
   const localMode = useDubStore((s) => s.localMode)
   // G9-P3 누적 시사회: 호스트 토글 → 전원이 각자 트랙을 받아 얹음(영상 동기는 기존 vodSync 그대로).
   const screening = useDubStore((s) => s.screening)
-  // S2 배경 베드(각인 #1): 기존 목소리 제거 스템을 video 에 슬레이브 — [기존 소리|배경만] 토글.
+  // S2 배경 베드(각인 #1): 기존 목소리 제거 스템을 video 에 슬레이브 — [원본 소리|목소리 뺀 배경] 토글.
   const bedUrls = useDubStore((s) => s.bedUrls)
   const bedMode = useDubStore((s) => s.bedMode)
+  // DUB-PART-LOOP: submitted+synced 녹음 — 상시 레이어(일반 재생·시사회·리허설에서 항상 들림)
+  const recordings = useDubStore((s) => s.recordings)
   const isDub = !!dubUrl
   const effectiveBed = isDub && bedUrls.length > 0 && bedMode === 'bed'
+  // rehearse 는 재생 관점에선 일반 재생과 동일(원음/베드 유지) — record/preview 만 센터를 점유
+  const localBlocking = !!localMode && localMode.kind !== 'rehearse'
   const centerUrl = dubUrl ?? url
   const [subtitle, setSubtitle] = useState('')
-  // record 중 구간 끝 도달 → 중지 유도. localMode 객체 정체성에 귀속 — 모드가 바뀌면 자동 무효(별도 리셋 불필요).
-  const [endedFor, setEndedFor] = useState<object | null>(null)
   const [myTurnTrackId, setMyTurnTrackId] = useState<string | null>(null) // G9-P4→U2: 재생 위치의 내 미제출 트랙(배너+원버튼)
   // U2 센터 녹음 HUD: 엔진 렌더 상태(U1 승격분) — 조작은 recEngine(getState 호출·구독 불필요)
   const recMicStream = useDubStore((s) => s.recMicStream)
@@ -137,10 +137,10 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
     if (localMode) {
       if (!localPrevRef.current) localPrevRef.current = { ms: v.currentTime * 1000, paused: v.paused } // record→preview 연쇄에도 최초 위치 유지
       localActiveRef.current = true
-      if (localMode.kind === 'record') {
+      if (localMode.kind === 'record' || localMode.kind === 'rehearse') {
         v.currentTime = localMode.startMs / 1000
-        if (localMode.preroll) v.pause() // W3: 카운트다운 중 구간 시작 프레임 정지(준비) — 끝나면 record(preroll 없음)로 재생
-        else void v.play().catch(() => {})
+        if (localMode.kind === 'record' && localMode.preroll) v.pause() // W3: 카운트다운 중 구간 시작 프레임 정지(준비) — 끝나면 record(preroll 없음)로 재생
+        else void v.play().catch(() => {}) // rehearse: 구간 재생(반복은 onTimeUpdate, 더빙 오디오는 상시 레이어)
         return
       }
       if (!localMode.audioUrl) return
@@ -148,8 +148,9 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
       // W5: 미리보기 오디오(Web Audio)를 영상 pause/play 에 묶는다(정지 시 백그라운드 재생 방지)
       const onPause = () => previewHandleRef.current?.pause()
       const onPlay = () => previewHandleRef.current?.resume()
-      // S2 각인 #2: 미리보기를 배경 스템 베드 위에서 — "배경음 위 내 목소리"가 즉시 들림
-      void playDubPreview(v, [{ url: localMode.audioUrl, startMs: localMode.startMs, calMs: localMode.calMs }], localMode.startMs, useDubStore.getState().bedUrls)
+      // S2 각인 #2: 미리보기를 배경 스템 베드 위에서 — "배경음 위 내 목소리"가 즉시 들림.
+      // durationMs 트림 = 합성(atrim)과 동일 규칙 — 프리뷰가 완성본 소리를 대변.
+      void playDubPreview(v, [{ url: localMode.audioUrl, startMs: localMode.startMs, calMs: localMode.calMs, durationMs: localMode.endMs - localMode.startMs }], localMode.startMs, useDubStore.getState().bedUrls)
         .then((h) => {
           if (cancelled) { h.stop(); return }
           previewHandleRef.current = h
@@ -173,20 +174,23 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
   // 언마운트 시 미리보기 오디오 정리(위 효과의 상단 정리는 재실행 시에만 돈다) + W1 워치독 타이머 정리
   useEffect(() => () => { previewHandleRef.current?.stop(); clearStallWatchdog() }, [])
 
-  // F2 텔레포트: 좌패널 대사 클릭 → 센터 시크(DOM 조작만 — setState 없음). nonce 로 재클릭 재발화.
+  // F2 텔레포트: 좌패널→센터 시크(DOM 조작만 — setState 없음). nonce 로 재클릭 재발화.
+  // localMode 게이트: 녹음/프리뷰/리허설 중 텔레포트가 영상을 옮기면 테이크·구간 재생이 깨진다(잠재버그 픽스).
   const seekRequest = useDubStore((s) => s.seekRequest)
   useEffect(() => {
     const v = videoRef.current
     if (!seekRequest || !isDub || !v) return
+    if (useDubStore.getState().localMode) return
     v.currentTime = seekRequest.ms / 1000
   }, [seekRequest, isDub])
 
   // S2 베드 슬레이브: video 에 play/pause/seek/rate 미러 + 1s 드리프트 보정(±0.3s — vodSync applier 축소판).
-  // 로컬모드·시사회 중엔 정지(그쪽 오디오는 dubPreview 스케줄러 소유 — 이중 방지).
+  // record/preview 중엔 정지(그쪽 오디오는 dubPreview 스케줄러 소유 — 이중 방지).
+  // 시사회는 베드 강제(원음 뮤트 대체) · 리허설은 일반 재생 취급(bedMode 그대로).
   useEffect(() => {
     const v = videoRef.current
     if (!isDub || !v) return
-    const active = effectiveBed && !localMode && !screening
+    const active = (effectiveBed || screening) && !localBlocking
     const beds = [...bedRefs.current.values()]
     const syncTime = () => beds.forEach((b) => { if (Math.abs(b.currentTime - v.currentTime) > 0.3) b.currentTime = v.currentTime })
     const syncRate = () => beds.forEach((b) => { b.playbackRate = v.playbackRate })
@@ -208,49 +212,41 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
       window.clearInterval(iv)
       pause()
     }
-  }, [isDub, effectiveBed, localMode, screening, bedUrls])
+  }, [isDub, effectiveBed, localBlocking, screening, bedUrls])
 
-  // G9-P3 시사회 재생: 각 클라가 멤버 게이트(get-dub-recordings)로 submitted+synced 트랙을 받아
-  // 0초부터 스케줄. 비호스트 영상은 vodSync applier 가 계속 보정(스케줄 오디오는 자기 시계 — ±200ms 허용오차 내).
+  // DUB-PART-LOOP 상시 레이어: submitted+synced 녹음(dubStore.recordings — DubPanel 이 Realtime 갱신)을
+  // 일반 재생·시사회·리허설에서 항상 얹는다. 시크/배속은 attachDubLayer 가 재정렬(seeked/ratechange 재스케줄).
+  // record/preview 중엔 해제 — 그 구간 오디오는 녹음 엔진/프리뷰 스케줄러 소유.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!isDub || !v || recordings.length === 0 || localBlocking) return
+    let cancelled = false
+    let detach: (() => void) | null = null
+    void attachDubLayer(v, recordings.map((r) => ({
+      url: r.url,
+      startMs: r.startTimeMs,
+      calMs: r.calibrationOffsetMs,
+      // 세그 길이 트림 — 초과 테이크의 다음 세그 침범 차단(endTimeMs=0 은 stale 서버 하위호환 → 트림 없음)
+      durationMs: r.endTimeMs > r.startTimeMs ? r.endTimeMs - r.startTimeMs : 0,
+    })))
+      .then((d) => { if (cancelled) d(); else detach = d })
+      .catch(() => {})
+    return () => { cancelled = true; detach?.() }
+  }, [isDub, recordings, localBlocking])
+
+  // G9-P3 시사회: 상시 레이어가 오디오를 담당하므로 여기선 "처음부터 함께 보기"만 —
+  // 호스트가 0으로 시크+재생(발행은 기존 vodSync seeked/play 리스너 단일 경로), 비호스트는 vodSync 추종.
   useEffect(() => {
     const v = videoRef.current
     if (!screening || !v) return
-    const token = useUserStore.getState().session?.access_token
-    const sessionId = useDubStore.getState().activeSessionId
-    if (!token || !sessionId) return
-    let cancelled = false
-    let handle: DubPreviewHandle | null = null
-    void fetchDubRecordings(token, sessionId)
-      .then((recs) => {
-        if (cancelled || recs.length === 0) return null
-        return playDubPreview(
-          v,
-          recs.map((r) => ({ url: r.url, startMs: r.startTimeMs, calMs: r.calibrationOffsetMs })),
-          0,
-          useDubStore.getState().bedUrls, // S2: 시사회도 배경 베드 위(각인 #2)
-        )
-      })
-      .then((h) => {
-        if (!h) return
-        if (cancelled) h.stop()
-        else handle = h
-      })
-      .catch(() => {})
-    const onEnded = () => useDubStore.getState().setScreening(false) // 영상 끝 → 각자 종료(전원 동기라 동시 도달)
-    // W5: 시사회 오디오도 영상 pause/play 에 묶는다(정지 시 백그라운드 재생 방지)
-    const onPause = () => handle?.pause()
-    const onPlay = () => handle?.resume()
-    v.addEventListener('ended', onEnded)
-    v.addEventListener('pause', onPause)
-    v.addEventListener('play', onPlay)
-    return () => {
-      cancelled = true
-      handle?.stop()
-      v.removeEventListener('ended', onEnded)
-      v.removeEventListener('pause', onPause)
-      v.removeEventListener('play', onPlay)
+    if (isHost) {
+      v.currentTime = 0
+      void v.play().catch(() => {})
     }
-  }, [screening])
+    const onEnded = () => useDubStore.getState().setScreening(false) // 영상 끝 → 각자 종료(전원 동기라 동시 도달)
+    v.addEventListener('ended', onEnded)
+    return () => v.removeEventListener('ended', onEnded)
+  }, [screening, isHost])
 
   if (!centerUrl) {
     // 씬 설정 시(방장 선택) 무대 전체 배경이 씬을 담당 → 센터는 투명(중복 제거·불꽃이 비침). 공유 시 이 자리에 영상.
@@ -284,7 +280,7 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
         src={centerUrl}
         autoPlay
         controls
-        muted={isDub ? (effectiveBed || !!localMode || screening) : false}
+        muted={isDub ? (effectiveBed || localBlocking || screening) : false}
         onLoadStart={isDub ? armStallWatchdog : undefined}
         onStalled={isDub ? retryVideoLoad : undefined}
         onError={isDub ? retryVideoLoad : undefined}
@@ -307,15 +303,22 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           // U4: submitted 는 배너 제외(재녹음 진입은 좌패널 🎙) — 배너 = "아직 미제출" 유도만
           const turn = useDubStore.getState().myTurnRanges.find((r) => !r.submitted && ms >= r.startMs && ms < r.endMs)
           setMyTurnTrackId(turn ? turn.trackId : null) // 동값이면 리렌더 스킵
-          // G9-P2/W3: 구간 끝 도달 — record+루프 ON 이면 구간 시작으로 되돌아 반복(타이밍 재시도),
-          //   아니면 정지(record=[중지] 유도·preview=재생 종료). 로컬모드는 제출/재녹음까지 유지.
+          // G9-P2/W3 수리: 구간 끝 도달 — 녹음이 파트를 넘지 않는다.
+          //   record+루프 ON = 이전 테이크 폐기 후 새 테이크로 되감기 / OFF = 자동 정지 → 프리뷰.
+          //   rehearse = 구간 반복(상시 레이어가 seeked 로 더빙도 재정렬) / preview = 재생 종료.
           const lm = useDubStore.getState().localMode
           if (lm && ms >= lm.endMs && !v.paused) {
-            if (lm.kind === 'record' && useDubStore.getState().recLoop) {
-              v.currentTime = lm.startMs / 1000 // W3 구간 루프
+            if (lm.kind === 'rehearse') {
+              v.currentTime = lm.startMs / 1000
+            } else if (lm.kind === 'record') {
+              if (useDubStore.getState().recLoop) {
+                useDubStore.getState().recEngine?.restartTake()
+                v.currentTime = lm.startMs / 1000
+              } else {
+                useDubStore.getState().recEngine?.stop()
+              }
             } else {
               v.pause()
-              if (lm.kind === 'record') setEndedFor(lm)
             }
           }
         } : undefined}
@@ -334,8 +337,8 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           ref={(el) => { if (el) bedRefs.current.set(u, el); else bedRefs.current.delete(u) }}
         />
       ))}
-      {/* S2 각인 #1: [기존 소리|배경만] A/B 토글 — 탭 1로 기존 목소리 소멸 청취. 로컬 취향(전파 없음). */}
-      {isDub && !localMode && bedUrls.length > 0 && (
+      {/* S2 각인 #1: [원본 소리|목소리 뺀 배경] A/B 토글 — 탭 1로 기존 목소리 소멸 청취. 로컬 취향(전파 없음). */}
+      {isDub && !localBlocking && bedUrls.length > 0 && (
         <div className="absolute right-1 top-8 z-10 flex overflow-hidden rounded border border-stage-border bg-stage-base/80 text-[10px]">
           <button
             onClick={() => useDubStore.getState().setBedMode('original')}
@@ -357,12 +360,25 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           </span>
         </div>
       )}
-      {/* G9-P2: 로컬모드 배지 — 녹음 중 REC(+구간 끝 힌트) / 미리보기 재생 중 */}
+      {/* G9-P2: 로컬모드 배지 — 녹음 중 REC(구간 끝 자동 정지라 별도 힌트 불필요) */}
       {isDub && localMode?.kind === 'record' && (
         <div className="pointer-events-none absolute left-2 top-2 flex items-center gap-2 rounded bg-black/70 px-2 py-1 text-xs text-white" role="status">
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-fire-hot" aria-hidden />
           {t('dub.recBadge')}
-          {endedFor === localMode && <span className="text-fire-amber">{t('dub.segmentEndHint')}</span>}
+        </div>
+      )}
+      {/* DUB-PART-LOOP: 리허설 배지 — 파트 반복 중 + 해제(같은 대사 재클릭도 해제) */}
+      {isDub && localMode?.kind === 'rehearse' && (
+        <div className="absolute inset-x-0 top-2 z-10 flex justify-center" role="status">
+          <span className="flex items-center gap-2 rounded bg-black/70 px-3 py-1 text-xs text-white">
+            🔁 {t('dub.rehearseBadge')}
+            <button
+              onClick={() => useDubStore.getState().setLocalMode(null)}
+              className="rounded bg-white/15 px-2 py-0.5 hover:bg-white/25"
+            >
+              {t('dub.rehearseStop')}
+            </button>
+          </span>
         </div>
       )}
       {/* U2: 프리뷰 배지는 제거 — 프리뷰 HUD(재재생·제출)가 상태를 대변, 360px 에서 배지-HUD 겹침 해소 */}

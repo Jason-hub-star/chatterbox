@@ -25,7 +25,7 @@ export function loadFfmpeg(): Promise<FFmpeg> {
   return ffmpegPromise
 }
 
-export interface DubCue { blob: Blob; startMs: number }
+export interface DubCue { blob: Blob; startMs: number; durationMs?: number } // durationMs: 세그 길이 — 초과 테이크 컷(0/미지정=트림 없음)
 export interface SubtitleCue { startMs: number; endMs: number; text: string }
 
 const ms = (n: number) => Math.max(0, Math.round(n))
@@ -90,23 +90,25 @@ export async function mixAndMux(
     }
 
     // 입력 인덱스: 0=SRC, 1..B=배경 스템, B+1..=더빙 녹음.
+    // 큐 체인 = atrim(세그 길이 컷 — 초과 테이크의 다음 세그 침범 차단) → adelay(세그 시작 배치).
+    // atrim 은 0초부터 자르므로 asetpts 불필요(꼬리만 컷).
+    const cueChain = (c: DubCue, inRef: string, outRef: string) => {
+      const d = ms(c.startMs)
+      const trim = c.durationMs && c.durationMs > 0 ? `atrim=duration=${(c.durationMs / 1000).toFixed(3)},` : ''
+      return `${inRef}${trim}adelay=${d}|${d}${outRef}`
+    }
     const B = background.length
     let filter: string
     if (B === 0 && cues.length === 1) {
       // 검증된 무분리 단일 경로 유지(회귀 0).
-      const d = ms(cues[0].startMs)
-      filter = `[1:a]adelay=${d}|${d}[dub]`
+      filter = cueChain(cues[0], '[1:a]', '[dub]')
     } else if (B === 0) {
-      const delays = cues
-        .map((c, i) => { const d = ms(c.startMs); return `[${i + 1}:a]adelay=${d}|${d}[a${i}]` })
-        .join(';')
+      const delays = cues.map((c, i) => cueChain(c, `[${i + 1}:a]`, `[a${i}]`)).join(';')
       const mixIn = cues.map((_, i) => `[a${i}]`).join('')
       filter = `${delays};${mixIn}amix=inputs=${cues.length}:normalize=0[dub]`
     } else {
-      // 배경 스템(무지연) + 더빙 큐(offset adelay)를 한 amix 로. normalize=0 로 레벨 보존.
-      const delays = cues
-        .map((c, i) => { const d = ms(c.startMs); return `[${B + 1 + i}:a]adelay=${d}|${d}[a${i}]` })
-        .join(';')
+      // 배경 스템(무지연) + 더빙 큐(atrim+adelay)를 한 amix 로. normalize=0 로 레벨 보존.
+      const delays = cues.map((c, i) => cueChain(c, `[${B + 1 + i}:a]`, `[a${i}]`)).join(';')
       const bgRefs = background.map((_, j) => `[${1 + j}:a]`).join('')
       const dubRefs = cues.map((_, i) => `[a${i}]`).join('')
       const n = B + cues.length

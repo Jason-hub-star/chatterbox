@@ -156,6 +156,7 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
   const streamRef = useRef<MediaStream | null>(null)
   const startedAtRef = useRef(0)
   const previewBlobRef = useRef<Blob | null>(null)
+  const discardRef = useRef(false) // W3 수리: 구간 루프 재시작 — stop 이벤트에서 프리뷰 대신 새 테이크
 
   const memberName = (uid: string) => members.find((m) => m.userId === uid)?.displayName ?? uid.slice(0, 8)
   const isRecording = recordingTrackId !== null
@@ -182,25 +183,39 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
       })
       streamRef.current = stream
-      const rec = new MediaRecorder(stream, { mimeType: pickMime() })
-      chunksRef.current = []
-      rec.addEventListener('dataavailable', (e) => { if (e.data.size) chunksRef.current.push(e.data) })
-      rec.addEventListener('stop', () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        const durationMs = Math.round(performance.now() - startedAtRef.current)
-        stream.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
-        const url = URL.createObjectURL(blob)
-        previewBlobRef.current = blob
-        setRec({ recPreview: { trackId: track.id, url, durationMs }, recTrackId: null, recMicStream: null })
-        // G9-P2: 정지 즉시 센터에서 방금 녹음 자동 미리보기(녹음이 구간보다 길면 그만큼 연장)
-        useDubStore.getState().setLocalMode({
-          kind: 'preview',
-          startMs: track.startTimeMs,
-          endMs: Math.max(track.endTimeMs, track.startTimeMs + durationMs),
-          audioUrl: url,
+      // W3 수리: 테이크 단위 레코더 — 구간 루프는 이전 패스를 폐기하고 같은 스트림으로 새 테이크를 만든다
+      //   (기존엔 영상만 되감고 녹음이 이어져 한 blob 에 N바퀴 목소리가 쌓였다 — 재생·합성 오염).
+      const armTake = (): MediaRecorder => {
+        const rec = new MediaRecorder(stream, { mimeType: pickMime() })
+        chunksRef.current = []
+        rec.addEventListener('dataavailable', (e) => { if (e.data.size) chunksRef.current.push(e.data) })
+        rec.addEventListener('stop', () => {
+          if (discardRef.current && streamRef.current === stream) {
+            discardRef.current = false
+            startedAtRef.current = performance.now()
+            const next = armTake()
+            recorderRef.current = next
+            next.start()
+            return
+          }
+          discardRef.current = false
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+          const durationMs = Math.round(performance.now() - startedAtRef.current)
+          stream.getTracks().forEach((t) => t.stop())
+          streamRef.current = null
+          const url = URL.createObjectURL(blob)
+          previewBlobRef.current = blob
+          setRec({ recPreview: { trackId: track.id, url, durationMs }, recTrackId: null, recMicStream: null })
+          // G9-P2: 정지 즉시 센터에서 방금 녹음 자동 미리보기 — 구간 길이 고정(초과분은 durationMs 트림이 컷)
+          useDubStore.getState().setLocalMode({
+            kind: 'preview',
+            startMs: track.startTimeMs,
+            endMs: track.endTimeMs,
+            audioUrl: url,
+          })
         })
-      })
+        return rec
+      }
       if (useDubStore.getState().screening) useDubStore.getState().setScreening(false) // 시사회 오디오와 겹침 방지(호스트면 전원 종료 broadcast)
       // W3 프리롤: 마이크는 이미 획득 → 구간 시작 프레임 정지(preroll) + 3‑2‑1 카운트다운 후 재생+녹음.
       //   즉시 달려나가 "영상이 먼저 흐르는" 통제권 부재 해소. 레벨미터는 카운트다운 중에도(스트림 세팅).
@@ -214,6 +229,7 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
       // 실제 녹음 시작 → 센터 영상이 이 구간을 음소거 재생(내 화면만 — MainView 가 vodSync 일시 해제).
       // ponytail: 시크 완료와 녹음 시작 사이 수백 ms 오차 가능 — P4 캘리브레이션(±200ms)이 보정 경로.
       startedAtRef.current = performance.now()
+      const rec = armTake()
       recorderRef.current = rec
       setRec({ recTrackId: track.id })
       rec.start()
@@ -226,6 +242,14 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
   }, [isRecording, setRec, t])
 
   const stopRec = useCallback(() => { recorderRef.current?.stop() }, [])
+
+  // W3 수리: 구간 루프 — MainView 가 구간 끝에서 호출. 진행 중 테이크 폐기 + 즉시 새 테이크(마지막 것만 저장).
+  const restartTake = useCallback(() => {
+    const rec = recorderRef.current
+    if (!rec || rec.state === 'inactive') return
+    discardRef.current = true
+    rec.stop()
+  }, [])
 
   const submit = useCallback(async () => {
     const blob = previewBlobRef.current
@@ -258,7 +282,7 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
     } finally { setRec({ recBusy: false }) }
   }, [token, preview, calMs, setRec, onChanged, t, tracks, myId, isHost])
 
-  // G9-P4: 보정 슬라이더 반영해 센터 미리보기 재재생(오디오를 calMs 만큼 이동)
+  // G9-P4: 보정 슬라이더 반영해 센터 미리보기 재재생(오디오를 calMs 만큼 이동, 구간 길이 고정 — 트림과 일치)
   const replayPreview = useCallback(() => {
     if (!preview) return
     const track = tracks.find((tr) => tr.id === preview.trackId)
@@ -266,7 +290,7 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
     useDubStore.getState().setLocalMode({
       kind: 'preview',
       startMs: track.startTimeMs,
-      endMs: Math.max(track.endTimeMs, track.startTimeMs + preview.durationMs + Math.max(0, calMs)),
+      endMs: track.endTimeMs,
       audioUrl: preview.url,
       calMs,
     })
@@ -312,9 +336,9 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
     void startRec(track)
   }, [tracks, myId, isRecording, busy, startRec])
   useEffect(() => {
-    useDubStore.getState().setRecEngine({ start: startById, stop: stopRec, replay: replayPreview, submit })
+    useDubStore.getState().setRecEngine({ start: startById, stop: stopRec, restartTake, replay: replayPreview, submit })
     return () => { useDubStore.getState().setRecEngine(null) }
-  }, [startById, stopRec, replayPreview, submit])
+  }, [startById, stopRec, restartTake, replayPreview, submit])
 
   const syncedCount = tracks.filter((t) => t.status === 'synced').length
   const allSynced = tracks.length > 0 && syncedCount === tracks.length

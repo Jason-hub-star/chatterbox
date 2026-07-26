@@ -40,12 +40,12 @@ Deno.serve(async (req) => {
 
   const { data: tracks } = await service
     .from("dub_tracks")
-    .select("id, start_time_ms, calibration_offset_ms, recording_url, status")
+    .select("id, start_time_ms, end_time_ms, calibration_offset_ms, recording_url, status")
     .eq("dub_session_id", body.dub_session_id)
     .in("status", ["submitted", "synced"])
     .order("start_time_ms", { ascending: true });
 
-  const recordings: Array<{ track_id: string; start_time_ms: number; calibration_offset_ms: number; url: string }> = [];
+  const recordings: Array<{ track_id: string; start_time_ms: number; end_time_ms: number; calibration_offset_ms: number; url: string }> = [];
   // presignGet 은 로컬 HMAC 계산이라 실패=전역 설정 문제 → skip(은폐) 대신 전파.
   // 부분 발급으로 합성 입력(트랙)이 조용히 누락되는 걸 막는다.
   for (const t of tracks ?? []) {
@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
     recordings.push({
       track_id: t.id,
       start_time_ms: t.start_time_ms,
+      end_time_ms: t.end_time_ms,
       calibration_offset_ms: (t.calibration_offset_ms as number | null) ?? 0,
       url,
     });

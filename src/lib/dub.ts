@@ -144,7 +144,7 @@ export const confirmDubTrack = (accessToken: string, dubTrackId: string, undo = 
   )
 
 // ── 합성(DUB-05, 원본 재더빙) ───────────────────────────────────────
-export interface DubRecordingUrl { trackId: string; startTimeMs: number; calibrationOffsetMs: number; url: string }
+export interface DubRecordingUrl { trackId: string; startTimeMs: number; endTimeMs: number; calibrationOffsetMs: number; url: string }
 export interface DubOutput { url: string; fileSizeBytes: number | null; durationMs: number | null }
 
 // 음원분리(G-280·S1): 기존 대사(vocals) 제거 → 비보컬 배경 스템 URL(버킷 캐시 — 재과금 0).
@@ -187,10 +187,13 @@ export const getDubOutputUrl = (accessToken: string, dubSessionId: string) =>
 
 export async function fetchDubRecordings(accessToken: string, dubSessionId: string): Promise<DubRecordingUrl[]> {
   const { recordings } = await callFn<{
-    recordings: Array<{ track_id: string; start_time_ms: number; calibration_offset_ms?: number; url: string }>
+    recordings: Array<{ track_id: string; start_time_ms: number; end_time_ms?: number; calibration_offset_ms?: number; url: string }>
   }>('get-dub-recordings', accessToken, { dub_session_id: dubSessionId })
   return recordings.map((r) => ({
-    trackId: r.track_id, startTimeMs: r.start_time_ms, calibrationOffsetMs: r.calibration_offset_ms ?? 0, url: r.url,
+    trackId: r.track_id, startTimeMs: r.start_time_ms,
+    // end_time_ms 부재(stale 배포본) 시 0 → durationMs 계산측이 트림 생략(하위호환)
+    endTimeMs: r.end_time_ms ?? 0,
+    calibrationOffsetMs: r.calibration_offset_ms ?? 0, url: r.url,
   }))
 }
 

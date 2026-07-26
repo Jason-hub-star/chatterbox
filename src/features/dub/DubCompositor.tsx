@@ -77,7 +77,12 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, se
       const srcBlob = await (await fetch(srcUrl)).blob()
       const cues: DubCue[] = await Promise.all(
         // G9-P4: 캘리브레이션을 합성에도 동일 적용(미리보기=완성본 싱크 일치). adelay 는 음수 불가 → 0 클램프.
-        recs.map(async (r) => ({ blob: await (await fetch(r.url)).blob(), startMs: Math.max(0, r.startTimeMs + r.calibrationOffsetMs) })),
+        // durationMs: 세그 길이 트림 — 초과 테이크(과거 루프 녹음 포함)가 다음 세그를 덮지 않게(레이어와 동일 규칙).
+        recs.map(async (r) => ({
+          blob: await (await fetch(r.url)).blob(),
+          startMs: Math.max(0, r.startTimeMs + r.calibrationOffsetMs),
+          durationMs: r.endTimeMs > r.startTimeMs ? r.endTimeMs - r.startTimeMs : 0,
+        })),
       )
       // 비보컬 배경 스템 다운로드 → mixAndMux background(원어 대사 대신 이 위에 더빙 amix).
       const background = await Promise.all(

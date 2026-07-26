@@ -15,6 +15,8 @@ tags: [contract]
 
 > **구현 상태 (2026-07-02, 슬라이스 2 — 실 브라우저 E2E 검증):** MVP 구현 완료. Edge: `get-dub-source-url`(원본 음소거 재생)·`create-dub-recording-upload`(소유자·녹음중)·`submit-dub-track`(assigned→submitted)·`confirm-dub-track`(호스트→synced). UI: `features/dub/DubRecorder.tsx`(본인 트랙 MediaRecorder 캡처·미리보기 필수 제출). **헤드리스 Chrome+가짜 마이크 E2E 9/9**(실 MediaRecorder→webm Storage 업로드→제출→synced). **defer(ponytail, G-283):** 청크/resume·IndexedDB 로컬백업(ROOM-23)·calibration ±200ms 슬라이더·Realtime 자동갱신·전체 재촬영(reset-dub-session)·비프/자동 차례감지. dubStore 없이 DubRecorder 로컬상태·수동 새로고침.
 
+> **(2026-07-26 DUB-PART-LOOP — W3 구간 루프 수리·구간 자동 정지):** 종전 루프는 영상만 되감고 녹음이 이어져 **한 blob 에 N패스 목소리가 쌓이는 결함**(재생·합성 오염)이었다. 수리: `armTake()` 테이크 단위 레코더 — 구간 끝(MainView onTimeUpdate)에서 루프 ON 이면 `recEngine.restartTake()`(discard 플래그로 stop 이벤트에서 프리뷰 억제, 같은 스트림으로 새 MediaRecorder 즉시 재시작 = **마지막 테이크만 저장**) / OFF 면 `recEngine.stop()` **자동 정지**(수동 중지 대기·segmentEndHint 삭제, timeupdate 4Hz 오버슛 ≤250ms 는 트림이 흡수). 프리뷰 localMode 는 `endMs=track.endTimeMs` 고정 + `durationMs` 트림(합성 atrim 과 동일 규칙 — 프리뷰=완성본 소리). 실증: E2E — 루프 2패스+ 후 중지 시 마지막 테이크 1104ms(<세그 2000ms)·자동 정지 2228ms(≈2000+오버슛)·submit 후 synced/recording_duration_ms DB 실측.
+
 ---
 
 ## Props Interface

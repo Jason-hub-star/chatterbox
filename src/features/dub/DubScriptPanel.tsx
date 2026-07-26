@@ -97,13 +97,18 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
                     </div>
                   ) : (
                     <>
-                      {/* F2 텔레포트: 대사 클릭 → 센터 영상 시크 + 타임라인 선택 */}
+                      {/* F2→DUB-PART-LOOP: 대사 클릭 = 이 파트만 반복 재생(리허설) · 재클릭 = 해제.
+                          더빙된 파트는 상시 레이어가 더빙 소리도 같이 반복. 녹음/프리뷰 점유 중엔 무동작(테이크 보호). */}
                       <button
                         onClick={() => {
-                          useDubStore.getState().setSelectedSegment(seg.id)
-                          useDubStore.getState().setSeekRequest({ ms: seg.start_ms, nonce: Date.now() })
+                          const st = useDubStore.getState()
+                          st.setSelectedSegment(seg.id)
+                          const lm = st.localMode
+                          if (lm && lm.kind !== 'rehearse') return
+                          if (lm?.kind === 'rehearse' && lm.startMs === seg.start_ms) { st.setLocalMode(null); return }
+                          st.setLocalMode({ kind: 'rehearse', startMs: seg.start_ms, endMs: seg.end_ms, audioUrl: null })
                         }}
-                        title={t('dub.teleportLabel')}
+                        title={t('dub.rehearseHint')}
                         className={`flex-1 text-left ${active ? 'font-medium' : ''} hover:text-stage-text`}
                       >
                         {shown}

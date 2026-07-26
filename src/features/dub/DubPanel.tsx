@@ -9,7 +9,7 @@ import DubRecorder from '@/features/dub/DubRecorder'
 import DubCompositor from '@/features/dub/DubCompositor'
 import {
   startTranscription, translateDubScript, separateDubAudio, revertDubSession,
-  fetchRoomMembers, fetchActiveDubSession,
+  fetchRoomMembers, fetchActiveDubSession, fetchDubRecordings,
   fetchMyUserId, fetchRoomHostId, fetchDubTracks, getDubSourceUrl,
   DUB_SESSION_STATUS_I18N,
   type DubSegment, type DubTrack, type RoomMember, type DubLang,
@@ -43,6 +43,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   const [tracks, setTracks] = useState<DubTrack[]>([])
   const bedProbedRef = useRef<string | null>(null) // S1: 세션당 베드 프로브 1회 가드
   const refreshSeqRef = useRef(0) // U5: refresh out-of-order 가드(최신 호출만 적용)
+  const recsKeyRef = useRef('') // DUB-PART-LOOP: 녹음 목록 시그니처 — 동일하면 store 미갱신(레이어 재디코드 방지)
   // DUB-LANG: 소스(원본) 언어 — 방 UI 언어와 분리. 기본 ja(더빙 1차 용도 = 애니 JP→KR).
   const [sourceLanguage, setSourceLanguage] = useState<DubLang>('ja')
   // 의상실식 자동 파이프라인 단계 표시(업로드→대본추출→번역). 사람 게이트(역할배정) 전까지 자동 연쇄.
@@ -70,8 +71,27 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       const trs = await fetchDubTracks(s.id)
       if (seq !== refreshSeqRef.current) return
       setTracks(trs)
+      // DUB-PART-LOOP: 상시 레이어 재료(제출/확정 녹음 서명 URL). 트랙 시그니처 동일하면 갱신 생략 —
+      // Realtime 연쇄 refresh 마다 레이어가 전 녹음을 재다운로드하는 걸 막는다.
+      // ponytail: 서명 1h — 1h+ 무변경 방치 시 재부착에서 만료 URL 디코드 실패(비치명·다음 갱신 복구).
+      if (trs.some((tr) => tr.status === 'submitted' || tr.status === 'synced')) {
+        try {
+          const recs = await fetchDubRecordings(token, s.id)
+          if (seq !== refreshSeqRef.current) return
+          const key = recs.map((r) => `${r.trackId}:${r.startTimeMs}:${r.endTimeMs}:${r.calibrationOffsetMs}`).join('|')
+          if (key !== recsKeyRef.current) {
+            recsKeyRef.current = key
+            useDubStore.getState().setRecordings(recs)
+          }
+        } catch { /* 레이어 재료 실패 비치명 — 다음 Realtime 갱신에서 재시도 */ }
+      } else {
+        recsKeyRef.current = ''
+        useDubStore.getState().setRecordings([])
+      }
     } else {
       setTracks([])
+      recsKeyRef.current = ''
+      useDubStore.getState().setRecordings([])
     }
     // 3패널 공유(DUB-UX): 센터 영상·좌패널 대본이 dubStore 로 더빙에 반응. 소스 서명 URL 은 세션이 바뀔 때만 재발급.
     if (s) {

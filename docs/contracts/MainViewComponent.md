@@ -14,6 +14,8 @@ tags: [contract]
 
 > **(2026-07-13 U-3 배속 동기 — G7)** `vod_sync` 페이로드에 `rate` 추가(구 페이로드 수신은 1 폴백·형태검증 0<r≤4). 호스트 = 배속 3칩(1x/1.5x/2x, 공유 중지 옆) — 클릭은 `video.playbackRate` 설정만, 발행은 `ratechange` 리스너 단일 경로(z-5 Control Bar 배속 항목의 as-built). 비호스트 = `playbackRate` 반영 + 드리프트 보정식 경과항 ×rate(`vodTargetMs`, 단위테스트). **끝 강제시크 가드**: 재연결 늦배달 stale 메시지의 과속 외삽 target 이 `duration−250ms` 이상이면 시크 스킵 — 끝 시크→`onEnded` 자동 clear 로 뷰어 공유가 영구 소멸하는 엣지 방지(다음 fresh 이벤트/하트비트가 보정). 실증: 로컬 2탭 15/15 ×2(드리프트 수렴 6/5ms)·프로드 번들 마커.
 
+> **(2026-07-26 DUB-PART-LOOP — 구간 통제·더빙 상시 재생)** ①**상시 더빙 레이어**: `dubStore.recordings`(submitted+synced 서명 URL, DubPanel refresh 가 시그니처 비교로 갱신)를 `attachDubLayer`(lib/dubPreview)로 일반 재생·시사회·리허설에 항상 얹음 — play/seeked/ratechange 마다 전부 정지 후 재스케줄(시크/배속 desync 원천 차단)·pause 는 정지·세그 길이 `durationMs` 트림(초과 테이크 다음 세그 침범 차단). record/preview 중엔 해제. ②**localMode `rehearse`**(좌패널 대사 클릭·재클릭 해제): 구간 시크+재생, onTimeUpdate 가 endMs 에서 되감아 반복(더빙 오디오는 레이어가 seeked 재정렬로 자동 반복) — muted/베드 슬레이브/베드 토글은 일반 재생 취급(`localBlocking = localMode && kind!=='rehearse'`). ③**record 구간 끝**: 루프 OFF=`recEngine.stop()` 자동 정지(segmentEndHint·endedFor 삭제) / 루프 ON=`recEngine.restartTake()`+되감기(테이크 재시작 — DubRecorder.md 참조). ④**시사회 단순화**: 자체 fetch+스케줄 제거 — 레이어가 오디오 담당, 호스트만 0 시크+재생(vodSync 단일 경로로 전원 동기), 베드는 슬레이브 강제(`(effectiveBed||screening)`). ⑤`seekRequest` 에 localMode 게이트(녹음/리허설 중 텔레포트가 영상을 옮기던 잠재버그 봉인). 실증: 헤드리스 E2E 13/13(리허설 wrap·레이어 scheduled/재정렬·자동정지 2228ms).
+
 ## Props Interface
 
 ```typescript

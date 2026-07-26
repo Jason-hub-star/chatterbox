@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DubSegment } from '@/lib/dub'
+import type { DubRecordingUrl, DubSegment } from '@/lib/dub'
 
 // 더빙 상태의 3패널 공유 진실 — DubPanel(오른쪽)이 쓰고 MainView(센터)·DubScriptPanel(왼쪽)이 읽는다.
 // 배경(DUB-UX): stageStore.mode='dub' 는 오른쪽 탭만 구독해 더빙이 오른쪽 패널에 고립됐다 → 센터 영상·
@@ -10,12 +10,13 @@ import type { DubSegment } from '@/lib/dub'
 export interface DubRecEngine {
   start: (trackId: string) => void // 내 트랙만·녹음/busy 중 무시(엔진이 가드)
   stop: () => void
+  restartTake: () => void // W3 수리: 진행 중 테이크 폐기 + 같은 스트림으로 즉시 새 테이크(구간 루프 — 마지막 테이크만 저장)
   replay: () => void
   submit: () => void
 }
 
 export interface DubLocalMode {
-  kind: 'record' | 'preview'
+  kind: 'record' | 'preview' | 'rehearse' // rehearse: 파트 반복재생(DUB-PART-LOOP) — 오디오는 상시 레이어가 담당
   startMs: number
   endMs: number
   audioUrl: string | null
@@ -35,6 +36,7 @@ interface DubStore {
   editingBadge: { segmentId: number; name: string } | null // DUB-EDIT E3: "OO 편집 중" 배지(수신측 3s decay)
   bedUrls: string[]                     // S1: 배경 스템 서명 URL(기존 목소리 제거본) — 센터 베드·미리보기가 소비
   bedMode: 'original' | 'bed'           // S2 A/B 토글(각인 #1) — 로컬 취향(broadcast 없음). 유효 모드는 bedUrls 있어야 bed
+  recordings: DubRecordingUrl[]         // DUB-PART-LOOP: submitted+synced 녹음 서명 URL — 상시 레이어·시사회가 소비
   sourceAR: number | null               // S3: 소스 영상 가로/세로 비(loadedmetadata 실측) — 더빙 무대 AR fit 재료
   seekRequest: { ms: number; nonce: number } | null // F2: 좌패널→센터 텔레포트(nonce 로 동일 세그 재클릭 재발화)
   // U1 PANEL-UNIFY-V2: 녹음 엔진 헤드리스 — DubRecorder(우패널·hidden 유지라 상시 마운트)가 렌더 상태를
@@ -61,6 +63,7 @@ interface DubStore {
   setEditingBadge: (b: { segmentId: number; name: string } | null) => void
   setBedUrls: (urls: string[]) => void
   setBedMode: (m: 'original' | 'bed') => void
+  setRecordings: (r: DubRecordingUrl[]) => void
   setSourceAR: (ar: number | null) => void
   setSeekRequest: (r: { ms: number; nonce: number } | null) => void
   setRec: (p: Partial<Pick<DubStore, 'recTrackId' | 'recPreview' | 'recBusy' | 'recCalMs' | 'recMicStream' | 'recError' | 'recCountdown'>>) => void
@@ -84,6 +87,7 @@ export const useDubStore = create<DubStore>((set) => ({
   editingBadge: null,
   bedUrls: [],
   bedMode: 'bed',
+  recordings: [],
   sourceAR: null,
   seekRequest: null,
   recTrackId: null,
@@ -107,6 +111,7 @@ export const useDubStore = create<DubStore>((set) => ({
   setEditingBadge: (editingBadge) => set({ editingBadge }),
   setBedUrls: (bedUrls) => set({ bedUrls }),
   setBedMode: (bedMode) => set({ bedMode }),
+  setRecordings: (recordings) => set({ recordings }),
   setSourceAR: (sourceAR) => set({ sourceAR }),
   setSeekRequest: (seekRequest) => set({ seekRequest }),
   setRec: (p) => set(p),
@@ -115,7 +120,7 @@ export const useDubStore = create<DubStore>((set) => ({
   setLocalMode: (localMode) => set({ localMode }),
   setScreening: (screening) => set({ screening }),
   setMyTurnRanges: (myTurnRanges) => set({ myTurnRanges }),
-  clear: () => set({ activeSessionId: null, status: null, segments: [], sourceUrl: null, currentSegmentId: null, selectedSegmentId: null, segmentAssignees: {}, segmentStatus: {}, editingBadge: null, bedUrls: [], bedMode: 'bed', sourceAR: null, seekRequest: null, recTrackId: null, recPreview: null, recBusy: false, recCalMs: 0, recMicStream: null, recError: null, recCountdown: null, recLoop: true, recEngine: null, localMode: null, screening: false, myTurnRanges: [] }),
+  clear: () => set({ activeSessionId: null, status: null, segments: [], sourceUrl: null, currentSegmentId: null, selectedSegmentId: null, segmentAssignees: {}, segmentStatus: {}, editingBadge: null, bedUrls: [], bedMode: 'bed', recordings: [], sourceAR: null, seekRequest: null, recTrackId: null, recPreview: null, recBusy: false, recCalMs: 0, recMicStream: null, recError: null, recCountdown: null, recLoop: true, recEngine: null, localMode: null, screening: false, myTurnRanges: [] }),
 }))
 
 // DEV 훅(프로드 번들 제외) — 실렌더 하네스가 store 상태를 실측(__streamAvatar 관례 동형)
