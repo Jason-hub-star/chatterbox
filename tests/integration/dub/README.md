@@ -1,10 +1,12 @@
 # 더빙 E2E 하네스 (수동·게이트 비연동)
 
-2026-07-26~27 사다리 Y·Z·Z4·험지(Z5)에서 실증한 seed-and-drive 하네스. 프로드 백엔드에 방/세션/트랙을 시드하고 헤드리스 시스템 Chrome(가짜 마이크)으로 실 UI 를 구동한다. **외부 의존(프로드 Supabase·LiveKit·R2·CF Pages)이라 CI 게이트에 안 묶는다** — 더빙 재생/녹음 로직을 만졌을 때 수동 스모크로 돌린다.
+2026-07-26~27 사다리 Y·Z·Z4·험지(Z5)에서 실증한 seed-and-drive 하네스. 프로드 백엔드에 방/세션/트랙을 시드하고 헤드리스 시스템 Chrome(가짜 마이크)으로 실 UI 를 구동한다. **룸 접속은 로컬 livekit-server** — `../helpers/livekit-local.mjs` 가 `livekit-token` 라우트를 가로채 로컬 dev 서버(자동 스폰)로 돌리므로 클라우드 참가자-분(무료 5000분/월)을 안 태운다(`E2E_CLOUD_LK=1` 로만 클라우드 강제). **외부 의존(프로드 Supabase·R2·CF Pages)이라 CI 게이트에 안 묶는다** — 더빙 재생/녹음 로직을 만졌을 때 수동 스모크로 돌린다.
 
 ## 전제 (supabase-slice-verify 스킬 함정 참조)
 
 ```bash
+# 0) 로컬 LiveKit dev 서버 바이너리(1회) — 헬퍼가 테스트마다 자동 스폰·종료
+brew install livekit
 # 1) playwright-core 임시 설치(검증 후 제거 — package.json 불변)
 npm i playwright-core --no-save --no-package-lock
 # 2) 로컬 프론트 대상 스크립트는 vite dev 5173 필수(R2 CORS 허용 오리진)

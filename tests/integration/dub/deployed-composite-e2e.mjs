@@ -1,5 +1,6 @@
 // 배포 프론트 합성 E2E — Z2 유효구간 트림(atrim) 첫 실합성: 녹음→제출(솔로 자동확정)→[합성 시작]→산출 mp4 ffprobe
 import { chromium } from 'playwright-core'
+import { routeLiveKitLocal } from '../helpers/livekit-local.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
@@ -63,6 +64,7 @@ const browser = await chromium.launch({
 })
 try {
   const ctx = await browser.newContext()
+  await routeLiveKitLocal(ctx)
   await ctx.grantPermissions(['camera', 'microphone'], { origin: BASE })
   page = await ctx.newPage()
   page.on('console', (m) => {

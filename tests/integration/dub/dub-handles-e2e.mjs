@@ -1,6 +1,7 @@
 // 사다리 Z (DUB-SMOOTH-TAKES) 실렌더 스팟 — seed-and-drive(프로드 백엔드 + vite dev 5173).
 // Z2 핸들: record/rehearse endMs=구간+600 · 자동정지 duration 에 꼬리 포함 · Z1 재녹음 무리로드 즉시 반영
 import { chromium } from 'playwright-core'
+import { routeLiveKitLocal } from '../helpers/livekit-local.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 
@@ -68,6 +69,7 @@ const browser = await chromium.launch({
 })
 try {
   const ctx = await browser.newContext()
+  await routeLiveKitLocal(ctx)
   await ctx.grantPermissions(['camera', 'microphone'], { origin: BASE })
   page = await ctx.newPage()
   page.on('console', (m) => {

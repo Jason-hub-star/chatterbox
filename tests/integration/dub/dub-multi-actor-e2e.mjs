@@ -1,5 +1,6 @@
 // 다인 세션 분기 E2E — 솔로 아님: 제출=submitMoved 토스트(자동확정 아님)·착지 비정지·submitted 유지·1건 일괄확정
 import { chromium } from 'playwright-core'
+import { routeLiveKitLocal } from '../helpers/livekit-local.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 
@@ -74,6 +75,7 @@ const browser = await chromium.launch({
 })
 try {
   const ctx = await browser.newContext()
+  await routeLiveKitLocal(ctx)
   await ctx.grantPermissions(['camera', 'microphone'], { origin: BASE })
   page = await ctx.newPage()
   page.on('console', (m) => {

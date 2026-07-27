@@ -1,6 +1,7 @@
 // 배포 프론트(chatterbox-7r8.pages.dev) 초보자 원패스 여정 — DOM 전용(프로드 번들엔 DEV 훅 없음).
 // Y1 안내문/🎧 · Z2 핸들(리허설 wrap 지점 >3.0s) · Z4 루프 중지 · Y3 정직 토스트+착지 정지 · Y2 배지
 import { chromium } from 'playwright-core'
+import { routeLiveKitLocal } from '../helpers/livekit-local.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 
@@ -66,6 +67,7 @@ const browser = await chromium.launch({
 })
 try {
   const ctx = await browser.newContext()
+  await routeLiveKitLocal(ctx)
   await ctx.grantPermissions(['camera', 'microphone'], { origin: BASE })
   page = await ctx.newPage()
   page.on('console', (m) => {

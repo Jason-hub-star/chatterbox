@@ -1,6 +1,7 @@
 // 사다리 Y (DUB-BEGINNER-SIGNALS) 실렌더 스팟 — seed-and-drive(프로드 백엔드 + vite dev 5173).
 // Y1 🎧 재청취+안내문 · Y2 텍스트 배지+submitFlash · Y3 정직 토스트+솔로 착지 정지 · Y4 비호스트 pause 힌트(2탭)
 import { chromium } from 'playwright-core'
+import { routeLiveKitLocal } from '../helpers/livekit-local.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 
@@ -93,6 +94,7 @@ const browser = await chromium.launch({
 })
 try {
   const ctx = await browser.newContext()
+  await routeLiveKitLocal(ctx)
   await ctx.grantPermissions(['camera', 'microphone'], { origin: BASE })
   page = await ctx.newPage()
   page.on('console', (m) => {
@@ -165,6 +167,7 @@ try {
   // ── Y4: 비호스트 pause → 세션 1회 통제권 힌트(2탭) ──
   try {
     const ctxB = await browser.newContext()
+    await routeLiveKitLocal(ctxB)
     await ctxB.grantPermissions(['camera', 'microphone'], { origin: BASE })
     pageB = await ctxB.newPage()
     await login(pageB, B.email)

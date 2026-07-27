@@ -2,6 +2,7 @@
 // 검증: ①리허설 구간 반복+해제 ②녹음 루프=테이크 재시작(짧은 durationMs) ③구간 끝 자동 정지
 //       ④제출→synced→recordings(endTimeMs=프로드 end_time_ms 실측) ⑤상시 레이어 스케줄+시크 재정렬
 import { chromium } from 'playwright-core'
+import { routeLiveKitLocal } from '../helpers/livekit-local.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 
@@ -72,6 +73,7 @@ const browser = await chromium.launch({
 })
 try {
   const ctx = await browser.newContext()
+  await routeLiveKitLocal(ctx)
   await ctx.grantPermissions(['camera', 'microphone'], { origin: BASE })
   page = await ctx.newPage()
   page.on('console', (m) => {

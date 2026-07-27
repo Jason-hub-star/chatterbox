@@ -1,5 +1,6 @@
 // Z4 (테이크 회수) 실렌더 스팟 — 루프 완주 바퀴 보관: 경계 직후 중지=직전 완주 저장 · 한참 말한 뒤 중지=현재 바퀴 저장
 import { chromium } from 'playwright-core'
+import { routeLiveKitLocal } from '../helpers/livekit-local.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 
@@ -66,6 +67,7 @@ const browser = await chromium.launch({
 })
 try {
   const ctx = await browser.newContext()
+  await routeLiveKitLocal(ctx)
   await ctx.grantPermissions(['camera', 'microphone'], { origin: BASE })
   page = await ctx.newPage()
   page.on('console', (m) => {

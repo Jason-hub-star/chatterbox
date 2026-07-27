@@ -1,5 +1,6 @@
 // 험지 E2E — 일부러 만든 지형: 붙은 세그(갭0)·초단 세그(600ms)·영상 끝 세그 + 가드/연타/재녹음 내구
 import { chromium } from 'playwright-core'
+import { routeLiveKitLocal } from '../helpers/livekit-local.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 
@@ -69,6 +70,7 @@ const browser = await chromium.launch({
 })
 try {
   const ctx = await browser.newContext()
+  await routeLiveKitLocal(ctx)
   await ctx.grantPermissions(['camera', 'microphone'], { origin: BASE })
   page = await ctx.newPage()
   page.on('console', (m) => {
