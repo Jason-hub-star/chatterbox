@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import { useDubStore } from '@/stores/dubStore'
 import {
-  uploadDubRecording, submitDubTrack, confirmDubTrack,
+  uploadDubRecording, submitDubTrack, confirmDubTrack, dubEffectiveEndMs,
   type DubTrack, type RoomMember,
 } from '@/lib/dub'
 import { toast } from '@/hooks/useToast'
@@ -177,6 +177,8 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
 
   const startRec = useCallback(async (track: DubTrack) => {
     if (isRecording) return
+    // Z2 핸들: 구간 유효 끝(말꼬리 grace·다음 세그까지 클램프) — 경계·프리뷰가 같은 값을 공유
+    const effEnd = dubEffectiveEndMs(track.endTimeMs, useDubStore.getState().segments)
     setRec({ recError: null, recCalMs: 0 })
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -210,7 +212,7 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
           useDubStore.getState().setLocalMode({
             kind: 'preview',
             startMs: track.startTimeMs,
-            endMs: track.endTimeMs,
+            endMs: effEnd,
             audioUrl: url,
           })
         })
@@ -221,7 +223,7 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
       //   즉시 달려나가 "영상이 먼저 흐르는" 통제권 부재 해소. 레벨미터는 카운트다운 중에도(스트림 세팅).
       setRec({ recMicStream: stream })
       useDubStore.getState().setLocalMode({
-        kind: 'record', startMs: track.startTimeMs, endMs: track.endTimeMs, audioUrl: null, preroll: true,
+        kind: 'record', startMs: track.startTimeMs, endMs: effEnd, audioUrl: null, preroll: true,
       })
       for (let n = 3; n >= 1; n--) { setRec({ recCountdown: n }); await new Promise((r) => setTimeout(r, 450)) }
       setRec({ recCountdown: null })
@@ -234,7 +236,7 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
       setRec({ recTrackId: track.id })
       rec.start()
       useDubStore.getState().setLocalMode({
-        kind: 'record', startMs: track.startTimeMs, endMs: track.endTimeMs, audioUrl: null,
+        kind: 'record', startMs: track.startTimeMs, endMs: effEnd, audioUrl: null,
       })
     } catch (e) {
       setRec({ recError: e instanceof Error ? e.message : t('dub.micAccessError'), recCountdown: null })
@@ -294,7 +296,7 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
     useDubStore.getState().setLocalMode({
       kind: 'preview',
       startMs: track.startTimeMs,
-      endMs: track.endTimeMs,
+      endMs: dubEffectiveEndMs(track.endTimeMs, useDubStore.getState().segments), // Z2 핸들 — 트림과 일치
       audioUrl: preview.url,
       calMs,
     })

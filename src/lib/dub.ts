@@ -115,6 +115,15 @@ export const startRecording = (accessToken: string, dubSessionId: string) =>
     'start-dub-recording', accessToken, { dub_session_id: dubSessionId },
   )
 
+// ── 구간 규칙 ───────────────────────────────────────────────────────
+// Z2 핸들(ADR 관행): 구간 유효 끝 = min(endMs + grace, 다음 세그 시작) — 말꼬리 600ms 여유를
+// 다음 세그와 안 겹치는 선까지만. 녹음 경계·리허설 반복·프리뷰/레이어/합성 트림이 전부 이 한 규칙을 쓴다.
+export function dubEffectiveEndMs(endMs: number, segments: Array<{ start_ms: number }>, graceMs = 600): number {
+  let next = Infinity
+  for (const s of segments) if (s.start_ms >= endMs && s.start_ms < next) next = s.start_ms
+  return Math.min(endMs + graceMs, next)
+}
+
 // ── 녹음(DUB-04) ────────────────────────────────────────────────────
 // 소스 재생용 signed URL (원본 음소거 재생).
 export const getDubSourceUrl = (accessToken: string, dubSessionId: string) =>

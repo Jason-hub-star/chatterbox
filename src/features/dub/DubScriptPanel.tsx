@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDubStore } from '@/stores/dubStore'
 import { useUserStore } from '@/stores/userStore'
-import { updateDubSegmentText, DUB_SESSION_STATUS_I18N, type DubSegment } from '@/lib/dub'
+import { updateDubSegmentText, dubEffectiveEndMs, DUB_SESSION_STATUS_I18N, type DubSegment } from '@/lib/dub'
 
 // DUB-UX: 좌도크 더빙 대본 텔레프롬프터 — 센터 영상 재생 위치(currentSegmentId)에 맞춰 현재 대사
 //   하이라이트+auto-scroll. 오른쪽 패널은 좁아 긴 대사가 잘리므로, 전체 텍스트는 여기서 줄바꿈으로
@@ -41,7 +41,7 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
     const lm = st.localMode
     if (lm && lm.kind !== 'rehearse') return
     if (lm?.kind === 'rehearse' && lm.startMs === seg.start_ms) { st.setLocalMode(null); return }
-    st.setLocalMode({ kind: 'rehearse', startMs: seg.start_ms, endMs: seg.end_ms, audioUrl: null })
+    st.setLocalMode({ kind: 'rehearse', startMs: seg.start_ms, endMs: dubEffectiveEndMs(seg.end_ms, segments), audioUrl: null }) // Z2 핸들 — 말꼬리까지 반복
   }
 
   const fmt = (ms: number) => {

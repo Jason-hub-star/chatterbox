@@ -176,6 +176,10 @@ tags: [audit]
   - 워커(배우) "리허설 중 vodSync 미해제 → 호스트가 영상을 끌고 감" → **Refuted**: `MainView.tsx:137-139` 모든 localMode(리허설 포함)가 `localActiveRef=true` → applier(:117)·하트비트(:98)·발행(:101) 전부 차단. 리허설 반복은 호스트 간섭 없이 유지됨.
   - 워커(호스트) "솔로 제출 시 토스트 부재" → **Refuted**: `DubRecorder.tsx:270` 무조건 발화. 실문제는 문구 오도(→ DUB-SOLO-TOAST-LIE 로 재조정).
 
+**주인님 실사용 피드백 배치 3 (2026-07-27 · "매끄럽게 한 파츠씩" — 원본대조 즉일 수선 · 사다리 Z)**
+- [x] **DUB-LAYER-STALE-RETAKE** <!-- probe: src/features/dub/DubPanel.tsx :: pathOf --> (High·Confirmed) 같은 파트 **재녹음이 새로고침해야 반영** — 레이어 갱신 시그니처(`DubPanel.tsx:81`)가 `trackId:start:end:cal`만 비교, 테이크 교체(업로드 경로는 UUID 고유·`create-dub-recording-upload:37`)를 미감지 → `setRecordings` 생략·옛 테이크 지속. **완료(2026-07-27 사다리 Z1)**: 시그니처에 서명 URL **pathname** 포함(재서명마다 변하는 query 는 제외 — 재디코드 방지 원목적 유지) — 실렌더(재녹음→무리로드 pathname 교체 실측).
+- [x] **DUB-TAIL-HARDCUT** <!-- probe: src/lib/dub.ts :: dubEffectiveEndMs --> (High·Confirmed) 구간 끝 **말꼬리 하드컷** — 경계(`MainView.tsx:310-319`)·트림이 endMs 정확 컷(4파일 12곳 규칙 분산), 250ms 만 넘어도 루프가 테이크 즉시 폐기. **완료(2026-07-27 사다리 Z2)**: ADR 핸들 — `dubEffectiveEndMs`=min(끝+600ms, 다음 세그 시작) **단일 규칙원**(lib/dub), localMode 생성 4곳(startRec preroll/record/preview·replayPreview·rehearse)+트림 2곳(레이어·합성 큐) 적용, 유닛 5 — 실렌더(record/rehearse endMs 3600·자동정지 2864ms 꼬리 포함). defer: 테이크 보관·펀치인·RMS 지연정지·마지막 세그 영상끝 초과 가드·MainView 훅 추출(effect 9).
+
 ---
 
 ## §1. 보안 — 확정 (심각도순, 메인이 인용라인 직접 대조)

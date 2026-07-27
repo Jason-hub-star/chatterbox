@@ -19,6 +19,8 @@ tags: [contract]
 
 > **(2026-07-27 DUB-BEGINNER-SIGNALS 사다리 Y — 정직한 제출 피드백):** submit 토스트 4분기 — 솔로 자동확정이면 "자동 확정"(submitSoloMoved/SoloDone), 다인+이동이면 submitMoved, 기존 submitSuccess 는 다인·마지막에만(종전엔 솔로에도 "호스트 확정을 기다려요" 거짓 안내 — DUB-SOLO-TOAST-LIE). 제출 세그를 `dubStore.submitFlash` 로 좌패널 행 2.5s 하이라이트, `seekRequest.pause=solo` 로 착지 정지. 호스트 일괄 확정 버튼은 제출 1건부터 표시(`>0` — DUB-CONFIRM-ALL-SINGLE). 실증: 실렌더 스팟 11/11.
 
+> **(2026-07-27 DUB-SMOOTH-TAKES 사다리 Z — 말꼬리 핸들):** startRec 진입 시 `effEnd = dubEffectiveEndMs(track.endTimeMs, segments)`(끝+600ms·다음 세그 클램프 — ADR 핸들)를 1회 계산해 preroll/record/프리뷰 localMode 가 공유(armTake 클로저), replayPreview 도 동일 — 구간 끝을 살짝 넘긴 말꼬리가 루프 폐기/자동정지에 잘리지 않고 재생·합성 트림에서도 들린다. 실증: record endMs 3600·자동정지 duration 2864ms(꼬리 포함)·유닛 5/5.
+
 ---
 
 ## Props Interface

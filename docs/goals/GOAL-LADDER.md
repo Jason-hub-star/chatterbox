@@ -144,6 +144,14 @@ tags: [status, goals]
 | Y4 | PLAYBACK-CONTROL-HINT(Med) | 비호스트 pause 시도 → 세션 1회 "호스트와 함께 보는 중" 안내 | check:all (+2탭 스팟 가능 시) | **DONE**(2026-07-27: lastSyncRef 게이트+세션 1회 toast.info — 2탭 실렌더 2/2(힌트·하트비트 자동 복귀)) |
 | Y5 | 통합 마감 | check:all + 실렌더 스팟(시드 하네스) + §0 [x]+probe + contracts 주석 + 이 표 DONE | check:all + 통합 실렌더 | **DONE**(2026-07-27: check:all exit0(178 tests·build)+실렌더 스팟 **11/11**(솔로 원패스+2탭·콘솔에러 0)+§0 6건 [x]+probe 6·contracts 2 주석 — 커밋/배포는 승인 게이트) |
 
+## 골 사다리 Z — 재녹음 즉시 반영 + 말꼬리 핸들 (2026-07-27 주인님 실사용 2증상 · 스몰윈=브리프 없이 이 표 · 플랜 승인됨)
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| Z1 | DUB-LAYER-STALE-RETAKE(High) | 레이어 갱신 시그니처에 서명 URL pathname — 재녹음이 무리로드로 즉시 반영 | 실렌더(재녹음→pathname 교체) | **DONE**(2026-07-27: `pathOf` query 제외 pathname — 실렌더 pathname 교체 실측) |
+| Z2 | DUB-TAIL-HARDCUT(High) | `dubEffectiveEndMs`(끝+600·다음 세그 클램프) 단일 규칙원 — localMode 생성 4곳+트림 2곳 | check:all + 유닛 5 + 실렌더 | **DONE**(2026-07-27: lib/dub 헬퍼+7콜사이트·유닛 5/5 — endMs 3600·자동정지 2864ms 꼬리 포함 실측) |
+| Z3 | 실증·마감 | 실렌더 스팟 + §0 2건 [x]+probe + contracts 주석 + 이 표 | check:all + 통합 실렌더 | **DONE**(2026-07-27: check:all exit0(**183 tests**)+실렌더 **8/8**(콘솔에러 0)+§0 2건+probe 2·contracts 2 주석 — 커밋/배포는 승인 게이트) |
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

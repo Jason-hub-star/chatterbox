@@ -18,6 +18,8 @@ tags: [contract]
 
 > **(2026-07-27 DUB-BEGINNER-SIGNALS 사다리 Y — 초보자 신호)** ①`seekRequest.pause`(Y3): 제출 후 자동 다음 시크가 **솔로면 착지 후 `v.pause()`** — "읽고 → 준비되면 [지금 녹음]" 스텝 체감(다인은 호스트 pause 가 방 전체 전파라 비적용). ②**비호스트 통제권 힌트**(Y4): applier 가 마지막 vodSync 상태를 `lastSyncRef` 에 기록, video `pause` 이벤트에서 호스트가 재생 중이고 localMode 아님이면 **세션 1회** `toast.info(dub.syncPauseHint)` — applier 자체 pause(s.playing=false)는 게이트가 배제. 실증: 실렌더 스팟 11/11(5.00s paused 착지·2탭 힌트 발화+하트비트 자동 복귀).
 
+> **(2026-07-27 DUB-SMOOTH-TAKES 사다리 Z — 유효구간 규칙 단일화)** 구간 끝 하드컷(경계·트림이 endMs 정확 컷) 폐지 — **`dubEffectiveEndMs`(lib/dub) = min(endMs+600ms, 다음 세그 시작)이 유일 규칙원**. localMode 생성부(rehearse/record/preview)가 유효 끝을 넣으므로 onTimeUpdate 경계·프리뷰 트림은 `lm.endMs` 파생으로 자동 일관, 상시 레이어 durationMs 도 동일 규칙(합성 큐 포함). 레이어 재료 갱신 시그니처는 서명 URL pathname 포함(DubPanel — 재녹음 테이크 교체 즉시 반영, DUB-LAYER-STALE-RETAKE). 실증: 실렌더 8/8(endMs 3600·자동정지 2864ms·pathname 교체).
+
 ## Props Interface
 
 ```typescript

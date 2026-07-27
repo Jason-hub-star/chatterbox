@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
 import {
   startDubCompositing, uploadDubOutput, finalizeDubOutput, getDubOutputUrl,
-  fetchDubRecordings, getDubSourceUrl, separateDubAudio, type DubSegment, type DubTrack,
+  fetchDubRecordings, getDubSourceUrl, separateDubAudio, dubEffectiveEndMs, type DubSegment, type DubTrack,
 } from '@/lib/dub'
 import { mixAndMux, buildVtt, type DubCue, type SubtitleCue } from '@/lib/ffmpeg'
 import ProgressBar from '@/components/shared/ProgressBar'
@@ -81,7 +81,7 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, se
         recs.map(async (r) => ({
           blob: await (await fetch(r.url)).blob(),
           startMs: Math.max(0, r.startTimeMs + r.calibrationOffsetMs),
-          durationMs: r.endTimeMs > r.startTimeMs ? r.endTimeMs - r.startTimeMs : 0,
+          durationMs: r.endTimeMs > r.startTimeMs ? dubEffectiveEndMs(r.endTimeMs, segments) - r.startTimeMs : 0, // Z2 유효구간(레이어와 동일 규칙)
         })),
       )
       // 비보컬 배경 스템 다운로드 → mixAndMux background(원어 대사 대신 이 위에 더빙 amix).
@@ -104,7 +104,7 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, se
       if (outputId) { try { await finalizeDubOutput(token, { outputId, errorMessage: msg }) } catch { /* noop */ } }
       await onChanged()
     }
-  }, [token, dubSessionId, subtitleCues, onChanged, t])
+  }, [token, dubSessionId, subtitleCues, segments, onChanged, t])
 
   const phaseLabel = phase === 'separating' ? t('dub.phaseSeparating')
     : phase === 'downloading' ? t('dub.phaseDownloading')

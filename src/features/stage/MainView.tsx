@@ -4,6 +4,7 @@ import { useStageStore } from '@/stores/stageStore'
 import { useDubStore } from '@/stores/dubStore'
 import { attachDubLayer, playDubPreview, type DubPreviewHandle } from '@/lib/dubPreview'
 import { toast } from '@/hooks/useToast'
+import { dubEffectiveEndMs } from '@/lib/dub'
 import DubTimeline from '@/features/dub/DubTimeline'
 import { MicLevelMeter, TakeWaveform } from '@/features/dub/DubRecorder'
 import {
@@ -244,13 +245,13 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
       url: r.url,
       startMs: r.startTimeMs,
       calMs: r.calibrationOffsetMs,
-      // 세그 길이 트림 — 초과 테이크의 다음 세그 침범 차단(endTimeMs=0 은 stale 서버 하위호환 → 트림 없음)
-      durationMs: r.endTimeMs > r.startTimeMs ? r.endTimeMs - r.startTimeMs : 0,
+      // Z2 유효구간 트림 — 말꼬리 핸들까지 들리되 다음 세그 침범은 차단(endTimeMs=0 은 stale 서버 하위호환 → 트림 없음)
+      durationMs: r.endTimeMs > r.startTimeMs ? dubEffectiveEndMs(r.endTimeMs, dubSegments) - r.startTimeMs : 0,
     })))
       .then((d) => { if (cancelled) d(); else detach = d })
       .catch(() => {})
     return () => { cancelled = true; detach?.() }
-  }, [isDub, recordings, localBlocking])
+  }, [isDub, recordings, localBlocking, dubSegments])
 
   // G9-P3 시사회: 상시 레이어가 오디오를 담당하므로 여기선 "처음부터 함께 보기"만 —
   // 호스트가 0으로 시크+재생(발행은 기존 vodSync seeked/play 리스너 단일 경로), 비호스트는 vodSync 추종.

@@ -78,7 +78,9 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
         try {
           const recs = await fetchDubRecordings(token, s.id)
           if (seq !== refreshSeqRef.current) return
-          const key = recs.map((r) => `${r.trackId}:${r.startTimeMs}:${r.endTimeMs}:${r.calibrationOffsetMs}`).join('|')
+          // Z1: pathname 포함 — 재녹음(테이크 UUID 경로 교체)이 즉시 반영되게. query(재서명마다 변동)는 제외 유지.
+          const pathOf = (u: string) => { try { return new URL(u).pathname } catch { return u } }
+          const key = recs.map((r) => `${r.trackId}:${r.startTimeMs}:${r.endTimeMs}:${r.calibrationOffsetMs}:${pathOf(r.url)}`).join('|')
           if (key !== recsKeyRef.current) {
             recsKeyRef.current = key
             useDubStore.getState().setRecordings(recs)
