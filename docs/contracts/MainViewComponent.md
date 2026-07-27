@@ -16,6 +16,8 @@ tags: [contract]
 
 > **(2026-07-26 DUB-PART-LOOP — 구간 통제·더빙 상시 재생)** ①**상시 더빙 레이어**: `dubStore.recordings`(submitted+synced 서명 URL, DubPanel refresh 가 시그니처 비교로 갱신)를 `attachDubLayer`(lib/dubPreview)로 일반 재생·시사회·리허설에 항상 얹음 — play/seeked/ratechange 마다 전부 정지 후 재스케줄(시크/배속 desync 원천 차단)·pause 는 정지·세그 길이 `durationMs` 트림(초과 테이크 다음 세그 침범 차단). record/preview 중엔 해제. ②**localMode `rehearse`**(좌패널 대사 클릭·재클릭 해제): 구간 시크+재생, onTimeUpdate 가 endMs 에서 되감아 반복(더빙 오디오는 레이어가 seeked 재정렬로 자동 반복) — muted/베드 슬레이브/베드 토글은 일반 재생 취급(`localBlocking = localMode && kind!=='rehearse'`). ③**record 구간 끝**: 루프 OFF=`recEngine.stop()` 자동 정지(segmentEndHint·endedFor 삭제) / 루프 ON=`recEngine.restartTake()`+되감기(테이크 재시작 — DubRecorder.md 참조). ④**시사회 단순화**: 자체 fetch+스케줄 제거 — 레이어가 오디오 담당, 호스트만 0 시크+재생(vodSync 단일 경로로 전원 동기), 베드는 슬레이브 강제(`(effectiveBed||screening)`). ⑤`seekRequest` 에 localMode 게이트(녹음/리허설 중 텔레포트가 영상을 옮기던 잠재버그 봉인). 실증: 헤드리스 E2E 13/13(리허설 wrap·레이어 scheduled/재정렬·자동정지 2228ms).
 
+> **(2026-07-27 DUB-BEGINNER-SIGNALS 사다리 Y — 초보자 신호)** ①`seekRequest.pause`(Y3): 제출 후 자동 다음 시크가 **솔로면 착지 후 `v.pause()`** — "읽고 → 준비되면 [지금 녹음]" 스텝 체감(다인은 호스트 pause 가 방 전체 전파라 비적용). ②**비호스트 통제권 힌트**(Y4): applier 가 마지막 vodSync 상태를 `lastSyncRef` 에 기록, video `pause` 이벤트에서 호스트가 재생 중이고 localMode 아님이면 **세션 1회** `toast.info(dub.syncPauseHint)` — applier 자체 pause(s.playing=false)는 게이트가 배제. 실증: 실렌더 스팟 11/11(5.00s paused 착지·2탭 힌트 발화+하트비트 자동 복귀).
+
 ## Props Interface
 
 ```typescript

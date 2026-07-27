@@ -133,6 +133,17 @@ tags: [status, goals]
 | X5 | 실증·마감 | 통합 실렌더 + 비회귀(룸/더빙/로비) + §0 [x]+probe·이 표 DONE·GAP-MATRIX·AGENT-OPS | check:all + 통합 실렌더 | **DONE**(2026-07-22: check:all exit0(178 tests·build)·**docs:drift probe 70 STALE0/REGRESSION0**(신규 11 probe 실존)·비회귀=기존 룸/더빙/로비 42 test파일 그린·§0 11항목 [x]+probe·GAP-MATRIX·AGENT-OPS) |
 | — | **defer 대장(X 밖)** | VGEN-NO-CANCEL(생성 취소=fal 발주 후 환불 설계 별도 골)·VGEN-CREDIT-DEADEND(크레딧 충전=수익화 부재)·완성후 "지금 입기" CTA·이모트 최소1 사유·거울 리사이즈 깜빡임·예약 헤더·단일 활성잡·인증 중 이메일 변경 | | HOLD |
 
+## 골 사다리 Y — 더빙 초보자 신호 마감 (2026-07-27 더빙 초보자 UX 감사 후속 · 브리프 `GOAL-dub-beginner-signals.md` · 플랜 승인됨)
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| Y0 | 문서화 선행 | 브리프 + 이 표 + §0 배치 브리프 링크 | docs:check + docs:links | **DONE**(2026-07-27 — 이 등재가 산출물, links 0 broken) |
+| Y1 | DUB-RELISTEN-DISCOVERY(High) | ✓ 세그에 🎧 재청취 버튼 상시 노출(rehearse 토글 재사용) + 패널 안내 1줄 ×3로케일 | check:all + 실렌더 스팟 | **DONE**(2026-07-27: toggleRehearse 공용화+`data-dub-relisten`+discoverHint — 실렌더 3/3(안내문·🎧→rehearse 1000·재클릭 해제)) |
+| Y2 | DUB-SAVE-CONFIDENCE(High)+CONFIRM-ALL-SINGLE(Low) | ✓ → "✓ 제출됨/확정" 텍스트 배지 + 제출 직후 행 하이라이트(submitFlash) + 일괄 확정 1건도 표시 | check:all + 실렌더 스팟 | **DONE**(2026-07-27: 배지 2키+submitFlash(store 파생 렌더·2.5s 타이머 소멸 — set-state-in-effect lint 회피)+`>0` — 실렌더 2/2(flash segId=1·"✓ 확정")) |
+| Y3 | SOLO-TOAST-LIE+AUTOFLOW-NOTICE(Med×2) | 제출 토스트 4분기(자동확정·이동 정직 안내) + 솔로 착지 정지(seekRequest.pause) | check:all + 실렌더 스팟 | **DONE**(2026-07-27: 4분기 3신규키+`seekRequest.pause`(솔로만) — 실렌더 3/3(토스트·5.00s paused 착지·내차례 배너)) |
+| Y4 | PLAYBACK-CONTROL-HINT(Med) | 비호스트 pause 시도 → 세션 1회 "호스트와 함께 보는 중" 안내 | check:all (+2탭 스팟 가능 시) | **DONE**(2026-07-27: lastSyncRef 게이트+세션 1회 toast.info — 2탭 실렌더 2/2(힌트·하트비트 자동 복귀)) |
+| Y5 | 통합 마감 | check:all + 실렌더 스팟(시드 하네스) + §0 [x]+probe + contracts 주석 + 이 표 DONE | check:all + 통합 실렌더 | **DONE**(2026-07-27: check:all exit0(178 tests·build)+실렌더 스팟 **11/11**(솔로 원패스+2탭·콘솔에러 0)+§0 6건 [x]+probe 6·contracts 2 주석 — 커밋/배포는 승인 게이트) |
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)
@@ -156,7 +167,7 @@ V-4 로컬 백업 녹화 · ~~V-6 이양 UI~~(→ 사다리 R1 부활, 2026-07-1
 | ambient-glow | 원화 광원 연출(무대 불 일렁임·로비 구름 그늘) | **DONE**(bepo 92f6199·999109a) | `archive/GOAL-ambient-glow.md` |
 | hygiene-host-guard | 호스트 권한 하드닝 | **DONE**(2026-07-12 종결) | `archive/GOAL-hygiene-host-guard.md` |
 | admin-selfpromo-lock | `users.is_admin` 셀프승격 자물쇠(선제) | **DONE**(프로드 6/6·콘솔 UI defer) | `archive/GOAL-admin-selfpromo-lock.md` |
-| teleprompter-dock | 텔레프롬프터 좌 dock A안 위계(대사 지배) | **ACTIVE**(커밋 4730543·배포 대기) | `GOAL-teleprompter-dock.md` |
+| teleprompter-dock | 텔레프롬프터 좌 dock A안 위계(대사 지배) | **DONE**(커밋 4730543; 이후 전체 CF Pages 배포 ce82752가 해당 커밋을 포함) | `GOAL-teleprompter-dock.md` |
 
 ## 완료 브리프 아카이브 (감사추적 보존)
 

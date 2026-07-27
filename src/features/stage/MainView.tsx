@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useStageStore } from '@/stores/stageStore'
 import { useDubStore } from '@/stores/dubStore'
 import { attachDubLayer, playDubPreview, type DubPreviewHandle } from '@/lib/dubPreview'
+import { toast } from '@/hooks/useToast'
 import DubTimeline from '@/features/dub/DubTimeline'
 import { MicLevelMeter, TakeWaveform } from '@/features/dub/DubRecorder'
 import {
@@ -58,6 +59,8 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
   const [rate, setRate] = useState(1) // 호스트 배속 칩 활성 표시용(진실은 video.playbackRate)
   const bedRefs = useRef<Map<string, HTMLAudioElement>>(new Map()) // S2: 스템 N개 = audio N개(동일 슬레이브)
   const localActiveRef = useRef(false) // vodSync 게이트(이벤트 리스너·applier 가 클로저 밖에서 읽음)
+  const lastSyncRef = useRef<VodSyncState | null>(null) // Y4: 마지막 적용 호스트 상태 — 유저 pause 와 applier pause 구분 재료
+  const pauseHintShownRef = useRef(false) // Y4: 통제권 안내는 세션 1회만
   const localPrevRef = useRef<{ ms: number; paused: boolean } | null>(null) // 로컬모드 진입 전 위치(복귀용)
   const previewHandleRef = useRef<DubPreviewHandle | null>(null)
 
@@ -114,6 +117,7 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
       }
     }
     setVodSyncApplier((s) => {
+      lastSyncRef.current = s // Y4: 호스트가 재생 중인지(유저 pause 판정 재료)
       if (localActiveRef.current) return // 로컬모드 중 호스트 보정 무시(복귀 시 다음 하트비트가 재동기)
       if (v.playbackRate !== s.rate) v.playbackRate = s.rate // 배속 먼저 — 드리프트 판정이 새 속도 기준
       const target = vodTargetMs(s, Date.now())
@@ -125,8 +129,21 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
       if (s.playing && v.paused) void v.play().catch(() => {}) // 자동재생 차단 시 다음 보정에서 재시도
       else if (!s.playing && !v.paused) v.pause()
     })
-    return () => setVodSyncApplier(null)
-  }, [centerUrl, isHost])
+    // Y4 통제권 안내(DUB-PLAYBACK-CONTROL-HINT): 호스트가 재생 중인데 유저가 controls 로 일시정지 →
+    //   다음 보정/하트비트가 곧 되돌린다는 사실 + "나만 반복 듣기" 대안을 세션 1회 설명.
+    //   applier 의 v.pause() 는 s.playing=false 일 때만이라 lastSyncRef.playing 게이트가 자체 pause 를 걸러낸다.
+    const onUserPause = () => {
+      if (!isDub || localActiveRef.current || pauseHintShownRef.current) return
+      if (!lastSyncRef.current?.playing) return
+      pauseHintShownRef.current = true
+      toast.info(t('dub.syncPauseHint'))
+    }
+    v.addEventListener('pause', onUserPause)
+    return () => {
+      setVodSyncApplier(null)
+      v.removeEventListener('pause', onUserPause)
+    }
+  }, [centerUrl, isHost, isDub, t])
 
   // G9-P2 로컬모드 진입/전환/복귀. record=구간 시작으로 시크·음소거 재생, preview=방금 녹음을 스케줄해 동기 재생.
   useEffect(() => {
@@ -182,6 +199,7 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
     if (!seekRequest || !isDub || !v) return
     if (useDubStore.getState().localMode) return
     v.currentTime = seekRequest.ms / 1000
+    if (seekRequest.pause) v.pause() // Y3 솔로 착지 정지 — 다음 파트를 읽고 준비되면 [지금 녹음](배너는 seek 의 timeupdate 로 갱신)
   }, [seekRequest, isDub])
 
   // S2 베드 슬레이브: video 에 play/pause/seek/rate 미러 + 1s 드리프트 보정(±0.3s — vodSync applier 축소판).

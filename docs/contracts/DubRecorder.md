@@ -17,6 +17,8 @@ tags: [contract]
 
 > **(2026-07-26 DUB-PART-LOOP — W3 구간 루프 수리·구간 자동 정지):** 종전 루프는 영상만 되감고 녹음이 이어져 **한 blob 에 N패스 목소리가 쌓이는 결함**(재생·합성 오염)이었다. 수리: `armTake()` 테이크 단위 레코더 — 구간 끝(MainView onTimeUpdate)에서 루프 ON 이면 `recEngine.restartTake()`(discard 플래그로 stop 이벤트에서 프리뷰 억제, 같은 스트림으로 새 MediaRecorder 즉시 재시작 = **마지막 테이크만 저장**) / OFF 면 `recEngine.stop()` **자동 정지**(수동 중지 대기·segmentEndHint 삭제, timeupdate 4Hz 오버슛 ≤250ms 는 트림이 흡수). 프리뷰 localMode 는 `endMs=track.endTimeMs` 고정 + `durationMs` 트림(합성 atrim 과 동일 규칙 — 프리뷰=완성본 소리). 실증: E2E — 루프 2패스+ 후 중지 시 마지막 테이크 1104ms(<세그 2000ms)·자동 정지 2228ms(≈2000+오버슛)·submit 후 synced/recording_duration_ms DB 실측.
 
+> **(2026-07-27 DUB-BEGINNER-SIGNALS 사다리 Y — 정직한 제출 피드백):** submit 토스트 4분기 — 솔로 자동확정이면 "자동 확정"(submitSoloMoved/SoloDone), 다인+이동이면 submitMoved, 기존 submitSuccess 는 다인·마지막에만(종전엔 솔로에도 "호스트 확정을 기다려요" 거짓 안내 — DUB-SOLO-TOAST-LIE). 제출 세그를 `dubStore.submitFlash` 로 좌패널 행 2.5s 하이라이트, `seekRequest.pause=solo` 로 착지 정지. 호스트 일괄 확정 버튼은 제출 1건부터 표시(`>0` — DUB-CONFIRM-ALL-SINGLE). 실증: 실렌더 스팟 11/11.
+
 ---
 
 ## Props Interface

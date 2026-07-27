@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDubStore } from '@/stores/dubStore'
 import { useUserStore } from '@/stores/userStore'
-import { updateDubSegmentText, DUB_SESSION_STATUS_I18N } from '@/lib/dub'
+import { updateDubSegmentText, DUB_SESSION_STATUS_I18N, type DubSegment } from '@/lib/dub'
 
 // DUB-UX: 좌도크 더빙 대본 텔레프롬프터 — 센터 영상 재생 위치(currentSegmentId)에 맞춰 현재 대사
 //   하이라이트+auto-scroll. 오른쪽 패널은 좁아 긴 대사가 잘리므로, 전체 텍스트는 여기서 줄바꿈으로
@@ -21,10 +21,28 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
   const [saving, setSaving] = useState(false)
   // F5: 대사 문구는 녹음 중에도 수정 가능(서버 게이트 동형) — 시간/구조 편집은 ready 잠금 유지.
   const canEdit = isHost && (status === 'ready' || status === 'recording') && !!token && !!sessionId
+  // Y2: 제출 직후 해당 행 하이라이트("저장됐다" 앵커) — 표시는 store 파생(렌더), 타이머는 소멸만(2.5s 후 클리어→transition 페이드)
+  const submitFlash = useDubStore((s) => s.submitFlash)
 
   useEffect(() => {
     if (!editing) activeRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [currentId, editing])
+
+  useEffect(() => {
+    if (!submitFlash) return
+    const tm = window.setTimeout(() => useDubStore.getState().setSubmitFlash(null), 2500)
+    return () => window.clearTimeout(tm)
+  }, [submitFlash])
+
+  // Y1 재청취 발견성: 대사·🎧 공용 rehearse 토글(DUB-PART-LOOP 로직 그대로 — 재클릭 해제, 녹음/프리뷰 점유 중 무동작)
+  const toggleRehearse = (seg: DubSegment) => {
+    const st = useDubStore.getState()
+    st.setSelectedSegment(seg.id)
+    const lm = st.localMode
+    if (lm && lm.kind !== 'rehearse') return
+    if (lm?.kind === 'rehearse' && lm.startMs === seg.start_ms) { st.setLocalMode(null); return }
+    st.setLocalMode({ kind: 'rehearse', startMs: seg.start_ms, endMs: seg.end_ms, audioUrl: null })
+  }
 
   const fmt = (ms: number) => {
     const s = Math.max(0, Math.floor(ms / 1000))
@@ -53,6 +71,10 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
       {!isHost && segments.length > 0 && (
         <p className="mt-1 text-[10px] text-stage-text-muted">{t('dub.hostOnlyEditHint')}</p>
       )}
+      {/* Y1: 재청취/리허설 발견성 — title 툴팁에만 있던 안내를 상시 1줄로(터치 포함) */}
+      {segments.length > 0 && (
+        <p className="mt-1 text-[10px] text-stage-text-muted">{t('dub.rehearseDiscoverHint')}</p>
+      )}
       {segments.length === 0 ? (
         <p className="mt-2 text-xs text-stage-text-muted">{t('dub.scriptPanelEmpty')}</p>
       ) : (
@@ -65,7 +87,7 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
               <li
                 key={seg.id}
                 ref={active && !isEditing ? activeRef : undefined}
-                className={`rounded px-2 py-1 ${active ? 'bg-fire-amber/15 text-stage-text' : 'text-stage-text-muted'}`}
+                className={`rounded px-2 py-1 transition-colors duration-700 ${submitFlash?.segId === seg.id ? 'bg-fire-amber/30 ring-1 ring-fire-amber' : active ? 'bg-fire-amber/15 text-stage-text' : 'text-stage-text-muted'}`}
               >
                 <div className="flex items-start gap-1">
                   <span className="mt-0.5 shrink-0 text-[10px] tabular-nums text-stage-text-muted">{fmt(seg.start_ms)}</span>
@@ -100,28 +122,32 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
                       {/* F2→DUB-PART-LOOP: 대사 클릭 = 이 파트만 반복 재생(리허설) · 재클릭 = 해제.
                           더빙된 파트는 상시 레이어가 더빙 소리도 같이 반복. 녹음/프리뷰 점유 중엔 무동작(테이크 보호). */}
                       <button
-                        onClick={() => {
-                          const st = useDubStore.getState()
-                          st.setSelectedSegment(seg.id)
-                          const lm = st.localMode
-                          if (lm && lm.kind !== 'rehearse') return
-                          if (lm?.kind === 'rehearse' && lm.startMs === seg.start_ms) { st.setLocalMode(null); return }
-                          st.setLocalMode({ kind: 'rehearse', startMs: seg.start_ms, endMs: seg.end_ms, audioUrl: null })
-                        }}
+                        onClick={() => toggleRehearse(seg)}
                         title={t('dub.rehearseHint')}
                         className={`flex-1 text-left ${active ? 'font-medium' : ''} hover:text-stage-text`}
                       >
                         {shown}
                       </button>
-                      {/* U3: 더빙 상태 마크 — 제출=amber ✓(확정 대기)·확정=green ✓ */}
+                      {/* U3→Y2: 더빙 상태 마크 — 색상만의 ✓ 를 텍스트 배지로(색맹/터치 겸용) + Y1 🎧 재청취(보이는 진입점) */}
                       {(segStatus[seg.id] === 'submitted' || segStatus[seg.id] === 'synced') && (
-                        <span
-                          data-dub-line-status={segStatus[seg.id]}
-                          title={t(segStatus[seg.id] === 'synced' ? 'dub.segConfirmed' : 'dub.segRecorded')}
-                          className={`shrink-0 text-xs ${segStatus[seg.id] === 'synced' ? 'text-emerald-400' : 'text-fire-amber'}`}
-                        >
-                          ✓
-                        </span>
+                        <>
+                          <span
+                            data-dub-line-status={segStatus[seg.id]}
+                            title={t(segStatus[seg.id] === 'synced' ? 'dub.segConfirmed' : 'dub.segRecorded')}
+                            className={`shrink-0 text-xs ${segStatus[seg.id] === 'synced' ? 'text-emerald-400' : 'text-fire-amber'}`}
+                          >
+                            ✓ {t(segStatus[seg.id] === 'synced' ? 'dub.segBadgeSynced' : 'dub.segBadgeSubmitted')}
+                          </span>
+                          <button
+                            onClick={() => toggleRehearse(seg)}
+                            aria-label={t('dub.rehearseHint')}
+                            title={t('dub.rehearseHint')}
+                            data-dub-relisten
+                            className="shrink-0 text-xs hover:brightness-125"
+                          >
+                            🎧
+                          </button>
+                        </>
                       )}
                       {/* F8→U1 PANEL-UNIFY: 녹음 중 내 차례 대사는 좌패널에서 바로 녹음 시작(recEngine 직결) */}
                       {status === 'recording' && myTurnRanges.some((r) => r.startMs === seg.start_ms) && (

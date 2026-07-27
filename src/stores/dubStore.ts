@@ -38,7 +38,8 @@ interface DubStore {
   bedMode: 'original' | 'bed'           // S2 A/B 토글(각인 #1) — 로컬 취향(broadcast 없음). 유효 모드는 bedUrls 있어야 bed
   recordings: DubRecordingUrl[]         // DUB-PART-LOOP: submitted+synced 녹음 서명 URL — 상시 레이어·시사회가 소비
   sourceAR: number | null               // S3: 소스 영상 가로/세로 비(loadedmetadata 실측) — 더빙 무대 AR fit 재료
-  seekRequest: { ms: number; nonce: number } | null // F2: 좌패널→센터 텔레포트(nonce 로 동일 세그 재클릭 재발화)
+  seekRequest: { ms: number; nonce: number; pause?: boolean } | null // F2: 좌패널→센터 텔레포트(nonce 로 동일 세그 재클릭 재발화) · pause=Y3 솔로 착지 정지
+  submitFlash: { segId: number; nonce: number } | null // Y2: 제출 직후 좌패널 행 하이라이트("저장됐다" 앵커)
   // U1 PANEL-UNIFY-V2: 녹음 엔진 헤드리스 — DubRecorder(우패널·hidden 유지라 상시 마운트)가 렌더 상태를
   //   여기 올리고 액션을 recEngine 으로 등록 → 좌패널·센터 HUD 가 패널 무소속으로 조작(F8 nonce 브리지 대체).
   recTrackId: string | null             // 녹음 중 트랙 id (null=비녹음)
@@ -65,7 +66,8 @@ interface DubStore {
   setBedMode: (m: 'original' | 'bed') => void
   setRecordings: (r: DubRecordingUrl[]) => void
   setSourceAR: (ar: number | null) => void
-  setSeekRequest: (r: { ms: number; nonce: number } | null) => void
+  setSeekRequest: (r: { ms: number; nonce: number; pause?: boolean } | null) => void
+  setSubmitFlash: (f: { segId: number; nonce: number } | null) => void
   setRec: (p: Partial<Pick<DubStore, 'recTrackId' | 'recPreview' | 'recBusy' | 'recCalMs' | 'recMicStream' | 'recError' | 'recCountdown'>>) => void
   setRecLoop: (on: boolean) => void
   setRecEngine: (e: DubRecEngine | null) => void
@@ -90,6 +92,7 @@ export const useDubStore = create<DubStore>((set) => ({
   recordings: [],
   sourceAR: null,
   seekRequest: null,
+  submitFlash: null,
   recTrackId: null,
   recPreview: null,
   recBusy: false,
@@ -114,13 +117,14 @@ export const useDubStore = create<DubStore>((set) => ({
   setRecordings: (recordings) => set({ recordings }),
   setSourceAR: (sourceAR) => set({ sourceAR }),
   setSeekRequest: (seekRequest) => set({ seekRequest }),
+  setSubmitFlash: (submitFlash) => set({ submitFlash }),
   setRec: (p) => set(p),
   setRecLoop: (recLoop) => set({ recLoop }),
   setRecEngine: (recEngine) => set({ recEngine }),
   setLocalMode: (localMode) => set({ localMode }),
   setScreening: (screening) => set({ screening }),
   setMyTurnRanges: (myTurnRanges) => set({ myTurnRanges }),
-  clear: () => set({ activeSessionId: null, status: null, segments: [], sourceUrl: null, currentSegmentId: null, selectedSegmentId: null, segmentAssignees: {}, segmentStatus: {}, editingBadge: null, bedUrls: [], bedMode: 'bed', recordings: [], sourceAR: null, seekRequest: null, recTrackId: null, recPreview: null, recBusy: false, recCalMs: 0, recMicStream: null, recError: null, recCountdown: null, recLoop: true, recEngine: null, localMode: null, screening: false, myTurnRanges: [] }),
+  clear: () => set({ activeSessionId: null, status: null, segments: [], sourceUrl: null, currentSegmentId: null, selectedSegmentId: null, segmentAssignees: {}, segmentStatus: {}, editingBadge: null, bedUrls: [], bedMode: 'bed', recordings: [], sourceAR: null, seekRequest: null, submitFlash: null, recTrackId: null, recPreview: null, recBusy: false, recCalMs: 0, recMicStream: null, recError: null, recCountdown: null, recLoop: true, recEngine: null, localMode: null, screening: false, myTurnRanges: [] }),
 }))
 
 // DEV 훅(프로드 번들 제외) — 실렌더 하네스가 store 상태를 실측(__streamAvatar 관례 동형)

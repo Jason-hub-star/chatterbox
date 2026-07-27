@@ -267,15 +267,19 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
       // W2 솔로 자동확정: 모든 트랙이 내 것(솔로 더빙)이면 제출=확정 자동(확정 단계 생략·완료 카운트 즉시↑). 실패는 비치명(수동 확정 가능).
       const solo = isHost && tracks.length > 0 && tracks.every((tr) => tr.participantId === myId)
       if (solo) { try { await confirmDubTrack(token, submittedId) } catch { /* 수동 확정 폴백 */ } }
-      toast.success(t('dub.submitSuccess')) // 감사 픽스: "제출됐나?" 무피드백 해소
-      // W2 자동 다음 이동: 다음 미제출 내 차례 세그로 센터 시크(다음 🎙 준비 — 49세그 스크롤 탐색 제거)
-      if (submittedTrack) {
-        const remaining = tracks
-          .filter((tr) => tr.participantId === myId && tr.id !== submittedId && (tr.status === 'assigned' || tr.status === 'recording'))
-          .sort((a, b) => a.startTimeMs - b.startTimeMs)
-        const next = remaining.find((tr) => tr.startTimeMs > submittedTrack.startTimeMs) ?? remaining[0]
-        if (next) useDubStore.getState().setSeekRequest({ ms: next.startTimeMs, nonce: Date.now() })
-      }
+      // W2 자동 다음 이동 + Y3 정직한 토스트: 실제 일어난 일(자동확정 여부·이동 여부)을 그대로 말한다.
+      const remaining = submittedTrack
+        ? tracks
+            .filter((tr) => tr.participantId === myId && tr.id !== submittedId && (tr.status === 'assigned' || tr.status === 'recording'))
+            .sort((a, b) => a.startTimeMs - b.startTimeMs)
+        : []
+      const next = submittedTrack ? (remaining.find((tr) => tr.startTimeMs > submittedTrack.startTimeMs) ?? remaining[0]) : undefined
+      toast.success(t(solo ? (next ? 'dub.submitSoloMoved' : 'dub.submitSoloDone') : next ? 'dub.submitMoved' : 'dub.submitSuccess'))
+      // Y2: 제출 직후 좌패널 해당 행 하이라이트("저장됐다" 앵커 — DubScriptPanel 이 2.5s 표시)
+      const flashSeg = submittedTrack ? useDubStore.getState().segments.find((s) => s.start_ms === submittedTrack.startTimeMs) : undefined
+      if (flashSeg) useDubStore.getState().setSubmitFlash({ segId: flashSeg.id, nonce: Date.now() })
+      // Y3 솔로 착지 정지: 다음 파트에 멈춰 착지(읽고 → 준비되면 [지금 녹음]) — 다인은 호스트 pause 가 방 전체 전파라 비적용(ponytail)
+      if (next) useDubStore.getState().setSeekRequest({ ms: next.startTimeMs, nonce: Date.now(), pause: solo })
       await onChanged()
     } catch (e) {
       setRec({ recError: e instanceof Error ? e.message : t('dub.submitError') })
@@ -358,8 +362,8 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
         <p className="text-[11px] text-stage-text-muted" role="note">{t('dub.railRecordHint')}</p>
       )}
 
-      {/* W2 호스트 일괄 확정 — 제출 대기 2건 이상일 때만(하나면 개별 버튼으로 충분) */}
-      {isHost && tracks.filter((tr) => tr.status === 'submitted').length > 1 && (
+      {/* W2→Y2 호스트 일괄 확정 — 1건부터 표시(확정 진입점 동선 일관 · DUB-CONFIRM-ALL-SINGLE) */}
+      {isHost && tracks.filter((tr) => tr.status === 'submitted').length > 0 && (
         <button onClick={confirmAll} disabled={busy} data-dub-confirm-all
           className="rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40">
           {t('dub.confirmAll', { count: tracks.filter((tr) => tr.status === 'submitted').length })}
