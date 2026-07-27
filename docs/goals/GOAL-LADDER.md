@@ -152,6 +152,17 @@ tags: [status, goals]
 | Z2 | DUB-TAIL-HARDCUT(High) | `dubEffectiveEndMs`(끝+600·다음 세그 클램프) 단일 규칙원 — localMode 생성 4곳+트림 2곳 | check:all + 유닛 5 + 실렌더 | **DONE**(2026-07-27: lib/dub 헬퍼+7콜사이트·유닛 5/5 — endMs 3600·자동정지 2864ms 꼬리 포함 실측) |
 | Z3 | 실증·마감 | 실렌더 스팟 + §0 2건 [x]+probe + contracts 주석 + 이 표 | check:all + 통합 실렌더 | **DONE**(2026-07-27: check:all exit0(**183 tests**)+실렌더 **8/8**(콘솔에러 0)+§0 2건+probe 2·contracts 2 주석 — 커밋/배포는 승인 게이트) |
 | Z4 | DUB-TAKE-RECLAIM(High·주인님 "너무아프네") | 루프 완주 바퀴 보관+중지 시 회수(임계 창60%·≤1.5s) + 중지-재시작 레이스 픽스(stopRequested) + `__dubTakeStats` | check:all + 실렌더(회수/비회수 양경로) | **DONE**(2026-07-27: lastFullRef 보관+takeReclaimed 토스트 ×3로케일+스왑창 중지 우선 — 실렌더 **13/13**(회수 518→8155ms 저장+토스트·비회수 2301ms 저장·판정 일치)·check:all 183) |
+| Z5 | 험지 감사("일부러 다양한 상황") | 붙은세그·초단세그·영상끝세그·가드3·연타·재녹음내구·다인분기 + 배포 원패스/합성 실주행 | 실렌더(험지 27/27·다인 10/10·배포 여정 13/13·합성 8/8 ffprobe) | **DONE**(2026-07-27: 지형 전량 그린 + 결함 3 발견·즉일 수선(VIDEOEND-STALL onEnded 미러·DOUBLE-SUBMIT busy 가드·PREVIEW-BLOB-REMOUNT objectURL 폴백) — §0 험지 배치·check:all 183) |
+
+## 골 사다리 AA — 더빙 개선플랜: 험지 픽스 출하·자산 보존·부채 상환 (2026-07-27 플랜 승인 · 스몰윈=이 표)
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| AA1 | 험지 픽스 출하 | 험지 3픽스+§0/Z5/contracts 커밋 → CF Pages 배포 → 4커밋 일괄 푸시 | 배포 실측(curl 3종·번들 해시·실부팅) | ACTIVE |
+| AA2 | E2E 하네스 자산 승격 | 스크래치 8종+fixture → `tests/integration/dub/` (전제 주석·fixtures 참조) | 승격 후 1종 실행 스모크 | PENDING |
+| AA3 | MainView 재생 훅 추출 | `useDubCenterPlayback` verbatim 이동 — MainView 렌더/HUD 전담(≤300줄 목표) | check:all + 실렌더 스모크 2런(beginner-signals·edge-terrain) | PENDING |
+| AA4 | 서버측 duration 상한 | `submit-dub-track` duration_ms ≤ 유효창+5s(초과 400) | deno + 통합 1어서션 | PENDING |
+| — | defer 유지 | 테이크 선택 UI·펀치인·RMS·배속·온보딩·더킹·다인 착지·blob store 이전·diarization 겹침 | 도그푸딩 신호 대기 | HOLD |
 
 ## 골 경계 승인 게이트
 

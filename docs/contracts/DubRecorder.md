@@ -23,6 +23,8 @@ tags: [contract]
 
 > **(2026-07-27 Z4 테이크 회수):** 루프 재시작이 완주 바퀴를 폐기하지 않고 `lastFullRef` 에 보관 — [■ 중지] 시 현재 바퀴가 갓 시작(임계 = 유효창의 60%·최대 1.5s 미만)이면 **직전 완주 테이크를 저장**하고 toast(takeReclaimed). 그 이상 말했으면 의도적 새 테이크로 현재 바퀴 저장. **중지-재시작 레이스 픽스**: 경계 재시작 스왑 창(~100ms)에 중지가 떨어지면 종전엔 중지가 삼켜져 녹음이 계속됐다 — `stopRequestedRef` 로 종료가 우선(이때 chunks=방금 완주분 그대로 저장). DEV `__dubTakeStats`(partial/lastFull/임계/판정)가 하네스 실측 표면. 실렌더 13/13.
 
+> **(2026-07-27 험지 감사 픽스):** ①submit 진입 recBusy 가드 — 같은 틱 더블클릭 동시 제출(이중 업로드·확정 409) 차단 ②blob 폴백 — 리마운트(Realtime churn)로 previewBlobRef 만 소실 시 프리뷰 objectURL(document 수명)에서 복원해 제출 불능 방지(테이크 보존). 주의: `startById`·`submit` 은 busy 중 **무음 no-op**(UI 는 disabled 등가) — 하네스가 엔진을 직접 구동할 땐 busy 해제를 먼저 기다려야 한다. 실렌더 험지 27/27.
+
 ---
 
 ## Props Interface

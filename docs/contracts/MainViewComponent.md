@@ -20,6 +20,8 @@ tags: [contract]
 
 > **(2026-07-27 DUB-SMOOTH-TAKES 사다리 Z — 유효구간 규칙 단일화)** 구간 끝 하드컷(경계·트림이 endMs 정확 컷) 폐지 — **`dubEffectiveEndMs`(lib/dub) = min(endMs+600ms, 다음 세그 시작)이 유일 규칙원**. localMode 생성부(rehearse/record/preview)가 유효 끝을 넣으므로 onTimeUpdate 경계·프리뷰 트림은 `lm.endMs` 파생으로 자동 일관, 상시 레이어 durationMs 도 동일 규칙(합성 큐 포함). 레이어 재료 갱신 시그니처는 서명 URL pathname 포함(DubPanel — 재녹음 테이크 교체 즉시 반영, DUB-LAYER-STALE-RETAKE). 실증: 실렌더 8/8(endMs 3600·자동정지 2864ms·pathname 교체).
 
+> **(2026-07-27 험지 감사 픽스 — DUB-VIDEOEND-STALL)** 마지막 세그 유효끝(핸들) > 영상 길이면 ended 후 timeupdate 가 죽어 자동정지/루프가 영영 안 오던 결함 — dub video `onEnded` 가 구간 끝 도달을 미러(rehearse=되감기 재생 · record+루프=restartTake+되감기 재생 · record 단독=자동정지). 실렌더 험지 E9 "ended 시점 자동정지" 실증.
+
 ## Props Interface
 
 ```typescript

@@ -311,7 +311,25 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
           const { videoWidth: vw, videoHeight: vh } = e.currentTarget
           useDubStore.getState().setSourceAR(vw > 0 && vh > 0 ? vw / vh : null)
         } : undefined}
-        onEnded={isDub ? undefined : clear}
+        onEnded={isDub ? () => {
+          // 험지 픽스: 마지막 세그 유효끝(핸들) > 영상 길이면 끝에서 timeupdate 가 죽어 자동정지/반복이 영영 안 온다 —
+          // ended 를 구간 끝 도달로 취급(onTimeUpdate 경계 분기 미러 + ended 는 paused 라 재생 재개 포함).
+          const v = videoRef.current
+          const lmEnded = useDubStore.getState().localMode
+          if (!v || !lmEnded) return
+          if (lmEnded.kind === 'rehearse') {
+            v.currentTime = lmEnded.startMs / 1000
+            void v.play().catch(() => {})
+          } else if (lmEnded.kind === 'record') {
+            if (useDubStore.getState().recLoop) {
+              useDubStore.getState().recEngine?.restartTake()
+              v.currentTime = lmEnded.startMs / 1000
+              void v.play().catch(() => {})
+            } else {
+              useDubStore.getState().recEngine?.stop()
+            }
+          }
+        } : clear}
         onTimeUpdate={isDub ? () => {
           const v = videoRef.current
           if (!v) return

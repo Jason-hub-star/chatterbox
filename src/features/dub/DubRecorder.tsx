@@ -286,8 +286,12 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
   }, [])
 
   const submit = useCallback(async () => {
-    const blob = previewBlobRef.current
+    // 험지 픽스: Realtime 갱신 churn 으로 리마운트되면 blob ref 만 소실(프리뷰는 store 생존) → 제출이 무음 불능.
+    // objectURL 은 document 수명이라 거기서 복원 — 유저 테이크를 죽은 버튼 뒤에 가두지 않는다(유료작업 보존).
+    let blob = previewBlobRef.current
+    if (!blob && preview) { try { blob = await fetch(preview.url).then((r) => r.blob()) } catch { /* revoked url — 재녹음 필요 */ } }
     if (!token || !preview || !blob) return
+    if (useDubStore.getState().recBusy) return // 험지 픽스: 같은 틱 더블클릭 동시 제출(이중 업로드·확정 409) 차단
     const submittedId = preview.trackId
     const submittedTrack = tracks.find((tr) => tr.id === submittedId)
     setRec({ recBusy: true, recError: null })
