@@ -21,6 +21,8 @@ tags: [contract]
 
 > **(2026-07-27 DUB-SMOOTH-TAKES 사다리 Z — 말꼬리 핸들):** startRec 진입 시 `effEnd = dubEffectiveEndMs(track.endTimeMs, segments)`(끝+600ms·다음 세그 클램프 — ADR 핸들)를 1회 계산해 preroll/record/프리뷰 localMode 가 공유(armTake 클로저), replayPreview 도 동일 — 구간 끝을 살짝 넘긴 말꼬리가 루프 폐기/자동정지에 잘리지 않고 재생·합성 트림에서도 들린다. 실증: record endMs 3600·자동정지 duration 2864ms(꼬리 포함)·유닛 5/5.
 
+> **(2026-07-27 Z4 테이크 회수):** 루프 재시작이 완주 바퀴를 폐기하지 않고 `lastFullRef` 에 보관 — [■ 중지] 시 현재 바퀴가 갓 시작(임계 = 유효창의 60%·최대 1.5s 미만)이면 **직전 완주 테이크를 저장**하고 toast(takeReclaimed). 그 이상 말했으면 의도적 새 테이크로 현재 바퀴 저장. **중지-재시작 레이스 픽스**: 경계 재시작 스왑 창(~100ms)에 중지가 떨어지면 종전엔 중지가 삼켜져 녹음이 계속됐다 — `stopRequestedRef` 로 종료가 우선(이때 chunks=방금 완주분 그대로 저장). DEV `__dubTakeStats`(partial/lastFull/임계/판정)가 하네스 실측 표면. 실렌더 13/13.
+
 ---
 
 ## Props Interface

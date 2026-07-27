@@ -156,6 +156,7 @@ export const ko: Record<string, string> = {
   "dub.submitSoloMoved": "제출 완료·자동 확정 — 다음 파트로 이동했어요.",
   "dub.submitSoloDone": "제출 완료·자동 확정 — 내 파트를 모두 마쳤어요!",
   "dub.syncPauseHint": "호스트와 함께 보는 중이에요 — 대사를 클릭하면 나만 그 구간을 반복해 들을 수 있어요.",
+  "dub.takeReclaimed": "직전에 완주한 테이크를 저장했어요",
   "dub.rolesSaved": "역할 저장 완료 — 동의 단계로 넘어가요.",
   "dub.waitingConfirmHint": "호스트 확정 대기 중…",
   "dub.compositeWaitHint": "모든 트랙이 확정(synced)되면 시작할 수 있어요.",

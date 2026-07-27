@@ -151,6 +151,7 @@ tags: [status, goals]
 | Z1 | DUB-LAYER-STALE-RETAKE(High) | 레이어 갱신 시그니처에 서명 URL pathname — 재녹음이 무리로드로 즉시 반영 | 실렌더(재녹음→pathname 교체) | **DONE**(2026-07-27: `pathOf` query 제외 pathname — 실렌더 pathname 교체 실측) |
 | Z2 | DUB-TAIL-HARDCUT(High) | `dubEffectiveEndMs`(끝+600·다음 세그 클램프) 단일 규칙원 — localMode 생성 4곳+트림 2곳 | check:all + 유닛 5 + 실렌더 | **DONE**(2026-07-27: lib/dub 헬퍼+7콜사이트·유닛 5/5 — endMs 3600·자동정지 2864ms 꼬리 포함 실측) |
 | Z3 | 실증·마감 | 실렌더 스팟 + §0 2건 [x]+probe + contracts 주석 + 이 표 | check:all + 통합 실렌더 | **DONE**(2026-07-27: check:all exit0(**183 tests**)+실렌더 **8/8**(콘솔에러 0)+§0 2건+probe 2·contracts 2 주석 — 커밋/배포는 승인 게이트) |
+| Z4 | DUB-TAKE-RECLAIM(High·주인님 "너무아프네") | 루프 완주 바퀴 보관+중지 시 회수(임계 창60%·≤1.5s) + 중지-재시작 레이스 픽스(stopRequested) + `__dubTakeStats` | check:all + 실렌더(회수/비회수 양경로) | **DONE**(2026-07-27: lastFullRef 보관+takeReclaimed 토스트 ×3로케일+스왑창 중지 우선 — 실렌더 **13/13**(회수 518→8155ms 저장+토스트·비회수 2301ms 저장·판정 일치)·check:all 183) |
 
 ## 골 경계 승인 게이트
 

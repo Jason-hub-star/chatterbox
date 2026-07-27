@@ -156,6 +156,7 @@ export const en: Record<string, string> = {
   'dub.submitSoloMoved': 'Submitted & auto-confirmed — moved to your next part.',
   'dub.submitSoloDone': 'Submitted & auto-confirmed — all your parts are done!',
   'dub.syncPauseHint': 'Watching together with the host — click a line to loop just that part for yourself.',
+  'dub.takeReclaimed': 'Saved your last completed take',
   'dub.rolesSaved': 'Roles saved — moving on to consent.',
   'dub.waitingConfirmHint': 'Waiting for host confirmation…',
   'dub.compositeWaitHint': 'Available once every track is confirmed (synced).',

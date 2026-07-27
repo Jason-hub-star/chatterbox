@@ -156,6 +156,7 @@ export const ja: Record<string, string> = {
   'dub.submitSoloMoved': '提出完了・自動確定 — 次のパートへ移動しました。',
   'dub.submitSoloDone': '提出完了・自動確定 — 自分のパートはすべて完了！',
   'dub.syncPauseHint': 'ホストと同期して視聴中です — セリフをクリックすると自分だけその区間を繰り返し聞けます。',
+  'dub.takeReclaimed': '直前に完走したテイクを保存しました',
   'dub.rolesSaved': '役割を保存しました — 同意ステップへ。',
   'dub.waitingConfirmHint': 'ホストの確定待ち…',
   'dub.compositeWaitHint': '全トラックが確定（synced）されると開始できます。',

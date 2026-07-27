@@ -157,6 +157,8 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
   const startedAtRef = useRef(0)
   const previewBlobRef = useRef<Blob | null>(null)
   const discardRef = useRef(false) // W3 수리: 구간 루프 재시작 — stop 이벤트에서 프리뷰 대신 새 테이크
+  const lastFullRef = useRef<{ blob: Blob; durationMs: number } | null>(null) // Z4: 직전 완주 바퀴 보관 — 손 지연으로 좋은 테이크가 날아가는 것 방지
+  const stopRequestedRef = useRef(false) // Z4 레이스 픽스: 경계 재시작 스왑 창(~100ms)에 유저 중지가 떨어지면 재시작 대신 종료가 이긴다
 
   const memberName = (uid: string) => members.find((m) => m.userId === uid)?.displayName ?? uid.slice(0, 8)
   const isRecording = recordingTrackId !== null
@@ -179,6 +181,8 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
     if (isRecording) return
     // Z2 핸들: 구간 유효 끝(말꼬리 grace·다음 세그까지 클램프) — 경계·프리뷰가 같은 값을 공유
     const effEnd = dubEffectiveEndMs(track.endTimeMs, useDubStore.getState().segments)
+    lastFullRef.current = null // Z4: 새 녹음 세션마다 보관 초기화
+    stopRequestedRef.current = false
     setRec({ recError: null, recCalMs: 0 })
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -192,8 +196,15 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
         chunksRef.current = []
         rec.addEventListener('dataavailable', (e) => { if (e.data.size) chunksRef.current.push(e.data) })
         rec.addEventListener('stop', () => {
-          if (discardRef.current && streamRef.current === stream) {
+          // Z4 레이스 픽스: 재시작(discard) 진행 중 유저가 중지를 눌렀으면 재시작 대신 종료 —
+          // 이때 현재 chunks = 방금 완주한 바퀴라 그대로 최종 저장(회수 불필요).
+          if (discardRef.current && streamRef.current === stream && !stopRequestedRef.current) {
             discardRef.current = false
+            // Z4: 방금 완주한 바퀴를 폐기하지 않고 보관 — 중지 시 현재 바퀴가 갓 시작이면 이걸 살린다
+            lastFullRef.current = {
+              blob: new Blob(chunksRef.current, { type: 'audio/webm' }),
+              durationMs: Math.round(performance.now() - startedAtRef.current),
+            }
             startedAtRef.current = performance.now()
             const next = armTake()
             recorderRef.current = next
@@ -201,8 +212,25 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
             return
           }
           discardRef.current = false
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-          const durationMs = Math.round(performance.now() - startedAtRef.current)
+          stopRequestedRef.current = false
+          let blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+          let durationMs = Math.round(performance.now() - startedAtRef.current)
+          // Z4 테이크 회수: 좋은 바퀴가 방금 경계를 넘어갔고(완주분 보관됨) 현재 바퀴가 갓 시작(손 지연)이면
+          // 직전 완주 테이크를 저장한다. 임계는 창 길이의 60%·최대 1.5s — 그 이상 말했으면 의도적 새 테이크로 간주(ponytail).
+          const partialMs = durationMs
+          const lastFull = lastFullRef.current
+          const reclaimMs = Math.min(1500, Math.round((effEnd - track.startTimeMs) * 0.6))
+          const reclaimed = !!(lastFull && partialMs < reclaimMs)
+          if (reclaimed && lastFull) {
+            ;({ blob, durationMs } = lastFull)
+            toast.info(t('dub.takeReclaimed'))
+          }
+          if (import.meta.env.DEV) {
+            // 실렌더 하네스가 판정 규칙을 실측(타이밍 역추정 대신) — __dubStore 관례 동형
+            ;(window as unknown as { __dubTakeStats?: object }).__dubTakeStats =
+              { partialMs, lastFullMs: lastFull?.durationMs ?? 0, reclaimMs, reclaimed, savedMs: durationMs }
+          }
+          lastFullRef.current = null
           stream.getTracks().forEach((t) => t.stop())
           streamRef.current = null
           const url = URL.createObjectURL(blob)
@@ -243,7 +271,11 @@ export default function DubRecorder({ myId, isHost, tracks, members, onChanged }
     }
   }, [isRecording, setRec, t])
 
-  const stopRec = useCallback(() => { recorderRef.current?.stop() }, [])
+  const stopRec = useCallback(() => {
+    stopRequestedRef.current = true // Z4: 스왑 창(재시작 stop 이벤트 대기 중)에 눌려도 종료가 이기게
+    const rec = recorderRef.current
+    if (rec && rec.state !== 'inactive') rec.stop()
+  }, [])
 
   // W3 수리: 구간 루프 — MainView 가 구간 끝에서 호출. 진행 중 테이크 폐기 + 즉시 새 테이크(마지막 것만 저장).
   const restartTake = useCallback(() => {
