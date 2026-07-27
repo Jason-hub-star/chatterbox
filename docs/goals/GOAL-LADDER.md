@@ -158,10 +158,10 @@ tags: [status, goals]
 
 | # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
 |---|---|---|---|---|
-| AA1 | 험지 픽스 출하 | 험지 3픽스+§0/Z5/contracts 커밋 → CF Pages 배포 → 4커밋 일괄 푸시 | 배포 실측(curl 3종·번들 해시·실부팅) | ACTIVE |
-| AA2 | E2E 하네스 자산 승격 | 스크래치 8종+fixture → `tests/integration/dub/` (전제 주석·fixtures 참조) | 승격 후 1종 실행 스모크 | PENDING |
-| AA3 | MainView 재생 훅 추출 | `useDubCenterPlayback` verbatim 이동 — MainView 렌더/HUD 전담(≤300줄 목표) | check:all + 실렌더 스모크 2런(beginner-signals·edge-terrain) | PENDING |
-| AA4 | 서버측 duration 상한 | `submit-dub-track` duration_ms ≤ 유효창+5s(초과 400) | deno + 통합 1어서션 | PENDING |
+| AA1 | 험지 픽스 출하 | 험지 3픽스+§0/Z5/contracts 커밋 → CF Pages 배포 → 4커밋 일괄 푸시 | 배포 실측(curl 3종·번들 해시·실부팅) | **DONE**(2026-07-27: 7308ce6 커밋·배포(해시 동일·curl 3종 200·실부팅 React 마운트/콘솔 0)·**푸시 4커밋 = origin/main**) |
+| AA2 | E2E 하네스 자산 승격 | 스크래치 8종+fixture → `tests/integration/dub/` (전제 주석·fixtures 참조) | 승격 후 1종 실행 스모크 | **DONE**(2026-07-27: 8종+README+fixtures/dub-src.mp4 — part-loop 승격판 **13/13**(스테일 기대치 1건 Z2 핸들로 갱신)) |
+| AA3 | MainView 재생 훅 추출 | `useDubCenterPlayback` verbatim 이동 — MainView 렌더/HUD 전담(≤300줄 목표) | check:all + 실렌더 스모크 2런(beginner-signals·edge-terrain) | **DONE**(2026-07-27: 561→**278줄**·훅 320줄(effect 8+경계 핸들러) — tsc/lint 0·실렌더 **11/11+27/27 무회귀**·이동 probe 3 경로 갱신) |
+| AA4 | 서버측 duration 상한 | `submit-dub-track` duration_ms ≤ 유효창+5s(초과 400) | deno + 통합 1어서션 | **DONE**(2026-07-27: cap=세그+600+5000·≤0 거부 — deno clean·**프로드 배포 후 통합 4/4**(999999→400·0→400·2600→200·7600 정확값→200)) |
 | — | defer 유지 | 테이크 선택 UI·펀치인·RMS·배속·온보딩·더킹·다인 착지·blob store 이전·diarization 겹침 | 도그푸딩 신호 대기 | HOLD |
 
 ## 골 경계 승인 게이트

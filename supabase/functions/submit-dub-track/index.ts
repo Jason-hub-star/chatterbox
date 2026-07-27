@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
   const { data: track } = await service
     .from("dub_tracks")
-    .select("id, participant_id, status, dub_sessions(room_id, status)")
+    .select("id, participant_id, status, start_time_ms, end_time_ms, dub_sessions(room_id, status)")
     .eq("id", body.dub_track_id)
     .maybeSingle();
   if (!track) return json({ error: "트랙을 찾을 수 없어요." }, 404);
@@ -45,6 +45,14 @@ Deno.serve(async (req) => {
   // 경로 조작 방지(SEC-2): 이 방 recordings/ 아래 안전한 키만(../·여분 슬래시 차단)
   if (!isSafeObjectKey(recordingPath, sess.room_id, ["recordings"])) {
     return json({ error: "recording_path 프리픽스 불일치" }, 400);
+  }
+  // AA4 데이터 위생: duration 상한 — 유효창(세그+핸들 600ms)+여유 5s. 초과 메타는 버그/악의 클라
+  // (재생·합성 트림이 자기 세그만 자르지만, 메타 오염 자체를 서버가 차단).
+  if (durationMs !== null) {
+    const capMs = (track.end_time_ms - track.start_time_ms) + 600 + 5000;
+    if (durationMs <= 0 || durationMs > capMs) {
+      return json({ error: "duration_ms 가 구간 범위를 벗어났어요." }, 400);
+    }
   }
 
   const { error } = await service
