@@ -123,10 +123,38 @@ const WESTERN: Composition = {
   },
 }
 
-// 동양(eastern)은 자체 구도이지만 광장/내부 아트·좌표 확정 전까지 WESTERN 을 잠정 참조.
-// 현재 eastern 은 로그인 스플래시만 실존 → 광장/내부는 resolveWorld 가 서양으로 표면별 폴백.
-// Step3 에서 동양 광장·내부 생성 후 이 구도를 캘리브값으로 분리한다.
-const EASTERN: Composition = WESTERN
+// ── 동양(eastern) 구도 — eastern-plaza-1/내부 4관 원화 오버레이 캘리브(2026-07-31, 1536×1024 %).
+// 서양과 박스 상호 배타(겹침 금지 — 호버 우선권 모호 방지) 규칙 동일.
+const EASTERN: Composition = {
+  plazaShops: [
+    { dest: 'rooms', box: { l: 15, t: 15, w: 21.5, h: 56 }, cores: [{ x: 42, y: 85 }, { x: 39, y: 39 }] }, // 대극장(쌍가면 현판)
+    { dest: 'profile', box: { l: 0, t: 42, w: 14, h: 33 }, cores: [{ x: 49, y: 65 }] }, // 의상실(드레스폼 창)
+    { dest: 'reserved', box: { l: 36.5, t: 46, w: 13.5, h: 24 }, cores: [{ x: 48, y: 52 }] }, // 셔터 예비 점포
+    { dest: 'troupe', box: { l: 51.5, t: 19, w: 20.5, h: 48 }, cores: [{ x: 50, y: 64 }] }, // 회관(대계단·현수막)
+    { dest: 'create', box: { l: 72, t: 38, w: 14.5, h: 34 }, cores: [{ x: 47, y: 75 }] }, // 공방(망치모루·화덕)
+    { dest: 'social', box: { l: 88.5, t: 42, w: 11.5, h: 29 }, cores: [{ x: 71, y: 52 }] }, // 다관(찻잔 현판)
+    { dest: 'practice', box: { l: 81, t: 72, w: 19, h: 26 }, cores: [{ x: 50, y: 46 }] }, // 야외 목조 무대
+  ],
+  // 홍등 등화구(원화 랜턴 위치 오버레이 캘리브) — 밤 원화라 글로우가 주광원.
+  plazaLamps: [
+    { x: 9, y: 32, r: 7 }, // 대극장 지붕 좌 홍등 클러스터
+    { x: 19.5, y: 51, r: 5 }, // 대극장 대문 홍등(좌)
+    { x: 29.5, y: 51, r: 5 }, // 대극장 대문 홍등(우)
+    { x: 48, y: 63.5, r: 4 }, // 예비 점포 앞 홍등
+    { x: 54, y: 65, r: 4 }, // 회관 계단 석등(좌)
+    { x: 62, y: 65, r: 4 }, // 회관 계단 석등(우)
+    { x: 77, y: 33, r: 4 }, // 공방 위 홍등 스트링
+    { x: 84, y: 70, r: 5 }, // 무대 옆 입식 홍등
+    { x: 88, y: 27, r: 6 }, // 다관 기둥 상부 홍등
+  ],
+  plazaSky: { t: 2, h: 22 }, // 밤하늘 밴드(풍등·잉어·고래 위 트인 하늘)
+  interiorAnchors: {
+    rooms: { posterBoard: { l: 5, t: 19, w: 41, h: 46 }, ticketBooth: { l: 74, t: 31, w: 23, h: 48 } },
+    create: { bench: { l: 25, t: 59, w: 52, h: 34 }, model: { l: 55, t: 26, w: 18, h: 31 } },
+    social: { tableA: { l: 6.5, t: 68, w: 34, h: 25 }, tableB: { l: 62, t: 68, w: 30, h: 26 } },
+    profile: { mirror: { l: 47, t: 8, w: 20, h: 84 } },
+  },
+}
 
 // ── 월드 레지스트리 (새 월드 = 여기 1줄 + 에셋) ──
 export const WORLDS: Record<WorldId, World> = {
@@ -154,12 +182,20 @@ export const WORLDS: Record<WorldId, World> = {
     label: 'world.eastern',
     accent: '#F2A65A',
     category: 'oriental',
-    // 로그인 스플래시 완성 → 갤러리에서 선택 가능. 광장·내부는 Step3까지 서양 폴백(로비 미완).
+    // 풀 배선 완료(2026-07-31): 로그인 영상·광장·내부 4관 전부 자체 에셋 — 폴백 없음.
     // (locked 필드는 향후 미완/프리미엄 월드용으로 유지 — 값 넣으면 갤러리 선택 잠금 '준비중')
     composition: EASTERN,
     assets: {
       loginSplash: '/scenes/login-splash/eastern.webp', // 한복 여인·빨간우산·범동양 야경·동양 용
-      // plaza·interiors 미정 → resolveWorld 가 서양으로 폴백. loginVideo defer(밤 인트로 P2).
+      loginVideo: '/scenes/login-splash/eastern-enter.webm', // 입장 영상(Seedance i2v→Topaz 1440p)
+      plaza: '/scenes/lobby-plaza/eastern-plaza-1.webp', // 밤 범동양 홍등 광장(가게 7·풍등·발광 잉어)
+      plazaMood: 'night', // 어두운 원화 → .hub-cloud--night(screen) 프리셋
+      interiors: {
+        rooms: '/scenes/lobby-interiors/eastern-theater.webp',
+        create: '/scenes/lobby-interiors/eastern-workshop.webp',
+        social: '/scenes/lobby-interiors/eastern-teahouse.webp',
+        profile: '/scenes/lobby-interiors/eastern-atelier.webp',
+      },
       thumb: '/scenes/thumbs/eastern.webp',
     },
   },

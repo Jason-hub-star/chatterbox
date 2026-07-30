@@ -145,8 +145,9 @@ body {
    밝은 원화엔 screen(밝히기) 델타가 거의 0이라(픽셀 diff 실측) 어둡히기 방향. 밴드=manifest plazaSky.
    reduced-motion = 그늘 유지·드리프트만 정지.
    맵별 관리: 좌표=구도(Composition) 데이터·세기/블렌드=여기 프리셋 1곳(맵 데이터에 숫자 흩뿌리기 금지).
-   ponytail: 기본 = day(multiply). 밤/어두운 리스킨은 assets.plazaMood:'night' → `.hub-cloud--night`
-   프리셋(screen 빛 방향)을 **그 원화 픽셀 diff 캘리브로** 추가 — 캘리브 없는 추측 수치 금지라 지금은 비워둔다. */
+   기본 = day(multiply 그늘). 밤 = `.hub-cloud--night`(screen 달빛구름) — eastern-plaza-1 픽셀 diff
+   실측(2026-07-31): 하늘 luma 36에 screen(140,165,210) 코어 α0.12 → Δ16.6 = 낮 프리셋의 서양 하늘
+   실델타(17~21)와 동급. 낮 코어 α 0.42/0.34/0.38 → 밤 0.12/0.10/0.11, b층 0.26/0.21 → 0.08/0.06. */
 .hub-cloud {
   left: -30%;
   width: 160%;
@@ -162,6 +163,18 @@ body {
   background:
     radial-gradient(ellipse 16% 55% at 26% 50%, rgba(120, 140, 175, 0.26), transparent 70%),
     radial-gradient(ellipse 13% 48% at 60% 40%, rgba(125, 145, 180, 0.21), transparent 72%);
+}
+.hub-cloud--night {
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse 14% 52% at 36% 42%, rgba(140, 165, 210, 0.12), transparent 70%),
+    radial-gradient(ellipse 18% 60% at 52% 58%, rgba(140, 165, 210, 0.1), transparent 72%),
+    radial-gradient(ellipse 12% 46% at 68% 34%, rgba(140, 165, 210, 0.11), transparent 70%);
+}
+.hub-cloud-b.hub-cloud--night {
+  background:
+    radial-gradient(ellipse 16% 55% at 26% 50%, rgba(140, 165, 210, 0.08), transparent 70%),
+    radial-gradient(ellipse 13% 48% at 60% 40%, rgba(140, 165, 210, 0.06), transparent 72%);
 }
 @media (prefers-reduced-motion: no-preference) {
   @keyframes cloud-drift {
