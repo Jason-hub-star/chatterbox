@@ -35,7 +35,7 @@ export default function AvatarPreview({ projectUrl, size = 200 }: { projectUrl: 
     <div
       ref={mountRef}
       data-avatar-preview
-      className="relative overflow-hidden rounded-lg border border-stage-border bg-[#f4f0e8]"
+      className="relative overflow-hidden rounded-lg border border-stage-border bg-avatar-canvas"
       style={{ width: size, height: size }}
     >
       {!ready && (

@@ -75,7 +75,7 @@ export default function RemoteAvatar({ identity, name, projectUrl, registry, siz
         <div
           ref={mountRef}
           data-remote-avatar={identity}
-          className={`h-full w-full overflow-hidden rounded-full border border-stage-border bg-[#f4f0e8] ${isHost ? 'ring-2 ring-fire-amber' : ''}`}
+          className={`h-full w-full overflow-hidden rounded-full border border-stage-border bg-avatar-canvas ${isHost ? 'ring-2 ring-fire-amber' : ''}`}
         />
         {isHost && <HostCrown />}
       </div>

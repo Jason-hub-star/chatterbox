@@ -4,6 +4,12 @@
 > 이 표가 **사람이 읽는 단일 진실 원천**입니다. `tailwind.config.ts` / `src/lib/motion.ts` 는 항상 이 표와 일치시키세요.
 > 원본 추출물은 `design/flecto-reference/` (레퍼런스 전용, 코드에 직접 복제 금지).
 
+> ⚠️ **§1~§7 (flecto 딥그린+크림) = DEPRECATED — 현행 앱 코드 미사용.** 2026-08-03 실측:
+> `bg-primary`·`accent`·`mint`·`cream`·`pop` 클래스 사용 **0회**, `@theme` 정의 **0개**. 마케팅 랜딩
+> 초기 방향의 유물이며, 현재 라이브 SPA 의 색상 SSOT 는 **§8 무채 다크 + 파이어앰버 팔레트**다
+> (`src/index.css @theme` 정의 · stage/fire 토큰 1,140회 사용). §1~§7 은 랜딩 부활 시에만 참조.
+> 근거·이관: `docs/goals/GOAL-color-harmony.md`.
+
 flecto 무드 한 줄: **딥 포레스트 그린 + 따뜻한 크림 + 스프링 그린 액센트 → 차분·프리미엄·에디토리얼.**
 (VTuber 제품의 발랄함은 색이 아니라 이미지·일러스트·액센트로 표현한다.)
 
@@ -183,6 +189,23 @@ Tailwind 토큰(tailwind.config.ts): `ease-flecto` · `duration-sm/md/lg` · `an
 기본값: `#FF8C2A` (모닥불 amber). **컬러/씬 팩 구매 시스템**: `--scene-accent`를 유료 씬 언락과
 연동하는 방향 검토 중 — 스펙 미확정, `DATA-SCHEMA.md §1.7 scenes` 테이블에 `is_purchasable`·
 `price` 컬럼 추가 필요 여부는 PENDING.
+
+**§8.1 목조 세계 + 파생 토큰 (2026-08-03, `GOAL-color-harmony.md` CP3):**
+> 광장·찻집·의상실 씬의 웜 갈색·금색. 이미 앰버와 한 가족이라 **값 불변** — `@theme` 승격으로
+> 흩어짐 방지 + 하드코딩 hex 회귀가드(CP4). `src/index.css` 가 소유하던 리터럴을 토큰 참조로 치환.
+
+| 토큰 | Hex | 역할 |
+|---|---|---|
+| `wood-sign-bg` | `#241811` | 간판 배경 |
+| `wood-plaque` | `#2A1C10` | 현판 바탕 |
+| `wood-ink` | `#1A1208` | 앰버 배지 위 글자 |
+| `wood-border` | `#6B4A2B` | 칩·고스트 테두리 |
+| `wood-frame` | `#8A6A3A` | 거울/현판 금장 프레임 |
+| `gold-muted` | `#C8B394` | 보조 글자 |
+| `gold-hi` | `#FFD98A` | 포커스·하이라이트·호버 |
+| `gold-text` | `#FFE9C4` | 목조 위 제목 |
+| `avatar-canvas` | `#F4F0E8` | 아바타 캔버스 웜 오프화이트 (구 `bg-[#f4f0e8]` ×6) |
+| `cta-ink` | `#241605` | 앰버 CTA 버튼 위 글자 (구 `text-[#241605]` ×3 · wood-ink 가족) |
 
 ---
 [구버전 — 참조용, 2026-06-27~2026-06-30 세션에서 확정했던 앰버 다크나이트 배경 스펙]

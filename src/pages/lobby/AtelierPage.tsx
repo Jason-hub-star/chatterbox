@@ -94,7 +94,7 @@ function WardrobeTile({
             : 'border-stage-border hover:border-fire-amber/50'
       }`}
     >
-      <span className="relative block aspect-square w-full overflow-hidden rounded-lg bg-[#f4f0e8]">
+      <span className="relative block aspect-square w-full overflow-hidden rounded-lg bg-avatar-canvas">
         {thumbOk ? (
           <img
             src={entry.thumbUrl ?? thumbUrlFor(entry.projectUrl)}

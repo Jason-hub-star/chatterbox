@@ -98,7 +98,7 @@ export default function AvatarInspectorPage() {
         <figure className="flex flex-col items-center gap-2">
           <div
             ref={mountRef}
-            className="overflow-hidden rounded-lg border border-stage-border bg-[#f4f0e8]"
+            className="overflow-hidden rounded-lg border border-stage-border bg-avatar-canvas"
             style={{ width: 480, height: 480 }}
             aria-label="네이티브 아바타 캔버스"
           />

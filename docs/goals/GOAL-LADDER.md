@@ -178,6 +178,19 @@ tags: [status, goals]
 
 AB 밖 defer(대장 등재): ROOM-21 승격 시작점 부활 여부(손들기 폐기 유지 중 — invite-to-stage 손들기 무관화는 주인님 결정 대기) · 강퇴 밴 해제 기능(카피는 AB5서 정합) · RM-CHAT-DRAFT 등 P1/Low 배치(§0 A-P1g).
 
+## 골 사다리 C — 색상 조화 리팩터 (2026-08-03 UIUX 색상 감사 후속 · 브리프 `GOAL-color-harmony.md` · 미리보기 채택 "ㄱ" 승인) — ✅ **프로드 배포 완료(2026-08-03)**: CF Pages `132fab19`·라이브 실증(구색 0·신색 전존) + Tailwind `source(none)` 팬텀클래스 정수정
+
+> 판정: 살아있는 앱은 무채 다크+앰버 단일 팔레트로 ~95% 토큰 일관(stage/fire 1,140회 vs 하드코딩 hex 66). 흔들림 3곳만 정수정. 적용값 OKLCH 격자(L 0.80·C 0.125·H 회전)는 브리프 §1.
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| CP1 | 장르 6색 재조율 | `genrePresets.ts` 7색 OKLCH 신값 교체·구값 리터럴 0 | `rg` 구값 → 0 + `check:all` | **DONE**(2026-08-03: 7색 교체·`rg` 구값 0·check:all 그린·장르 키 불변) |
+| CP2 | 모드배너 재색 | `RoomView.md §G-261` 갱신 후 `ModeBanner.tsx` blue/purple 리터럴 0·어두운 틴트+text-white AAA | `rg '#2563EB\|#9333EA'`→0 + docs:check + check:all | **DONE**(2026-08-03: 계약 먼저·#374C76/#55436F·rg 0·check:all EXIT=0 183/183) |
+| CP3 | 목조/캔버스/CTA 토큰 승격 | `DESIGN-TOKENS.md §8` 갱신 후 `@theme` 토큰 정의·반복 리터럴(`f4f0e8`×6·`241605`×3)+index.css 목조 리터럴 var() 치환·**값 불변** | `rg` 반복리터럴 → 0 + check:all + 색 diff 0 | **DONE**(2026-08-03: §8.1 문서→@theme 10토큰→리터럴 26곳 치환·rg 0·산출 CSS 동일 hex 실측·check:all EXIT=0 183/183) |
+| CP4 | 회귀가드+죽은 팔레트 정리 | 제거색 재등장 실패 가드 + flecto §1~§7 DEPRECATED 표기 | `npm run test`+docs:check+docs:links | **DONE**(2026-08-03: colorTokenGuard 2/2·전체 185·flecto DEPRECATED 배너·docs 게이트 green) |
+
+C 밖 defer: 라이트모드(기각 예정) · 씬 팩 `--scene-accent` 유료 언락(스펙 미확정) · genre 무지개→앰버 근처 유사색 축소(현 격자 유지 결정).
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

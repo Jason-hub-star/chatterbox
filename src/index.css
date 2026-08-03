@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* source(none)+@source: 유틸 클래스는 실제 소스(src)에서만 추출. docs/·tests/ 의 예제 className·
+   임의값 hex 문자열이 팬텀 유틸로 새어 죽은 CSS가 되는 것 차단(GOAL-color-harmony CP3 후속). */
+@import "tailwindcss" source(none);
+@source "../src";
 
 /* 디자인 토큰 — docs/design/DESIGN-TOKENS.md §8 (2026-07-01 무채색 개정) */
 @theme {
@@ -11,6 +14,18 @@
   --color-fire-amber:       #ff8c2a;
   --color-fire-hot:         #ff4500;
   --color-spring-green:     #56f09f;
+
+  /* 목조 세계 + 파생 (§8.1, GOAL-color-harmony CP3) — 값 불변·index.css 리터럴 승격. 웜 갈금 가족(앰버와 정합). */
+  --color-wood-sign-bg:     #241811;
+  --color-wood-plaque:      #2a1c10;
+  --color-wood-ink:         #1a1208;
+  --color-wood-border:      #6b4a2b;
+  --color-wood-frame:       #8a6a3a;
+  --color-gold-muted:       #c8b394;
+  --color-gold-hi:          #ffd98a;
+  --color-gold-text:        #ffe9c4;
+  --color-avatar-canvas:    #f4f0e8;
+  --color-cta-ink:          #241605;
 
   --font-sans: 'Noto Sans KR', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -210,7 +225,7 @@ body {
   filter: blur(3px);
 }
 .hub-shop { z-index: 3; background: none; border: 0; padding: 0; cursor: pointer; }
-.hub-shop:focus-visible { outline: 2px solid #ffd98a; outline-offset: 3px; border-radius: 12px; }
+.hub-shop:focus-visible { outline: 2px solid var(--color-gold-hi); outline-offset: 3px; border-radius: 12px; }
 .hub-shop.hub-off { cursor: help; }
 .hub-sign {
   position: absolute;
@@ -222,8 +237,8 @@ body {
   pointer-events: none;
   min-width: 168px;
   max-width: 230px;
-  background: #241811;
-  border: 1px solid #6b4a2b;
+  background: var(--color-wood-sign-bg);
+  border: 1px solid var(--color-wood-border);
   border-radius: 9px;
   padding: 9px 11px;
   text-align: left;
@@ -238,29 +253,29 @@ body {
 }
 .hub-sign-right { left: auto; right: 0; transform: translateY(6px) rotate(-1.5deg); }
 .hub-shop:hover .hub-sign-right, .hub-shop:focus-visible .hub-sign-right { transform: translateY(0) rotate(0); }
-.hub-sign-title { display: block; font-size: 13.5px; font-weight: 700; color: #ffe9c4; letter-spacing: -0.2px; }
+.hub-sign-title { display: block; font-size: 13.5px; font-weight: 700; color: var(--color-gold-text); letter-spacing: -0.2px; }
 .hub-badge {
   display: inline-block;
   margin-left: 6px;
   background: var(--color-fire-amber);
-  color: #1a1208;
+  color: var(--color-wood-ink);
   border-radius: 999px;
   padding: 0 7px;
   font-size: 10.5px;
   vertical-align: 1px;
 }
-.hub-sign-hint { display: block; font-size: 11px; color: #c8b394; margin-top: 3px; }
+.hub-sign-hint { display: block; font-size: 11px; color: var(--color-gold-muted); margin-top: 3px; }
 .hub-sign-cta {
   display: inline-block;
   margin-top: 7px;
   background: var(--color-fire-amber);
-  color: #1a1208;
+  color: var(--color-wood-ink);
   font-weight: 700;
   font-size: 11.5px;
   padding: 4px 12px;
   border-radius: 6px;
 }
-.hub-sign-cta-ghost { background: none; border: 1px solid #6b4a2b; color: #c8b394; }
+.hub-sign-cta-ghost { background: none; border: 1px solid var(--color-wood-border); color: var(--color-gold-muted); }
 @media (prefers-reduced-motion: reduce) {
   .hub-cam { transition: none; }
 }
@@ -325,11 +340,11 @@ body {
 /* 거울 프레임(의상실): 생흰색 캔버스가 뜨지 않게 금장 테두리 + 유리 비네트 */
 .mirror-frame {
   border-radius: 14px;
-  border: 3px solid #8a6a3a;
+  border: 3px solid var(--color-wood-frame);
   box-shadow: 0 0 0 1px rgba(255, 220, 160, 0.35), 0 12px 30px rgba(0, 0, 0, 0.55);
   overflow: hidden;
   position: relative;
-  background: #0b0b0d;
+  background: var(--color-stage-base);
 }
 .mirror-frame::after {
   content: '';
@@ -341,11 +356,11 @@ body {
 /* 공방 현판: 미니어처 무대 상단에 실시간 제목 */
 .workshop-plaque {
   display: inline-block;
-  background: #2a1c10;
-  border: 2px solid #8a6a3a;
+  background: var(--color-wood-plaque);
+  border: 2px solid var(--color-wood-frame);
   border-radius: 8px;
   padding: 4px 14px;
-  color: #ffe9c4;
+  color: var(--color-gold-text);
   font-weight: 700;
   font-size: clamp(10px, 1.1vw, 15px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 220, 160, 0.25);
@@ -360,14 +375,14 @@ body {
   align-items: center;
   gap: 6px;
   background: rgba(36, 24, 17, 0.9);
-  border: 1px solid #6b4a2b;
+  border: 1px solid var(--color-wood-border);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 12.5px;
-  color: #ffe9c4;
+  color: var(--color-gold-text);
   cursor: pointer;
 }
-.tea-chip:hover { border-color: #ffd98a; }
+.tea-chip:hover { border-color: var(--color-gold-hi); }
 @media (prefers-reduced-motion: reduce) {
   .interior-stage { animation: none; }
 }

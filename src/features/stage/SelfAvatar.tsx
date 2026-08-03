@@ -108,7 +108,7 @@ export default function SelfAvatar({ projectUrl, sendBlendshapes, size, isHost =
         <div
           ref={mountRef}
           data-self-avatar
-          className={bare ? 'h-full w-full overflow-hidden' : `h-full w-full overflow-hidden rounded-full bg-[#f4f0e8] ${isHost ? 'ring-2 ring-fire-amber' : ''}`}
+          className={bare ? 'h-full w-full overflow-hidden' : `h-full w-full overflow-hidden rounded-full bg-avatar-canvas ${isHost ? 'ring-2 ring-fire-amber' : ''}`}
         />
         {fallbackKey && (
           <div

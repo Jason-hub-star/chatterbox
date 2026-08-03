@@ -71,7 +71,7 @@ export default function AvatarZoomOverlay({
           ref={mountRef}
           data-avatar-zoom={target.identity}
           style={{ width: size, height: size }}
-          className={`overflow-hidden rounded-full bg-[#f4f0e8] ${target.isHost ? 'ring-2 ring-fire-amber' : ''}`}
+          className={`overflow-hidden rounded-full bg-avatar-canvas ${target.isHost ? 'ring-2 ring-fire-amber' : ''}`}
         />
         <span className="text-xs text-stage-text-muted">
           {target.isLocal ? t('stage.selfLabel') : target.name}

@@ -78,7 +78,7 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-lg py-2 font-semibold text-[#241605] transition hover:brightness-110 disabled:opacity-50"
+          className="w-full rounded-lg py-2 font-semibold text-cta-ink transition hover:brightness-110 disabled:opacity-50"
           style={{ background: 'var(--scene-accent)' }}
         >
           {busy ? t('reset.submitting') : t('reset.submit')}

@@ -2,11 +2,12 @@ import { useTranslation } from 'react-i18next'
 import { useStageStore, type StageMode } from '@/stores/stageStore'
 
 // G-261 모드 전환 배너 — announceMode(broadcast 수신) 시에만 2.4s 표출(store 가 타이머 소유, toastStore 패턴).
-// 입장 복원(setMode)은 조용. 색상은 계약(RoomView.md §G-261) 고정값: normal 회색 / vgen 파랑 / dub 보라.
+// 입장 복원(setMode)은 조용. 색상은 계약(RoomView.md §G-261): normal 회색 / vgen 인디고틴트 / dub 바이올렛틴트.
+// 무채 다크 팔레트 조화 틴트(생 파랑/보라 "AI 티" 재색, GOAL-color-harmony.md CP2) — text-white 대비 AAA.
 const BANNER_BG: Record<StageMode, string> = {
   normal: 'bg-stage-elevated',
-  vgen: 'bg-[#2563EB]',
-  dub: 'bg-[#9333EA]',
+  vgen: 'bg-[#374C76]',
+  dub: 'bg-[#55436F]',
 }
 const BANNER_KEY: Record<StageMode, string> = {
   normal: 'stage.modeNormal',

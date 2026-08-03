@@ -252,10 +252,10 @@ interface ModeChangeNotification {
 
 **배너 규격:**
 - **위치:** 화면 상단 고정, z-index: topmost
-- **배경:** 모드별 색상:
-  - normal: 회색 (기본)
-  - vgen: 파란색 (#2563EB) — AI 음성 생성 중
-  - dub: 보라색 (#9333EA) — 더빙 모드
+- **배경:** 모드별 색상 (무채 다크 팔레트 조화 틴트 — 생 파랑/보라는 브랜드 이탈 "AI 티"라 2026-08-03 재색, 근거 `docs/goals/GOAL-color-harmony.md` CP2):
+  - normal: 회색 (`bg-stage-elevated` 기본)
+  - vgen: 인디고 틴트 (#374C76) — AI 음성 생성 중 (text-white 대비 7.82:1 AAA)
+  - dub: 바이올렛 틴트 (#55436F) — 더빙 모드 (text-white 대비 7.95:1 AAA)
 - **글자:** 흰색, 14-16px bold
 - **애니메이션:** fade-in (200ms) → 고정 (2000ms) → fade-out (200ms)
 - **텍스트:**
