@@ -164,6 +164,20 @@ tags: [status, goals]
 | AA4 | 서버측 duration 상한 | `submit-dub-track` duration_ms ≤ 유효창+5s(초과 400) | deno + 통합 1어서션 | **DONE**(2026-07-27: cap=세그+600+5000·≤0 거부 — deno clean·**프로드 배포 후 통합 4/4**(999999→400·0→400·2600→200·7600 정확값→200)) |
 | — | defer 유지 | 테이크 선택 UI·펀치인·RMS·배속·온보딩·더킹·다인 착지·blob store 이전·diarization 겹침 | 도그푸딩 신호 대기 | HOLD |
 
+## 골 사다리 AB — 룸페이지 실수 시나리오 P0 수복 (2026-08-02 실브라우저 도그푸딩 A-P1g 후속 · 브리프 `GOAL-room-mistakes.md` · "ㄱ" 승인) — ✅ **프로드 배포 완료(2026-08-03)**: list-room-members v13 + CF Pages·배포판 라이브 실증
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| AB0 | 문서화 선행 | §0 A-P1g 등재(P0 5+P1 5+Low 6+반증 12) + 브리프 + 이 표 | docs:check + docs:links | **DONE**(2026-08-03 — schema 144 OK·contract PASS·links 0 broken) |
+| AB1 | RM-GUEST-CRASH(High) | 익명 게스트 입장 pageerror 0 · list-room-members 익명 참가자 200(비멤버 403 불변) · DUB 탭 로드 | check:all + deno check + 헤드리스 게스트 실렌더 | **DONE**(2026-08-03 — REST 2/2·실렌더 pageerror 2→0·check:all 183 EXIT=0) |
+| AB2 | RM-LOCK-ROLE(High) | 뷰어 의도 잠금방=안내(비번 게이트 미노출·배우 승격 0) · 실패 사유 분기(오답/429/기타) | check:all + 실렌더(뷰어·게스트·배우 3경로) | **DONE**(2026-08-03 — 실렌더 9/9·check:all 183 EXIT=0) |
+| AB3 | RM-FAILED-DEADEND(High) | 토큰 5xx 시 로컬라이즈 모달+[재연결] 복구 · 영문 원문 미노출 | check:all + 실렌더(토큰 500→모달→복원 재연결) | **DONE**(2026-08-03 — 실렌더 6/6·check:all 183 EXIT=0) |
+| AB4 | RM-CREATE-DBL(High) | 생성 더블클릭 rooms 1행 · 무대수락/배경 연타 단발 | check:all + 실렌더(더블클릭 DB 계수) | **DONE**(2026-08-03 — 실렌더 3/3(방 2→1·요청 6→1)·check:all 183 EXIT=0·acceptStage 는 동형 수정+프로드 재검증 분류) |
+| AB5 | RM-KICK-COPY(High) | 강퇴 카피 3로케일 실동작 일치(재입장 불가 명시) | check:all + i18nCoverage | **DONE**(2026-08-03 — 3로케일 정정·check:all 183 EXIT=0) |
+| AB6 | 실증·마감 | 재현 스크립트 일괄 그린 + §0 [x]+probe + 이 표 DONE + GAP-MATRIX | check:all + docs:drift | **DONE**(2026-08-03 — 일괄 재현 **20/20**(2+9+6+3)·§0 5항목 [x]+probe·docs:drift probe 88 STALE0/REG0·GAP-MATRIX 1행·check:all 183 EXIT=0) |
+
+AB 밖 defer(대장 등재): ROOM-21 승격 시작점 부활 여부(손들기 폐기 유지 중 — invite-to-stage 손들기 무관화는 주인님 결정 대기) · 강퇴 밴 해제 기능(카피는 AB5서 정합) · RM-CHAT-DRAFT 등 P1/Low 배치(§0 A-P1g).
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

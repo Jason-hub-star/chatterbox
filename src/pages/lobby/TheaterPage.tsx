@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useUserStore } from '@/stores/userStore'
@@ -253,11 +253,14 @@ function StageCreator({ accessToken }: { accessToken: string }) {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [creating, setCreating] = useState(false)
+  // RM-CREATE-DBL: disabled={creating} 는 리렌더 커밋 전 더블클릭에 무력(방 2개 실측) — ref 가 동기 가드.
+  const creatingRef = useRef(false)
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = title.trim()
-    if (!trimmed) return
+    if (!trimmed || creatingRef.current) return
+    creatingRef.current = true
     setCreating(true)
     try {
       const { room_id } = await createRoom(accessToken, trimmed, genre || undefined)
@@ -265,6 +268,8 @@ function StageCreator({ accessToken }: { accessToken: string }) {
     } catch {
       toast.error(t('lobby.createError'))
       setCreating(false)
+    } finally {
+      creatingRef.current = false
     }
   }
 
@@ -342,10 +347,14 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
       return next
     })
 
+  // RM-CREATE-DBL 동형: 예약 생성도 같은 근본원인(커밋 전 더블클릭) — 형제 호출처 동시 수술.
+  const reservingRef = useRef(false)
+
   async function onReserve(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = title.trim()
-    if (!trimmed || !when) return
+    if (!trimmed || !when || reservingRef.current) return
+    reservingRef.current = true
     setBusy(true)
     try {
       const r = await createReservation(accessToken, trimmed, new Date(when).toISOString(), [...checked])
@@ -362,6 +371,7 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
       toast.error(t('lobby.reserveFailed'))
     } finally {
       setBusy(false)
+      reservingRef.current = false
     }
   }
 

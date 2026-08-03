@@ -33,7 +33,12 @@ export async function callFn<T>(
       signal: ctrl.signal,
     })
     const json = await res.json().catch(() => null)
-    if (!res.ok) throw new Error(json?.error ? String(json.error) : `${name} 실패 (${res.status})`)
+    if (!res.ok) {
+      // RM-LOCK-ROLE: 상태코드를 에러에 동봉 — 호출부가 서버 문구 매칭 대신 429 등을 견고하게 분기.
+      const err = new Error(json?.error ? String(json.error) : `${name} 실패 (${res.status})`) as Error & { status?: number }
+      err.status = res.status
+      throw err
+    }
     return json as T
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') {

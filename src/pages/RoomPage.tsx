@@ -133,7 +133,6 @@ export default function RoomPage() {
   const isViewer = useRoomStore((s) => s.myRole) === 'viewer'
   const micEnabled = useRoomStore((s) => s.micEnabled)
   const mutedByHost = useRoomStore((s) => s.mutedByHost)
-  const error = useRoomStore((s) => s.error)
   const connected = connectionState === 'CONNECTED'
   const mySlotIndex = useRoomStore((s) => s.mySlotIndex)
   // 호스트 판정은 rooms.host_id(서버 진실) 우선 — 호스트 이양 시 이 값 갱신으로 새 호스트가 컨트롤을 얻는다.
@@ -429,13 +428,18 @@ export default function RoomPage() {
     }
   }, [session, roomId, handRaised, setHandRaised])
   // 무대 초대 수락(ROOM-21, 대상 관객) → viewer→actor 승격. promoted broadcast 로 재연결·좌석갱신 처리(여기선 낙관적 모달 닫기).
+  // RM-CREATE-DBL 동형: 더블클릭 이중 수락(승격+재연결 이중발화) 차단 — ref 가 동기 가드.
+  const stageAcceptRef = useRef(false)
   const acceptStage = useCallback(async () => {
-    if (!session) return
+    if (!session || stageAcceptRef.current) return
+    stageAcceptRef.current = true
     try {
       await acceptStageInvite(session.access_token, roomId)
       setStageInvite(false)
     } catch {
       toast.error(t('room.stageInviteFailed')) // R7: 정원 참 등 실패 무피드백 해소 — 모달은 유지(재시도 가능)
+    } finally {
+      stageAcceptRef.current = false
     }
   }, [session, roomId, t])
   // 호스트가 손든 관객을 무대로 초대(ROOM-21). 대상에게 수락 모달 broadcast(아직 승격 아님).
@@ -688,11 +692,8 @@ export default function RoomPage() {
   // 무대 영역: Stage + ReactionOverlay/Wheel + 에러 표시
   const stageContent = (
     <div className="relative flex h-full flex-col gap-4">
-      {error && (
-        <p className="rounded-lg bg-fire-hot/10 px-3 py-2 text-xs text-fire-hot sm:text-sm" role="alert">
-          {error}
-        </p>
-      )}
+      {/* RM-FAILED-DEADEND: 기술 원문 인라인 노출 제거 — FAILED 는 deadRoom 모달(로컬라이즈+재연결)이 담당,
+          원문은 useLiveKitRoom 이 console.error 로 보존. */}
       {connected && (
         <div
           data-stage-area
@@ -804,8 +805,10 @@ export default function RoomPage() {
       {/* RM-DEADROOM: 세션 중 연결 종단 끊김 — 얼어붙은 무대 대신 사유+행동. Esc/재연결=멱등 재조인
           (방 종료면 join 이 'Room ended' 로 error 단계 수렴), 로비=이탈. */}
       {deadRoom && (
-        <Modal title={t('room.connLostTitle')} onClose={retryJoin}>
-          <p className="mt-2 text-sm text-stage-text-muted">{t('room.connLostBody')}</p>
+        <Modal title={t(connectionState === 'FAILED' ? 'room.connFailTitle' : 'room.connLostTitle')} onClose={retryJoin}>
+          <p className="mt-2 text-sm text-stage-text-muted">
+            {t(connectionState === 'FAILED' ? 'room.connFailBody' : 'room.connLostBody')}
+          </p>
           <div className="mt-4 flex gap-2">
             <button
               onClick={retryJoin}

@@ -41,7 +41,7 @@ export type AppUser = {
 
 // 인증 + 프로필 매핑. 실패 시 {res} 로 즉시 응답.
 // 익명(anonymous sign-in) 세션은 기본 거부(403) — LOB-07 read-only 규칙의 단일 지점.
-// 관전 사슬 함수만 { allowAnonymous: true } 로 옵트인(join-as-viewer·leave-room).
+// 관전 사슬 함수만 { allowAnonymous: true } 로 옵트인(join-as-viewer·leave-room·list-room-members).
 // 화이트리스트 누락 = 게스트 403(안전한 실패) / 블랙리스트 방식이면 누락 = 구멍이라 기본 거부를 쓴다.
 export async function getAppUser(
   req: Request,

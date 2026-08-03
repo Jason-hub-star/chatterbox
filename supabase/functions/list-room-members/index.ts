@@ -12,7 +12,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  const auth = await getAppUser(req);
+  // RM-GUEST-CRASH: 익명 관전자도 명단 조회 허용 — 아래 "활성 참가자" 게이트가 접근 통제를 유지한다
+  // (비참가자는 익명·정회원 무관 403). 게스트는 join-as-viewer 로 참가자 행을 이미 가진다.
+  const auth = await getAppUser(req, { allowAnonymous: true });
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 

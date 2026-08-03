@@ -158,7 +158,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
       setMyId(mid)
       setHostId(hid)
       await refresh()
-    })()
+    })().catch(() => { /* RM-GUEST-CRASH: 초기 로드 실패 비치명(순단 등) — Realtime/재마운트가 재시도, uncaught 방지 */ })
     return () => { cancelled = true }
   }, [roomId, refresh])
 
@@ -189,7 +189,7 @@ export default function DubPanel({ roomId, isViewer }: { roomId: string; isViewe
   const connected = useRoomStore((s) => s.connectionState === 'CONNECTED')
   useEffect(() => {
     if (!connected) return
-    ;(async () => { await refresh() })()
+    ;(async () => { await refresh() })().catch(() => { /* RM-GUEST-CRASH: 재조회 실패 비치명 — uncaught 방지 */ })
   }, [connected, refresh])
 
   async function run(fn: () => Promise<unknown>) {

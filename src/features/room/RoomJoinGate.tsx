@@ -85,8 +85,15 @@ export default function RoomJoinGate({ phase, backdrop, joinError, kickReason, o
       setPwErr(null)
       try {
         await onSubmitPassword(passwordInput)
-      } catch {
-        setPwErr(t('room.wrongPassword'))
+      } catch (err) {
+        // RM-LOCK-ROLE: 사유 분기 — 오답이 아닌 실패(레이트리밋 429·순단)를 "오답"으로 뭉개지 않는다.
+        const status = (err as { status?: number } | null)?.status
+        const msg = err instanceof Error ? err.message : ''
+        setPwErr(
+          status === 429 ? t('room.pwTooMany')
+            : msg === 'Wrong password' ? t('room.wrongPassword')
+              : t('room.joinError'),
+        )
         setPwBusy(false)
       }
     }

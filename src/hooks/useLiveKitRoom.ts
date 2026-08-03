@@ -425,6 +425,8 @@ export function useLiveKitRoom(
       } catch (err) {
         if (cancelled) return
         setConnectionState('FAILED')
+        // RM-FAILED-DEADEND: 기술 원문은 콘솔 보존(디버깅) — 사용자 표면은 deadRoom 모달(로컬라이즈)이 담당.
+        console.error('[RM-FAILED] LiveKit 연결 실패:', err)
         setError(err instanceof Error ? err.message : '방 연결에 실패했습니다.')
       }
     })()

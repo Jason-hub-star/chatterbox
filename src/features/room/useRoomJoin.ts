@@ -73,7 +73,17 @@ export function useRoomJoin(roomId: string) {
         if (cancelled) return
         if (e instanceof DOMException && e.name === 'AbortError') return // 사용자 취소 — 내비게이션이 처리
         const msg = e instanceof Error ? e.message : ''
-        if (msg === 'Room is locked') { setJoinPhase('password'); return } // 비번 입력 단계로
+        if (msg === 'Room is locked') {
+          // RM-LOCK-ROLE: 비번 입장(join-room-with-password)은 무조건 배우 좌석 점유 — 잠금방 관전은
+          // 초대로만(설계 SSOT lib/rooms.ts). 뷰어 의도가 비번 게이트를 타면 배우로 강제 승격되므로 차단.
+          if (roleChoice === 'viewer') {
+            setJoinError(t('room.lockedViewerOnly'))
+            setJoinPhase('error')
+          } else {
+            setJoinPhase('password') // 배우 의도만 비번 입력 단계로
+          }
+          return
+        }
         // RM-JOIN-RETRY: 기술 원문(Forbidden/Room ended…) 대신 원인별 친화 카피.
         const friendly =
           msg === 'Room ended' ? t('notif.roomEnded')
@@ -132,7 +142,9 @@ export function useRoomJoin(roomId: string) {
         ? joinPhase
         : null
   // RM-DEADROOM: 세션 중 연결 종단 끊김(RECONNECTING 순단 제외). 강퇴는 gate 가, 이탈 중은 스킵.
-  const deadRoom = !kicked && !leaving && connectionState === 'DISCONNECTED'
+  // RM-FAILED-DEADEND: 토큰 발급/connect 실패(FAILED)도 합류 — 인라인 원문 1줄 데드엔드였던 경로에 재연결 모달 제공.
+  const deadRoom = !kicked && !leaving &&
+    (connectionState === 'DISCONNECTED' || connectionState === 'FAILED')
 
   return {
     joinPhase,

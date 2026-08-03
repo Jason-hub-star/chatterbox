@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
 import { ROOM_GENRES, type RecentPerson, type RoomRecordingItem } from '@/lib/rooms'
@@ -248,7 +248,11 @@ export default function HostConsole({
   // 무대 배경(HOST-04·05)
   const [bgBusy, setBgBusy] = useState(false)
   const [bgErr, setBgErr] = useState<string | null>(null)
+  // RM-CREATE-DBL 동형: disabled={bgBusy} 는 커밋 전 연타에 무력(6연타=요청 6발 실측) — ref 가 동기 가드.
+  const bgInFlightRef = useRef(false)
   const applyBackground = async (url: string) => {
+    if (bgInFlightRef.current) return
+    bgInFlightRef.current = true
     setBgErr(null)
     setBgBusy(true)
     try {
@@ -257,6 +261,7 @@ export default function HostConsole({
       setBgErr(t('host.backgroundFailed'))
     } finally {
       setBgBusy(false)
+      bgInFlightRef.current = false
     }
   }
 
