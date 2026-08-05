@@ -1,7 +1,18 @@
 // _shared/roomLeave.ts — soft-leave + 호스트 승계 + 빈 방 종료의 단일 지점(GOAL-room-gaps R5).
 // 진입점 2곳이 공유: leave-room(사용자 명시 퇴장) · livekit-webhook(participant_left — 탭닫기/크래시/
 // 네트워크 사망 회수). 로직은 leave-room 원본에서 무수정 추출 — 응답 매핑만 호출부 소유.
+// UX-HOST-SUCCESSION/UX-ROOM-ENDED(사다리 D3): 승계·종료를 room-authority 로 전원 통지(전엔 무통보라
+// 새 호스트는 조용히·남은 뷰어는 얼어붙은 화면). broadcast 는 best-effort(실패해도 DB 이탈은 커밋됨).
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { broadcastData } from "./livekit.ts";
+
+async function broadcastAuthority(roomId: string, msg: Record<string, unknown>): Promise<void> {
+  try {
+    await broadcastData(roomId, new TextEncoder().encode(JSON.stringify(msg)), "room-authority");
+  } catch (e) {
+    console.error("roomLeave broadcast failed:", e instanceof Error ? e.message : String(e));
+  }
+}
 
 export type SoftLeaveResult =
   | { kind: "room_not_found" }
@@ -71,6 +82,8 @@ export async function softLeaveRoom(
       .from("rooms")
       .update({ status: "ended", ended_at: new Date().toISOString(), current_participants: 0 })
       .eq("id", roomId);
+    // UX-ROOM-ENDED: 남은 뷰어에게 방종료 통지 → 클라가 RM-DEADROOM 모달 표시(얼어붙은 화면 대신).
+    await broadcastAuthority(roomId, { type: "room_ended" });
     return { kind: "left", newHostId: null };
   }
 
@@ -95,6 +108,17 @@ export async function softLeaveRoom(
         current_participants: remaining,
       })
       .eq("id", roomId);
+    // UX-HOST-SUCCESSION: 자동 승계를 전원 통지(transfer-host 와 동일 host_change payload) — 새 호스트는
+    // toast + 즉시 재조회, 나머지는 hostId 재파생. 무통보로 콘솔 탭만 조용히 생기던 것 해소.
+    if (newHostId) {
+      const { data: nh } = await service.from("users").select("auth_id").eq("id", newHostId).maybeSingle();
+      await broadcastAuthority(roomId, {
+        type: "host_change",
+        new_host_auth_id: nh?.auth_id ?? null,
+        prev_host_user_id: userId,
+        changed_at_ms: Date.now(),
+      });
+    }
   } else {
     await service.from("rooms").update({ current_participants: remaining }).eq("id", roomId);
   }

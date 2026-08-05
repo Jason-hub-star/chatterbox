@@ -38,7 +38,9 @@ Deno.serve(async (req) => {
 
   // 레이트리밋(SEC-INVITE-FLOOD): 호스트당 20회/시간 — 지명초대 알림(notifications INSERT) 폭탄 +
   // room_invites 행 스팸 차단. send-friend-request·create-room 과 동일 프리미티브(check_rate_limit).
-  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `invite:${userId}`, p_max: 20, p_window_sec: 3600 });
+  // SEC-5: 버킷 키를 엔드포인트별로 분리(`invite-create:`) — verify/accept 의 `invite-verify:`(5/300s)와
+  // 카운터를 공유하면 호스트 발급 20/3600s 창이 자기 추측보호를 조기 소진시키던 신뢰성 버그 정수정.
+  const { data: rlOk } = await service.rpc("check_rate_limit", { p_key: `invite-create:${userId}`, p_max: 20, p_window_sec: 3600 });
   if (rlOk === false) return json({ error: "초대를 너무 많이 보냈어요. 잠시 후 다시 시도해주세요." }, 429);
 
   if (invitedUserId) {

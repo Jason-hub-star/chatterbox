@@ -1,6 +1,8 @@
 // accept-stage-invite: 초대받은 관객이 무대 초대를 수락한다(ROOM-21). 대상 본인만 → promote_viewer_to_actor RPC.
 // 승격 후 room-authority promoted broadcast: 본인=토큰 재발급·재연결(canPublish=true), 전원=무대 좌석 갱신.
 // SSOT: contracts/HostConsole.md §G-154. 수락은 본인만(무동의 강제 승격 금지).
+// SEC-1(P1) 게이트: 호스트가 invite-to-stage 로 남긴 stage_invited_at 이 non-null + 신선(≤120s)해야 승격.
+// 이 검사 부재 시 임의 viewer 가 직접 호출로 무대 좌석·발화권을 자가획득했음(정수정, 2026-08-05).
 import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
@@ -26,6 +28,19 @@ Deno.serve(async (req) => {
   if (!room) return json({ error: "Room not found" }, 404);
   if (room.status === "ended") return json({ error: "Room ended" }, 409);
 
+  // SEC-1 게이트: 호스트가 invite-to-stage 로 남긴 초대 기록 검사(초대 없이 자가승격 차단).
+  // non-null + 신선(≤120s) 이어야 통과 — 만료면 호스트 재초대 필요.
+  const INVITE_TTL_MS = 120_000;
+  const { data: mine } = await user.service
+    .from("room_participants")
+    .select("id, stage_invited_at")
+    .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
+    .maybeSingle();
+  const invitedAt = mine?.stage_invited_at ? new Date(mine.stage_invited_at as string).getTime() : 0;
+  if (!mine || !invitedAt || Date.now() - invitedAt > INVITE_TTL_MS) {
+    return json({ error: "No fresh stage invite" }, 403);
+  }
+
   // 대상 = 호출자 본인(수락은 본인만). 승격은 원자 RPC(FOR UPDATE 슬롯 배정 + token_version++).
   const { data: rows, error } = await user.service
     .rpc("promote_viewer_to_actor", { p_room_id: room_id, p_user_id: user.userId });
@@ -37,6 +52,12 @@ Deno.serve(async (req) => {
   if (r.status === "not_participant") return json({ error: "Not a participant" }, 403);
   if (r.status === "not_found") return json({ error: "Room not found" }, 404);
   // 'promoted' 또는 'already_actor'(멱등) → 성공 처리
+
+  // SEC-1: 초대 소비(1회성) — 승격 성공 시 클리어해 재사용·재승격 시도 차단.
+  await user.service
+    .from("room_participants")
+    .update({ stage_invited_at: null })
+    .eq("id", mine.id);
 
   // 방 전체 broadcast: 본인(auth_id) 재연결 + 전원 좌석 갱신.
   const payload = new TextEncoder().encode(

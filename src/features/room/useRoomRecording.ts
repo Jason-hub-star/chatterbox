@@ -30,6 +30,7 @@ export function useRoomRecording(opts: {
   const [remoteActive, setRemoteActive] = useState(false) // 비호스트 REC 배지(recording_started/done)
   const [consentRequest, setConsentRequest] = useState<{ recordingId: string } | null>(null)
   const [recordingsNonce, setRecordingsNonce] = useState(0) // 녹화 완료 → HostConsole 목록 갱신 트리거
+  const [uploadPct, setUploadPct] = useState<number | null>(null) // UX-UPLOAD-PROGRESS: 업로드 진행률(0~100)
 
   const phaseRef = useRef(phase)
   useEffect(() => { phaseRef.current = phase }, [phase])
@@ -82,17 +83,30 @@ export function useRoomRecording(opts: {
     const url = uploadUrlRef.current
     if (!tk || !id || !url) return
     setPhase('uploading')
+    setUploadPct(0)
     try {
-      const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'video/webm' }, body: blob })
-      if (!res.ok) throw new Error(`upload ${res.status}`)
+      // UX-UPLOAD-PROGRESS: XHR 로 PUT — 대용량 무대 캡처 업로드가 침묵하지 않게 onprogress 로 % 갱신.
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('PUT', url)
+        xhr.setRequestHeader('Content-Type', 'video/webm')
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setUploadPct(Math.round((e.loaded / e.total) * 100))
+        }
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`upload ${xhr.status}`)))
+        xhr.onerror = () => reject(new Error('upload network error'))
+        xhr.send(blob)
+      })
       await completeRoomRecording(tk, id, { duration_ms: durationMs, file_size_bytes: blob.size })
       failedRef.current = null
       recordingIdRef.current = null
+      setUploadPct(null)
       setPhase('idle')
       setRecordingsNonce((n) => n + 1)
       toast.success(i18n.t('room.recSaved'))
     } catch {
       failedRef.current = { blob, durationMs } // 블롭 보존 — presign 1h 내 재시도 가능
+      setUploadPct(null)
       setPhase('uploadFailed')
       toast.error(i18n.t('room.recUploadFailed'))
     }
@@ -139,7 +153,7 @@ export function useRoomRecording(opts: {
   }, [roomId, startCapture, uploadAndComplete])
 
   // room-authority recording_* 수신(RoomPage 위임). 서버발만 도달(SEC-RA-1 — 수신측이 이미 필터).
-  const onAuthorityMessage = useCallback((msg: { type: string; recording_id?: string; all_consented?: boolean }) => {
+  const onAuthorityMessage = useCallback((msg: { type: string; recording_id?: string; all_consented?: boolean; declined?: boolean; declined_name?: string | null }) => {
     if (msg.type === 'recording_consent') {
       // 동의 요청: 비호스트 전원 모달(호스트는 시작 시 자동 동의됨).
       if (!isHostRef.current && typeof msg.recording_id === 'string') {
@@ -153,6 +167,10 @@ export function useRoomRecording(opts: {
         phaseRef.current === 'consentPending' && recordingIdRef.current === msg.recording_id
       ) {
         void startCapture(msg.recording_id as string)
+      } else if (isHostRef.current && msg.declined === true && recordingIdRef.current === msg.recording_id) {
+        // UX-CONSENT-DECLINE: 거절 통지 — 호스트가 '동의 대기'에서 멈추지 않게 누가 거절했는지 알린다
+        // (녹화 중 늦은 입장자 거절=SEC-3 경로 포함). 재요청/취소 판단은 호스트 몫.
+        toast.error(i18n.t('room.recConsentDeclined', { name: msg.declined_name || i18n.t('room.someone') }))
       }
     } else if (msg.type === 'recording_started') {
       setRemoteActive(true)
@@ -190,6 +208,13 @@ export function useRoomRecording(opts: {
         setRemoteActive(true)
         // 호스트인데 로컬 레코더가 없음 = 새로고침 잔재 — phase 만 복원, 정지 클릭이 취소로 정리.
         if (isHostRef.current && !recorderRef.current) setPhase('recording')
+        else if (!isHostRef.current) {
+          // SEC-3: 녹화 시작 후 입장한 비호스트가 아직 동의 기록에 없으면 동의 재요청 — 거절 시 호스트가
+          // declined 통지를 받는다(자동 캡처 제외 렌더는 defer, 통지+호스트 판단까지가 이 범위).
+          const myId = useUserStore.getState().appUserId
+          const cj = data.consent_json as { participants?: Record<string, unknown> } | null
+          if (!myId || !cj?.participants?.[myId]) setConsentRequest({ recordingId: data.id })
+        }
       } else {
         const myId = useUserStore.getState().appUserId
         const cj = data.consent_json as { participants?: Record<string, unknown> } | null
@@ -217,5 +242,6 @@ export function useRoomRecording(opts: {
     onAuthorityMessage,
     onAudioTrack,
     recordingsNonce,
+    uploadPct,
   }
 }

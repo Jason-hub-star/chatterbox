@@ -59,6 +59,14 @@ Deno.serve(async (req) => {
     .eq("id", recordingId);
   if (uErr) return json({ error: "동의 기록 실패", detail: uErr.message }, 500);
 
+  // UX-CONSENT-DECLINE(D4): 거절 시 호스트가 "누가 거절했는지" 알 수 있게 declined + 이름을 payload 에 실어
+  // broadcast(전엔 all_consented:false 만 보내 호스트가 '동의 대기'에서 영영 멈췄음). 거절 경로만 이름 룩업.
+  let declinedName: string | null = null;
+  if (!consented) {
+    const { data: u } = await service.from("users").select("display_name").eq("id", userId).maybeSingle();
+    declinedName = u?.display_name ?? null;
+  }
+
   try {
     await broadcastData(
       rec.room_id,
@@ -66,6 +74,8 @@ Deno.serve(async (req) => {
         type: "recording_consent_update",
         recording_id: recordingId,
         all_consented: consent.all_consented,
+        declined: !consented,
+        declined_name: declinedName,
         rid: crypto.randomUUID(),
       })),
       "room-authority",

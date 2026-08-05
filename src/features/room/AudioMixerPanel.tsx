@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRoomStore } from '@/stores/roomStore'
 import { useAudioStore } from '@/stores/audioStore'
@@ -21,6 +21,17 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
   const setBgmEnabled = useAudioStore((s) => s.setBgmEnabled)
   const remotes = participants.filter((p) => !p.isLocal)
 
+  // UX-MIXER-MODAL: 앵커 팝오버 설계는 유지(🎧 버튼 바로 위 — 중앙 Modal 전환은 의도적 상호작용 퇴행)하되
+  // a11y 핵심(dialog 시맨틱·Esc·오픈 시 포커스)을 부여한다. 공유 Modal 미사용은 앵커 유지가 이유.
+  const panelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    panelRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   // 마이크 입력 기기 목록(패널 열릴 때 열거 — 룸은 이미 마이크 권한이라 label 채워짐). 게인은 defer(audioStore ponytail).
   const [mics, setMics] = useState<MediaDeviceInfo[]>([])
   useEffect(() => {
@@ -35,8 +46,13 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
   return (
     <div
       data-audio-mixer
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('stage.mixerTitle')}
+      tabIndex={-1}
       // 🎧 오디오 버튼 앵커 팝오버(RoomBottomBar 의 relative 래퍼 안) — 버튼 바로 위에 열린다. 내용 길면 내부 스크롤.
-      className="absolute bottom-full right-0 mb-2 z-40 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-stage-border bg-stage-panel/95 p-3 shadow-lg"
+      className="absolute bottom-full right-0 mb-2 z-40 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-stage-border bg-stage-panel/95 p-3 shadow-lg outline-none"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-stage-text">🎚 {t('stage.mixerTitle')}</h3>

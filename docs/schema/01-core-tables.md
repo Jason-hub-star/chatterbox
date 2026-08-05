@@ -248,6 +248,8 @@ CREATE TABLE room_invites (
 > **as-built 갱신 (2026-07-08, 마이그 `20260708130000`·`20260708170000`)** — 유니크는 **활성 행 한정 부분 인덱스**: `(room_id,user_id) where state<>'left'` + `(room_id,slot_index) where state<>'left' and slot_index is not null`. 전행 유니크는 제거 — left 행이 좌석·재입장을 영구 점유하던 잠복 버그 2건의 정수정(재입장 = 세션당 새 행, 이력 보존). 뷰어는 slot_index null·정원 비점유(`join_room_as_viewer` RPC).
 >
 > **as-built 갱신 (2026-07-09, 마이그 `20260708190000`·`20260708200000`, 배포됨)** — `raise_hand_at` 컬럼(ROOM-20 손들기 큐) + `promote_viewer_to_actor(uuid,uuid)` RPC(ROOM-21 viewer→actor 승격: `FOR UPDATE` 슬롯 배정 + `token_version++` + `raise_hand_at=null`). RPC는 **service_role 전용 3중 revoke**(`public,anon,authenticated`) — 클라 노출 시 임의 승격을 막는 정수정(`join_room_as_participant` 패턴).
+>
+> **as-built 갱신 (2026-08-05, 마이그 `20260805120000`, SEC-1)** — `stage_invited_at` 컬럼(호스트 직접 초대 게이트). `invite-to-stage`가 대상 viewer 행에 `now()`로 영속(손들기 무관), `accept-stage-invite`가 승격 전 non-null + 신선도(≤120s) 검사·승격 성공 시 null 클리어. 이 게이트 부재 시 viewer가 `accept-stage-invite` 직접 호출로 자가승격하던 SEC-1(P1) 정수정 — 승격 모델은 "호스트 직접 초대"(손들기 뷰어 버튼 폐기 유지, 2026-08-05 결정).
 
 ```sql
 CREATE TABLE room_participants (
@@ -265,6 +267,7 @@ CREATE TABLE room_participants (
   token_version INT DEFAULT 1,  -- increments on kick/leave/safety revoke/promote; LiveKit token metadata must match
   token_revoked_at TIMESTAMP WITH TIME ZONE,
   raise_hand_at TIMESTAMP WITH TIME ZONE,  -- ROOM-20 손들기 큐(마이그 20260708190000). null = 손 안 듦; 승격·내리기 시 null
+  stage_invited_at TIMESTAMP WITH TIME ZONE,  -- SEC-1 호스트 무대 초대 게이트(마이그 20260805120000). invite-to-stage가 set, accept-stage-invite가 non-null+≤120s 검사 후 클리어
   character_role TEXT,  -- actor's assigned character name (e.g., "리온", "세이라"); NULL = unassigned
   is_tracking_failed BOOLEAN DEFAULT FALSE,  -- fallback state when expression tracking fails (ROOM-11)
   is_ready BOOLEAN DEFAULT FALSE,  -- G-62: GreenRoom에서 준비 완료 여부 (호스트만 state 변경 권한)

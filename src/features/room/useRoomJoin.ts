@@ -53,14 +53,17 @@ export function useRoomJoin(roomId: string) {
     let cancelled = false
     const ac = new AbortController()
     joinAbortRef.current = ac
+    // UX-JOIN-TIMEOUT: 15s 무응답이면 자동 중단 → 무한 "입장 중" 대신 에러 단계(재시도 가능). 사용자 취소(ac)와 합성.
+    const timeout = AbortSignal.timeout(15000)
+    const signal = AbortSignal.any([ac.signal, timeout])
     ;(async () => {
       setJoinPhase('joining')
       try {
         // 관전 입장(ViewerGate MVP): 좌석 비점유·발행권 없음. 이미 뷰어로 조인된 상태라면 어느 경로든
         // rejoined 가 실제 role 을 돌려주므로(마이그 v2) myRole 은 항상 서버 진실.
         const r = roleChoice === 'viewer'
-          ? await joinRoomAsViewer(session.access_token, roomId, ac.signal)
-          : await joinRoom(session.access_token, roomId, ac.signal)
+          ? await joinRoomAsViewer(session.access_token, roomId, signal)
+          : await joinRoom(session.access_token, roomId, signal)
         if (cancelled) return
         useRoomStore.getState().setRoomContext({
           currentRoomId: roomId,
@@ -71,7 +74,11 @@ export function useRoomJoin(roomId: string) {
         enterWithGreen(() => cancelled)
       } catch (e) {
         if (cancelled) return
-        if (e instanceof DOMException && e.name === 'AbortError') return // 사용자 취소 — 내비게이션이 처리
+        if (e instanceof DOMException && (e.name === 'AbortError' || e.name === 'TimeoutError')) {
+          // 타임아웃(15s)이면 에러 단계로(재시도), 사용자 취소면 조용히(내비게이션이 처리).
+          if (timeout.aborted) { setJoinError(t('room.joinTimeout')); setJoinPhase('error') }
+          return
+        }
         const msg = e instanceof Error ? e.message : ''
         if (msg === 'Room is locked') {
           // RM-LOCK-ROLE: 비번 입장(join-room-with-password)은 무조건 배우 좌석 점유 — 잠금방 관전은

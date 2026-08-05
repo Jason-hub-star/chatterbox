@@ -22,12 +22,13 @@ export function useRoomAuthority(deps: {
   setKickReason: Dispatch<SetStateAction<string | null>>
   setStageInvite: Dispatch<SetStateAction<boolean>>
   setReconnectNonce: Dispatch<SetStateAction<number>>
+  setRoomEnded: Dispatch<SetStateAction<boolean>> // UX-ROOM-ENDED: 방종료 통지 → RM-DEADROOM 모달
   recAuthorityRef: MutableRefObject<((msg: RecAuthorityMsg) => void) | null>
 }) {
   const { t } = useTranslation()
   const {
     playSharedVgen, applyServerScriptMode, setRaiseHandRefetch, setRoomName, setRoomGenre,
-    setKickReason, setStageInvite, setReconnectNonce, recAuthorityRef,
+    setKickReason, setStageInvite, setReconnectNonce, setRoomEnded, recAuthorityRef,
   } = deps
   const dubEditBadgeTimer = useRef<number | null>(null) // DUB-EDIT: 편집중 배지 decay 타이머
 
@@ -46,9 +47,14 @@ export function useRoomAuthority(deps: {
       if (msg.genre !== undefined) setRoomGenre(msg.genre ?? '')
     }
     else if (msg.type === 'host_change') {
-      // 호스트 명시 이양(R1, transfer-host Edge 발) — 전원 멤버 재조회로 hostId 재파생(isHost·왕관·콘솔 탭·vod publisher 전환).
+      // 호스트 이양/자동승계(R1 transfer-host · D3 roomLeave) — 전원 멤버 재조회로 hostId 재파생(isHost·왕관·콘솔 탭·vod publisher 전환).
       setRaiseHandRefetch((n) => n + 1)
       if (msg.new_host_auth_id === useUserStore.getState().user?.id) toast.success(t('host.transferReceived'))
+    }
+    else if (msg.type === 'room_ended') {
+      // UX-ROOM-ENDED(D3): 최후 배우 퇴장으로 방 종료 — 남은 뷰어에게 통지. RM-DEADROOM 모달을 띄워
+      // 얼어붙은 화면 대신 [로비로/재연결] 제공(재연결 시 join 이 'Room ended' 로 수렴).
+      setRoomEnded(true)
     }
     else if (msg.type === 'vod_sync') {
       // ROOM-01 동기: 적용자(applier)는 비호스트 MainView 만 등록 → 호스트/미재생 화면엔 no-op. 형태 검증 후 적용.
@@ -101,5 +107,5 @@ export function useRoomAuthority(deps: {
         setReconnectNonce((n) => n + 1)
       }
     }
-  }, [playSharedVgen, applyServerScriptMode, setRaiseHandRefetch, setRoomName, setRoomGenre, setKickReason, setStageInvite, setReconnectNonce, recAuthorityRef, t])
+  }, [playSharedVgen, applyServerScriptMode, setRaiseHandRefetch, setRoomName, setRoomGenre, setKickReason, setStageInvite, setReconnectNonce, setRoomEnded, recAuthorityRef, t])
 }

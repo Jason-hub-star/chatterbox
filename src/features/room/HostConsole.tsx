@@ -31,7 +31,7 @@ export default function HostConsole({
   onCreateInvite,
   loadRecentPeople,
   onDirectInvite,
-  raisedHands,
+  viewers,
   onInviteToStage,
   loadChatPolicy,
   onSetChatPolicy,
@@ -61,7 +61,7 @@ export default function HostConsole({
   onCreateInvite: (role: 'actor' | 'viewer') => Promise<string> // 원문 invite_code 반환 — URL 조립·복사는 여기서
   loadRecentPeople: () => Promise<RecentPerson[]> // 최근 함께한 사람(LOB-08, 현재 방 참가자 제외)
   onDirectInvite: (userId: string) => Promise<void> // 지명 초대 = 1회권 + 상대 인앱 알림
-  raisedHands: { authId: string; userId: string; name: string | null }[] // ROOM-20 손든 관객 큐(호스트 승인 대기)
+  viewers: { authId: string; userId: string; name: string | null }[] // SEC-1 활성 viewer 목록(호스트 직접 무대 초대 후보)
   onInviteToStage: (targetUserId: string) => Promise<void> // ROOM-21 무대 초대(대상 수락 후 승격)
   loadChatPolicy: () => Promise<{ slowSec: number; bannedWords: string[] }> // HOST-09·10 초기값(rooms RLS)
   onSetChatPolicy: (policy: { slow_mode_sec: number; banned_words: string[] }) => Promise<void>
@@ -89,6 +89,22 @@ export default function HostConsole({
   const isMutedNow = (identity: string): boolean =>
     mutedOverrides.has(identity) ? mutedOverrides.get(identity)! : (initialMuted?.has(identity) ?? false)
   const [muting, setMuting] = useState<string | null>(null)
+  // UX-INVITE-FEEDBACK: 무대 초대 연타 가드(userId 단위 busy) + 성공/실패 toast. 정원참이면 아래서 비활성.
+  const [inviting, setInviting] = useState<Set<string>>(new Set())
+  const STAGE_CAPACITY = 6 // 무대 최대 좌석(§6.4) — actorIds 로 정원 판정(초과 초대 futile → 비활성)
+  const stageFull = actorIds.size >= STAGE_CAPACITY
+  const doInvite = async (userId: string) => {
+    if (inviting.has(userId)) return
+    setInviting((prev) => new Set(prev).add(userId))
+    try {
+      await onInviteToStage(userId)
+      toast.success(t('host.stageInviteSent'))
+    } catch {
+      toast.error(t('host.stageInviteFailed'))
+    } finally {
+      setInviting((prev) => { const n = new Set(prev); n.delete(userId); return n })
+    }
+  }
   // R4 시간제 음소거 길이(초) — 0=무기한. 이후 음소거 클릭에 적용(참가자 관리 섹션 공용 셀렉트).
   const [muteDurationSec, setMuteDurationSec] = useState(0)
 
@@ -149,6 +165,7 @@ export default function HostConsole({
     try {
       await onClearChat()
       setClearConfirm(false)
+      toast.success(t('host.clearChatDone')) // UX-HOST-TOASTS: 콘솔 내 피드백 규약 일관(설정저장·이양과 동형)
     } catch {
       toast.error(t('host.clearChatFailed'))
     } finally {
@@ -328,6 +345,7 @@ export default function HostConsole({
     setBusy(identity)
     try {
       await onKick(identity, kickReasonInput.trim() || undefined)
+      toast.success(t('host.kickDone')) // UX-HOST-TOASTS
     } catch {
       setErr(t('host.kickFailed'))
     } finally {
@@ -359,6 +377,7 @@ export default function HostConsole({
     try {
       await onSetMute(identity, next, next && muteDurationSec > 0 ? muteDurationSec : undefined)
       setMutedOverrides((prev) => new Map(prev).set(identity, next))
+      toast.success(t(next ? 'host.muteDone' : 'host.unmuteDone')) // UX-HOST-TOASTS
     } catch {
       setErr(t('host.muteFailed'))
     } finally {
@@ -408,22 +427,25 @@ export default function HostConsole({
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* 손들기 큐(ROOM-20·G-154) — 손든 관객 목록. 초대(viewer→actor 승격)는 슬라이스 2. */}
-      {raisedHands.length > 0 && (
+      {/* 무대 초대(ROOM-21·G-154·SEC-1) — 호스트가 활성 관객(viewer)을 직접 무대로 초대(손들기 무관).
+          대상이 수락하면 승격(accept-stage-invite 가 stage_invited_at 게이트 검사). 손들기 뷰어 버튼은 폐기 유지. */}
+      {viewers.length > 0 && (
         <section>
           <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">
-            {t('host.raiseHandQueue')} ({raisedHands.length})
+            {t('host.inviteViewersTitle')} ({viewers.length})
           </h3>
+          {stageFull && <p className="mb-1.5 text-[11px] text-fire-hot">{t('host.stageFull')}</p>}
           <ul className="space-y-1.5">
-            {raisedHands.map((h) => (
-              <li key={h.authId} className="flex items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm">
-                <span aria-hidden>✋</span>
-                <span className="flex-1 truncate">{h.name ?? '?'}</span>
+            {viewers.map((v) => (
+              <li key={v.authId} className="flex items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm">
+                <span aria-hidden>👀</span>
+                <span className="flex-1 truncate">{v.name ?? '?'}</span>
                 <button
-                  onClick={() => void onInviteToStage(h.userId)}
-                  className="flex min-h-[44px] shrink-0 items-center rounded border border-fire-amber px-3 py-1 text-xs text-fire-amber hover:bg-fire-amber/10"
+                  onClick={() => void doInvite(v.userId)}
+                  disabled={inviting.has(v.userId) || stageFull}
+                  className="flex min-h-[44px] shrink-0 items-center rounded border border-fire-amber px-3 py-1 text-xs text-fire-amber hover:bg-fire-amber/10 disabled:opacity-40"
                 >
-                  {t('host.inviteToStage')}
+                  {inviting.has(v.userId) ? t('host.inviteSending') : t('host.inviteToStage')}
                 </button>
               </li>
             ))}

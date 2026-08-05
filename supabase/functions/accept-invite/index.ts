@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   if (!isInviteCode(body.invite_code)) return json({ error: "invalid" }, 404);
 
   // verify 와 같은 버킷(user당 5회/5분) — 코드 탐색을 verify·accept 어느 문으로도 못 하게.
-  const rlKey = `invite:${userId}`;
+  const rlKey = `invite-verify:${userId}`; // SEC-5: 발급(invite-create)과 버킷 분리(verify 와 추측보호 창 공유)
   const { data: allowed } = await service
     .rpc("check_rate_limit", { p_key: rlKey, p_max: 5, p_window_sec: 300 });
   if (allowed === false) {

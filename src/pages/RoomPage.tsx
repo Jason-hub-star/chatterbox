@@ -204,13 +204,14 @@ export default function RoomPage() {
   }, [session])
   const [reconnectNonce, setReconnectNonce] = useState(0) // 승격 시 ++ → useLiveKitRoom 재연결(새 토큰 canPublish=true)
   const [stageInvite, setStageInvite] = useState(false)   // 무대 초대 수락 모달(대상 본인만)
+  const [roomEnded, setRoomEnded] = useState(false)       // UX-ROOM-ENDED: 방종료 통지 수신 → 데드룸 모달(얼어붙은 화면 방지)
   // V-3 녹화: useRoomRecording 은 isHost(아래 파생) 뒤에 호출되므로 ref 브리지로 수신을 위임(TDZ 회피).
   const recAuthorityRef = useRef<((msg: { type: string; recording_id?: string; all_consented?: boolean }) => void) | null>(null)
   const recAudioRef = useRef<((track: MediaStreamTrack) => void) | null>(null)
   // room-authority 수신 프로토콜(NR 분리 → useRoomAuthority): broadcast 이벤트 스위치. dubEditBadgeTimer 는 훅 소유.
   const handleRoomAuthority = useRoomAuthority({
     playSharedVgen, applyServerScriptMode, setRaiseHandRefetch, setRoomName, setRoomGenre,
-    setKickReason, setStageInvite, setReconnectNonce, recAuthorityRef,
+    setKickReason, setStageInvite, setReconnectNonce, setRoomEnded, recAuthorityRef,
   })
 
   const { toggleMic, sendChat, sendNote, sendBlendshapes, sendCue, sendRoomAuthority, sendReaction, leave, getAudioTracks } = useLiveKitRoom(roomId, {
@@ -263,7 +264,7 @@ export default function RoomPage() {
   }, [participants])
 
   // 멤버 명단(아바타·좌석·음소거·호스트 authId·손들기)은 useRoomMembers 소유 — 여기선 파생만 사용.
-  const { memberAvatars, memberSlots, mutedIdentities, hostAuthId, raisedHands, handRaised, setHandRaised } = members
+  const { memberAvatars, memberSlots, mutedIdentities, hostAuthId, handRaised, setHandRaised } = members
 
   const selfProjectUrl = resolveAvatarUrl(myAvatarUrl)
   const remoteProjectUrl = useCallback(
@@ -276,9 +277,20 @@ export default function RoomPage() {
   const [mixerOpen, setMixerOpen] = useState(false) // ROOM-08 음량 믹서 개방(하단바 🎧 소유)
   // 리액션 휠(NR 분리 → useReactionWheel): 우클릭·롱프레스 개화 + 숫자키 1~N 즉발 + DEV E2E 훅.
   const {
-    reactionOrigin, reactionSticky, openReactionWheel, closeReactionWheel,
+    reactionOrigin, reactionSticky, openReactionWheel, openStickyWheel, closeReactionWheel,
     onStageTouchStart, onStageTouchMove, onStageTouchEnd, cancelStageTouch,
   } = useReactionWheel({ sendReaction, connected })
+  // UX-REACT-DISCOVER: 리액션 진입(우클릭·길게·버튼·숫자키) 힌트 pill — 브라우저당 1회.
+  // localStorage seen 초기값으로 이번 세션 표시 여부 결정 + 마운트 시 seen 기록(다음 방문 미표시).
+  // (setState-in-effect lint 회피: 이펙트는 localStorage 쓰기만, 숨김은 dismiss 이벤트 핸들러로.)
+  const [showReactHint] = useState(() => {
+    try { return !localStorage.getItem('cb.reactionHintSeen') } catch { return false }
+  })
+  const [reactHintDismissed, setReactHintDismissed] = useState(false)
+  useEffect(() => {
+    if (showReactHint) { try { localStorage.setItem('cb.reactionHintSeen', '1') } catch { /* private mode 무시 */ } }
+  }, [showReactHint])
+  const dismissReactHint = useCallback(() => setReactHintDismissed(true), [])
 
   // V-3 인앱 녹화(ROOM-13): 동의 게이트→무대 합성 캡처→R2→작품. room-authority 수신·오디오 증감은 ref 브리지.
   const recording = useRoomRecording({ roomId, isHost, joined: joinPhase === 'ready', getAudioTracks })
@@ -583,7 +595,7 @@ export default function RoomPage() {
           onCreateInvite={createInvite}
           loadRecentPeople={loadRecentPeople}
           onDirectInvite={directInvite}
-          raisedHands={raisedHands}
+          viewers={members.viewers}
           onInviteToStage={inviteToStageCb}
           loadChatPolicy={loadChatPolicy}
           onSetChatPolicy={saveChatPolicy}
@@ -743,6 +755,20 @@ export default function RoomPage() {
               💌 {t('room.soloInviteHint')}
             </button>
           )}
+          {/* UX-REACT-DISCOVER: 리액션 진입 힌트(브라우저당 1회) — 우클릭·길게·하단 😊 버튼·숫자키. */}
+          {connected && showReactHint && !reactHintDismissed && (
+            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-stage-border bg-stage-panel/90 px-3 py-1.5 text-xs text-stage-text-muted backdrop-blur-sm">
+              <span>{t('reaction.hint')}</span>
+              <button
+                type="button"
+                onClick={dismissReactHint}
+                aria-label={t('common.close')}
+                className="text-stage-text-muted hover:text-stage-text"
+              >
+                ✕
+              </button>
+            </div>
+          )}
         </div>
       )}
       {reactionOrigin && (
@@ -785,10 +811,12 @@ export default function RoomPage() {
       onToggleMic={toggleMic}
       onToggleHand={toggleHand}
       onToggleMixer={() => setMixerOpen((v) => !v)}
+      onOpenReactions={openStickyWheel}
       mixerSlot={<AudioMixerPanel open={mixerOpen} onClose={() => setMixerOpen(false)} />}
       onLeave={onLeave}
       recordPhase={isHost ? recording.phase : undefined}
       onToggleRecord={isHost ? () => void recording.toggleRecording() : undefined}
+      uploadPct={isHost ? recording.uploadPct : undefined}
     />
   )
 
@@ -804,21 +832,27 @@ export default function RoomPage() {
 
       {/* RM-DEADROOM: 세션 중 연결 종단 끊김 — 얼어붙은 무대 대신 사유+행동. Esc/재연결=멱등 재조인
           (방 종료면 join 이 'Room ended' 로 error 단계 수렴), 로비=이탈. */}
-      {deadRoom && (
-        <Modal title={t(connectionState === 'FAILED' ? 'room.connFailTitle' : 'room.connLostTitle')} onClose={retryJoin}>
+      {(deadRoom || roomEnded) && (
+        <Modal
+          title={t(roomEnded ? 'room.roomEndedTitle' : connectionState === 'FAILED' ? 'room.connFailTitle' : 'room.connLostTitle')}
+          onClose={roomEnded ? () => void onLeave() : retryJoin}
+        >
           <p className="mt-2 text-sm text-stage-text-muted">
-            {t(connectionState === 'FAILED' ? 'room.connFailBody' : 'room.connLostBody')}
+            {t(roomEnded ? 'room.roomEndedBody' : connectionState === 'FAILED' ? 'room.connFailBody' : 'room.connLostBody')}
           </p>
           <div className="mt-4 flex gap-2">
-            <button
-              onClick={retryJoin}
-              className="flex-1 rounded-lg bg-fire-amber px-3 py-2 text-sm font-semibold text-stage-base hover:opacity-90"
-            >
-              {t('room.reconnect')}
-            </button>
+            {/* 방종료는 재연결 무의미 — [로비로]만. 그 외(끊김/실패)는 재연결 우선. */}
+            {!roomEnded && (
+              <button
+                onClick={retryJoin}
+                className="flex-1 rounded-lg bg-fire-amber px-3 py-2 text-sm font-semibold text-stage-base hover:opacity-90"
+              >
+                {t('room.reconnect')}
+              </button>
+            )}
             <button
               onClick={() => void onLeave()}
-              className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted hover:text-stage-text"
+              className={`rounded-lg px-3 py-2 text-sm ${roomEnded ? 'flex-1 bg-fire-amber font-semibold text-stage-base hover:opacity-90' : 'border border-stage-border text-stage-text-muted hover:text-stage-text'}`}
             >
               {t('room.backToLobby')}
             </button>

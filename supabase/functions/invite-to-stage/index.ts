@@ -1,6 +1,8 @@
-// invite-to-stage: 호스트가 손든 관객을 무대로 초대한다(ROOM-21, G-154). 아직 승격 아님 —
-// 대상에게 수락 모달을 띄우는 room-authority stage_invite broadcast(대상 본인만 반응). 수락은 accept-stage-invite.
-// SSOT: contracts/HostConsole.md §G-154. MUST NOT: 손들기(raise_hand_at) 없이 초대·대상 동의 없이 강제 승격.
+// invite-to-stage: 호스트가 활성 관객(viewer)을 무대로 직접 초대한다(ROOM-21, G-154, SEC-1). 아직 승격 아님 —
+// 대상 행에 stage_invited_at 영속(accept-stage-invite 게이트) + 수락 모달 room-authority stage_invite broadcast
+// (대상 본인만 반응). 수락은 accept-stage-invite. SSOT: contracts/HostConsole.md §G-154.
+// 승격 모델(2026-08-05): 호스트 직접 초대 — 손들기(raise_hand_at) 전제 제거(손들기 뷰어 버튼 폐기 유지).
+// MUST NOT: 대상 동의 없이 강제 승격(승격은 대상이 accept-stage-invite 로 수락) · stage_invited_at 없이 승격.
 import { getAppUser, json, isUuid, cors, requireHostRoom } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
@@ -26,15 +28,21 @@ Deno.serve(async (req) => {
   const gate = await requireHostRoom(user.service, room_id, user.userId);
   if (!gate.ok) return gate.res;
 
-  // 대상 = 손든 활성 viewer 여야 초대 가능(손들기 선행·viewer 만). users.auth_id 는 수신측 본인 판별용.
+  // 대상 = 활성 viewer 여야 초대 가능(viewer 만 — 손들기 전제 없음). users.auth_id 는 수신측 본인 판별용.
   const { data: target } = await user.service
     .from("room_participants")
-    .select("id, role, raise_hand_at, users(auth_id)")
+    .select("id, role, users(auth_id)")
     .eq("room_id", room_id).eq("user_id", target_user_id).neq("state", "left")
     .maybeSingle();
   if (!target) return json({ error: "Target not a participant" }, 404);
   if (target.role !== "viewer") return json({ error: "Already an actor" }, 409);
-  if (!target.raise_hand_at) return json({ error: "Target has not raised hand" }, 409);
+
+  // SEC-1 게이트 영속: 대상 행에 초대 시각 기록 → accept-stage-invite 가 이걸 검사(초대 없이 자가승격 차단).
+  const { error: invErr } = await user.service
+    .from("room_participants")
+    .update({ stage_invited_at: new Date().toISOString() })
+    .eq("id", target.id);
+  if (invErr) return json({ error: "Invite failed", detail: invErr.message }, 500);
 
   const targetAuthId = (target.users as unknown as { auth_id: string }).auth_id;
 

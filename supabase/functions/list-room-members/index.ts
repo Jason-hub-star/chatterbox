@@ -27,13 +27,15 @@ Deno.serve(async (req) => {
   if (!isUuid(body.room_id)) return json({ error: "Invalid room_id" }, 400);
   const roomId = body.room_id;
 
-  // 호출자가 방의 활성 참가자여야 명단을 볼 수 있다
+  // 호출자가 방의 활성 참가자여야 명단을 볼 수 있다.
+  // SEC-2: 강퇴자(is_disabled_by_host)는 앱 세션이 살아있어도 명단 조회 불가 — isActiveParticipant 와 동일 게이트.
   const { data: me } = await service
     .from("room_participants")
     .select("id")
     .eq("room_id", roomId)
     .eq("user_id", userId)
     .neq("state", "left")
+    .not("is_disabled_by_host", "is", true)
     .maybeSingle();
   if (!me) return json({ error: "방 참가자만 명단을 볼 수 있어요." }, 403);
 

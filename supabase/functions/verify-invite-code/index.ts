@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   if (!isInviteCode(body.invite_code)) return json({ error: "invalid" }, 404);
 
   const { data: allowed } = await service
-    .rpc("check_rate_limit", { p_key: `invite:${userId}`, p_max: 5, p_window_sec: 300 });
+    .rpc("check_rate_limit", { p_key: `invite-verify:${userId}`, p_max: 5, p_window_sec: 300 }); // SEC-5: 발급(invite-create)과 버킷 분리
   if (allowed === false) {
     return json({ error: "시도가 너무 많아요. 잠시 후 다시 시도해주세요." }, 429);
   }

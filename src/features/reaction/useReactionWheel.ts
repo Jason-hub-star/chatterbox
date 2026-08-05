@@ -13,6 +13,12 @@ export function useReactionWheel({ sendReaction, connected }: { sendReaction: (e
     setReactionOrigin({ x: e.clientX, y: e.clientY })
   }, [])
   const closeReactionWheel = useCallback(() => setReactionOrigin(null), [])
+  // UX-KBD-WHEEL: 키보드/스크린리더 진입 경로 — 하단바 버튼(클릭·Enter)에서 화면 중앙에 sticky 개화.
+  // 우클릭·롱프레스가 유일 진입이던 것 해소(휠 내부는 이미 화살표/Enter/Esc 지원).
+  const openStickyWheel = useCallback(() => {
+    setReactionSticky(true)
+    setReactionOrigin({ x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight / 2) })
+  }, [])
 
   // 터치 롱프레스(≥500ms) → 휠 sticky 개화(P-5 — 우클릭의 모바일 등가). 10px 이동 = 스크롤 의도 → 취소.
   const touchTimer = useRef<number | null>(null)
@@ -73,6 +79,7 @@ export function useReactionWheel({ sendReaction, connected }: { sendReaction: (e
     reactionOrigin,
     reactionSticky,
     openReactionWheel,
+    openStickyWheel,
     closeReactionWheel,
     onStageTouchStart,
     onStageTouchMove,

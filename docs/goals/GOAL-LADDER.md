@@ -191,6 +191,23 @@ AB 밖 defer(대장 등재): ROOM-21 승격 시작점 부활 여부(손들기 �
 
 C 밖 defer: 라이트모드(기각 예정) · 씬 팩 `--scene-accent` 유료 언락(스펙 미확정) · genre 무지개→앰버 근처 유사색 축소(현 격자 유지 결정).
 
+## 골 사다리 D — 룸페이지 감사 3(보안 P1+P2·UX Blocker/High·a11y) (2026-08-05 5페르소나 감사 후속 · 브리프 `GOAL-room-audit3.md` · 승격 모델 "호스트 직접 초대" 승인) — ✅ **프로드 배포 완료(2026-08-05)**: 마이그 2 + 함수 전체(대상 9 ACTIVE) + CF Pages `index-BZQgInkT.js` · 프로드 라이브 SEC-1 10/10·SEC-2 2/2
+
+> 판정: 보안 코어(인가·RLS·스푸핑·IDOR·웹훅) 매우 견고 — 실결함 P1 1(무대 자가승격)+P2 3+UX Blocker/High 7+a11y 4. 승격 모델(AskUserQuestion): invite-to-stage 손들기 무관화·`stage_invited_at` 영속·손들기 뷰어 버튼 폐기 유지.
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| D0 | 문서화 선행 | §0 A-P1h(SEC5·UX11·반증) 등재 + 브리프 + 이 표 | docs:check + docs:links | **DONE**(2026-08-05 — 이 등재가 산출물·links 0) |
+| D1 | SEC-1 무대 승격 구멍(P1 크럭스) | 마이그 `stage_invited_at` + invite-to-stage 손들기 무관화·영속 + accept-stage-invite 게이트(초대 없이 403) + HostConsole 뷰어 직접초대 UI | check:all + deno check ×2 + db reset·psql + 실렌더(자가승격 403·초대 왕복) | **DONE**(2026-08-05: 마이그 20260805120000+2 Edge+HostConsole viewer 초대+i18n×3 — deno×2·check:all 185·**로컬 통합 10/10 실측**·자기리뷰 PASS. **SEC-1b**: 실검증서 promote RPC ambiguous 500 잠복버그 발견→마이그 20260805130000 정수정) |
+| D2 | SEC 잔여 하드닝 | SEC-2(kicked roster isActiveParticipant)·SEC-4(authority_epoch stale)·SEC-5(레이트리밋 버킷 네임스페이스) | check:all + deno check | **DONE**(2026-08-05: SEC-2 is_disabled 필터·SEC-4 30s 재동기·SEC-5 버킷 분리 — deno×4 clean·check:all 185·자기리뷰 PASS) |
+| D3 | 승계·종료 실시간 통지 | UX-HOST-SUCCESSION(승계 host_change broadcast)+UX-ROOM-ENDED(방종료 broadcast→RM-DEADROOM) · SEC-RA-1 준수 | check:all + 실렌더(승계 toast·종료 모달) | **DONE**(2026-08-05: roomLeave 단일지점 broadcast 2종·수신 재사용/신규·모달 i18n×3 — SEC-RA-1 통과 실측·deno×2·check:all 185·자기리뷰 PASS·라이브 2탭 배포 게이트) |
+| D4 | 녹화 신뢰 | UX-CONSENT-DECLINE(거절 가시화)+SEC-3(늦은입장 동의 재요청)+UX-UPLOAD-PROGRESS(ProgressBar) | check:all + 실렌더 | **DONE**(2026-08-05: declined broadcast+호스트 toast·늦입장 재요청·XHR 진행률 — deno clean·check:all 185·i18n 2키×3·자기리뷰 PASS·라이브 3인 배포 게이트) |
+| D5 | 발견성·조인·초대피드백 | UX-REACT-DISCOVER(휠 힌트 pill)+UX-KBD-WHEEL(키보드 오픈)+UX-JOIN-TIMEOUT(15s)+UX-INVITE-FEEDBACK(busy·실패통지) | check:all + 실렌더 | **DONE**(2026-08-05: 힌트 pill·openStickyWheel 버튼·AbortSignal timeout·초대 busy/toast/정원참 — check:all 185·i18n 7키×3·자기리뷰 PASS) |
+| D6 | a11y·모바일 | UX-ARIA-BOTTOMBAR(aria+44px)+UX-MIXER-MODAL(dialog/Esc·앵커 유지 편차)+UX-AVATAR-KBD(좌석 키보드)+UX-HOST-TOASTS(3액션 toast) | check:responsive + 실렌더(360px)+i18nCoverage | **DONE**(2026-08-05: 5버튼 aria+44px·믹서 dialog/Esc·좌석 키보드·호스트 toast — check:all 185·i18n 4키×3·자기리뷰 PASS·360px 실렌더 D7 배치) |
+| D7 | 실증·마감 | 통합 실렌더 + 비회귀(룸/더빙) + §0 [x]+probe + 이 표 DONE + GAP-MATRIX | check:all + 통합 실렌더 | **DONE**(2026-08-05: check:all exit0(185)·§0 17항목 [x]·GAP-MATRIX·drift STALE0/REG0 · **로컬 실검증**: SEC-1 통합 10/10·SEC-2 2/2·360px 헤드리스 5/5 → SEC-1b 잠복 RPC 버그 발견·수정. 라이브 2탭/함수배포는 프로드 필수라 배포 이월 — 골 D1~D7 7/7+SEC-1b PASS) |
+
+D 밖 defer(대장): HostConsole 9섹션 아코디언(Med 구조)·RightPanel 화살표키 roving-tabindex(Low)·late-joiner 자동 캡처 제외 렌더(SEC-3 상위 — 통지까지만 D4).
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

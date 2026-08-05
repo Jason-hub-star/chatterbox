@@ -14,10 +14,12 @@ interface Props {
   onToggleMic: () => void
   onToggleHand: () => void
   onToggleMixer: () => void
+  onOpenReactions: () => void // UX-KBD-WHEEL: 리액션 휠 sticky 개화(키보드/SR·터치 진입 경로)
   onLeave: () => void
   // V-3 녹화(호스트만 노출 — 서버가 host 재검증). phase 별 라벨/동작은 useRoomRecording 상태기계.
   recordPhase?: RecordingPhase
   onToggleRecord?: () => void
+  uploadPct?: number | null // UX-UPLOAD-PROGRESS: 업로드 중 진행률(%) — 라벨에 병기
 }
 
 export default function RoomBottomBar({
@@ -29,12 +31,16 @@ export default function RoomBottomBar({
   mixerSlot,
   onToggleMic,
   onToggleMixer,
+  onOpenReactions,
   onLeave,
   recordPhase = 'idle',
   onToggleRecord,
+  uploadPct,
 }: Props) {
   const { t } = useTranslation()
   const rec = REC_LABEL[recordPhase]
+  // 업로드 중이면 라벨에 진행률 병기(침묵 방지) — 그 외 phase 는 정적 라벨.
+  const recLabel = recordPhase === 'uploading' && typeof uploadPct === 'number' ? `${t(rec.key)} ${uploadPct}%` : t(rec.key)
 
   return (
     <div className="flex items-center justify-center gap-2 px-4 py-3 sm:gap-3">
@@ -43,7 +49,8 @@ export default function RoomBottomBar({
         <button
           onClick={onToggleMic}
           disabled={!connected || mutedByHost}
-          className="flex items-center gap-1.5 rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
+          aria-label={micEnabled ? t('room.micOff') : t('room.micOn')}
+          className="flex min-h-11 items-center gap-1.5 rounded-lg bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
           title={micEnabled ? t('room.micOff') : t('room.micOn')}
         >
           <span>{micEnabled ? '🎙' : '🔇'}</span>
@@ -64,7 +71,8 @@ export default function RoomBottomBar({
           onClick={onToggleMixer}
           disabled={!connected}
           aria-pressed={mixerOpen}
-          className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm ${
+          aria-label={t('room.ctrlHeadphone')}
+          className={`flex min-h-11 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm ${
             mixerOpen ? 'border-fire-amber text-fire-amber' : 'border-stage-border text-stage-text-muted hover:text-stage-text'
           }`}
           title={t('room.ctrlHeadphone')}
@@ -75,24 +83,38 @@ export default function RoomBottomBar({
         {mixerSlot}
       </div>
 
+      {/* 리액션(UX-KBD-WHEEL) — 우클릭·롱프레스 외 키보드/SR·모바일 진입점. 휠 sticky 개화. */}
+      <button
+        onClick={onOpenReactions}
+        disabled={!connected}
+        aria-label={t('room.openReactions')}
+        title={t('room.openReactions')}
+        className="flex min-h-11 items-center gap-1.5 rounded-lg border border-stage-border px-3 py-1.5 text-xs font-semibold text-stage-text-muted transition-colors hover:text-stage-text disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
+      >
+        <span aria-hidden>😊</span>
+        <span className="hidden sm:inline">{t('room.openReactions')}</span>
+      </button>
+
       {/* 무대 녹화 상태 뱃지(V-3) — 시작(idle)은 HostConsole 진입, 하단바는 진행 상태만(호스트 중지·재시도). */}
       {onToggleRecord && recordPhase !== 'idle' && (
         <button
           data-record-button={recordPhase}
           onClick={onToggleRecord}
           disabled={!connected || recordPhase === 'uploading'}
-          className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm ${rec.cls}`}
-          title={t(rec.key)}
+          aria-label={recLabel}
+          className={`flex min-h-11 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm ${rec.cls}`}
+          title={recLabel}
         >
           <span className={recordPhase === 'recording' ? 'animate-pulse' : undefined}>{rec.icon}</span>
-          <span className="hidden sm:inline">{t(rec.key)}</span>
+          <span className="hidden sm:inline">{recLabel}</span>
         </button>
       )}
 
       {/* 나가기 */}
       <button
         onClick={onLeave}
-        className="ml-auto flex items-center gap-1.5 rounded-lg border border-stage-border px-3 py-1.5 text-xs font-semibold text-stage-text-muted transition-colors hover:text-stage-text sm:px-4 sm:py-2 sm:text-sm"
+        aria-label={t('room.leave')}
+        className="ml-auto flex min-h-11 items-center gap-1.5 rounded-lg border border-stage-border px-3 py-1.5 text-xs font-semibold text-stage-text-muted transition-colors hover:text-stage-text sm:px-4 sm:py-2 sm:text-sm"
         title={t('room.leave')}
       >
         <span>🚪</span>

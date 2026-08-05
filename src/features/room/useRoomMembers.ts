@@ -20,7 +20,16 @@ export function useRoomMembers(opts: { roomId: string; joined: boolean; raiseHan
   const [actorIds, setActorIds] = useState<Set<string>>(new Set()) // 배우만(호스트 역할 배정 후보 — 관전자 제외)
   const [hostAuthId, setHostAuthId] = useState<string | null>(null) // 노트 방장 강조 + SEC-RA-1 발신자 검증
   const [raisedHands, setRaisedHands] = useState<{ authId: string; userId: string; name: string | null }[]>([])
+  const [viewers, setViewers] = useState<{ authId: string; userId: string; name: string | null }[]>([]) // SEC-1 호스트 직접 초대 후보(활성 viewer)
   const [handRaised, setHandRaised] = useState(false)
+  // SEC-4: 호스트 승계 host_change broadcast 가 유실된 클라에서도 stale hostIdentity 창을 ≤30s 로 좁히기 위한
+  // 주기적 재동기 nonce — broadcast 만 신뢰하던 ex-host 권한 잔존(desync)을 서버 진실 재조회로 보정.
+  const [periodicNonce, setPeriodicNonce] = useState(0)
+  useEffect(() => {
+    if (!joined) return
+    const id = window.setInterval(() => setPeriodicNonce((n) => n + 1), 30_000)
+    return () => window.clearInterval(id)
+  }, [joined])
 
   useEffect(() => {
     if (!joined || !session) return
@@ -39,12 +48,14 @@ export function useRoomMembers(opts: { roomId: string; joined: boolean; raiseHan
         const untilMap: Record<string, string> = {}
         const actorSet = new Set<string>()
         const raised: { authId: string; userId: string; name: string | null; at: string }[] = []
+        const viewerList: { authId: string; userId: string; name: string | null }[] = []
         for (const m of members) {
           avatars[m.authId] = m.avatarUrl
           slots[m.authId] = m.slotIndex // 절대좌석용(identity=auth uid)
           if (m.mutedByHost) muted.add(m.authId)
           if (m.mutedByHost && m.mutedUntil) untilMap[m.authId] = m.mutedUntil // R4 잔여 표시·자가해제 타이머
           if (m.role !== 'viewer') actorSet.add(m.authId) // 역할 배정 후보(ROOM-14)
+          else viewerList.push({ authId: m.authId, userId: m.userId, name: m.displayName }) // SEC-1 무대 초대 후보
           if (m.raiseHandAt) raised.push({ authId: m.authId, userId: m.userId, name: m.displayName, at: m.raiseHandAt })
         }
         raised.sort((a, b) => a.at.localeCompare(b.at)) // 시간순(먼저 든 사람 위)
@@ -53,6 +64,7 @@ export function useRoomMembers(opts: { roomId: string; joined: boolean; raiseHan
         setMutedIdentities(muted)
         setMutedUntil(untilMap)
         setActorIds(actorSet)
+        setViewers(viewerList)
         setHostAuthId(members.find((m) => m.userId === newHostId)?.authId ?? null)
         setRaisedHands(raised.map(({ authId, userId, name }) => ({ authId, userId, name })))
         useRoomStore.getState().setRoomContext({ hostId: newHostId })
@@ -68,7 +80,7 @@ export function useRoomMembers(opts: { roomId: string; joined: boolean; raiseHan
       } catch { /* 명단 조회 실패 → 기본 아바타 fallback + slot 미상은 임시배치 */ }
     })()
     return () => { cancelled = true }
-  }, [joined, session, roomId, memberKey, raiseHandRefetch])
+  }, [joined, session, roomId, memberKey, raiseHandRefetch, periodicNonce])
 
-  return { memberKey, memberAvatars, memberSlots, mutedIdentities, mutedUntil, actorIds, hostAuthId, raisedHands, handRaised, setHandRaised }
+  return { memberKey, memberAvatars, memberSlots, mutedIdentities, mutedUntil, actorIds, hostAuthId, raisedHands, viewers, handRaised, setHandRaised }
 }

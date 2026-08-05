@@ -205,6 +205,7 @@ export default function Stage({
           row={SLOTS[i].row}
           speaking={p?.isSpeaking}
           onClick={p ? () => setZoomed(p.identity) : undefined}
+          label={p ? (p.name || t('stage.seatLabel', { n: i + 1 })) : undefined}
         >
           {p && <SlotStatus muted={mutedIdentities.has(p.identity)} quality={p.connectionQuality} />}
           {/* R7 좌석 번호: 호스트 구두 지시("3번 좌석")·본인 좌석 인지용. 장식이라 aria-hidden. */}
