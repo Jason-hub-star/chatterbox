@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
     .select("user_id")
     .eq("room_id", sess.room_id)
     .neq("state", "left")
+    .not("is_disabled_by_host", "is", true) // SEC-KICK-3: 강퇴자는 동의 불가 → 분모에서도 제외(F1 동형 봉쇄 방지)
     .neq("role", "viewer");
   const allConsented = (parts ?? []).length > 0 &&
     (parts ?? []).every((p) => consent.participants[p.user_id]?.consented === true);

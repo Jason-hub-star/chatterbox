@@ -34,7 +34,9 @@ Deno.serve(async (req) => {
   const { data: mine } = await user.service
     .from("room_participants")
     .select("id, stage_invited_at")
+    // SEC-KICK-3: 강퇴자 배제 — 초대 후 120s 안에 강퇴당해도 승격이 성사돼 배우석을 영구 잠식하던 경로.
     .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
+    .not("is_disabled_by_host", "is", true)
     .maybeSingle();
   const invitedAt = mine?.stage_invited_at ? new Date(mine.stage_invited_at as string).getTime() : 0;
   if (!mine || !invitedAt || Date.now() - invitedAt > INVITE_TTL_MS) {

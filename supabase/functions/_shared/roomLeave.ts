@@ -90,11 +90,17 @@ export async function softLeaveRoom(
   let newHostId: string | null = null;
   if (room.host_id === userId) {
     // 호스트 승계: 남은 배우 중 가장 먼저 들어온 사람(뷰어는 호스트가 될 수 없음).
+    // SEC-KICK-3: 강퇴자 제외 — kick 은 is_disabled_by_host 만 세팅하고 state 는 그대로 두므로
+    //   이 필터가 없으면 강퇴당한 최선참 배우가 호스트 퇴장 시 host_id 를 물려받는다(권한상승:
+    //   requireHostRoom 은 host_id 만 비교 → kick/mute/moderate-chat/transfer-host 전권 획득).
+    //   transfer-host(:41-46)는 이미 같은 필터를 쓴다 — 승계 경로만 누락이었다.
+    // 후보가 전무하면(남은 배우가 전부 강퇴자) newHostId=null — 무주공산이 강퇴자 장악보다 안전.
     const { data: next } = await service
       .from("room_participants")
       .select("user_id")
       .eq("room_id", roomId)
       .neq("state", "left")
+      .not("is_disabled_by_host", "is", true)
       .neq("role", "viewer")
       .order("joined_at", { ascending: true })
       .limit(1)

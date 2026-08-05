@@ -4,7 +4,7 @@
 //   assign  — 호스트가 역할을 대상 참가자에게 배정(target_auth_id) 또는 해제(null).
 // 선착순 충돌은 클라 가드 + LWW(서버 무상태 릴레이) — ponytail: 실사용 충돌 잦으면 DB 클레임 테이블로 승급.
 // broadcast 'script-role' (reliable): {kind:'set', role, authId, name} | {kind:'clear', role}.
-// 수신측은 participant=undefined(서버발)만 수락. SSOT: docs/DATA-SCHEMA.md §2 · contracts/ScriptPanel.md
+// 수신측은 participant=undefined(서버발)만 수락. SSOT: docs/specs/DATA-SCHEMA.md §2 · contracts/ScriptPanel.md
 import { cors, json, getAppUser, isUuid } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
   const { data: me } = await user.service
     .from("room_participants").select("id, role")
     .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
+    .not("is_disabled_by_host", "is", true) // SEC-KICK-3: 강퇴자의 역할 claim/release 스팸 차단
     .limit(1).maybeSingle();
   if (!me) return json({ error: "Not a participant" }, 403);
 
@@ -72,6 +73,7 @@ Deno.serve(async (req) => {
       const { data: targetMember } = await user.service
         .from("room_participants").select("id, role")
         .eq("room_id", room_id).eq("user_id", targetUser.id).neq("state", "left")
+        .not("is_disabled_by_host", "is", true) // SEC-KICK-3: 강퇴자에게 역할 배정 불가
         .limit(1).maybeSingle();
       if (!targetMember || targetMember.role === "viewer") {
         return json({ error: "Target is not an active actor" }, 403);

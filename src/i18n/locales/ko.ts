@@ -407,7 +407,7 @@ export const ko: Record<string, string> = {
   "host.roomPassword": "방 비밀번호",
   "host.passwordSet": "🔒 잠금 설정됨 — 입장하려면 비밀번호가 필요해요.",
   "host.passwordNone": "공개 방 — 누구나 입장할 수 있어요.",
-  "host.passwordPlaceholder": "새 비밀번호 (4자 이상)",
+  "host.passwordPlaceholder": "새 비밀번호 (6자 이상·숫자만 불가)",
   "host.setPassword": "설정",
   "host.removePassword": "해제",
   "host.passwordFailed": "비밀번호 설정에 실패했어요.",

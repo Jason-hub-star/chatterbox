@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
   const { data: part } = await user.service
     .from("room_participants").select("id")
     .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
+    .not("is_disabled_by_host", "is", true) // SEC-KICK-3: 강퇴자 투표 배제(집계 오염 — isActiveParticipant 동일 게이트)
     .maybeSingle();
   if (!part) return json({ error: "Not a participant" }, 403);
 

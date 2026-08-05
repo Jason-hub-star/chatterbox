@@ -2,7 +2,7 @@
 // 왜 서버 경유(SEC-5, dogfood-audit): 클라 직접 'script-cue' publishData 는 (1) 아무 참가자나 위조 가능(진행권한
 //   스푸핑 → 전원 텔레프롬프터 desync), (2) datachannel 개설지연으로 첫 방송 유실. 서버는 host 를 확정 +
 //   안정연결(유실0). 수신측은 participant=undefined(서버발)만 수락 → 클라 직접 publish 는 드롭. send-reaction 과 동형.
-// SSOT: contracts/ScriptPanel.md · state-machines/Script.md · docs/DOGFOOD-AUDIT-2026-07.md §SEC-5
+// SSOT: contracts/ScriptPanel.md · state-machines/Script.md · docs/status/DOGFOOD-AUDIT-2026-07.md §SEC-5
 import { getAppUser, json, isUuid, cors } from "../_shared/supa.ts";
 import { broadcastData } from "../_shared/livekit.ts";
 
@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
     const { data: member } = await user.service
       .from("room_participants").select("id, role")
       .eq("room_id", room_id).eq("user_id", user.userId).neq("state", "left")
+      .not("is_disabled_by_host", "is", true) // SEC-KICK-3: 강퇴자가 신뢰 broadcast 로 전원 큐를 흔들던 경로
       .limit(1).maybeSingle();
     if (!member) return json({ error: "Not a participant" }, 403);
     // 진행은 배우의 것 — 관전자는 리허설/연습에서도 텔레프롬프터를 못 움직인다(클레임 규칙과 대칭).

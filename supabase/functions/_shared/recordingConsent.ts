@@ -27,11 +27,15 @@ export async function recomputeConsent(
   roomId: string,
   consent: RecordingConsent,
 ): Promise<boolean> {
+  // SEC-KICK-3: 강퇴자를 분모에서 제외 — 강퇴자는 UI 밖으로 밀려나 동의를 낼 방법이 없는데
+  //   분모에는 남아 all_consented 가 영구 미충족 = 녹화 시작이 봉쇄된다(record-consent 의
+  //   뷰어 계수 결함 F1 과 동형의 기능 DoS).
   const { data: parts } = await service
     .from("room_participants")
     .select("user_id")
     .eq("room_id", roomId)
-    .neq("state", "left");
+    .neq("state", "left")
+    .not("is_disabled_by_host", "is", true);
   const list = (parts ?? []) as { user_id: string }[];
   return list.length > 0 &&
     list.every((p) => consent.participants[p.user_id]?.consented === true);

@@ -407,7 +407,7 @@ export const en: Record<string, string> = {
   'host.roomPassword': 'Room password',
   'host.passwordSet': '🔒 Locked — a password is required to enter.',
   'host.passwordNone': 'Public room — anyone can join.',
-  'host.passwordPlaceholder': 'New password (4+ characters)',
+  'host.passwordPlaceholder': 'New password (6+ chars, not all digits)',
   'host.setPassword': 'Set',
   'host.removePassword': 'Remove',
   'host.passwordFailed': 'Failed to set password.',

@@ -407,7 +407,7 @@ export const ja: Record<string, string> = {
   'host.roomPassword': 'ルームパスワード',
   'host.passwordSet': '🔒 ロック中 — 入室にはパスワードが必要です。',
   'host.passwordNone': '公開ルーム — 誰でも入室できます。',
-  'host.passwordPlaceholder': '新しいパスワード（4文字以上）',
+  'host.passwordPlaceholder': '新しいパスワード（6文字以上・数字のみ不可）',
   'host.setPassword': '設定',
   'host.removePassword': '解除',
   'host.passwordFailed': 'パスワードの設定に失敗しました。',

@@ -576,7 +576,8 @@ export default function HostConsole({
           />
           <button
             type="submit"
-            disabled={pwBusy || pwInput.trim().length < 4}
+            /* SEC-PW-1: 서버 정책(6자 이상·숫자전용 금지)과 동일 조건 — 왕복 전에 막는다 */
+            disabled={pwBusy || pwInput.trim().length < 6 || /^\d+$/.test(pwInput.trim())}
             className="shrink-0 rounded bg-fire-amber px-3 py-1.5 text-xs font-semibold text-stage-base disabled:opacity-40"
           >
             {t('host.setPassword')}

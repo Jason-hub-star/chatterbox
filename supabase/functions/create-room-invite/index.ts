@@ -47,6 +47,27 @@ Deno.serve(async (req) => {
     const { data: target } = await service
       .from("users").select("id").eq("id", invitedUserId).is("deleted_at", null).maybeSingle();
     if (!target) return json({ error: "Invitee not found" }, 404);
+
+    // SEC-NOTIFY-1: 상호 차단 게이트. 지명초대는 사전 관계 없이 임의 유저의 인박스에 알림을 넣는
+    //   유일한 경로였고(관계검증 0), payload 의 room_title 은 호스트가 정한 80자 자유 문자열이라
+    //   차단한 상대에게 하루 480건(20/시간)의 임의 문구를 배달할 수 있었다. 차단은 그동안 채팅
+    //   접힘 필터에 불과했으나(§16.2), 알림 배달은 차단을 실질 무력화하므로 이 경로만 격리로 승격.
+    // blocker/blocked 를 둘 다 이 두 사람으로 제한 → 반환 행은 어느 방향이든 상호 차단 1건.
+    const { data: blocks } = await service
+      .from("user_blocks").select("blocker_user_id")
+      .in("blocker_user_id", [userId, invitedUserId])
+      .in("blocked_user_id", [userId, invitedUserId])
+      .limit(1);
+    if (blocks && blocks.length > 0) return json({ error: "Cannot invite this user" }, 403);
+
+    // 대상별 보조 캡 — 전체 20/시간 안에서 한 사람에게 몰아치는 harassment 를 막는다(전체 캡만으론
+    //   같은 피해자에게 전량을 쏟을 수 있었다). 정상 재초대는 하루 3회면 충분.
+    const { data: tOk } = await service.rpc("check_rate_limit", {
+      p_key: `invite-target:${userId}:${invitedUserId}`,
+      p_max: 3,
+      p_window_sec: 86400,
+    });
+    if (tOk === false) return json({ error: "이 사용자에게 초대를 너무 많이 보냈어요." }, 429);
   }
 
   const bytes = new Uint8Array(16); // 128-bit(SEC-INVITE-ENTROPY)

@@ -1,5 +1,5 @@
 // set-room-password: 호스트가 방 비밀번호를 설정/변경/해제한다 (HOST-06, 잠금방).
-// SSOT: docs/DATA-SCHEMA.md §1.2.1 (room_secrets) · docs/contracts/HostConsole.md
+// SSOT: docs/specs/DATA-SCHEMA.md §1.2.1 (room_secrets) · docs/contracts/HostConsole.md
 // 입력: { room_id, password }  — password "" 또는 공백만이면 잠금 해제. 그 외 4~64자.
 // 보안(성역): 호출자 == rooms.host_id 서버 검증. 해시는 room_secrets(서버 전용)에만, 클라 미노출.
 import { cors, json, getAppUser, isUuid, requireHostRoom } from "../_shared/supa.ts";
@@ -36,7 +36,14 @@ Deno.serve(async (req) => {
     return json({ ok: true, is_locked: false }, 200);
   }
 
-  if (password.length < 4 || password.length > 64) return json({ error: "Invalid password" }, 400);
+  // SEC-PW-1: 최소 6자 + 숫자전용 금지. join-room-with-password 의 레이트리밋 키가
+  //   `pwjoin:<user>:<room>` 이라 계정당 독립 카운터 → 계정을 늘리면 시도를 병렬화할 수 있다
+  //   (4자리 숫자 = 1계정 6.9일이지만 100계정이면 100분). 방 단위 전역 카운터로 막으면 공격자가
+  //   일부러 틀려 정상 유저를 잠그는 DoS 가 되므로, 방어를 탐색공간 쪽에 둔다(1만 → 수십억).
+  //   ponytail ceiling: 기존 방의 약한 비번은 그대로 동작한다(재설정 시에만 새 정책 적용) —
+  //   전수 강제 만료는 호스트 이탈 비용이 커 defer.
+  if (password.length < 6 || password.length > 64) return json({ error: "Invalid password" }, 400);
+  if (/^\d+$/.test(password)) return json({ error: "Numeric-only password" }, 400);
 
   const password_hash = await hashPassword(password);
   const { error: upErr } = await service

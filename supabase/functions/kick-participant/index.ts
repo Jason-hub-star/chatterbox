@@ -49,10 +49,19 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!part) return json({ error: "Participant not found" }, 404);
 
+  // KICK-SEAT: 좌석 회수 — 강퇴 행은 지금까지 role='actor'·slot_index 를 그대로 들고 남아
+  //   join_room_as_participant 의 정원(`state<>'left' and role<>'viewer'`)·빈슬롯 계산에 계속
+  //   잡혔다(6인방에서 5명 강퇴 = 남는 자리 0으로 고착). state 를 'left' 로 바꾸는 해법은
+  //   금지 — RPC 의 멱등 조회(`state<>'left'`)가 행을 못 찾아 새 행을 INSERT 하고 그 순간
+  //   is_disabled_by_host 가 사라진다(강퇴 무력화). 대신 기존 "뷰어=좌석 비점유" 의미론을
+  //   재사용해 행은 남기고 좌석만 비운다: 멱등 조회는 여전히 이 행을 찾아 'rejoined' 로 막힌다.
+  //   slot_index=null 은 빈슬롯 계산의 `slot_index is not null` 필터와 짝이 맞아 중복 배정도 없다.
   const { error: updErr } = await user.service
     .from("room_participants")
     .update({
       is_disabled_by_host: true,
+      role: "viewer",
+      slot_index: null,
       token_version: part.token_version + 1,
       token_revoked_at: new Date().toISOString(),
     })

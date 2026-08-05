@@ -32,7 +32,10 @@ Deno.serve(async (req) => {
   const { data: target } = await user.service
     .from("room_participants")
     .select("id, role, users(auth_id)")
+    // SEC-KICK-3: 강퇴자 배제 — KICK-SEAT 이후 강퇴 행은 role='viewer' 라 이 조회에 걸리므로
+    //   이 필터가 없으면 호스트가 강퇴한 사람을 무대로 되부르는 경로가 열린다.
     .eq("room_id", room_id).eq("user_id", target_user_id).neq("state", "left")
+    .not("is_disabled_by_host", "is", true)
     .maybeSingle();
   if (!target) return json({ error: "Target not a participant" }, 404);
   if (target.role !== "viewer") return json({ error: "Already an actor" }, 409);
