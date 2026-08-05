@@ -229,7 +229,7 @@ function UploadWizard({ onClose, onSubmit }: { onClose: () => void; onSubmit: (f
           className="grid w-full place-items-center gap-2 rounded-lg border border-dashed border-stage-border bg-stage-base/40 px-4 py-5 text-xs text-stage-text-muted hover:border-fire-amber/60 hover:text-stage-text"
         >
           {previewUrl ? (
-            <img src={previewUrl} alt="" className="max-h-40 rounded-md" />
+            <img src={previewUrl} alt="" className="max-h-40 max-w-full rounded-md" />
           ) : (
             <span>{t('atelier.uploadDrop')}</span>
           )}
@@ -319,7 +319,7 @@ export default function CommissionCorner({
                 type="button"
                 onClick={onDismissAwayDone}
                 aria-label={t('common.close')}
-                className="shrink-0 text-stage-text-muted hover:text-stage-text"
+                className="touch-target grid shrink-0 place-items-center text-stage-text-muted hover:text-stage-text"
               >
                 ✕
               </button>
@@ -339,7 +339,7 @@ export default function CommissionCorner({
                 type="button"
                 onClick={onDismissReused}
                 aria-label={t('common.close')}
-                className="shrink-0 text-stage-text-muted hover:text-stage-text"
+                className="touch-target grid shrink-0 place-items-center text-stage-text-muted hover:text-stage-text"
               >
                 ✕
               </button>

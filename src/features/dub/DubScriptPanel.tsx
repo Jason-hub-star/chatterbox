@@ -143,7 +143,7 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
                             aria-label={t('dub.rehearseHint')}
                             title={t('dub.rehearseHint')}
                             data-dub-relisten
-                            className="shrink-0 text-xs hover:brightness-125"
+                            className="touch-target shrink-0 text-xs hover:brightness-125"
                           >
                             🎧
                           </button>
@@ -157,7 +157,7 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
                           )}
                           aria-label={t('dub.recordFromScript')}
                           title={t('dub.recordFromScript')}
-                          className="shrink-0 text-xs text-fire-amber hover:brightness-125"
+                          className="touch-target shrink-0 text-xs text-fire-amber hover:brightness-125"
                         >
                           🎙
                         </button>
@@ -167,7 +167,7 @@ export default function DubScriptPanel({ isHost }: { isHost: boolean }) {
                           onClick={() => setEditing({ id: seg.id, value: shown })}
                           aria-label={t('dub.segEditLabel')}
                           title={t('dub.segEditLabel')}
-                          className="shrink-0 text-xs text-stage-text-muted hover:text-fire-amber"
+                          className="touch-target shrink-0 text-xs text-stage-text-muted hover:text-fire-amber"
                         >
                           ✏️
                         </button>

@@ -94,14 +94,14 @@ export default function TheaterHero({
           <button
             onClick={() => setIdx((i) => (i - 1 + count) % count)}
             aria-label={t('theater.heroPrev')}
-            className="absolute left-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-lg text-white backdrop-blur transition hover:bg-black/60"
+            className="touch-target absolute left-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-lg text-white backdrop-blur transition hover:bg-black/60"
           >
             ‹
           </button>
           <button
             onClick={() => setIdx((i) => (i + 1) % count)}
             aria-label={t('theater.heroNext')}
-            className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-lg text-white backdrop-blur transition hover:bg-black/60"
+            className="touch-target absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-lg text-white backdrop-blur transition hover:bg-black/60"
           >
             ›
           </button>

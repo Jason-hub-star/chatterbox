@@ -24,7 +24,7 @@ export default function RoomJoinGate({ phase, backdrop, joinError, kickReason, o
   // RM-JOIN-ROLE: 배우/관전 선택 — 카메라로 아바타를 움직이는 앱이라 진입 시 의도 확정(Zoom join-with-video 패턴).
   if (phase === 'choose') {
     return (
-      <main className="relative grid min-h-screen place-items-center overflow-hidden bg-stage-base text-stage-text">
+      <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-stage-base text-stage-text">
         {backdrop && (
           <img src={backdrop} alt="" aria-hidden="true" draggable={false} className="scene-veil select-none" />
         )}
@@ -55,7 +55,7 @@ export default function RoomJoinGate({ phase, backdrop, joinError, kickReason, o
   if (phase === 'joining' || phase === 'entering') {
     const entering = phase === 'entering'
     return (
-      <main className="relative grid min-h-screen place-items-center overflow-hidden bg-stage-base text-stage-text-muted">
+      <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-stage-base text-stage-text-muted">
         {backdrop && (
           <img src={backdrop} alt="" aria-hidden="true" draggable={false} className="scene-veil select-none" />
         )}
@@ -98,7 +98,7 @@ export default function RoomJoinGate({ phase, backdrop, joinError, kickReason, o
       }
     }
     return (
-      <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
+      <main className="grid min-h-dvh place-items-center bg-stage-base text-stage-text">
         <form onSubmit={submit} className="w-full max-w-xs px-6 text-center">
           <p className="mb-4 text-sm text-stage-text-muted">{t('room.passwordPrompt')}</p>
           <input
@@ -135,7 +135,7 @@ export default function RoomJoinGate({ phase, backdrop, joinError, kickReason, o
 
   // error / kicked — 메시지만 다른 동일 골격
   return (
-    <main className="grid min-h-screen place-items-center bg-stage-base text-stage-text">
+    <main className="grid min-h-dvh place-items-center bg-stage-base text-stage-text">
       <div className="text-center">
         <p className="text-fire-hot" role="alert">{phase === 'kicked' ? t('host.kickedNotice') : joinError}</p>
         {phase === 'kicked' && kickReason && (

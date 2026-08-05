@@ -452,5 +452,8 @@ body {
    핸들은 44px 시 짧은 세그 블록을 덮어 드래그가 오히려 깨짐 → 24px + 키보드 retime(←/→)이 등가 대안. */
 @media (pointer: coarse) {
   .touch-target { min-width: 44px; min-height: 44px; }
-  .touch-handle { width: 24px; }
+  /* touch-action:none — 트림 핸들 드래그가 스크롤 컨테이너 pan 과 같은 축이라, 없으면 컴포지터가 스크롤을 먼저 잡아 드래그와 싸움 */
+  .touch-handle { width: 24px; touch-action: none; }
+  /* 찻집 칩 = 페이지 유일 조작 → 코어스 포인터에서만 44px(데스크톱 밀도 보존) */
+  .tea-chip { min-height: 44px; }
 }

@@ -113,7 +113,7 @@ export default function ScriptPanel({
           const base = 'rounded-full px-2 py-0.5 text-[11px] font-medium'
           if (mine) {
             return (
-              <button key={r} onClick={() => onRelease(r)} className={`${base} bg-fire-amber/20 text-fire-amber`}>
+              <button key={r} onClick={() => onRelease(r)} className={`touch-target ${base} bg-fire-amber/20 text-fire-amber`}>
                 {r} · {t('script.me')}
               </button>
             )
@@ -136,7 +136,7 @@ export default function ScriptPanel({
             <button
               key={r}
               onClick={() => onClaim(r)}
-              className={`${base} border border-dashed border-stage-border text-stage-text-muted hover:border-fire-amber hover:text-fire-amber`}
+              className={`touch-target ${base} border border-dashed border-stage-border text-stage-text-muted hover:border-fire-amber hover:text-fire-amber`}
             >
               {r}
             </button>

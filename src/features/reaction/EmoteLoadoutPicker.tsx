@@ -58,7 +58,7 @@ export default function EmoteLoadoutPicker({ onClose }: { onClose: () => void })
               onClick={() => move(i, -1)}
               disabled={i === 0}
               aria-label={t('reaction.moveUp', { label: s.label })}
-              className="grid h-6 w-6 place-items-center rounded text-stage-text-muted hover:text-stage-text disabled:opacity-30"
+              className="touch-target grid h-6 w-6 place-items-center rounded text-stage-text-muted hover:text-stage-text disabled:opacity-30"
             >
               ↑
             </button>
@@ -67,7 +67,7 @@ export default function EmoteLoadoutPicker({ onClose }: { onClose: () => void })
               onClick={() => move(i, 1)}
               disabled={i === draft.length - 1}
               aria-label={t('reaction.moveDown', { label: s.label })}
-              className="grid h-6 w-6 place-items-center rounded text-stage-text-muted hover:text-stage-text disabled:opacity-30"
+              className="touch-target grid h-6 w-6 place-items-center rounded text-stage-text-muted hover:text-stage-text disabled:opacity-30"
             >
               ↓
             </button>
@@ -76,7 +76,7 @@ export default function EmoteLoadoutPicker({ onClose }: { onClose: () => void })
               onClick={() => remove(s.id)}
               disabled={draft.length <= 1}
               aria-label={t('reaction.removeSlot', { label: s.label })}
-              className="grid h-6 w-6 place-items-center rounded text-stage-text-muted hover:text-fire-hot disabled:opacity-30"
+              className="touch-target grid h-6 w-6 place-items-center rounded text-stage-text-muted hover:text-fire-hot disabled:opacity-30"
             >
               ✕
             </button>
@@ -103,7 +103,7 @@ export default function EmoteLoadoutPicker({ onClose }: { onClose: () => void })
               disabled={full}
               title={e.label}
               aria-label={t('reaction.addSlot', { label: e.label })}
-              className="grid h-9 w-9 place-items-center rounded-lg border border-stage-border bg-stage-elevated/60 text-lg hover:border-fire-amber disabled:opacity-30"
+              className="touch-target grid h-9 w-9 place-items-center rounded-lg border border-stage-border bg-stage-elevated/60 text-lg hover:border-fire-amber disabled:opacity-30"
             >
               <span aria-hidden>{e.emoji}</span>
             </button>

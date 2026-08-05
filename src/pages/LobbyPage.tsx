@@ -227,7 +227,7 @@ export default function LobbyPage() {
               <button
                 type="button"
                 onClick={() => void useUserStore.getState().logout()}
-                className="rounded px-2 py-1 text-sm text-stage-text/60 hover:text-stage-text"
+                className="touch-target rounded px-2 py-1 text-sm text-stage-text/60 hover:text-stage-text"
               >
                 {t('lobby.logout')}
               </button>
@@ -271,17 +271,17 @@ export default function LobbyPage() {
       </div>
 
       {/* 모바일 하단 네비 — 내부 4관 라우트 직행. */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-stage-border bg-stage-panel/95 backdrop-blur md:hidden">
-        <button onClick={() => navigate('/lobby/theater')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-stage-border bg-stage-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+        <button onClick={() => navigate('/lobby/theater')} className="touch-target flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navRooms')}
         </button>
-        <button onClick={() => navigate('/lobby/workshop')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+        <button onClick={() => navigate('/lobby/workshop')} className="touch-target flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navCreate')}
         </button>
-        <button onClick={() => navigate('/lobby/theater?tab=ticket')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+        <button onClick={() => navigate('/lobby/theater?tab=ticket')} className="touch-target flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navReserve')}
         </button>
-        <button onClick={() => navigate('/lobby/atelier')} className="flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
+        <button onClick={() => navigate('/lobby/atelier')} className="touch-target flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navSettings')}
         </button>
       </nav>

@@ -794,21 +794,21 @@ export default function HostConsole({
                   <button
                     onClick={() => void doMute(p.identity, !isMuted)}
                     disabled={muting === p.identity}
-                    className="rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+                    className="touch-target rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
                   >
                     {muting === p.identity ? t('host.muting') : isMuted ? t('host.unmute') : t('host.mute')}
                   </button>
                   {actorIds.has(p.identity) && (
                     <button
                       onClick={() => setTransferTarget({ identity: p.identity, name: p.name })}
-                      className="rounded border border-fire-amber/50 px-2 py-1 text-xs text-fire-amber hover:bg-fire-amber/10"
+                      className="touch-target rounded border border-fire-amber/50 px-2 py-1 text-xs text-fire-amber hover:bg-fire-amber/10"
                     >
                       {t('host.transfer')}
                     </button>
                   )}
                   <button
                     onClick={() => { setKickReasonInput(''); setConfirming({ identity: p.identity, name: p.name }) }}
-                    className="rounded border border-fire-hot/50 px-2 py-1 text-xs text-fire-hot hover:bg-fire-hot/10"
+                    className="touch-target rounded border border-fire-hot/50 px-2 py-1 text-xs text-fire-hot hover:bg-fire-hot/10"
                   >
                     {t('host.kick')}
                   </button>

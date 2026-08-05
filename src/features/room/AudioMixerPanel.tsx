@@ -52,7 +52,8 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
       aria-label={t('stage.mixerTitle')}
       tabIndex={-1}
       // 🎧 오디오 버튼 앵커 팝오버(RoomBottomBar 의 relative 래퍼 안) — 버튼 바로 위에 열린다. 내용 길면 내부 스크롤.
-      className="absolute bottom-full right-0 mb-2 z-40 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-stage-border bg-stage-panel/95 p-3 shadow-lg outline-none"
+      // left-0 앵커 + 뷰포트 클램프: 360px 에서 ml-auto 로 왼쪽에 몰린 버튼에 right-0 로 열면 256px 패널이 화면밖으로 잘림.
+      className="absolute bottom-full left-0 mb-2 z-40 max-h-[70vh] w-[min(16rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-stage-border bg-stage-panel/95 p-3 shadow-lg outline-none"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-stage-text">🎚 {t('stage.mixerTitle')}</h3>

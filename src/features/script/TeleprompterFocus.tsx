@@ -71,7 +71,7 @@ export default function TeleprompterFocus({
             type="button"
             onClick={() => onAdvance(-1)}
             disabled={atStart}
-            className="rounded-lg border border-stage-border px-3 py-1 text-sm text-stage-text disabled:opacity-40"
+            className="touch-target rounded-lg border border-stage-border px-3 py-1 text-sm text-stage-text disabled:opacity-40"
           >
             {t('script.prev')}
           </button>
@@ -79,7 +79,7 @@ export default function TeleprompterFocus({
             type="button"
             onClick={() => onAdvance(1)}
             disabled={atEnd}
-            className="rounded-lg bg-fire-amber px-4 py-1 text-sm font-semibold text-stage-base disabled:opacity-40"
+            className="touch-target rounded-lg bg-fire-amber px-4 py-1 text-sm font-semibold text-stage-base disabled:opacity-40"
           >
             {t('script.next')}
           </button>

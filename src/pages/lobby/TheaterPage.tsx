@@ -173,7 +173,7 @@ export default function TheaterPage() {
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
-                className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+                className={`touch-target shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
                   filter === f.key
                     ? 'bg-stage-text text-stage-base'
                     : 'border border-stage-border text-stage-text-muted hover:text-stage-text'
@@ -188,7 +188,7 @@ export default function TheaterPage() {
                 key={g}
                 onClick={() => setGenreFilter((cur) => (cur === g ? null : g))}
                 aria-pressed={genreFilter === g}
-                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                className={`touch-target shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition ${
                   genreFilter === g
                     ? 'bg-stage-text text-stage-base'
                     : 'border border-stage-border text-stage-text-muted hover:text-stage-text'

@@ -89,7 +89,7 @@ export default function GreenRoomPage() {
   const deviceTrouble = micErr || trackingState === 'ERROR' || trackingState === 'UNSUPPORTED'
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-stage-base p-4 text-stage-text md:p-6">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-stage-base p-4 text-stage-text md:p-6">
       {/* 백드롭: 대극장 내부 원화 디밍+블러(주인님 콜) — 대극장→분장실→무대가 한 시퀀스로 이어짐 */}
       {backdrop && <img src={backdrop} alt="" aria-hidden="true" draggable={false} className="scene-veil select-none" />}
 

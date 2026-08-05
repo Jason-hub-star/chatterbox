@@ -41,7 +41,7 @@ export default function RightPanel({ tabs }: { tabs: RightPanelTab[] }) {
               role="tab"
               aria-selected={selected}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 px-3 py-2 text-sm font-semibold ${
+              className={`touch-target flex-1 px-3 py-2 text-sm font-semibold ${
                 selected
                   ? 'border-b-2 border-fire-amber text-stage-text'
                   : 'text-stage-text-muted hover:text-stage-text'

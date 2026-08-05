@@ -84,7 +84,7 @@ export default function VgenPromptPanel({ roomId, onClose }: { roomId: string; o
         onChange={(e) => setPrompt(e.target.value.slice(0, MAX_PROMPT))}
         placeholder={t('vgen.promptPlaceholder')}
         rows={3}
-        className="mt-3 w-full resize-none rounded-lg border border-stage-border bg-transparent p-2 text-sm text-stage-text placeholder:text-stage-text-muted"
+        className="mt-3 w-full resize-none rounded-lg border border-stage-border bg-transparent p-2 text-base text-stage-text placeholder:text-stage-text-muted md:text-sm"
       />
       <div className="mt-1 flex items-center justify-between">
         <button onClick={onRefine} disabled={!prompt.trim() || refining || isGenerating}

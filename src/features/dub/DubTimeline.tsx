@@ -192,7 +192,9 @@ export default function DubTimeline({ videoRef, durationMs, isHost, onDubEdit }:
                   retimeBy(seg, e.shiftKey ? 'start' : 'end', e.key === 'ArrowLeft' ? -KEY_STEP_MS : KEY_STEP_MS)
                 }}
                 title={`${(startMs / 1000).toFixed(1)}s · ${seg.translated_text || seg.text}`}
-                style={{ left: `${left}%`, width: `${width}%` }}
+                // ponytail: 세그 폭이 %라 짧은 대사가 360px 에서 1~12px → 탭 불가. px 바닥값(24px=touch-handle 폭)으로
+                // 최소 탭 영역 보장. ceiling: 촘촘한 구간은 겹침 잔존 → 선택 시 오토줌이 근본 업그레이드.
+                style={{ left: `${left}%`, width: `${width}%`, minWidth: '1.5rem' }}
                 className={`absolute inset-y-2 overflow-hidden whitespace-nowrap rounded border px-0.5 text-left text-[9px] leading-none text-white/90
                   ${name ? colorFor(name) : 'bg-stage-border/60'}
                   ${recorded ? '' : 'border-dashed opacity-50'}

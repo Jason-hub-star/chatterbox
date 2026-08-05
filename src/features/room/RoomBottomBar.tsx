@@ -43,7 +43,7 @@ export default function RoomBottomBar({
   const recLabel = recordPhase === 'uploading' && typeof uploadPct === 'number' ? `${t(rec.key)} ${uploadPct}%` : t(rec.key)
 
   return (
-    <div className="flex items-center justify-center gap-2 px-4 py-3 sm:gap-3">
+    <div className="flex items-center justify-center gap-2 px-4 py-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] sm:gap-3">
       {/* 마이크(배우) — 손들기(관전)는 ROOM-21 무대 승격 완성까지 가림(prop·i18n 보존, 부활 시 JSX만 복원). */}
       {!isViewer && (
         <button

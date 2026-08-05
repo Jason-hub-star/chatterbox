@@ -102,7 +102,7 @@ export default function PollBar({ roomId }: { roomId: string }) {
               key={i}
               onClick={() => void vote(i)}
               disabled={busy}
-              className={`rounded-lg border px-3 py-1.5 text-left text-xs transition-colors disabled:opacity-40 ${
+              className={`touch-target rounded-lg border px-3 py-1.5 text-left text-xs transition-colors disabled:opacity-40 ${
                 mine
                   ? 'border-fire-amber bg-fire-amber/15 text-fire-amber'
                   : 'border-stage-border text-stage-text-muted hover:text-stage-text'

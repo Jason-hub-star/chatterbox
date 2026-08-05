@@ -19,7 +19,7 @@ export default function AuthShell({ children }: { children: ReactNode }) {
   const [galleryOpen, setGalleryOpen] = useState(false)
   return (
     <main
-      className="relative h-screen overflow-hidden bg-stage-base text-stage-text lg:flex"
+      className="relative min-h-dvh bg-stage-base text-stage-text lg:flex lg:h-screen lg:overflow-hidden"
       style={{ '--scene-accent': scene.accent } as React.CSSProperties}
     >
       {/* 스플래시 — 모바일: 전체 배경 / lg: 우측 flex 컬럼(패널과 비겹침) */}

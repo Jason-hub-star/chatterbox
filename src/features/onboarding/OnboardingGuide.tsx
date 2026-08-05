@@ -63,7 +63,7 @@ export default function OnboardingGuide() {
                 type="button"
                 aria-pressed={picked.includes(g)}
                 onClick={() => toggle(g)}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                className={`touch-target rounded-full border px-3 py-1.5 text-sm transition ${
                   picked.includes(g)
                     ? 'border-fire-amber bg-fire-amber/15 text-fire-amber'
                     : 'border-stage-border text-stage-text-muted hover:text-stage-text'

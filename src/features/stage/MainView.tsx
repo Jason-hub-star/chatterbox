@@ -143,7 +143,7 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
             🎙 {t('dub.myTurnBanner')}
             <button
               onClick={() => useDubStore.getState().recEngine?.start(myTurnTrackId)}
-              className="rounded bg-stage-base/90 px-2 py-0.5 text-fire-amber hover:brightness-110"
+              className="touch-target rounded bg-stage-base/90 px-2 py-0.5 text-fire-amber hover:brightness-110"
             >
               {t('dub.recordNow')}
             </button>
@@ -163,7 +163,7 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
             {recMicStream && <MicLevelMeter stream={recMicStream} />}
             <button
               onClick={() => useDubStore.getState().recEngine?.stop()}
-              className="shrink-0 rounded-lg bg-fire-hot px-3 py-1 text-xs font-semibold text-stage-base"
+              className="touch-target shrink-0 rounded-lg bg-fire-hot px-3 py-1 text-xs font-semibold text-stage-base"
             >
               {t('dub.stopButton')}
             </button>
@@ -172,7 +172,7 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
               onClick={() => useDubStore.getState().setRecLoop(!recLoop)}
               aria-pressed={recLoop}
               title={t('dub.loopHint')}
-              className={`shrink-0 rounded-lg px-2 py-1 text-xs ${recLoop ? 'bg-fire-amber text-stage-base' : 'text-stage-text hover:text-fire-amber'}`}
+              className={`touch-target shrink-0 rounded-lg px-2 py-1 text-xs ${recLoop ? 'bg-fire-amber text-stage-base' : 'text-stage-text hover:text-fire-amber'}`}
             >
               🔁
             </button>
@@ -196,21 +196,21 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
             <button
               onClick={() => useDubStore.getState().recEngine?.replay()}
               disabled={recBusy}
-              className="rounded-lg border border-stage-border px-2 py-1 hover:bg-white/10 disabled:opacity-40"
+              className="touch-target rounded-lg border border-stage-border px-2 py-1 hover:bg-white/10 disabled:opacity-40"
             >
               {t('dub.replayPreview')}
             </button>
             <button
               onClick={() => useDubStore.getState().recEngine?.start(recPreview.trackId)}
               disabled={recBusy}
-              className="rounded-lg border border-stage-border px-2 py-1 hover:bg-white/10 disabled:opacity-40"
+              className="touch-target rounded-lg border border-stage-border px-2 py-1 hover:bg-white/10 disabled:opacity-40"
             >
               🎙 {t('dub.retake')}
             </button>
             <button
               onClick={() => useDubStore.getState().recEngine?.submit()}
               disabled={recBusy}
-              className="rounded-lg bg-fire-amber px-3 py-1 font-semibold text-stage-base disabled:opacity-40"
+              className="touch-target rounded-lg bg-fire-amber px-3 py-1 font-semibold text-stage-base disabled:opacity-40"
             >
               {recBusy ? t('dub.submitLoading') : t('dub.submitButton')}
             </button>
@@ -257,14 +257,14 @@ export default function MainView({ isHost, onStop, onDubEdit }: { isHost: boolea
                 if (v) v.playbackRate = r
               }}
               aria-label={t('stage.rate', { rate: r })}
-              className={`rounded bg-stage-base/70 px-1.5 py-0.5 text-[11px] ${rate === r ? 'text-fire-amber' : 'text-stage-text hover:text-fire-amber'}`}
+              className={`touch-target rounded bg-stage-base/70 px-1.5 py-0.5 text-[11px] ${rate === r ? 'text-fire-amber' : 'text-stage-text hover:text-fire-amber'}`}
             >
               {r}x
             </button>
           ))}
           <button
             onClick={onStop}
-            className="rounded bg-stage-base/70 px-2 py-0.5 text-[11px] text-stage-text hover:text-fire-hot"
+            className="touch-target rounded bg-stage-base/70 px-2 py-0.5 text-[11px] text-stage-text hover:text-fire-hot"
           >
             {t('stage.stopShare')}
           </button>

@@ -139,20 +139,20 @@ export default function VgenStatusTab({
       {recentJobs.length > 0 && (
         <ul className="mt-3 space-y-1">
           {recentJobs.map((j) => (
-            <li key={j.id} className="flex items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm">
+            <li key={j.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm">
               <span className="flex-1 truncate text-stage-text">{j.promptText}</span>
               <span className="text-xs text-stage-text-muted">{j.status} · {j.creditCost}cr</span>
               {j.status === 'done' && (
-                <button onClick={() => play(j.id)} className="text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.playButton')}</button>
+                <button onClick={() => play(j.id)} className="touch-target px-1 text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.playButton')}</button>
               )}
               {j.status === 'done' && (
                 <>
-                  <button onClick={() => void download(j.id)} className="text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.downloadButton')}</button>
-                  <button onClick={() => void copyLink(j.id)} className="text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.linkCopyButton')}</button>
+                  <button onClick={() => void download(j.id)} className="touch-target px-1 text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.downloadButton')}</button>
+                  <button onClick={() => void copyLink(j.id)} className="touch-target px-1 text-xs text-stage-text-muted hover:text-stage-text">{t('vgen.linkCopyButton')}</button>
                 </>
               )}
               {j.status === 'done' && isHost && onShare && (
-                <button onClick={() => void onShare(j.id)} className="text-xs font-semibold text-fire-amber">{t('vgen.shareButton')}</button>
+                <button onClick={() => void onShare(j.id)} className="touch-target px-1 text-xs font-semibold text-fire-amber">{t('vgen.shareButton')}</button>
               )}
             </li>
           ))}

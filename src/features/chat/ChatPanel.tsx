@@ -124,7 +124,7 @@ export default function ChatPanel({
                     onClick={() => onHideMessage(m.id)}
                     aria-label={t('room.hideMessage')}
                     title={t('room.hideMessage')}
-                    className="ml-1 align-middle text-[10px] text-stage-text-muted hover:text-fire-hot"
+                    className="touch-target ml-1 inline-grid place-items-center align-middle text-[10px] text-stage-text-muted hover:text-fire-hot"
                   >
                     ✕
                   </button>
@@ -134,7 +134,7 @@ export default function ChatPanel({
                     onClick={() => setReportTarget({ id: m.id, senderAuthId: m.senderAuthId!, sender: m.sender })}
                     aria-label={t('room.reportMessage')}
                     title={t('room.reportMessage')}
-                    className="ml-1 align-middle text-[10px] text-stage-text-muted hover:text-fire-hot"
+                    className="touch-target ml-1 inline-grid place-items-center align-middle text-[10px] text-stage-text-muted hover:text-fire-hot"
                   >
                     ⚑
                   </button>

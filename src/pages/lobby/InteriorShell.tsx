@@ -46,7 +46,7 @@ export default function InteriorShell({
       <header className="flex items-center gap-3 px-4 py-3 md:absolute md:inset-x-0 md:top-0 md:z-20 md:px-6">
         <button
           onClick={() => navigate('/lobby')}
-          className="rounded-lg border border-stage-border bg-stage-base/70 px-3 py-1.5 text-sm text-stage-text-muted backdrop-blur hover:text-stage-text"
+          className="touch-target rounded-lg border border-stage-border bg-stage-base/70 px-3 py-1.5 text-sm text-stage-text-muted backdrop-blur hover:text-stage-text"
         >
           ← {t('hub.backToPlaza')}
         </button>
