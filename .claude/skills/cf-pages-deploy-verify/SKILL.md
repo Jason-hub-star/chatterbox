@@ -62,12 +62,14 @@ supabase functions deploy <fn> --project-ref owfcrolbvikkqrotmleq   # 필요 함
 ### 4. SPA 배포
 ```bash
 export CLOUDFLARE_ACCOUNT_ID=276b9380f073c8007ba2d3d41b2c6703   # gmdqn2tp
+NPX=$(command -v npx)   # ⚠️ rtk 훅이 `npx`→`npm` 재작성 → "Missing script: wrangler" 로 죽음. 절대경로로 우회.
 # 최초 1회만:
-npx wrangler pages project create chatterbox --production-branch=main
+"$NPX" wrangler pages project create chatterbox --production-branch=main
 # 매 배포:
-npx wrangler pages deploy dist --project-name chatterbox --commit-dirty=true
+"$NPX" wrangler pages deploy dist --project-name chatterbox --commit-dirty=true --branch main
 # → https://chatterbox-7r8.pages.dev (프로덕션 별칭) + <hash>.chatterbox-7r8.pages.dev
 ```
+> **함정(2026-08-05 실측)**: `npx wrangler …` 를 그대로 쓰면 rtk 커맨드 재작성이 `npm … wrangler` 로 바꿔 `Missing script: "wrangler"` 로 실패한다. `NPX=$(command -v npx)` 후 `"$NPX" wrangler …` 로 호출(전역 CLAUDE.md·[[work-in-jason-worktree]] "npx 절대경로 rtk 우회" 관례).
 
 ### 5. ✅ 검증 (실렌더 게이트)
 **A. 서빙 구조**(curl):
