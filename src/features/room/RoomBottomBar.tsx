@@ -15,6 +15,7 @@ interface Props {
   onToggleHand: () => void
   onToggleMixer: () => void
   onOpenReactions: () => void // UX-KBD-WHEEL: 리액션 휠 sticky 개화(키보드/SR·터치 진입 경로)
+  onReportProblem: () => void // ISS-04 창구: 방 안 진입점(카테고리 '방·무대'/'소리·마이크'를 겪는 자리)
   onLeave: () => void
   // V-3 녹화(호스트만 노출 — 서버가 host 재검증). phase 별 라벨/동작은 useRoomRecording 상태기계.
   recordPhase?: RecordingPhase
@@ -32,6 +33,7 @@ export default function RoomBottomBar({
   onToggleMic,
   onToggleMixer,
   onOpenReactions,
+  onReportProblem,
   onLeave,
   recordPhase = 'idle',
   onToggleRecord,
@@ -109,6 +111,18 @@ export default function RoomBottomBar({
           <span className="hidden sm:inline">{recLabel}</span>
         </button>
       )}
+
+      {/* 문제 알리기(ISS-04) — 방·소리 문제를 겪는 자리에서 바로. 연결 끊겨도 눌러야 한다
+          (연결 실패 자체가 신고감이므로 disabled 를 걸지 않는다 — 형제 버튼들과 다른 유일한 이유). */}
+      <button
+        onClick={onReportProblem}
+        aria-label={t('feedback.button')}
+        title={t('feedback.button')}
+        className="flex min-h-11 items-center gap-1.5 rounded-lg border border-stage-border px-3 py-1.5 text-xs font-semibold text-stage-text-muted transition-colors hover:text-stage-text sm:px-4 sm:py-2 sm:text-sm"
+      >
+        <span aria-hidden>🛟</span>
+        <span className="hidden sm:inline">{t('feedback.button')}</span>
+      </button>
 
       {/* 나가기 */}
       <button

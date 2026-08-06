@@ -8,6 +8,7 @@ import { acceptInvite, fetchPublicRooms, fetchPublicRoomsGuest, verifyInviteCode
 import LiveRail from '@/features/theater/LiveRail'
 import CreateMenu from '@/components/shared/CreateMenu'
 import NotificationBell from '@/components/shared/NotificationBell'
+import FeedbackModal from '@/components/shared/FeedbackModal'
 import AvatarForgePill from '@/features/avatar/AvatarForgePill'
 import LanguageToggle from '@/components/shared/LanguageToggle'
 import FriendsButton from '@/components/shared/FriendsButton'
@@ -125,6 +126,7 @@ export default function LobbyPage() {
   const inviteCode = searchParams.get('invite')
   const [invite, setInvite] = useState<{ code: string; title: string; host: string | null } | null>(null)
   const [inviteBusy, setInviteBusy] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false) // ISS-04 문제 알리기(칩 클러스터 🛟)
 
   // 초대 링크 비로그인 도달(구 ProtectedRoute 경로 보존): 로그인 후 초대가 살아 돌아오도록 from 에 쿼리째 보존.
   useEffect(() => {
@@ -240,6 +242,19 @@ export default function LobbyPage() {
               >
                 {t('lobby.logout')}
               </button>
+              {/* ISS-04 창구 2번째 진입점: 방 밖에서 겪은 문제(아바타·기타)와 접수 상태 확인.
+                  칩 클러스터는 최소 유지가 원칙이라 라벨 없이 아이콘만 — 방 안 진입점은 하단바 🛟.
+                  `hidden sm:*`: 360px 에서 이 클러스터는 이미 3줄로 접힌다. 모바일은 하단 네비
+                  [설정]→의상실에 같은 진입점이 이미 있어(AtelierPage) 여기서 한 칸 더 밀 이유가 없다. */}
+              <button
+                type="button"
+                onClick={() => setFeedbackOpen(true)}
+                aria-label={t('feedback.button')}
+                title={t('feedback.button')}
+                className="touch-target hidden rounded px-2 py-1 text-sm text-stage-text/60 hover:text-stage-text sm:inline-flex sm:items-center"
+              >
+                <span aria-hidden>🛟</span>
+              </button>
               <NotificationBell />
             </>
           ) : (
@@ -296,6 +311,8 @@ export default function LobbyPage() {
       </nav>
 
       {showOnboarding && <OnboardingGuide />}
+      {/* 광장은 특정 맥락이 없으니 '기타'로 시작 — 방(room)·의상실(avatar)은 각자 자기 기본값. */}
+      {feedbackOpen && <FeedbackModal defaultCategory="other" onClose={() => setFeedbackOpen(false)} />}
     </main>
   )
 }

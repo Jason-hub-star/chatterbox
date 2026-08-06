@@ -12,11 +12,18 @@ import {
 
 // 문제 알리기(ISS-04 창구) — 카테고리+설명+진단 동의(opt-in, 수집 항목 그대로 표시) → 접수번호.
 // 접수 후 같은 모달에서 내 문의 상태(received→investigating→fixed)를 확인한다.
-export default function FeedbackModal({ onClose, avatarJobId }: { onClose: () => void; avatarJobId?: string }) {
+// defaultCategory: 진입점이 맥락을 안다 — 방에서 열면 '방·무대', 의상실에서 열면 '아바타'.
+//   진입점이 의상실 1곳이던 시절의 하드코딩('avatar')을 파라미터로 승격(카테고리 4개 중 2개가
+//   방 안에서 겪는 문제인데 방에는 진입점이 없었다 — ISS-04 창구가 반쪽이던 원인).
+export default function FeedbackModal({ onClose, avatarJobId, defaultCategory = 'avatar' }: {
+  onClose: () => void
+  avatarJobId?: string
+  defaultCategory?: FeedbackCategory
+}) {
   const { t } = useTranslation()
   const session = useUserStore((s) => s.session)
   const avatarUrl = useUserStore((s) => s.avatarUrl)
-  const [category, setCategory] = useState<FeedbackCategory>('avatar')
+  const [category, setCategory] = useState<FeedbackCategory>(defaultCategory)
   const [description, setDescription] = useState('')
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)

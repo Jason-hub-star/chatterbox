@@ -40,6 +40,7 @@ import DirectorNotesTab from '@/features/room/DirectorNotesTab'
 import ChatNotesTab from '@/features/room/ChatNotesTab'
 import HostConsole from '@/features/room/HostConsole'
 import Modal from '@/components/shared/Modal'
+import FeedbackModal from '@/components/shared/FeedbackModal'
 import RoomJoinGate from '@/features/room/RoomJoinGate'
 import RoomShell from '@/features/room/RoomShell'
 import RoomTopBar from '@/features/room/RoomTopBar'
@@ -274,6 +275,7 @@ export default function RoomPage() {
   const slotOf = useCallback((identity: string) => memberSlots[identity], [memberSlots])
 
   // 리액션 휠: 무대 우클릭(button 2)으로 커서 위치에 개화(홀드-드래그-릴리즈). origin=null=닫힘.
+  const [feedbackOpen, setFeedbackOpen] = useState(false) // ISS-04 방 안 문제 알리기(하단바 🛟)
   const [mixerOpen, setMixerOpen] = useState(false) // ROOM-08 음량 믹서 개방(하단바 🎧 소유)
   // 리액션 휠(NR 분리 → useReactionWheel): 우클릭·롱프레스 개화 + 숫자키 1~N 즉발 + DEV E2E 훅.
   const {
@@ -818,6 +820,12 @@ export default function RoomPage() {
       onToggleHand={toggleHand}
       onToggleMixer={() => setMixerOpen((v) => !v)}
       onOpenReactions={openStickyWheel}
+      onReportProblem={() => {
+        // 익명 게스트는 create-feedback 이 403(getAppUser 기본 거부) → 제출 실패 대신 로그인으로.
+        // ChatPanel 의 guestLocked/onGuestCta 와 동일 관용구(막다른 길을 만들지 않는다).
+        if (session?.user.is_anonymous) navigate('/login', { state: { from: window.location.pathname + window.location.search } })
+        else setFeedbackOpen(true)
+      }}
       mixerSlot={<AudioMixerPanel open={mixerOpen} onClose={() => setMixerOpen(false)} />}
       onLeave={onLeave}
       recordPhase={isHost ? recording.phase : undefined}
@@ -835,6 +843,9 @@ export default function RoomPage() {
         rightDock={rightDockContent}
         bottomBar={bottomBarContent}
       />
+
+      {/* 방에서 열면 카테고리 기본값이 '방·무대' — 겪는 문제와 폼이 처음부터 일치한다. */}
+      {feedbackOpen && <FeedbackModal defaultCategory="room" onClose={() => setFeedbackOpen(false)} />}
 
       {/* RM-DEADROOM: 세션 중 연결 종단 끊김 — 얼어붙은 무대 대신 사유+행동. Esc/재연결=멱등 재조인
           (방 종료면 join 이 'Room ended' 로 error 단계 수렴), 로비=이탈. */}
