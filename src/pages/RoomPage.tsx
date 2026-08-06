@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useUserStore } from '@/stores/userStore'
-import { leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, transferHost, updateRoomSettings, leaveRoomKeepalive, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus } from '@/lib/rooms'
+import { leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, transferHost, updateRoomSettings, leaveRoomKeepalive, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, revokeRoomInvites, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus } from '@/lib/rooms'
 import { useRoomRecording } from '@/features/room/useRoomRecording'
 import { useRoomMembers } from '@/features/room/useRoomMembers'
 import { useRoomJoin } from '@/features/room/useRoomJoin'
@@ -464,6 +464,11 @@ export default function RoomPage() {
     if (!session) throw new Error('no session')
     return (await createRoomInvite(session.access_token, roomId, role)).invite_code
   }, [session, roomId])
+  // 초대링크 일괄 폐기(FEAT-GAP-1) — 링크 유출 시 호스트의 유일한 차단 수단. 끊긴 링크 수 반환.
+  const revokeInvites = useCallback(async (): Promise<number> => {
+    if (!session) throw new Error('no session')
+    return (await revokeRoomInvites(session.access_token, roomId)).revoked
+  }, [session, roomId])
   // 최근 함께한 사람(LOB-08) — 현재 방 참가자 제외 후보 + 지명 초대(상대 인앱 알림).
   const loadRecentPeople = useCallback(async () => {
     if (!session) return []
@@ -593,6 +598,7 @@ export default function RoomPage() {
           loadRoomSettings={loadRoomSettings}
           onUpdateRoomSettings={saveRoomSettings}
           onCreateInvite={createInvite}
+          onRevokeInvites={revokeInvites}
           loadRecentPeople={loadRecentPeople}
           onDirectInvite={directInvite}
           viewers={members.viewers}

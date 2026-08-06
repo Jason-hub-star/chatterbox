@@ -29,6 +29,7 @@ export default function HostConsole({
   loadRoomSettings,
   onUpdateRoomSettings,
   onCreateInvite,
+  onRevokeInvites,
   loadRecentPeople,
   onDirectInvite,
   viewers,
@@ -59,6 +60,7 @@ export default function HostConsole({
   loadRoomSettings: () => Promise<{ title: string; genre: string }> // R2 초기값(loadChatPolicy 패턴)
   onUpdateRoomSettings: (settings: { title: string; genre: string }) => Promise<void> // R2 — 서버 host 재검증·화이트리스트
   onCreateInvite: (role: 'actor' | 'viewer') => Promise<string> // 원문 invite_code 반환 — URL 조립·복사는 여기서
+  onRevokeInvites: () => Promise<number> // FEAT-GAP-1 유출 대응 — 방의 살아있는 링크 일괄 폐기, 끊긴 수 반환
   loadRecentPeople: () => Promise<RecentPerson[]> // 최근 함께한 사람(LOB-08, 현재 방 참가자 제외)
   onDirectInvite: (userId: string) => Promise<void> // 지명 초대 = 1회권 + 상대 인앱 알림
   viewers: { authId: string; userId: string; name: string | null }[] // SEC-1 활성 viewer 목록(호스트 직접 무대 초대 후보)
@@ -338,6 +340,28 @@ export default function HostConsole({
     }
   }
 
+  // FEAT-GAP-1: 링크 유출 대응(일괄 폐기). 되돌릴 수 없고 지명초대까지 함께 끊기므로 2단 확인 —
+  //   공용 confirm 다이얼로그가 없는 콘솔이라 같은 버튼의 2회 클릭으로 대신한다(모달 추가 없이).
+  const [revokeArmed, setRevokeArmed] = useState(false)
+  const doRevokeInvites = async () => {
+    if (!revokeArmed) {
+      setRevokeArmed(true)
+      return
+    }
+    setRevokeArmed(false)
+    setInvErr(null)
+    setInvBusy(true)
+    try {
+      const n = await onRevokeInvites()
+      setInvUrl(null) // 방금 복사한 URL 도 이제 죽은 링크 — 화면에 남겨두면 다시 뿌린다
+      toast.success(n > 0 ? t('host.invitesRevoked', { count: n }) : t('host.invitesRevokedNone'))
+    } catch {
+      setInvErr(t('host.inviteRevokeFailed'))
+    } finally {
+      setInvBusy(false)
+    }
+  }
+
   const others = participants.filter((p) => p.identity !== myIdentity)
 
   const doKick = async (identity: string) => {
@@ -525,6 +549,19 @@ export default function HostConsole({
             className="rounded border border-stage-border px-3 py-1.5 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
           >
             {t('host.createViewerInvite')}
+          </button>
+          {/* FEAT-GAP-1: 유출된 링크 끊기. 1클릭=무장, 2클릭=실행(되돌릴 수 없음). */}
+          <button
+            onClick={() => void doRevokeInvites()}
+            onBlur={() => setRevokeArmed(false)}
+            disabled={invBusy}
+            className={`touch-target rounded border px-3 py-1.5 text-xs disabled:opacity-40 ${
+              revokeArmed
+                ? 'border-fire-hot text-fire-hot'
+                : 'border-stage-border text-stage-text-muted hover:text-stage-text'
+            }`}
+          >
+            {revokeArmed ? t('host.revokeInvitesConfirm') : t('host.revokeInvites')}
           </button>
         </div>
         {invUrl && (

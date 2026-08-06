@@ -238,7 +238,9 @@ tags: [audit]
 - [x] **UX-SOC-4** (High) **보낸 요청 렌더 0** — `pendingOut` 이 `knownIds` 계산에만 쓰이고 화면에 없었다(대기 표시도 취소도 불가, 백엔드는 둘 다 지원). **완료**: 보낸 요청 섹션 + 취소. 전용 함수 불요 — `remove-friend` 는 status 를 안 보고 양방향 행을 soft delete 하고 `list-friends:17` 이 `deleted_at is null` 로 거르므로 pending 행 취소가 같은 호출로 성립. <!-- probe: src/components/shared/FriendsButton.tsx :: UX-SOC-4 -->
 - [x] **무음 성공 제거** — 수락/거절/삭제/언팔로우가 성공 시 아무 반응이 없었다. **완료**: 결과 토스트(=`ToastHost` 의 `role=alert/status` 가 곧 스크린리더 안내 — 별도 `aria-live` 영역 불요).
 - **검증**: `tests/unit/friendsPanel.test.tsx` 신규 4케이스(✕ 탭 도달·`touch-target` 보유 · pendingOut 렌더+취소가 `remove-friend('p1')` 호출 · Esc 닫힘 · 바깥클릭 닫힘 **및 토글 재개봉**). `check:all` EXIT=0 — test **189/189**(45 파일), i18nCoverage 로 ko/en/ja 완역 강제됨.
-- **미착수(백엔드 필요)**: 문제 알리기 진입점 추가(현재 의상실 1곳 — 배치 위치가 홈 화면 IA 결정이라 별건) · 예약 취소(백엔드 부재) · 초대 폐기 UI(FEAT-GAP-1 = `revoked_at` 세팅 코드 자체가 없음) · 호스트용 방 밖 현재인원/신고결과 화면.
+- [x] **FEAT-GAP-1** (P2·Confirmed·**라이브 실측**) **초대링크 폐기 부재 — `revoked_at` 이 죽은 컬럼** — 검사는 두 곳(`verify-invite-code:36`→410 `revoked`, `consume_room_invite:40`→status `revoked`)에 이미 있는데 **세팅하는 코드가 레포 전체에 없었다**. 즉 링크가 유출돼도 호스트의 차단 수단이 0(72시간 만료를 기다리는 것 외에). **완료(2026-08-06, 마이그 불요)**: `revoke-room-invites` Edge 신설 — `requireHostRoom` 게이트 + 살아있는 링크(`revoked_at is null` ∧ 미만료) 일괄 `revoked_at=now()`, 끊긴 수 반환. 쓰기는 service_role 이라 deny-all RLS 그대로 통과(마이그 `:22` 가 예고한 `created_by` SELECT 정책은 **여전히 불요** — 목록을 안 읽으므로). UI 는 HostConsole 초대 섹션에 버튼 1개(1클릭 무장→2클릭 실행, 되돌릴 수 없음 + 지명초대도 함께 끊김). **ponytail ceiling**: 개별 폐기는 목록 UI 전제 — 발급 이후 원문 코드가 어디에도 없어 사용자가 링크를 식별할 수단이 없다. **검증**: ①DB 6/6(폐기 전 `consume`=`ok` **positive control** → 폐기 후 2건 모두 `revoked` · 기존 폐기시각 미덮임 · 만료분 미포함 · 재폐기 0건 멱등) ②로컬 Edge 런타임 실 HTTP 6/6(비호스트 403 `Not host` · 호스트 `revoked=2` · 재호출 `revoked=0` · 잘못된 uuid 400 · 없는 방 404 · 무토큰 401). <!-- probe: supabase/functions/revoke-room-invites/index.ts :: FEAT-GAP-1 -->
+- **미착수**: 문제 알리기 진입점 추가(현재 의상실 1곳 — 배치 위치가 홈 화면 IA 결정이라 별건) · 예약 취소(백엔드 부재) · 호스트용 방 밖 현재인원/신고결과 화면 · **STK-1·STK-4·RL-GAP**(레이트리밋 미도포 — 프리미티브는 이미 있고 함수당 3줄).
+- **⚠️ 배포 필요**: `revoke-room-invites` 는 **신규 Edge Function** — 프로덕션 배포 전까지 버튼이 404 로 실패한다(프론트만 배포하면 안 됨).
 
 ---
 

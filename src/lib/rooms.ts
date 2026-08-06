@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 // 방 로직 API 경계 (Phase 2).
 // - 쓰기(생성/입장/퇴장)는 Edge Function 경유 — 서버가 service_role 로 RLS 우회 + 게이트 검증.
 // - 읽기(로비 목록)는 public_rooms 뷰 직접 SELECT (host_id/비밀번호 제외, host_display_name만).
-// SSOT: docs/API-SURFACE.md · docs/DATA-SCHEMA.md §1.2.0
+// SSOT: docs/specs/API-SURFACE.md · docs/specs/DATA-SCHEMA.md §1.2.0
 
 import { callFn, FN_BASE } from '@/lib/edgeFn'
 import type { ChatMessage } from '@/stores/roomStore'
@@ -257,6 +257,11 @@ export const createRoomInvite = (
     role,
     ...(invitedUserId ? { invited_user_id: invitedUserId } : {}),
   })
+
+// 초대링크 일괄 폐기(FEAT-GAP-1) — 유출 대응. revoked 는 이번에 실제로 끊긴 링크 수.
+// 개별 폐기가 아닌 이유: 발급 이후 원문 코드가 어디에도 없어 사용자가 링크를 식별할 수단이 없다.
+export const revokeRoomInvites = (accessToken: string, roomId: string) =>
+  callFn<{ ok: boolean; revoked: number }>('revoke-room-invites', accessToken, { room_id: roomId })
 
 export interface RecentRoom {
   room_id: string
