@@ -112,6 +112,8 @@ export default function NotificationBell() {
     if (n.type === 're_invite') return t('notif.reInvite', { host, room })
     if (n.type === 'reservation_invite') return t('notif.reservationInvite', { host, room })
     if (n.type === 'reservation_reminder') return t('notif.reservationReminder', { room })
+    // 취소 통지(LOB-06 취소) — 이게 없으면 label 이 타입 문자열로 새어나온다(:122 폴백).
+    if (n.type === 'reservation_cancelled') return t('notif.reservationCancelled', { host, room })
     // FriendSystem(PROFILE-04/05)
     if (n.type === 'friend_request') return t('notif.friendRequest', { name: n.payload.requester_name ?? '?' })
     if (n.type === 'friend_accepted') return t('notif.friendAccepted', { name: n.payload.name ?? '?' })

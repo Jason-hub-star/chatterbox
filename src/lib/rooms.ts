@@ -288,6 +288,10 @@ export const createReservation = (accessToken: string, title: string, scheduledA
     invitee_ids: inviteeIds,
   })
 
+// 예약 취소 — 행을 지운다(리마인더 cron 을 끊는 게 본체). notified = 취소를 통지한 초대자 수.
+export const cancelReservation = (accessToken: string, reservationId: string) =>
+  callFn<{ ok: boolean; notified: number }>('cancel-reservation', accessToken, { reservation_id: reservationId })
+
 export async function fetchMyReservations(): Promise<Reservation[]> {
   const { data, error } = await supabase
     .from('room_reservations')

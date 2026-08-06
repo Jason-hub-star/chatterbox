@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import {
   ROOM_GENRES,
   createReservation,
+  cancelReservation,
   createRoom,
   fetchMyReservations,
   fetchPublicRooms,
@@ -350,6 +351,28 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
   // RM-CREATE-DBL 동형: 예약 생성도 같은 근본원인(커밋 전 더블클릭) — 형제 호출처 동시 수술.
   const reservingRef = useRef(false)
 
+  // 예약 취소(LOB-06). 되돌릴 수 없고 초대자에게 취소 통지가 나가므로 2단 확인(HostConsole 링크 폐기와 동형).
+  const [armed, setArmed] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState<string | null>(null)
+  const onCancel = async (id: string) => {
+    if (armed !== id) {
+      setArmed(id)
+      return
+    }
+    setArmed(null)
+    setCancelling(id)
+    try {
+      const { notified } = await cancelReservation(accessToken, id)
+      setMine((prev) => prev.filter((r) => r.id !== id))
+      toast.success(notified > 0 ? t('lobby.reserveCanceledNotified', { count: notified }) : t('lobby.reserveCanceled'))
+    } catch {
+      // 취소는 레이트리밋이 없다(생성이 20/일로 이미 상한 → 통지 증폭도 그만큼만) — 429 분기 불요.
+      toast.error(t('lobby.reserveCancelFailed'))
+    } finally {
+      setCancelling(null)
+    }
+  }
+
   async function onReserve(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = title.trim()
@@ -385,6 +408,17 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
           <p className="shrink-0 text-[11px] text-stage-text-muted">
             {new Date(r.scheduled_at).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' })}
           </p>
+          <button
+            type="button"
+            onClick={() => void onCancel(r.id)}
+            onBlur={() => setArmed((a) => (a === r.id ? null : a))}
+            disabled={cancelling === r.id}
+            className={`touch-target shrink-0 rounded border px-2 py-0.5 text-[11px] disabled:opacity-40 ${
+              armed === r.id ? 'border-fire-hot text-fire-hot' : 'border-stage-border text-stage-text-muted hover:text-stage-text'
+            }`}
+          >
+            {armed === r.id ? t('lobby.reserveCancelConfirm') : t('lobby.reserveCancel')}
+          </button>
         </div>
       ))}
       <form onSubmit={onReserve} className="flex flex-col gap-2">
