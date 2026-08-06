@@ -20,6 +20,15 @@ Deno.serve(async (req) => {
   if (!isUuid(body.friendship_id)) return json({ error: "Invalid friendship_id" }, 400);
   if (body.action !== "accept" && body.action !== "reject") return json({ error: "Invalid action" }, 400);
 
+  // RL-GAP: 수락은 미러 행 upsert + 알림 INSERT 를 유발한다(발신측 send-friend-request 는 30/일 캡이 있는데
+  //   응답측만 무제한이었다). 하루 60이면 정상 사용은 넉넉하고 스팸 증폭은 막는다.
+  const { data: rlOk } = await service.rpc("check_rate_limit", {
+    p_key: `friend-respond:${userId}`,
+    p_max: 60,
+    p_window_sec: 86_400,
+  });
+  if (rlOk === false) return json({ error: "요청 처리가 너무 많아요. 잠시 후 다시 시도해주세요." }, 429);
+
   const { data: row } = await service
     .from("friendships")
     .select("id, user_id, friend_id, status")

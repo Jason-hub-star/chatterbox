@@ -27,6 +27,16 @@ Deno.serve(async (req) => {
   if (!isUuid(body.room_id)) return json({ error: "Invalid room_id" }, 400);
   const roomId = body.room_id;
 
+  // RL-GAP: 폭주 가드(프라이버시 게이트가 아니다 — 그건 아래 활성 참가자 검사와 join-as-viewer 캡이 한다).
+  //   정상 사용이 참가자 변동마다 + 30초 주기로 몰아치므로(useRoomMembers.ts:83) 캡은 넉넉해야 한다:
+  //   초당 1회 평균이면 6인 방의 입퇴장 폭주도 안 걸리고, 무한루프 클라 하나가 DB를 물어뜯는 건 막는다.
+  const { data: rlOk } = await service.rpc("check_rate_limit", {
+    p_key: `members-list:${userId}`,
+    p_max: 300,
+    p_window_sec: 300,
+  });
+  if (rlOk === false) return json({ error: "Too many requests" }, 429);
+
   // 호출자가 방의 활성 참가자여야 명단을 볼 수 있다.
   // SEC-2: 강퇴자(is_disabled_by_host)는 앱 세션이 살아있어도 명단 조회 불가 — isActiveParticipant 와 동일 게이트.
   const { data: me } = await service

@@ -11,6 +11,18 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 
+  // STK-4: 이 응답은 친구의 접속·활동(광장/공연)을 담는다 — 무제한 폴링이면 친구의 접속·종료 시각을
+  //   초 단위로 기록하는 감시 시계열이 만들어진다. 패널은 열려 있는 동안 15초 주기(FriendsButton.tsx:42)
+  //   = 5분에 20회이므로, 60/5분이면 탭 3개까지 정상이고 샘플링 해상도는 5초로 바닥이 깔린다.
+  // ponytail ceiling: 5초 해상도도 감시엔 충분하다 — 진짜 해법은 서버가 접속상태를 뭉개 내보내는 것
+  //   (예: 분 단위 반올림·"방금 전"). 그건 presence 계약 변경이라 별건.
+  const { data: rlOk } = await service.rpc("check_rate_limit", {
+    p_key: `friends-list:${userId}`,
+    p_max: 60,
+    p_window_sec: 300,
+  });
+  if (rlOk === false) return json({ error: "Too many requests" }, 429);
+
   const { data: rows } = await service
     .from("friendships")
     .select("id, user_id, friend_id, relationship_type, status")

@@ -146,6 +146,16 @@ export async function requireActiveParticipant(
   return { ok: true, room };
 }
 
+// 호출자 IP(레이트리밋 버킷 키용). CF Pages/Workers 앞단이면 cf-connecting-ip, 아니면
+// x-forwarded-for 첫 홉. 없으면 공용 버킷("unknown")으로 합류한다 — 익명 다수가 한 버킷을 나눠 쓰지만
+// 무제한보다 낫다. list-public-rooms 가 쓰던 식을 그대로 뽑은 것(도포처가 늘어 3중 복사가 되기 직전).
+// ⚠️ 헤더는 클라가 위조 가능 — 프록시가 덧붙이는 마지막 홉이 아니라 첫 홉을 쓰므로 우회 가능성이 있다.
+//    IP 키는 "익명 신원은 무료라 user 키가 무의미한 자리"에서 비용을 올리는 용도지, 인가 게이트가 아니다.
+export function clientIp(req: Request): string {
+  return req.headers.get("cf-connecting-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
+
 // 간단 UUID 형식 검증(입력 방어).
 export function isUuid(v: unknown): v is string {
   return typeof v === "string" &&

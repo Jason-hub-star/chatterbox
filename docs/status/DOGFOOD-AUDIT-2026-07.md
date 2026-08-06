@@ -239,8 +239,15 @@ tags: [audit]
 - [x] **무음 성공 제거** — 수락/거절/삭제/언팔로우가 성공 시 아무 반응이 없었다. **완료**: 결과 토스트(=`ToastHost` 의 `role=alert/status` 가 곧 스크린리더 안내 — 별도 `aria-live` 영역 불요).
 - **검증**: `tests/unit/friendsPanel.test.tsx` 신규 4케이스(✕ 탭 도달·`touch-target` 보유 · pendingOut 렌더+취소가 `remove-friend('p1')` 호출 · Esc 닫힘 · 바깥클릭 닫힘 **및 토글 재개봉**). `check:all` EXIT=0 — test **189/189**(45 파일), i18nCoverage 로 ko/en/ja 완역 강제됨.
 - [x] **FEAT-GAP-1** (P2·Confirmed·**라이브 실측**) **초대링크 폐기 부재 — `revoked_at` 이 죽은 컬럼** — 검사는 두 곳(`verify-invite-code:36`→410 `revoked`, `consume_room_invite:40`→status `revoked`)에 이미 있는데 **세팅하는 코드가 레포 전체에 없었다**. 즉 링크가 유출돼도 호스트의 차단 수단이 0(72시간 만료를 기다리는 것 외에). **완료(2026-08-06, 마이그 불요)**: `revoke-room-invites` Edge 신설 — `requireHostRoom` 게이트 + 살아있는 링크(`revoked_at is null` ∧ 미만료) 일괄 `revoked_at=now()`, 끊긴 수 반환. 쓰기는 service_role 이라 deny-all RLS 그대로 통과(마이그 `:22` 가 예고한 `created_by` SELECT 정책은 **여전히 불요** — 목록을 안 읽으므로). UI 는 HostConsole 초대 섹션에 버튼 1개(1클릭 무장→2클릭 실행, 되돌릴 수 없음 + 지명초대도 함께 끊김). **ponytail ceiling**: 개별 폐기는 목록 UI 전제 — 발급 이후 원문 코드가 어디에도 없어 사용자가 링크를 식별할 수단이 없다. **검증**: ①DB 6/6(폐기 전 `consume`=`ok` **positive control** → 폐기 후 2건 모두 `revoked` · 기존 폐기시각 미덮임 · 만료분 미포함 · 재폐기 0건 멱등) ②로컬 Edge 런타임 실 HTTP 6/6(비호스트 403 `Not host` · 호스트 `revoked=2` · 재호출 `revoked=0` · 잘못된 uuid 400 · 없는 방 404 · 무토큰 401). <!-- probe: supabase/functions/revoke-room-invites/index.ts :: FEAT-GAP-1 -->
-- **미착수**: 문제 알리기 진입점 추가(현재 의상실 1곳 — 배치 위치가 홈 화면 IA 결정이라 별건) · 예약 취소(백엔드 부재) · 호스트용 방 밖 현재인원/신고결과 화면 · **STK-1·STK-4·RL-GAP**(레이트리밋 미도포 — 프리미티브는 이미 있고 함수당 3줄).
-- **⚠️ 배포 필요**: `revoke-room-invites` 는 **신규 Edge Function** — 프로덕션 배포 전까지 버튼이 404 로 실패한다(프론트만 배포하면 안 됨).
+- [x] **STK-1 · STK-4 · RL-GAP** (P2~P3·Confirmed·**라이브 실측**) **레이트리밋 미도포 6곳** — 프리미티브(`check_rate_limit`, 버킷 22종)는 이미 있는데 소셜·입장 표면만 안 쓰고 있었다(근본원인 1개 = 미도포, 형제 호출처 일괄 수술). **완료(2026-08-06)**:
+  - **STK-1 익명 무제한 방 스캔** → 캡을 `list-room-members` 가 아니라 **`join-as-viewer`(스캔의 길목)** 에 건다: 스캐너는 방마다 이 함수를 통과해야 명단을 뜨는데, 명단 조회는 정상 사용이 참가자 변동마다 몰아쳐(`useRoomMembers.ts:83` + 30초 주기) 캡을 못 조인다. **새 방 20/시간** — ⚠️**재입장은 안 센다**(이 함수는 페이지 로드마다 호출되는 멱등 함수라 무조건 세면 새로고침 20번에 정상 관전자가 잠긴다 → 기존 참가행 조회 후 없을 때만 카운트). 익명은 IP 키(`viewer-join-ip:`) — 익명 신원은 무료라 user 키가 사실상 무제한, 정회원은 user 키(IP 면 공용망에서 정상 유저끼리 잠금).
+  - **STK-4 친구 접속 감시** → `list-friends` 60/5분. 패널 폴링 15초(=20/5분)의 3배 헤드룸. **ponytail ceiling**: 5초 해상도는 여전히 감시 가능 — 진짜 해법은 서버가 접속상태를 뭉개 내보내는 것(presence 계약 변경, 별건).
+  - **RL-GAP** → `join-public-room` 새 방 30/시간(재입장 미계수 동일 규칙) · `respond-friend-request` 60/일(발신 30/일 캡은 있는데 응답측만 무제한이었음 — 미러행+알림 증폭) · `create-poll` 20/시간(열고닫기 반복 = 전원 화면 팝업 스팸) · `list-room-members` 300/5분(**프라이버시 게이트 아님** — 활성참가자 검사와 위 입장 캡이 그 역할, 이건 폭주 클라 가드).
+  - **부수**: IP 추출식이 3중 복사 직전이라 `_shared/supa.ts:clientIp()` 로 승격, `list-public-rooms` 도 그걸 쓰게 정리(동작 동일).
+  - **검증**: 실 Edge 런타임 4/4 — 새 방 20개 전부 201 → 21·22번째 429 → **캡 소진 후에도 기존 방 재입장 200**(오탐 없음) → 재입장 뒤에도 새 방은 계속 429(우회 아님). 나머지 5곳은 조건분기 없는 기존 관용구(레포 21곳 동형)라 `deno check` + 산술로 판정.
+  - **fail-open 유지**: 인증 표면은 기존 20곳과 동일하게 RPC 오류 시 통과(`data === false` 만 차단). fail-closed 는 `list-public-rooms`(Public 계약)만.
+- **미착수**: 문제 알리기 진입점 추가(현재 의상실 1곳 — 배치 위치가 홈 화면 IA 결정이라 별건) · 예약 취소(백엔드 부재) · 호스트용 방 밖 현재인원/신고결과 화면 · **STK-9**(P3 초대 생존여부 410/404 구분 노출).
+- **⚠️ 배포 필요**: `revoke-room-invites`(**신규** — 배포 전까지 버튼이 404) + 레이트리밋 도포분 6개 함수(`join-as-viewer`·`join-public-room`·`list-friends`·`list-room-members`·`respond-friend-request`·`create-poll`) + `list-public-rooms`(clientIp 리팩터). 프론트만 배포하면 안 된다.
 
 ---
 

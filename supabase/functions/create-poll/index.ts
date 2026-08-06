@@ -31,6 +31,16 @@ Deno.serve(async (req) => {
   const host = await requireHostRoom(user.service, room_id, user.userId);
   if (!host.ok) return host.res;
 
+  // RL-GAP: 폴 생성은 방 전체 broadcast 를 유발한다(아래 poll_open). 활성 폴은 부분 unique 로 1개뿐이라
+  //   폭주하려면 열고 닫기를 반복해야 하는데, 그 반복이 곧 전원 화면에 팝업을 쏘는 것 = 호스트발 스팸.
+  //   시간당 20이면 정상 진행(공연 중 몇 번)은 여유롭다.
+  const { data: rlOk } = await user.service.rpc("check_rate_limit", {
+    p_key: `poll-create:${user.userId}`,
+    p_max: 20,
+    p_window_sec: 3600,
+  });
+  if (rlOk === false) return json({ error: "투표를 너무 자주 열었어요. 잠시 후 다시 시도해주세요." }, 429);
+
   const { data: poll, error: insErr } = await user.service
     .from("polls")
     .insert({ room_id, created_by: user.userId, question, options })
