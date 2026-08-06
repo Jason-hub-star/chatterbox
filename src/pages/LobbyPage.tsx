@@ -23,6 +23,19 @@ import { useEffectiveWorld } from '@/stores/worldStore'
 // v4(2026-07-16, UIUX-OVERHAUL P1): `/` 공개 광장 홈 — 비로그인도 렌더(치지직식 디스커버리).
 // 게스트는 목록=list-public-rooms·칩=로그인 CTA·라이브 레일 관전 진입, 정식 세션은 기존 동선 그대로.
 // rooms 는 대극장 뱃지·연습 무대 라우팅 + 라이브 레일 공용(Realtime nudge 포함).
+// UX-SOC-2: 초대 실패 사유 → 안내 키(사전검증·수락 공용). verify 와 accept 는 같은 error 어휘
+//   (expired·revoked·used_up·room_ended)를 쓰는데 수락 쪽만 전부 "유효하지 않은 초대" 로 뭉개고 있었다
+//   — 레이트리밋 429(accept-invite:31)까지 "잘못된 링크" 로 보여 사용자가 링크를 의심하게 만든다.
+function inviteErrorKey(e: unknown): string {
+  if ((e as { status?: number } | null)?.status === 429) return 'lobby.inviteTooMany'
+  const msg = e instanceof Error ? e.message : ''
+  return msg === 'expired' ? 'lobby.inviteExpired'
+    : msg === 'revoked' ? 'lobby.inviteRevoked'
+      : msg === 'used_up' ? 'lobby.inviteUsedUp'
+        : msg === 'room_ended' ? 'lobby.inviteRoomEnded'
+          : 'lobby.inviteInvalid'
+}
+
 export default function LobbyPage() {
   const { t } = useTranslation()
   // 광장 허브·액센트는 현재 세계관(worldStore)에서 — 로그인에서 이어진 그 월드.
@@ -131,14 +144,7 @@ export default function LobbyPage() {
         if (!cancelled) {
           // verify-invite-code 는 revoked/expired/used_up/room_ended 를 error 문자열로 구분 응답
           // (edgeFn 이 Error.message 로 보존) — 원인별 안내로 "왜 안 되는지"를 알린다.
-          const msg = e instanceof Error ? e.message : ''
-          const key =
-            msg === 'expired' ? 'lobby.inviteExpired'
-              : msg === 'revoked' ? 'lobby.inviteRevoked'
-                : msg === 'used_up' ? 'lobby.inviteUsedUp'
-                  : msg === 'room_ended' ? 'lobby.inviteRoomEnded'
-                    : 'lobby.inviteInvalid'
-          toast.error(t(key))
+          toast.error(t(inviteErrorKey(e)))
           setInvite(null)
           setSearchParams({}, { replace: true })
         }
@@ -155,10 +161,13 @@ export default function LobbyPage() {
     try {
       const r = await acceptInvite(session.access_token, invite.code)
       navigate(r.role === 'viewer' ? `/rooms/${r.room_id}?watch=1` : `/rooms/${r.room_id}/ready`)
-    } catch {
-      toast.error(t('lobby.inviteInvalid'))
-      setInvite(null)
-      setSearchParams({}, { replace: true })
+    } catch (e) {
+      toast.error(t(inviteErrorKey(e)))
+      // 429(레이트리밋)는 초대 자체는 멀쩡하다 — 배너를 지우면 재시도 경로가 사라지므로 유지한다.
+      if ((e as { status?: number } | null)?.status !== 429) {
+        setInvite(null)
+        setSearchParams({}, { replace: true })
+      }
       setInviteBusy(false)
     }
   }

@@ -367,8 +367,10 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
       setTitle('')
       setWhen('')
       setChecked(new Set())
-    } catch {
-      toast.error(t('lobby.reserveFailed'))
+    } catch (e) {
+      // UX-SOC-2: 일일 캡(create-reservation:35, 20/일)을 "예약 실패" 로 뭉개면 사용자가 계속 재시도한다.
+      const tooMany = (e as { status?: number } | null)?.status === 429
+      toast.error(t(tooMany ? 'lobby.reserveTooMany' : 'lobby.reserveFailed'))
     } finally {
       setBusy(false)
       reservingRef.current = false
