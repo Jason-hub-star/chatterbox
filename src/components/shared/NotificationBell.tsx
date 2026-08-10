@@ -1,27 +1,33 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useUserStore } from '@/stores/userStore'
+import { useFriendStore } from '@/stores/friendStore'
+import { usePopoverA11y } from '@/hooks/usePopoverA11y'
+import { resolveNotifTarget, type NotifPayload } from '@/components/shared/notifRouting'
 import { toast } from '@/hooks/useToast'
 
 // 인앱 알림 벨(Phase 5). Edge 불요 — notifications RLS 가 본인 행만 열어주므로 직접 SELECT +
 // postgres_changes 구독(INSERT). 읽음 = read_at 만(컬럼 그랜트). 마이그 20260708140000.
+// 클릭 목적지는 `notifRouting.ts` 가 단독 소유 — 분기를 여기 두면 type 이 늘 때 데드클릭이 재발한다.
 interface Notif {
   id: string
   type: string
-  payload: {
-    invite_code?: string
+  room_id: string | null // 서버가 채우는 FK — vgen/dub/recording 완료 알림의 목적지
+  payload: NotifPayload & {
     room_title?: string
     host_name?: string
-    room_id?: string // followed_creator_stream_start — 클릭 시 /rooms/:id/ready 직행
     requester_name?: string | null // friend_request
     name?: string | null // friend_accepted
-    job_id?: string // avatar_job_done|avatar_job_failed
+    job_id?: string // avatar_job_done|avatar_job_failed|vgen_job_*
     result_project_url?: string | null
   }
   read_at: string | null
 }
+
+// NOTI-PAGE: 한 번에 받아오는 개수. 예전엔 10개 고정이라 그 뒤 알림은 도달 경로가 아예 없었다.
+const PAGE = 20
 
 // 반응형 단일 인스턴스: 모바일=텍스트 버튼 / 데스크톱=원형 유리 칩(종 아이콘 — 헤더 바 없는
 // 광장 위, 그림 가림 최소). 두 인스턴스 동시 마운트 금지 — 같은 채널 토픽 재구독으로 크래시.
@@ -31,19 +37,37 @@ export default function NotificationBell() {
   const appUserId = useUserStore((s) => s.appUserId)
   const [items, setItems] = useState<Notif[]>([])
   const [open, setOpen] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  // 현재 페이지 크기를 ref 로 든다 — state 로 두면 [더 보기] 마다 아래 effect 가 다시 돌아
+  // realtime 채널을 재구독한다(구독 해제/재개설 왕복이 곧 유실 창).
+  const limitRef = useRef(PAGE)
+  // 언마운트 후 도착하는 응답을 버린다(기존 cancelled 플래그와 같은 역할 — load 가 effect 밖
+  // [더 보기]에서도 불리므로 effect 지역 변수로는 못 덮는다).
+  const aliveRef = useRef(true)
+  useEffect(() => {
+    aliveRef.current = true
+    return () => { aliveRef.current = false }
+  }, [])
+
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('notifications')
+      .select('id, type, room_id, payload, read_at')
+      .order('created_at', { ascending: false })
+      .limit(limitRef.current + 1) // +1 = 다음 장 존재 탐지(별도 count 쿼리 없이)
+    if (!data || !aliveRef.current) return
+    setHasMore(data.length > limitRef.current)
+    setItems(data.slice(0, limitRef.current) as Notif[])
+  }, [])
+
+  const loadMore = () => {
+    limitRef.current += PAGE
+    void load()
+  }
 
   useEffect(() => {
     if (!appUserId) return
-    let cancelled = false
-    const load = async () => {
-      const { data } = await supabase
-        .from('notifications')
-        .select('id, type, payload, read_at')
-        .order('created_at', { ascending: false })
-        .limit(10)
-      if (!cancelled && data) setItems(data as Notif[])
-    }
     void load()
     const ch = supabase
       .channel(`notif:${appUserId}`)
@@ -54,10 +78,12 @@ export default function NotificationBell() {
       )
       .subscribe()
     return () => {
-      cancelled = true
       void supabase.removeChannel(ch)
     }
-  }, [appUserId])
+  }, [appUserId, load])
+
+  // A11Y-POPOVER: Esc·초기 포커스·트랩·복귀(바깥클릭만 있던 자리). 마크업은 그대로 — 로직만 공유.
+  const panelRef = usePopoverA11y<HTMLDivElement>(open, () => setOpen(false))
 
   // 바깥 클릭으로 닫기(드롭다운 관례).
   useEffect(() => {
@@ -71,39 +97,42 @@ export default function NotificationBell() {
 
   const unread = items.filter((n) => !n.read_at).length
 
-  const toggle = async () => {
-    const next = !open
-    setOpen(next)
-    if (next && unread > 0) {
-      // 열람 = 전부 읽음(RLS 가 본인 행으로 한정 — 필터 불요).
-      await supabase.from('notifications').update({ read_at: new Date().toISOString() }).is('read_at', null)
-      setItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })))
-    }
+  // 여는 것만으로 전부 읽음 처리하지 않는다(감사 #12) — 스크롤 아래 못 본 알림까지 지워져
+  // 뱃지가 사라지면 그 알림은 두 번 다시 눈에 띄지 않는다. 읽음은 명시 버튼 또는 항목 클릭으로만.
+  const markRead = async (ids: string[]) => {
+    if (ids.length === 0) return
+    const now = new Date().toISOString()
+    setItems((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, read_at: n.read_at ?? now } : n)))
+    // RLS 가 본인 행으로 한정하므로 user 필터 불요. is(null) 로 이미 읽은 건 건너뛴다.
+    await supabase.from('notifications').update({ read_at: now }).in('id', ids).is('read_at', null)
   }
+
+  const markAllRead = () => void markRead(items.filter((n) => !n.read_at).map((n) => n.id))
 
   const onItem = async (n: Notif) => {
     setOpen(false)
-    // 재초대/예약초대: 초대코드가 있으면 로비 초대 배너 흐름(LOB-05) 재사용.
-    if (n.payload.invite_code) {
-      navigate(`/lobby?invite=${n.payload.invite_code}`)
+    if (!n.read_at) void markRead([n.id]) // 도착한 알림은 읽음 — 뱃지가 영원히 남지 않게.
+    const target = resolveNotifTarget(n)
+    if (!target) return // notifRouting 이 전수를 덮으므로 여기 오면 신규 type 미등록(테스트가 먼저 막는다)
+    if (target.kind === 'navigate') {
+      navigate(target.to)
       return
     }
-    // 아바타 완료/실패: 의상실로(거울에 NEW 배지·재주문 카드가 기다린다).
-    if (n.type === 'avatar_job_done' || n.type === 'avatar_job_failed') {
-      navigate('/lobby/atelier')
+    if (target.kind === 'friends') {
+      // NOTI-FRIEND: 친구 패널은 벨과 같은 로비 헤더 — 이동이 아니라 열기다(수락/거절이 거기 있다).
+      useFriendStore.getState().setPanelOpen(true)
       return
     }
-    // 팔로우 공연시작(PROFILE-05): 방 상태 재검증 후 분기(UX-2, 델타 감사) — 종료/만석이면 데드엔드 대신 안내.
-    if (n.type === 'followed_creator_stream_start' && typeof n.payload.room_id === 'string') {
-      const { data } = await supabase
-        .from('public_rooms')
-        .select('status, current_participants, max_participants')
-        .eq('id', n.payload.room_id)
-        .maybeSingle()
-      if (!data || data.status === 'ended') { toast.info(t('notif.roomEnded')); return }
-      if ((data.current_participants ?? 0) >= (data.max_participants ?? 6)) { toast.info(t('notif.roomFull')); return }
-      navigate(`/rooms/${n.payload.room_id}/ready`)
-    }
+    // roomIfLive: 팔로우 공연시작(PROFILE-05) — 방 상태 재검증 후 분기(UX-2, 델타 감사).
+    //   종료/만석이면 데드엔드 대신 안내.
+    const { data } = await supabase
+      .from('public_rooms')
+      .select('status, current_participants, max_participants')
+      .eq('id', target.roomId)
+      .maybeSingle()
+    if (!data || data.status === 'ended') { toast.info(t('notif.roomEnded')); return }
+    if ((data.current_participants ?? 0) >= (data.max_participants ?? 6)) { toast.info(t('notif.roomFull')); return }
+    navigate(`/rooms/${target.roomId}/ready`)
   }
 
   const label = (n: Notif): string => {
@@ -114,6 +143,8 @@ export default function NotificationBell() {
     if (n.type === 'reservation_reminder') return t('notif.reservationReminder', { room })
     // 취소 통지(LOB-06 취소) — 이게 없으면 label 이 타입 문자열로 새어나온다(:122 폴백).
     if (n.type === 'reservation_cancelled') return t('notif.reservationCancelled', { host, room })
+    // RES-ROOM: 예약한 공연의 방이 실제로 열렸다 — 이 알림만 갈 방을 확실히 갖는다.
+    if (n.type === 'reservation_room_open') return t('notif.reservationRoomOpen', { room })
     // FriendSystem(PROFILE-04/05)
     if (n.type === 'friend_request') return t('notif.friendRequest', { name: n.payload.requester_name ?? '?' })
     if (n.type === 'friend_accepted') return t('notif.friendAccepted', { name: n.payload.name ?? '?' })
@@ -121,13 +152,18 @@ export default function NotificationBell() {
     // 아바타 포지(대기 UX) — 완료/실패, 클릭 시 의상실로.
     if (n.type === 'avatar_job_done') return t('notif.avatarJobDone')
     if (n.type === 'avatar_job_failed') return t('notif.avatarJobFailed')
+    // 장수명 작업 완료(U1) — 화면을 떠나 있어도 여기 남는다.
+    if (n.type === 'vgen_job_done') return t('notif.vgenJobDone')
+    if (n.type === 'vgen_job_failed') return t('notif.vgenJobFailed')
+    if (n.type === 'dub_output_ready') return t('notif.dubOutputReady')
+    if (n.type === 'recording_ready') return t('notif.recordingReady', { room })
     return n.type
   }
 
   return (
     <div ref={rootRef} className="relative">
       <button
-        onClick={() => void toggle()}
+        onClick={() => setOpen((v) => !v)}
         aria-label={t('lobby.notifications')}
         className="relative hidden h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-stage-base/40 text-stage-text-muted backdrop-blur-sm transition hover:bg-stage-base/60 hover:text-stage-text md:flex"
       >
@@ -141,10 +177,11 @@ export default function NotificationBell() {
           </span>
         )}
       </button>
+      {/* TOUCH-44: 모바일 전용 진입점인데 px-3 py-2 ≈36px 로 coarse 포인터 44px 에 못 미쳤다. */}
       <button
-        onClick={() => void toggle()}
+        onClick={() => setOpen((v) => !v)}
         aria-label={t('lobby.notifications')}
-        className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted hover:text-stage-text md:hidden"
+        className="touch-target rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted hover:text-stage-text md:hidden"
       >
         {t('lobby.notifications')}
         {unread > 0 && (
@@ -152,7 +189,24 @@ export default function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-stage-border bg-stage-elevated py-1 shadow-lg">
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label={t('lobby.notifications')}
+          tabIndex={-1}
+          className="absolute right-0 z-40 mt-2 max-h-[70vh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-stage-border bg-stage-elevated py-1 shadow-lg"
+        >
+          {unread > 0 && (
+            <div className="flex justify-end border-b border-stage-border px-2 pb-1">
+              <button
+                type="button"
+                onClick={markAllRead}
+                className="touch-target rounded px-2 text-xs text-stage-text-muted hover:text-stage-text"
+              >
+                {t('lobby.notifMarkAllRead')}
+              </button>
+            </div>
+          )}
           {items.length === 0 ? (
             <p className="px-3 py-2 text-sm text-stage-text-muted">{t('lobby.notifEmpty')}</p>
           ) : (
@@ -160,11 +214,20 @@ export default function NotificationBell() {
               <button
                 key={n.id}
                 onClick={() => void onItem(n)}
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-stage-panel"
+                className={`block w-full px-3 py-2 text-left text-sm hover:bg-stage-panel ${n.read_at ? 'text-stage-text-muted' : 'font-semibold text-stage-text'}`}
               >
                 {label(n)}
               </button>
             ))
+          )}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={loadMore}
+              className="block w-full border-t border-stage-border px-3 py-2 text-center text-xs text-stage-text-muted hover:text-stage-text"
+            >
+              {t('lobby.notifMore')}
+            </button>
           )}
         </div>
       )}

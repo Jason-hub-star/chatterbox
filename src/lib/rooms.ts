@@ -21,8 +21,13 @@ export interface LeaveRoomResult { ok: boolean; new_host_id: string | null }
 // 장르(LOB-03)는 옵션 — 서버 화이트리스트(create-room GENRES)와 i18n lobby.genre.* 가 어휘 SSOT.
 export const ROOM_GENRES = ['comedy', 'drama', 'romance', 'fantasy', 'horror', 'free'] as const
 
-export const createRoom = (accessToken: string, title: string, genre?: string) =>
-  callFn<CreateRoomResult>('create-room', accessToken, genre ? { title, genre } : { title })
+// RES-ROOM: reservationId 를 주면 서버가 그 예약과 방을 잇고 초대자에게 개시를 알린다.
+export const createRoom = (accessToken: string, title: string, genre?: string, reservationId?: string) =>
+  callFn<CreateRoomResult>('create-room', accessToken, {
+    title,
+    ...(genre ? { genre } : {}),
+    ...(reservationId ? { reservation_id: reservationId } : {}),
+  })
 
 // 쇼츠 제작소(로비 IA 재편): VGEN 이 room 에 강결합(room_id·호스트검증·R2 경로)이라, 유저당
 // 숨겨진 1인 스튜디오 방을 get-or-create 로 재사용한다(vgen_jobs 히스토리 누적). 서버 멱등.
@@ -278,7 +283,8 @@ export const listRecentRooms = (accessToken: string) =>
 export const listRecentPeople = (accessToken: string, excludeRoomId?: string) =>
   callFn<{ people: RecentPerson[] }>('list-recent-people', accessToken, excludeRoomId ? { exclude_room_id: excludeRoomId } : {})
 
-export interface Reservation { id: string; title: string; scheduled_at: string }
+// room_id = RES-ROOM. null 이면 아직 안 연 예약, 값이 있으면 그 방이 이 예약의 목적지다.
+export interface Reservation { id: string; title: string; scheduled_at: string; room_id: string | null }
 
 // 예약 공연(LOB-06 MVP): 생성은 Edge(대상자 알림 발송 겸), 내 예약 조회는 RLS 직접 SELECT.
 export const createReservation = (accessToken: string, title: string, scheduledAtIso: string, inviteeIds: string[]) =>
@@ -295,7 +301,7 @@ export const cancelReservation = (accessToken: string, reservationId: string) =>
 export async function fetchMyReservations(): Promise<Reservation[]> {
   const { data, error } = await supabase
     .from('room_reservations')
-    .select('id, title, scheduled_at')
+    .select('id, title, scheduled_at, room_id')
     .gte('scheduled_at', new Date().toISOString())
     .order('scheduled_at', { ascending: true })
     .limit(10)

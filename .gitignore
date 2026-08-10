@@ -20,3 +20,6 @@ public/aria-player/api/
 # PoC 산출물 바이너리(README만 추적)
 poc/**/*.mp4
 poc/**/*.png
+
+# supabase start 생성물(미니파이 번들·시크릿 캐시) — 소스 아님
+supabase/.temp/

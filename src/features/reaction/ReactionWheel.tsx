@@ -121,8 +121,12 @@ export default function ReactionWheel({ origin, initialSticky, onFire, onClose, 
             onClick={() => { onClose(); onEdit() }}
             aria-label={t('reaction.editLoadout')}
             title={t('reaction.editLoadout')}
-            className="absolute grid place-items-center rounded-full border border-stage-border bg-stage-panel text-sm hover:border-fire-amber"
-            style={{ left: -16, top: RADIUS + 10, width: 32, height: 32 }}
+            // TOUCH-44: 터치 롱프레스로만 나타나는 진입점인데 32px 하드코딩이라 코어스 포인터에서
+            //   제일 조준하기 어려웠다. `.touch-target`(coarse 전용 min 44px)만 얹으면 폭이 늘어난
+            //   만큼 중심이 오른쪽으로 밀리므로, 좌표도 44 기준으로 다시 잡아 중심을 보존한다
+            //   (기존 중심 = left -16 + 16 = 0 / top RADIUS+10 + 16 = RADIUS+26).
+            className="touch-target absolute grid place-items-center rounded-full border border-stage-border bg-stage-panel text-sm hover:border-fire-amber"
+            style={{ left: -22, top: RADIUS + 4, width: 44, height: 44 }}
           >
             ✏️
           </button>

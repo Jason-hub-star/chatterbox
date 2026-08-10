@@ -21,12 +21,22 @@ export async function hashIp(req: Request): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// REC-CONSENT-N: 분자/분모를 같이 돌려준다. 예전엔 boolean 만 줘서 호스트 화면이 "⏳ 동의 대기중"
+//   한 줄로 굳었고, 무응답자는 영구 침묵이라 "몇 명 남았나"를 알 길이 없었다(계속 기다릴지 취소할지
+//   판단 근거 부재). 분모 규칙(SEC-KICK-3 강퇴자 제외)이 여기 한 곳에만 있어야 하므로
+//   호출부에서 따로 세지 않고 이 함수가 tally 를 반환한다 — 규칙 복제가 곧 분모 불일치다.
+export interface ConsentTally {
+  all: boolean;       // §11.1.1 시작 게이트(기존 boolean 과 동의어)
+  consented: number;  // 동의한 활성 참가자 수
+  required: number;   // 분모(활성·미강퇴 참가자 수)
+}
+
 // 활성 참가자 전원이 consented=true 인가(§11.1.1 시작 게이트). record-consent(더빙)와 동형.
 export async function recomputeConsent(
   service: any,
   roomId: string,
   consent: RecordingConsent,
-): Promise<boolean> {
+): Promise<ConsentTally> {
   // SEC-KICK-3: 강퇴자를 분모에서 제외 — 강퇴자는 UI 밖으로 밀려나 동의를 낼 방법이 없는데
   //   분모에는 남아 all_consented 가 영구 미충족 = 녹화 시작이 봉쇄된다(record-consent 의
   //   뷰어 계수 결함 F1 과 동형의 기능 DoS).
@@ -37,6 +47,6 @@ export async function recomputeConsent(
     .neq("state", "left")
     .not("is_disabled_by_host", "is", true);
   const list = (parts ?? []) as { user_id: string }[];
-  return list.length > 0 &&
-    list.every((p) => consent.participants[p.user_id]?.consented === true);
+  const consented = list.filter((p) => consent.participants[p.user_id]?.consented === true).length;
+  return { all: list.length > 0 && consented === list.length, consented, required: list.length };
 }

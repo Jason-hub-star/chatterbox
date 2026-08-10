@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRoomStore } from '@/stores/roomStore'
 import { useAudioStore } from '@/stores/audioStore'
+import { usePopoverA11y } from '@/hooks/usePopoverA11y'
 
 // ROOM-08 음량 믹서 — 하단바 🎧(open/onClose controlled prop, RoomPage 소유) → 마스터 + BGM + 원격 참가자별 슬라이더.
 // 로컬 전용: 스토어에만 쓰고, 실제 적용은 useLiveKitRoom(원격 트랙)·lib/sound.ts(BGM) 구독 브리지가 담당.
@@ -23,14 +24,9 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
 
   // UX-MIXER-MODAL: 앵커 팝오버 설계는 유지(🎧 버튼 바로 위 — 중앙 Modal 전환은 의도적 상호작용 퇴행)하되
   // a11y 핵심(dialog 시맨틱·Esc·오픈 시 포커스)을 부여한다. 공유 Modal 미사용은 앵커 유지가 이유.
-  const panelRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    panelRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  // A11Y-POPOVER: 직접 구현하던 Esc·포커스를 공용 훅으로 — 여기만 없던 **트랩·복귀**가 함께 붙는다
+  //   (aria-modal 을 선언해 놓고 Tab 이 뒤 화면으로 새던 상태였다).
+  const panelRef = usePopoverA11y<HTMLDivElement>(open, onClose)
 
   // 마이크 입력 기기 목록(패널 열릴 때 열거 — 룸은 이미 마이크 권한이라 label 채워짐). 게인은 defer(audioStore ponytail).
   const [mics, setMics] = useState<MediaDeviceInfo[]>([])
@@ -61,7 +57,8 @@ export default function AudioMixerPanel({ open, onClose }: { open: boolean; onCl
           type="button"
           onClick={onClose}
           aria-label={t('common.close')}
-          className="text-xs text-stage-text-muted hover:text-stage-text"
+          // TOUCH-44: ✕ 가 텍스트 크기 그대로라 터치로 조준이 어려웠다.
+          className="touch-target text-xs text-stage-text-muted hover:text-stage-text"
         >
           ✕
         </button>

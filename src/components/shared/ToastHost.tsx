@@ -30,6 +30,19 @@ export default function ToastHost() {
             </svg>
           )}
           <span>{item.message}</span>
+          {/* FB-TOAST: 다음 행동 슬롯. 누르면 토스트는 물러난다 — 액션을 실행했는데 실패 문구가
+              그대로 남아 있으면 눌린 건지 알 수 없다. */}
+          {item.action && (
+            <button
+              onClick={() => {
+                item.action?.onClick()
+                dismiss(item.id)
+              }}
+              className="touch-target shrink-0 rounded border border-current px-2 py-0.5 text-xs font-semibold"
+            >
+              {item.action.label}
+            </button>
+          )}
           <button
             onClick={() => dismiss(item.id)}
             aria-label={t('common.close')}

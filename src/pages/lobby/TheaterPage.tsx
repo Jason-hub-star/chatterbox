@@ -312,6 +312,7 @@ function StageCreator({ accessToken }: { accessToken: string }) {
 // 매표소 = 예약 공연(LOB-06). 찻집 칩 클릭이 ?invitee= 로 넘어오면 자동 체크.
 function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; presetInvitee: string | null }) {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const [mine, setMine] = useState<Reservation[]>([])
   const [people, setPeople] = useState<RecentPerson[]>([])
   const [checked, setChecked] = useState<Set<string>>(() => new Set(presetInvitee ? [presetInvitee] : []))
@@ -351,6 +352,30 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
   // RM-CREATE-DBL 동형: 예약 생성도 같은 근본원인(커밋 전 더블클릭) — 형제 호출처 동시 수술.
   const reservingRef = useRef(false)
 
+  // RES-ROOM: 예약에서 방 열기. 지금까지 예약은 "약속"만이라 시작 시각이 와도 호스트가 방을
+  //   따로 만들어야 했고, 초대자 리마인더는 갈 곳이 없었다. 여기서 열면 서버가 예약↔방을 잇고
+  //   초대자 전원에게 방을 알린다.
+  const openingRef = useRef(false)
+  const onOpenRoom = async (r: Reservation) => {
+    if (r.room_id) {
+      navigate(`/rooms/${r.room_id}`)
+      return
+    }
+    if (openingRef.current) return
+    openingRef.current = true
+    try {
+      const { room_id } = await createRoom(accessToken, r.title, undefined, r.id)
+      navigate(`/rooms/${room_id}`)
+    } catch (e) {
+      // 409 = 이미 열린 예약(스테일 목록·다른 탭). 서버가 그 방을 알려주므로 그리로 보낸다.
+      const already = (e as { status?: number; body?: { room_id?: string } } | null)
+      if (already?.status === 409 && already.body?.room_id) navigate(`/rooms/${already.body.room_id}`)
+      else toast.error(t('lobby.reserveOpenFailed'))
+    } finally {
+      openingRef.current = false
+    }
+  }
+
   // 예약 취소(LOB-06). 되돌릴 수 없고 초대자에게 취소 통지가 나가므로 2단 확인(HostConsole 링크 폐기와 동형).
   const [armed, setArmed] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
@@ -383,7 +408,8 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
       const r = await createReservation(accessToken, trimmed, new Date(when).toISOString(), [...checked])
       toast.success(t('lobby.reserveDone', { count: r.notified }))
       setMine((prev) =>
-        [...prev, { id: r.reservation_id, title: trimmed, scheduled_at: r.scheduled_at }].sort((a, b) =>
+        // room_id: null — 갓 만든 예약엔 아직 연 방이 없다(행이 [방 열기] 로 뜬다).
+        [...prev, { id: r.reservation_id, title: trimmed, scheduled_at: r.scheduled_at, room_id: null }].sort((a, b) =>
           a.scheduled_at.localeCompare(b.scheduled_at),
         ),
       )
@@ -408,6 +434,13 @@ function TicketOffice({ accessToken, presetInvitee }: { accessToken: string; pre
           <p className="shrink-0 text-[11px] text-stage-text-muted">
             {new Date(r.scheduled_at).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' })}
           </p>
+          <button
+            type="button"
+            onClick={() => void onOpenRoom(r)}
+            className="touch-target shrink-0 rounded border border-fire-amber px-2 py-0.5 text-[11px] font-semibold text-fire-amber hover:bg-fire-amber/10"
+          >
+            {r.room_id ? t('lobby.reserveGoRoom') : t('lobby.reserveOpenRoom')}
+          </button>
           <button
             type="button"
             onClick={() => void onCancel(r.id)}

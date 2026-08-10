@@ -12,6 +12,10 @@ interface FriendStore {
   pendingOut: FriendEntry[]
   onlinePresence: Record<string, PresenceActivity> // users.id → 활동(온라인 친구만 키 존재)
   loading: boolean
+  // 패널 개폐를 스토어에 둔다 — 친구 알림(friend_request/accepted)의 목적지가 벨과 같은 로비 헤더라
+  // 라우팅으로는 못 열기 때문. 전역 CustomEvent 대신 스토어라 유닛 테스트로 검증된다.
+  panelOpen: boolean
+  setPanelOpen: (v: boolean) => void
   load: (accessToken: string) => Promise<void>
   reset: () => void
 }
@@ -23,10 +27,13 @@ const INITIAL = {
   pendingOut: [] as FriendEntry[],
   onlinePresence: {} as Record<string, PresenceActivity>,
   loading: false,
+  panelOpen: false,
 }
 
 export const useFriendStore = create<FriendStore>((set) => ({
   ...INITIAL,
+
+  setPanelOpen: (v) => set({ panelOpen: v }),
 
   load: async (accessToken) => {
     set({ loading: true })

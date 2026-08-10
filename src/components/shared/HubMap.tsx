@@ -62,19 +62,28 @@ export default function HubMap({ blocks, roomsCount, onDest, fullscreen = false 
     if (localStorage.getItem('cb.hubWaveSeen') === '1') return
     const shops = blocks[0]?.shops.filter((s) => !OFF_DESTS.has(s.dest)) ?? []
     const timers: ReturnType<typeof setTimeout>[] = []
+    // HUB-SIGN: 웨이브가 스포트라이트만 켜고 **간판은 안 띄워서**, 처음 온 사람은 건물이 무엇인지
+    //   모른 채 불빛만 봤다. 같은 타이밍에 그 가게 간판을 함께 펼친다 — 상시 노출은 원화를 가리므로
+    //   여전히 평생 1회 + hover 다. spot 이 React state 가 아니라 ref DOM 조작이라 클래스도 DOM 으로.
+    const signOn = (dest: string | null) => {
+      document.querySelectorAll('.hub-shop.hub-wave-sign').forEach((el) => el.classList.remove('hub-wave-sign'))
+      if (dest) document.querySelector(`.hub-shop[data-dest="${dest}"]`)?.classList.add('hub-wave-sign')
+    }
     shops.forEach((s, i) => {
-      timers.push(setTimeout(() => setSpot(s), 700 + i * 480))
+      timers.push(setTimeout(() => { setSpot(s); signOn(s.dest) }, 700 + i * 480))
     })
     // 플래그는 완주 시점에 — StrictMode 이중 마운트가 첫 웨이브를 삼키지 않게(시작 시 세팅 금지).
     timers.push(
       setTimeout(() => {
         setSpot(null)
+        signOn(null)
         localStorage.setItem('cb.hubWaveSeen', '1')
       }, 700 + shops.length * 480),
     )
     return () => {
       timers.forEach(clearTimeout)
       setSpot(null)
+      signOn(null)
     }
   }, [blocks, setSpot])
 
@@ -151,6 +160,7 @@ export default function HubMap({ blocks, roomsCount, onDest, fullscreen = false 
                 onFocus={() => !off && setSpot(s)}
                 onBlur={() => setSpot(null)}
                 aria-label={t(`hub.${s.dest}.title`)}
+                data-dest={s.dest} // HUB-SIGN: 입장 웨이브가 이 셀렉터로 간판을 펼친다
                 className={`hub-shop absolute ${off ? 'hub-off' : ''}`}
                 style={{ left: `${s.box.l}%`, top: `${s.box.t}%`, width: `${s.box.w}%`, height: `${s.box.h}%` }}
               >

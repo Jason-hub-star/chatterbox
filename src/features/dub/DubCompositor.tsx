@@ -6,6 +6,7 @@ import {
   fetchDubRecordings, getDubSourceUrl, separateDubAudio, dubEffectiveEndMs, type DubSegment, type DubTrack,
 } from '@/lib/dub'
 import { mixAndMux, buildVtt, type DubCue, type SubtitleCue } from '@/lib/ffmpeg'
+import { useLeaveGuard } from '@/hooks/useLeaveGuard'
 import ProgressBar from '@/components/shared/ProgressBar'
 
 // Phase 3B 슬라이스 3a/3b: 더빙 완성본 합성(DUB-05, 원본 재더빙 + 음원분리 배경합류).
@@ -47,6 +48,8 @@ export default function DubCompositor({ dubSessionId, status, isHost, tracks, se
   const isCompleted = status === 'completed'
   const isCompositing = status === 'compositing'
   const busy = phase === 'separating' || phase === 'downloading' || phase === 'mixing' || phase === 'uploading'
+  // LEAVE-GUARD: 합성은 이 탭 안에서만 돈다(ffmpeg.wasm). 닫으면 앞단 STT·음원분리 비용까지 함께 날아간다.
+  useLeaveGuard(busy)
 
   // 완료 세션: 완성본 URL 로드(게스트·재로드 포함)
   useEffect(() => {

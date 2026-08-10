@@ -10,6 +10,7 @@ import {
   completeRoomRecording,
 } from '@/lib/rooms'
 import { toast } from '@/hooks/useToast'
+import { useLeaveGuard } from '@/hooks/useLeaveGuard'
 import i18n from '@/i18n'
 
 // V-3 인앱 녹화 오케스트레이션(GOAL-g3 §1): 동의 수집 → all_consented → 무대 합성 캡처(stageRecorder)
@@ -31,6 +32,8 @@ export function useRoomRecording(opts: {
   const [consentRequest, setConsentRequest] = useState<{ recordingId: string } | null>(null)
   const [recordingsNonce, setRecordingsNonce] = useState(0) // 녹화 완료 → HostConsole 목록 갱신 트리거
   const [uploadPct, setUploadPct] = useState<number | null>(null) // UX-UPLOAD-PROGRESS: 업로드 진행률(0~100)
+  // REC-CONSENT-N: 동의 집계(서버 계산 — 분모 규칙 SEC-KICK-3 이 서버에만 있다). 호스트 라벨 "n/N".
+  const [consentTally, setConsentTally] = useState<{ consented: number; required: number } | null>(null)
 
   const phaseRef = useRef(phase)
   useEffect(() => { phaseRef.current = phase }, [phase])
@@ -108,9 +111,23 @@ export function useRoomRecording(opts: {
       failedRef.current = { blob, durationMs } // 블롭 보존 — presign 1h 내 재시도 가능
       setUploadPct(null)
       setPhase('uploadFailed')
-      toast.error(i18n.t('room.recUploadFailed'))
+      // 실패 알림은 여기가 아니라 아래 phase 이펙트가 띄운다(재시도 액션을 함께 실으려고).
     }
   }, [])
+
+  // FB-TOAST: 업로드 실패 토스트에 [재시도]를 싣는다. 하단바 ⏺ 도 [재시도]로 바뀌지만 그건 눈을
+  //   그리로 돌려야 보이고, 실패 문구는 이제 자동 소멸하지 않으니 토스트가 제일 가까운 다음 한 수다.
+  //   catch 안이 아니라 phase 전이에서 띄우는 이유: catch 에서 재시도를 걸려면 자기 자신을 가리키는
+  //   ref 브리지가 필요한데 컴파일러 lint 가 그 변형을 막는다. 전이로 옮기면 `uploadAndComplete` 가
+  //   이미 정의된 자리라 브리지가 통째로 사라진다 — 규칙을 우회하는 대신 구조를 고쳤다.
+  const retryUpload = useCallback(() => {
+    const f = failedRef.current
+    if (f) void uploadAndComplete(f.blob, f.durationMs)
+  }, [uploadAndComplete])
+  useEffect(() => {
+    if (phase !== 'uploadFailed') return
+    toast.error(i18n.t('room.recUploadFailed'), { label: i18n.t('room.ctrlRecordRetry'), onClick: retryUpload })
+  }, [phase, retryUpload])
 
   // ⏺ 단일 버튼(호스트): idle=동의 수집 시작 / consentPending=취소 / recording=정지→업로드 / uploadFailed=재시도.
   const toggleRecording = useCallback(async () => {
@@ -118,6 +135,7 @@ export function useRoomRecording(opts: {
     if (!tk || !isHostRef.current) return
     const cur = phaseRef.current
     if (cur === 'idle') {
+      setConsentTally(null) // REC-CONSENT-N: 새 수집 라운드 — 지난 라운드 집계가 새어나오면 안 된다.
       try {
         const r = await startRoomRecording(tk, roomId)
         recordingIdRef.current = r.recording_id
@@ -153,7 +171,7 @@ export function useRoomRecording(opts: {
   }, [roomId, startCapture, uploadAndComplete])
 
   // room-authority recording_* 수신(RoomPage 위임). 서버발만 도달(SEC-RA-1 — 수신측이 이미 필터).
-  const onAuthorityMessage = useCallback((msg: { type: string; recording_id?: string; all_consented?: boolean; declined?: boolean; declined_name?: string | null }) => {
+  const onAuthorityMessage = useCallback((msg: { type: string; recording_id?: string; all_consented?: boolean; consented_count?: number; required_count?: number; declined?: boolean; declined_name?: string | null }) => {
     if (msg.type === 'recording_consent') {
       // 동의 요청: 비호스트 전원 모달(호스트는 시작 시 자동 동의됨).
       if (!isHostRef.current && typeof msg.recording_id === 'string') {
@@ -161,6 +179,10 @@ export function useRoomRecording(opts: {
         setConsentRequest({ recordingId: msg.recording_id })
       }
     } else if (msg.type === 'recording_consent_update') {
+      // REC-CONSENT-N: 집계 먼저 반영 — 자동 시작 분기와 무관하게 라벨은 항상 최신이어야 한다.
+      if (typeof msg.consented_count === 'number' && typeof msg.required_count === 'number') {
+        setConsentTally({ consented: msg.consented_count, required: msg.required_count })
+      }
       // 전원 동의 완료 → 호스트 자동 시작(계약 "all_consented 시 시작").
       if (
         isHostRef.current && msg.all_consented === true &&
@@ -228,6 +250,10 @@ export function useRoomRecording(opts: {
   // 방 이탈/언마운트 — 진행 중 캡처 폐기(업로드 없이). DB 잔재는 재입장 정지 경로가 정리.
   useEffect(() => () => { recorderRef.current?.cancel(); recorderRef.current = null }, [])
 
+  // LEAVE-GUARD: 녹화본은 MediaRecorder 로 이 탭 메모리에 쌓인다(Egress 미사용) — 닫으면 회수 불가.
+  //   업로드 중 이탈도 같다: 아티팩트가 절반만 올라가고 방엔 아무것도 남지 않는다.
+  useLeaveGuard(phase === 'recording' || phase === 'uploading')
+
   // 녹화 중 오디오 증감 합류(useLiveKitRoom onAudioTrack 배선용).
   const onAudioTrack = useCallback((track: MediaStreamTrack) => {
     recorderRef.current?.addAudioTrack(track)
@@ -236,6 +262,8 @@ export function useRoomRecording(opts: {
   return {
     phase,
     recActive: remoteActive || phase === 'recording' || phase === 'uploading',
+    // REC-CONSENT-N: phase 로 게이트해 파생 — 별도 리셋 시점을 관리하면 상태 2개가 어긋난다.
+    consentTally: phase === 'consentPending' ? consentTally : null,
     consentRequest,
     respondConsent,
     toggleRecording,

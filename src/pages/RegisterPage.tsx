@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { useUserStore } from '@/stores/userStore'
 import { passwordIssue } from '@/lib/authValidation'
 import AuthShell from '@/components/shared/AuthShell'
@@ -31,6 +31,10 @@ export default function RegisterPage() {
   const storeError = useUserStore((s) => s.error)
   const authState = useUserStore((s) => s.authState)
   const navigate = useNavigate()
+  const location = useLocation()
+  // REG-FROM: 초대 링크로 온 신규 유저의 목적지(`/?invite=CODE`)를 가입 후에도 지킨다.
+  //   LoginPage 와 같은 규칙 — 없으면 로비.
+  const from = (location.state as { from?: string } | null)?.from ?? '/lobby'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -64,7 +68,7 @@ export default function RegisterPage() {
     const ok = await signUp(email, password)
     // 이메일 확인 OFF → 즉시 AUTHENTICATED. ponytail: 계약서상 /models(아바타 선택)로 가야 하나 Phase 0엔 없어 /lobby.
     if (ok && useUserStore.getState().authState === 'AUTHENTICATED') {
-      navigate('/lobby', { replace: true })
+      navigate(from, { replace: true })
     }
     // 이메일 확인 ON → PENDING_VERIFICATION 이면 아래 안내를 렌더한다.
   }

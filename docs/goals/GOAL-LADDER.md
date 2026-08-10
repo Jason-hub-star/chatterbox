@@ -208,6 +208,22 @@ C 밖 defer: 라이트모드(기각 예정) · 씬 팩 `--scene-accent` 유료 �
 
 D 밖 defer(대장): HostConsole 9섹션 아코디언(Med 구조)·RightPanel 화살표키 roving-tabindex(Low)·late-joiner 자동 캡처 제외 렌더(SEC-3 상위 — 통지까지만 D4).
 
+## 골 사다리 U — UIUX 감사 "완료축" 16건 (2026-08-08 4페르소나 UIUX 감사 후속 · 브리프 `GOAL-uiux-followup.md` · 플랜 승인됨)
+
+감사 판정 한 줄: **실패는 잘 다루는데 완료를 다루지 않는다.** 에러 경로는 촘촘한데(입장 실패 5분기·초대 실패 5분기·Modal 프리미티브 11개 화면 재사용), 오래 걸리는 일이 **끝났을 때 사람에게 닿아 다음 행동으로 잇는 배선**은 아바타 커미션 하나만 완성돼 있다.
+
+| # | 골 | Outcome (완료 시 참) | Verification 표면 | 상태 |
+|---|---|---|---|---|
+| U0 | 문서화 선행 | 브리프 + 이 표 + §0 트랙B 16건 probe 등재 | `docs:check` + `docs:links` | **DONE**(2026-08-08 — 이 등재가 산출물) |
+| U1 | 완료 통지 배선 | 영상생성·더빙합성·방녹화가 끝나면 이탈해 있어도 `notifications` 행이 남고 벨에서 목적지로 이동 + 녹화 동의 `n/N` | 로컬 supabase 트리거 실측(재PATCH 중복 0 대조군) + `deno check` + `check:all` | **DONE**(2026-08-08: 마이그 `20260808120000_vgen_job_notify` + Edge 4 수정 + 벨 4type 라벨/라우팅 + i18n 5키×3 — **로컬 실측 9/9**(트리거 5: INSERT 무발화·발화·**재PATCH 중복 0**·스튜디오 분기·flagged 무발화 / 계약 4: dub 대상 이탈자 제외 2명·삽입 형태 2종·벨 SELECT 컬럼) · deno×4 clean · 유닛 4/4 · check:all **exit 0(195)**. 덤: `supabase/.temp` lint 오염 189건 무시 처리) |
+| U2 | 알림 라우팅·수납 | 발행 type 전수가 클릭 목적지 보유(라우팅 없는 type **0개**) + 벨 10개 벽 해소 | 라우팅 전수 unit + `check:all` | **DONE**(2026-08-08: 순수 모듈 `notifRouting.ts`(NOTIF_TYPES 13 + resolveNotifTarget) · `friendStore.panelOpen` 승격 · 벨 20씩 [더 보기]·[모두 읽음] 분리 · i18n 2키×3 — **테스트가 서버 소스를 직접 긁어 대조**(손목록 드리프트 차단, 가짜 type 주입 positive-control로 FAIL 실증) · **실렌더 6/6**(자동읽음 소멸·25건 도달·친구패널 열림·예약→대극장·DB read 25/25) · check:all **exit 0(205)**) |
+| U3 | 예약↔방 연결 | 예약 알림에 **갈 방이 존재** — 호스트는 알림에서 방을 열고 초대자 알림이 그 방으로 이동 | 로컬 Edge 통합 + `deno check` | **DONE**(2026-08-08: 마이그 `20260808140000`(room_id·ON DELETE SET NULL·리마인더 payload) + `create-room` reservation_id + `reservation_room_open` 알림 + 대극장 [방 열기] + `callFn` 에러 본문 동봉 — **선생성 아닌 사후 연결**(빈 방 ended·reaper 충돌 회피). **로컬 Edge 통합 20/20** + 실렌더([방 열기]→방 이동·DB 연결) · deno clean · check:all exit 0) |
+| U4 | 피드백 채널·이탈 보호 | 에러 토스트 자동소멸 없음 + 액션 슬롯 + 연타 중복요청 0 + 브라우저 작업 진행 중 이탈 경고 | 중복전송·토스트·이탈경고 unit + `check:all` | **DONE**(2026-08-08: `Toast.action` 슬롯+에러 무타이머(소비처=녹화 재시도, 신규 i18n 0) · 채팅/마이크 동기 ref 가드(마이크는 공유 `toggleMic` 근본지점) · 공유 훅 `useLeaveGuard` 를 더빙 합성·방 녹화에만 — **positive-control**: 채팅 가드를 state 로 바꾸면 onSend 2회 FAIL 실증 · 유닛 +10 · `check:all` exit 0(215)) |
+| U5 | 팝오버 접근성·터치 | 팝오버 4종 Esc·포커스 진입 + 터치타겟 3곳 44px | Esc/포커스 unit + `check:responsive` | **DONE**(2026-08-08: 신규 훅 `usePopoverA11y` 로 단일화하고 **`Modal.tsx` 도 이 훅으로 전환**(11화면 무회귀) · 벨/만들기/친구/믹서 이식 · 터치타겟 3곳(휠 편집버튼은 중심 보존 재계산) — 유닛 5/5 · **실렌더 9/9 @360px**(팝오버를 **연 상태로** 오버플로·포커스·Esc, 기본 `check:responsive` 는 팝오버를 안 열어 이번 변경이 안 걸린다) · `check:responsive` 9/9(/,/login,/register × 360/768/1440) · check:all exit 0(220)) |
+| U6 | 첫인상·발견성 | **초대 링크로 온 신규 유저가 회원가입을 거쳐도 초대를 잃지 않음**(Blocker) 외 5건 | 실렌더 360/1440 + `check:all` | **DONE**(2026-08-08: REG-FROM(Link state + RegisterPage from) · HUB-SIGN(웨이브가 간판 동반) · ETA-COMMISSION(`vgenEta.etaProgress` 재사용·p50 33분) · SLOT-AFFORD(hover 🔍) · HINT-SEEN(노출 후 기록) · ONB-BACK · i18n 2키×3 — **실렌더 13/13**(초대 목적지 생존을 항해 이력으로 판정 · 웨이브 간판 opacity · 360/1440 오버플로 0) · check:all exit 0(220). ⚠️REG-FROM 유닛은 소셜우선 폼 구동 비용이 커 포기 → 실렌더로만 잠금) |
+
+U 밖 제외(주인님 결정 2026-08-08): `PUSH-CHANNEL`(#4 탭 닫으면 도달 경로 0 — 웹푸시·이메일·타이틀 뱃지 전무, 별도 골) · `HAND-RAISE`(#5 관전자 손들기 — 아래 defer 대장의 2026-07-17 폐기 결정 유지, 감사에서 UX 결과만 재확인).
+
 ## 골 경계 승인 게이트
 
 - G1 뒤: 새 문서 구조 확인(커밋 승인)

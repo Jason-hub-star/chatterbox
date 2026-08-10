@@ -53,11 +53,23 @@ export default function ChatPanel({
     if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
+  // FB-CHAT-DUP: 전송은 서버 왕복(send-chat Edge)이라 Enter 연타·더블클릭이면 같은 문구가 두 번 나간다.
+  //   가드는 동기 ref — disabled/state 는 리렌더 커밋 전 두 번째 이벤트를 못 막는다(RM-CREATE-DBL 동형).
+  //   sending state 는 버튼 비활성 표시용(가드가 아니다).
+  const sendingRef = useRef(false)
+  const [sending, setSending] = useState(false)
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!draft.trim()) return
-    await onSend(draft)
-    setDraft('')
+    if (!draft.trim() || sendingRef.current) return
+    sendingRef.current = true
+    setSending(true)
+    try {
+      await onSend(draft)
+      setDraft('')
+    } finally {
+      sendingRef.current = false
+      setSending(false)
+    }
   }
 
   const submitReport = async () => {
@@ -179,7 +191,7 @@ export default function ChatPanel({
         />
         <button
           type="submit"
-          disabled={!connected || !draft.trim()}
+          disabled={!connected || !draft.trim() || sending}
           className="rounded-lg bg-fire-amber px-4 py-2 text-sm font-semibold text-stage-base disabled:opacity-40"
         >
           {t('room.send')}

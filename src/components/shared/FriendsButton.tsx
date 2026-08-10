@@ -7,6 +7,7 @@ import { useRealtimeRow } from '@/hooks/useRealtimeRow'
 import { listRecentPeople, type RecentPerson } from '@/lib/rooms'
 import { removeFriend, respondFriendRequest, sendFriendRequest, setFollow } from '@/lib/friends'
 import { toast } from '@/hooks/useToast'
+import { usePopoverA11y } from '@/hooks/usePopoverA11y'
 import i18n from '@/i18n'
 
 // FriendsButton + FriendsPanel — 로비 상시 친구 관리(LoL식, IA 결정: 찻집 아님 · [[friend-system-lobby-lol]]).
@@ -23,7 +24,9 @@ export default function FriendsButton() {
   const pendingOut = useFriendStore((s) => s.pendingOut)
   const onlinePresence = useFriendStore((s) => s.onlinePresence)
   const load = useFriendStore((s) => s.load)
-  const [open, setOpen] = useState(false)
+  // 개폐는 스토어 소유 — 친구 알림 클릭(NotificationBell)이 같은 헤더의 이 패널을 열어야 한다.
+  const open = useFriendStore((s) => s.panelOpen)
+  const setOpen = useFriendStore((s) => s.setPanelOpen)
   const [showAdd, setShowAdd] = useState(false)
   const [recent, setRecent] = useState<RecentPerson[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -45,24 +48,20 @@ export default function FriendsButton() {
   }, [token, load])
   useRealtimeRow('friendships', 'user_id', appUserId, reload)
   useRealtimeRow('friendships', 'friend_id', appUserId, reload)
-  // UX-SOC-3: 팝오버 닫기 관용구(Esc·바깥클릭). 소셜 모달 4종 중 3종은 공용 Modal(focus trap·Esc)을 쓰는데
-  //   이 패널만 직접 만든 팝오버라 닫는 길이 ✕ 하나뿐이었다. ref 는 토글 버튼까지 감싸는 바깥 div 에 —
+  // UX-SOC-3: 팝오버 닫기 관용구(바깥클릭). ref 는 토글 버튼까지 감싸는 바깥 div 에 —
   //   버튼에 걸면 mousedown 이 먼저 닫고 click 이 다시 열어 토글이 죽는다.
+  //   A11Y-POPOVER: Esc 는 여기 직접 구현이 있었으나 포커스 진입·복귀가 없었다 → 공용 훅으로 통합.
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
     const onDown = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
     }
-    document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onDown)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onDown)
-    }
-  }, [open])
+    return () => document.removeEventListener('mousedown', onDown)
+    // setOpen 은 스토어 액션이라 참조가 고정이지만, useState setter 와 달리 lint 가 그걸 모른다.
+  }, [open, setOpen])
+  // 트랩 범위는 패널만(rootRef 는 토글 버튼을 포함해서 트랩 대상이 아니다).
+  const panelRef = usePopoverA11y<HTMLDivElement>(open, () => setOpen(false))
   // presence 폴링(DP-1): 전역 채널 대신 패널 열린 동안만 주기 재조회 → 친구 online/activity 갱신.
   useEffect(() => {
     if (!open || !token) return
@@ -166,7 +165,7 @@ export default function FriendsButton() {
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
         className="flex items-center gap-1.5 rounded-lg border border-stage-border bg-stage-base/70 px-3 py-1.5 text-sm text-stage-text-muted backdrop-blur hover:text-stage-text"
       >
@@ -181,8 +180,8 @@ export default function FriendsButton() {
       </button>
 
       {open && (
-        <div role="dialog" aria-label={t('friends.title')}
-          className="absolute right-0 top-full z-40 mt-2 w-72 rounded-lg border border-stage-border bg-stage-panel/95 p-3 backdrop-blur">
+        <div ref={panelRef} role="dialog" aria-label={t('friends.title')} tabIndex={-1}
+          className="absolute right-0 top-full z-40 mt-2 max-h-[70vh] w-72 overflow-y-auto rounded-lg border border-stage-border bg-stage-panel/95 p-3 backdrop-blur">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-stage-text">👥 {t('friends.title')}</h3>
             <button type="button" onClick={() => setOpen(false)} aria-label={t('common.close')}

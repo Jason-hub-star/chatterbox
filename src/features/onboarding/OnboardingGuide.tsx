@@ -93,6 +93,15 @@ export default function OnboardingGuide() {
         <div className="space-y-4">
           <p className="text-sm text-stage-text-muted">{t('onboarding.avatarBody')}</p>
           <div className="flex gap-2">
+            {/* ONB-BACK: 마지막 단계에 되돌아갈 길이 없어, 장르를 잘못 골랐으면 모달을 닫는 수밖에
+                없었다(닫으면 온보딩이 끝난 것으로 기록된다). 앞 단계로만 보내면 되는 일이다. */}
+            <button
+              onClick={() => setStep('genre')}
+              disabled={busy}
+              className="rounded-lg border border-stage-border px-3 py-2 text-sm text-stage-text-muted disabled:opacity-50"
+            >
+              {t('onboarding.back')}
+            </button>
             <button
               onClick={() => void goAtelier()}
               disabled={busy}

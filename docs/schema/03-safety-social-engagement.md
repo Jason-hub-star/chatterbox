@@ -286,7 +286,7 @@ CREATE TABLE notifications (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
   reservation_id UUID REFERENCES room_reservations(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,  -- reservation_invite, reservation_reminder, re_invite, friend_request, friend_accepted, followed_creator_stream_start, avatar_job_done, avatar_job_failed (design-pending: report_update, consent_request)
+  type TEXT NOT NULL,  -- reservation_invite, reservation_reminder, reservation_cancelled, reservation_room_open, re_invite, friend_request, friend_accepted, followed_creator_stream_start, avatar_job_done, avatar_job_failed, vgen_job_done, vgen_job_failed, dub_output_ready, recording_ready (design-pending: report_update, consent_request)
   payload_json JSONB DEFAULT '{}',
   delivery_channel TEXT DEFAULT 'in_app',  -- in_app, email, push
   status TEXT DEFAULT 'pending',  -- pending, sent, failed, read
@@ -305,7 +305,8 @@ CREATE TABLE notifications (
 
 > **구현됨 (2026-07-08, 마이그 `20260708140000`·`20260708150000`) — 축소 as-built:**
 > - `notifications`: 컬럼 축소(payload/room_id/read_at — reservation_id 는 payload 로, delivery_channel/status/sent_at 은 email/push provider 후속). read_at 만 클라 UPDATE(컬럼 그랜트로 나머지 변조 차단), realtime publication 등재. 지명 초대 payload 의 원문 invite_code 는 invited_user_id 고정이라 bearer 자격 아님(consume 의 not_invited 게이트).
-> - `room_reservations`: 컬럼 축소(host_id/title/scheduled_at/reminded_at — **room_id·invite_code_hash·status 연결은 후속**: 예약=약속+알림, 방은 시작 때 생성). 대상자 원장 = reservation_invite 알림 행. 리마인더 = `send_reservation_reminders()`(30분 전·멱등) + pg_cron 10분 주기(프로드 cron.job 등재 실측).
+> - `room_reservations`: 컬럼 축소(host_id/title/scheduled_at/reminded_at — **invite_code_hash·status 는 여전히 미구현**: 예약=약속+알림, 방은 시작 때 생성). 대상자 원장 = reservation_invite 알림 행. 리마인더 = `send_reservation_reminders()`(30분 전·멱등) + pg_cron 10분 주기(프로드 cron.job 등재 실측).
+> - **RES-ROOM (2026-08-08, 마이그 `20260808140000`) — `room_id` 사후 연결로 구현.** 방 **선**생성은 여전히 안 한다(빈 방 ended·reaper 와 충돌). 대신 호스트가 그 예약으로 방을 열 때(`create-room` 의 `reservation_id` 입력) `room_reservations.room_id` 를 채우고, 초대자 전원에게 `reservation_room_open` 알림을 방과 함께 보낸다. **설계 SQL 대비 편차: `ON DELETE SET NULL`**(설계는 CASCADE) — 방이 지워졌다고 예약 기록까지 지우면 취소 통지·리마인더 원장이 사라진다. `send_reservation_reminders()` payload 에 `reservation_id`·`room_id` 추가(리마인더가 어느 예약인지·갈 방이 있는지 알게).
 
 ### 1.25 polls and poll_responses — **as-built (2026-07-12, ROOM-22 관객 투표, 마이그 `20260712150000`)**
 

@@ -69,5 +69,29 @@ Deno.serve(async (req) => {
     .update({ status: "completed", completed_at: now })
     .eq("id", output.dub_session_id);
 
+  // NOTI-DUB: 완성 통지. 중간 자동체인(STT·번역·분리)은 토스트가 있는데 **최종 완성만 무소식**이었다.
+  //   합성은 브라우저 ffmpeg.wasm(DubCompositor)이라 그 탭에 붙어 있어야 하는데, 통지가 없으면
+  //   자리를 비운 나머지 멤버는 완성 사실 자체를 모른다.
+  //   대상 = 그 방의 활성 참가자(= is_dub_member 의 분모와 같은 규칙: room_participants state<>'left').
+  //   트리거가 아니라 함수 인라인인 이유: 대상이 "행 1개의 컬럼"이 아니라 조회가 필요한 집합이다.
+  //   supabase-js 는 에러를 throw 하지 않으므로 try/catch 가 아니라 반환 error 를 명시적으로 무시한다.
+  const { data: members } = await service
+    .from("room_participants")
+    .select("user_id")
+    .eq("room_id", sess.room_id)
+    .neq("state", "left");
+  const targets = [...new Set((members ?? []).map((m: { user_id: string }) => m.user_id))];
+  if (targets.length) {
+    const { error: nErr } = await service.from("notifications").insert(
+      targets.map((id) => ({
+        user_id: id,
+        type: "dub_output_ready",
+        room_id: sess.room_id,
+        payload: { dub_session_id: output.dub_session_id, output_id: output.id },
+      })),
+    );
+    if (nErr) console.error("dub_output_ready 알림 실패(비치명):", nErr.message);
+  }
+
   return json({ output_id: output.id, status: "ready" }, 200);
 });

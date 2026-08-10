@@ -1,5 +1,5 @@
 // Edge Function 호출 공용 헬퍼. rooms/dub/vgen 이 각자 복제하던 callFn 을 한 곳으로 통합.
-// A-FUNC-1: 15s 타임아웃(무한대기 제거) + 외부 취소 signal(취소 버튼은 트랙 B). SSOT: docs/API-SURFACE.md
+// A-FUNC-1: 15s 타임아웃(무한대기 제거) + 외부 취소 signal(취소 버튼은 트랙 B). SSOT: docs/specs/API-SURFACE.md
 export const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1` // export: keepalive 등 raw fetch 호출부 공유(R5)
 const DEFAULT_TIMEOUT_MS = 15_000
 
@@ -35,8 +35,14 @@ export async function callFn<T>(
     const json = await res.json().catch(() => null)
     if (!res.ok) {
       // RM-LOCK-ROLE: 상태코드를 에러에 동봉 — 호출부가 서버 문구 매칭 대신 429 등을 견고하게 분기.
-      const err = new Error(json?.error ? String(json.error) : `${name} 실패 (${res.status})`) as Error & { status?: number }
+      // RES-ROOM: 본문도 함께 — 409 처럼 "실패지만 쓸 데이터가 있는" 응답(이미 열린 방의 room_id)을
+      //   호출부가 받아야 데드엔드 대신 그 방으로 보낼 수 있다.
+      const err = new Error(json?.error ? String(json.error) : `${name} 실패 (${res.status})`) as Error & {
+        status?: number
+        body?: unknown
+      }
       err.status = res.status
+      err.body = json
       throw err
     }
     return json as T

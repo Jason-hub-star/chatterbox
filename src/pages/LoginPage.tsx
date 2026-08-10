@@ -139,7 +139,9 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-stage-text-muted">
           {t('login.noAccount')}{' '}
-          <Link to="/register" className="text-fire-amber">
+          {/* REG-FROM: state 를 그대로 넘긴다 — 안 넘기면 초대 링크로 온 신규 유저의 목적지가
+              가입 화면에서 증발한다(로그인은 이미 from 을 처리하는데 가입만 새던 자리). */}
+          <Link to="/register" state={location.state} className="text-fire-amber">
             {t('login.signupLink')}
           </Link>
         </p>

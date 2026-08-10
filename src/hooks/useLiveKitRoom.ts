@@ -452,12 +452,23 @@ export function useLiveKitRoom(
     reset,
   ])
 
+  // FB-MIC-DUP: 연타 가드는 버튼이 아니라 여기(공유 함수)에 — 호출부가 늘어도 한 곳에서 막힌다.
+  //   `setMicrophoneEnabled` 는 왕복이 있어(트랙 publish/unpublish) 그 사이 두 번째 클릭이 들어오면
+  //   두 요청이 교차하고, 나중에 끝난 쪽이 setMicEnabled 를 덮어 **UI 와 실제 트랙이 어긋난다**.
+  //   RM-CREATE-DBL 과 같은 근본원인이라 같은 처방(동기 ref — state 는 커밋 전이라 무력).
+  const micBusyRef = useRef(false)
   const toggleMic = useCallback(async () => {
     const room = roomRef.current
     if (!room || useRoomStore.getState().mutedByHost) return // 호스트 음소거 중엔 셀프 해제 불가
-    const next = !useRoomStore.getState().micEnabled
-    await room.localParticipant.setMicrophoneEnabled(next)
-    setMicEnabled(next)
+    if (micBusyRef.current) return
+    micBusyRef.current = true
+    try {
+      const next = !useRoomStore.getState().micEnabled
+      await room.localParticipant.setMicrophoneEnabled(next)
+      setMicEnabled(next)
+    } finally {
+      micBusyRef.current = false
+    }
   }, [setMicEnabled])
 
   // 채팅 송신: 서버 릴레이(send-chat Edge → messages 영속 + broadcast). 직접 publishData 대신 서버

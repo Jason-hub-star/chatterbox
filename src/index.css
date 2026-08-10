@@ -247,12 +247,14 @@ body {
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 214, 150, 0.14);
   transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
-.hub-shop:hover .hub-sign, .hub-shop:focus-visible .hub-sign {
+/* HUB-SIGN: hover/focus 에 더해 입장 웨이브(.hub-wave-sign — 평생 1회)에서도 간판을 펼친다.
+   처음 온 사람이 건물 이름을 알 유일한 경로가 "마우스를 훑는 것"이던 자리. 상시 노출은 원화를 가린다. */
+.hub-shop:hover .hub-sign, .hub-shop:focus-visible .hub-sign, .hub-shop.hub-wave-sign .hub-sign {
   opacity: 1;
   transform: translateX(-50%) translateY(0) rotate(0deg);
 }
 .hub-sign-right { left: auto; right: 0; transform: translateY(6px) rotate(-1.5deg); }
-.hub-shop:hover .hub-sign-right, .hub-shop:focus-visible .hub-sign-right { transform: translateY(0) rotate(0); }
+.hub-shop:hover .hub-sign-right, .hub-shop:focus-visible .hub-sign-right, .hub-shop.hub-wave-sign .hub-sign-right { transform: translateY(0) rotate(0); }
 .hub-sign-title { display: block; font-size: 13.5px; font-weight: 700; color: var(--color-gold-text); letter-spacing: -0.2px; }
 .hub-badge {
   display: inline-block;

@@ -283,15 +283,20 @@ export default function RoomPage() {
     onStageTouchStart, onStageTouchMove, onStageTouchEnd, cancelStageTouch,
   } = useReactionWheel({ sendReaction, connected })
   // UX-REACT-DISCOVER: 리액션 진입(우클릭·길게·버튼·숫자키) 힌트 pill — 브라우저당 1회.
-  // localStorage seen 초기값으로 이번 세션 표시 여부 결정 + 마운트 시 seen 기록(다음 방문 미표시).
+  // localStorage seen 초기값으로 이번 세션 표시 여부 결정.
   // (setState-in-effect lint 회피: 이펙트는 localStorage 쓰기만, 숨김은 dismiss 이벤트 핸들러로.)
   const [showReactHint] = useState(() => {
     try { return !localStorage.getItem('cb.reactionHintSeen') } catch { return false }
   })
   const [reactHintDismissed, setReactHintDismissed] = useState(false)
+  // HINT-SEEN: "봤다"는 기록은 **실제로 화면에 뜬 뒤**에 남긴다. 마운트 시점에 남기면 무대(connected)에
+  //   도달하기 전에 이탈한 사람은 pill 을 한 번도 못 본 채 다음 방문부터 영구 미노출이 된다
+  //   — 발견성 장치가 발견되기 전에 소진되던 자리. pill 의 렌더 조건(`RoomPage:` 아래 hintVisible)과
+  //   같은 식을 쓴다: 조건이 갈리면 "안 보였는데 봤다고 기록"이 다시 생긴다.
+  const reactHintVisible = showReactHint && !reactHintDismissed && connected
   useEffect(() => {
-    if (showReactHint) { try { localStorage.setItem('cb.reactionHintSeen', '1') } catch { /* private mode 무시 */ } }
-  }, [showReactHint])
+    if (reactHintVisible) { try { localStorage.setItem('cb.reactionHintSeen', '1') } catch { /* private mode 무시 */ } }
+  }, [reactHintVisible])
   const dismissReactHint = useCallback(() => setReactHintDismissed(true), [])
 
   // V-3 인앱 녹화(ROOM-13): 동의 게이트→무대 합성 캡처→R2→작품. room-authority 수신·오디오 증감은 ref 브리지.
@@ -616,6 +621,7 @@ export default function RoomPage() {
           connected={connected}
           recordPhase={recording.phase}
           onToggleRecord={() => void recording.toggleRecording()}
+          consentTally={recording.consentTally}
           onCreatePoll={createPollCb}
           onSetPollStatus={setPollStatusCb}
         />
@@ -764,7 +770,7 @@ export default function RoomPage() {
             </button>
           )}
           {/* UX-REACT-DISCOVER: 리액션 진입 힌트(브라우저당 1회) — 우클릭·길게·하단 😊 버튼·숫자키. */}
-          {connected && showReactHint && !reactHintDismissed && (
+          {reactHintVisible && (
             <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-stage-border bg-stage-panel/90 px-3 py-1.5 text-xs text-stage-text-muted backdrop-blur-sm">
               <span>{t('reaction.hint')}</span>
               <button
@@ -831,6 +837,7 @@ export default function RoomPage() {
       recordPhase={isHost ? recording.phase : undefined}
       onToggleRecord={isHost ? () => void recording.toggleRecording() : undefined}
       uploadPct={isHost ? recording.uploadPct : undefined}
+      consentTally={isHost ? recording.consentTally : undefined}
     />
   )
 

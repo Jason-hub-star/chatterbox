@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RecordingPhase } from './useRoomRecording'
-import { REC_LABEL } from './recordingLabels'
+import { REC_LABEL, recLabelText } from './recordingLabels'
 
 interface Props {
   isViewer: boolean
@@ -21,6 +21,7 @@ interface Props {
   recordPhase?: RecordingPhase
   onToggleRecord?: () => void
   uploadPct?: number | null // UX-UPLOAD-PROGRESS: 업로드 중 진행률(%) — 라벨에 병기
+  consentTally?: { consented: number; required: number } | null // REC-CONSENT-N: 동의 n/N
 }
 
 export default function RoomBottomBar({
@@ -38,15 +39,18 @@ export default function RoomBottomBar({
   recordPhase = 'idle',
   onToggleRecord,
   uploadPct,
+  consentTally,
 }: Props) {
   const { t } = useTranslation()
   const rec = REC_LABEL[recordPhase]
-  // 업로드 중이면 라벨에 진행률 병기(침묵 방지) — 그 외 phase 는 정적 라벨.
-  const recLabel = recordPhase === 'uploading' && typeof uploadPct === 'number' ? `${t(rec.key)} ${uploadPct}%` : t(rec.key)
+  // 라벨 조립은 recordingLabels 단일 지점(업로드 % · 동의 n/N) — HostConsole 과 문구가 갈리지 않게.
+  const recLabel = recLabelText(recordPhase, t, { uploadPct, consent: consentTally })
 
   return (
     <div className="flex items-center justify-center gap-2 px-4 py-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] sm:gap-3">
-      {/* 마이크(배우) — 손들기(관전)는 ROOM-21 무대 승격 완성까지 가림(prop·i18n 보존, 부활 시 JSX만 복원). */}
+      {/* 마이크(배우) — 손들기(관전)는 ROOM-21 무대 승격 완성까지 가림(prop·i18n 보존, 부활 시 JSX만 복원).
+          FB-MIC-DUP 연타 가드는 여기가 아니라 `useLiveKitRoom.toggleMic`(공유 함수)에 있다 —
+          호스트 콘솔 등 다른 호출부가 생겨도 한 곳에서 막히게. */}
       {!isViewer && (
         <button
           onClick={onToggleMic}

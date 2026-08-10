@@ -85,5 +85,19 @@ Deno.serve(async (req) => {
     );
   } catch { /* 비치명 */ }
 
+  // NOTI-REC: 위 broadcast 는 **방 안에 있는 사람에게만** 닿는다 — 방을 나갔거나 탭을 닫았으면
+  //   녹화가 끝난 사실 자체를 알 길이 없었다. broadcast 는 그대로 두고(방 안 즉시성은 그쪽 담당)
+  //   이탈자용으로 notifications 행을 이중화한다. 대상은 녹화를 건 사람(rec.user_id) 1명 —
+  //   전원에게 보내면 관전자까지 "네 녹화가 끝났어요"를 받는다.
+  // supabase-js 는 에러를 throw 하지 않는다 — try/catch 로 감싸면 아무것도 안 잡히고 무소음이 된다.
+  //   반환 error 를 명시적으로 무시한다(비치명: 알림 실패가 녹화 확정을 되돌리지 않는다).
+  const { error: nErr } = await service.from("notifications").insert({
+    user_id: rec.user_id,
+    type: "recording_ready",
+    room_id: rec.room_id,
+    payload: { recording_id: recordingId, artifact_id: artifact.id, room_title: room.title ?? null },
+  });
+  if (nErr) console.error("recording_ready 알림 실패(비치명):", nErr.message);
+
   return json({ ok: true, status: "ready", artifact_id: artifact.id }, 200);
 });

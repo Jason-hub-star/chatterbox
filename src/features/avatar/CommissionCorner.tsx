@@ -4,6 +4,7 @@ import Modal from '@/components/shared/Modal'
 import ProgressBar from '@/components/shared/ProgressBar'
 import { useToastStore } from '@/stores/toastStore'
 import { AVATAR_UPLOAD_MIME, classifyAvatarError } from '@/lib/avatarJobs'
+import { etaProgress } from '@/lib/vgenEta'
 import type { AvatarJob } from '@/types/avatarJob'
 
 // 커미션 코너(의상실) — 주문 버튼 + 업로드 위저드 모달 + 4스텝 주문서 카드 + 실패 재주문.
@@ -11,6 +12,10 @@ import type { AvatarJob } from '@/types/avatarJob'
 // 잡 상태는 부모(useAvatarJobs) 소유 — 여기는 표현 + 제출 위저드만.
 
 const PHASES = ['analyzing', 'cutting', 'rigging', 'finishing'] as const
+// ETA-COMMISSION: 커미션 소요 실측 p50(분) — [[avatar-forge-latency-dedup]] 33분.
+// ponytail: 정적 상수(잡별 예측 없음) — 천장은 "대략". 업그레이드 경로는 avatar_jobs 에 관측
+//   소요를 누적해 분위수를 서버가 내려주는 것(VGEN 의 estimated_duration_sec 와 같은 형태).
+const COMMISSION_ETA_MIN = 33
 const PHASE_KEY: Record<(typeof PHASES)[number], string> = {
   analyzing: 'atelier.phaseAnalyzing',
   cutting: 'atelier.phaseCutting',
@@ -100,6 +105,10 @@ function OrderCard({ job }: { job: AvatarJob }) {
     const id = setInterval(() => setElapsedMin(elapsedMinutesSince(job.createdAt)), 30_000)
     return () => clearInterval(id)
   }, [job.createdAt])
+  // ETA-COMMISSION: 잔여 추정. 계산은 VGEN 과 같은 순수 함수를 재사용한다(0 하한·초과 시 0) —
+  //   같은 "경과 대 추정" 문제라 두 번째 구현을 만들 이유가 없다. 기준값만 아바타 실측 p50.
+  const remaining = etaProgress(elapsedMin * 60, COMMISSION_ETA_MIN * 60)
+  const remainingMin = remaining.remainingSec > 0 ? Math.ceil(remaining.remainingSec / 60) : null
   return (
     <div className="rounded-lg border border-stage-border bg-stage-base/50 p-3">
       <p className="text-xs text-stage-text-muted">{t('atelier.commissionEta')}</p>
@@ -149,7 +158,12 @@ function OrderCard({ job }: { job: AvatarJob }) {
           </div>
         )}
         <ProgressBar value={progress} />
-        <p className="text-right text-[10px] text-stage-text-muted">{t('atelier.elapsed', { min: elapsedMin })}</p>
+        {/* ETA-COMMISSION: 경과만 있으면 "얼마나 더"를 알 수 없다. 실측 p50 33분 기준 잔여를 병기한다
+            — 초과하면 잔여를 숨기고 경과만 남긴다(음수·"곧 완료"를 계속 띄우면 거짓말이 된다). */}
+        <p className="text-right text-[10px] text-stage-text-muted">
+          {t('atelier.elapsed', { min: elapsedMin })}
+          {remainingMin != null && <> · {t('atelier.etaRemaining', { min: remainingMin })}</>}
+        </p>
       </div>
     </div>
   )

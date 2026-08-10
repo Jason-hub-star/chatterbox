@@ -24,7 +24,7 @@ export default function StageSlot({ col, row, speaking = false, onClick, label, 
       tabIndex={onClick ? 0 : undefined}
       aria-label={onClick ? label : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
-      className={`relative flex flex-col items-center justify-center gap-1 rounded-xl p-1 transition-all motion-reduce:transition-none ${
+      className={`group relative flex flex-col items-center justify-center gap-1 rounded-xl p-1 transition-all motion-reduce:transition-none ${
         onClick ? 'cursor-pointer' : ''
       } ${
         speaking
@@ -33,6 +33,17 @@ export default function StageSlot({ col, row, speaking = false, onClick, label, 
       }`}
     >
       {children}
+      {/* SLOT-AFFORD: 좌석이 눌린다는 시각 단서. cursor-pointer·role=button 은 있었지만 마우스를
+          올려보기 전엔 아무 표시가 없어 크게보기(AvatarZoomOverlay)를 우연히 발견해야 했다.
+          hover/focus 에서만 뜨는 이유: 6석에 상시 아이콘이 뜨면 무대 그림을 아이콘이 덮는다. */}
+      {onClick && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-1 top-1 rounded-full bg-stage-base/70 px-1.5 py-0.5 text-xs opacity-0 transition-opacity motion-reduce:transition-none group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          🔍
+        </span>
+      )}
     </div>
   )
 }

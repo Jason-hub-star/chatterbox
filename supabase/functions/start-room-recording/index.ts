@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     },
     all_consented: false,
   };
-  consent.all_consented = await recomputeConsent(service, roomId, consent);
+  consent.all_consented = (await recomputeConsent(service, roomId, consent)).all;
 
   const { data: rec, error: iErr } = await service
     .from("recordings")

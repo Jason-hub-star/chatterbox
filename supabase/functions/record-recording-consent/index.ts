@@ -51,7 +51,8 @@ Deno.serve(async (req) => {
     consent_type: "pre",
     ip_hash: await hashIp(req),
   };
-  consent.all_consented = await recomputeConsent(service, rec.room_id, consent);
+  const tally = await recomputeConsent(service, rec.room_id, consent);
+  consent.all_consented = tally.all;
 
   const { error: uErr } = await service
     .from("recordings")
@@ -74,6 +75,10 @@ Deno.serve(async (req) => {
         type: "recording_consent_update",
         recording_id: recordingId,
         all_consented: consent.all_consented,
+        // REC-CONSENT-N: 호스트 화면의 "⏳ 동의 대기중 n/N". 거절만 통지하던 D4 에서 한 칸 더 —
+        //   무응답자는 여전히 침묵이지만 남은 인원수는 보인다.
+        consented_count: tally.consented,
+        required_count: tally.required,
         declined: !consented,
         declined_name: declinedName,
         rid: crypto.randomUUID(),
