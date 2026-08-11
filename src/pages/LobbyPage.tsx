@@ -215,8 +215,19 @@ export default function LobbyPage() {
       {/* 광장 전체화면(데스크톱): 3/2 씬 프레임. 프레이밍 분기는 `.plaza-fit`(index.css) —
           주력 화면비는 cover 그대로, 극단 화면비(21:9·4:3)만 contain 으로 물러나 가게가 안 잘린다. */}
       <div className="fixed inset-0 hidden overflow-hidden lg:block">
-        <img aria-hidden src={scene.plaza.blocks[0].hero} alt="" draggable={false} className="plaza-backdrop" />
         <div className="plaza-fit">
+          {/* 씬 밖 여백은 씬의 거울반사로 잇는다(`.plaza-edge`, index.css). 원화 3:2 밖 픽셀은 없으므로
+              반사가 유일하게 이음매가 맞는 채움. 장식 전용 — 0~100% 밖이라 가게 좌표와 무관. */}
+          {(['l', 'r', 't', 'b'] as const).map((edge) => (
+            <img
+              key={edge}
+              aria-hidden
+              src={scene.plaza.blocks[0].hero}
+              alt=""
+              draggable={false}
+              className={`plaza-edge plaza-edge-${edge}`}
+            />
+          ))}
           <HubMap blocks={scene.plaza.blocks} roomsCount={roomsCount} onDest={handleDest} fullscreen />
         </div>
       </div>
