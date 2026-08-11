@@ -294,6 +294,33 @@ _U6 첫인상·발견성_
 
 ---
 
+### 트랙 C — 룸 부하 감사 (2026-08-11 · 페르소나 아님·**계측 기반** · ISS-15 "다음 후보" 소화)
+
+**판정 한 줄: 부하는 React 가 아니라 아바타 인스턴스에 있다.** ISS-15 가 다음 후보로 적어둔 가설(`RoomPage` 925줄·`React.memo` 0 이 병목)은 **실측이 반증**했다 — 6인 실조건에서 React 커밋은 **분당 5~6회**다. 프레임 경로가 React 를 안 거치기 때문이다(`RemoteAvatar.tsx:43` 이 registry 에 sink 를 꽂고 `av.setParams` 로 직행). **925줄 분해는 성능 근거로는 정당화되지 않는다.**
+
+**⚠️ 하네스 설계 경고(이 감사의 제일 큰 교훈):** 6인 방을 **한 대에서 6탭**으로 재현하면 6 클라이언트가 같은 CPU/GPU 를 뺏어 **12.8fps · 메인스레드 블로킹 108초/분**이 나온다. 현실의 6인 방은 **6대의 기기**다. 측정 탭 1개 + 나머지 5명을 앱 없이 `livekit-client` 로만 접속시키는 **유령 참가자**(앱의 실제 인코더 `blendshapeCodec` 로 30Hz 송신)로 바꾸니 **60.3fps**. 같은 실험의 두 숫자가 **5배** 차이다 — 앞 숫자로 판정했으면 없는 병목을 고칠 뻔했다.
+
+**실측치(Apple M5 · ANGLE Metal · 360px):**
+
+| 조건 | 결과 |
+|---|---|
+| 6인 실조건(유령 5 + 측정 1) | **60.3fps · jank 0/241 · 커밋 5~6회/분 · 힙 90→87MB** |
+| 아바타 텍스처 업로드 | **인스턴스당 25.9MB · 6인 155.4MB**(완전 선형 = 공유 0) · **GL 컨텍스트 6개** |
+| 아바타만 6개(LiveKit·MediaPipe 없음) | 60fps · jank 0 — **정지/구동 동일**(`drawPixi` 가 매 프레임 전체 변형, 프레임간 dirty-check 없음) |
+| CPU 6× 스로틀(저사양폰 프록시) | **36fps · 프레임의 68%가 20ms 초과** — 대조군 **1인은 60fps·jank 0** → 원인은 **아바타 수** |
+| 입퇴장 5바퀴(컨텍스트 30개 생성) | 컨텍스트 고갈 **없음**(destroy 가 정상 반납) · RSS ~50MB 증가 후 플래토 |
+
+- [ ] **LOAD-TEX-SHARE** (High) 아바타 텍스처가 **인스턴스마다 중복 업로드** — `loader.ts:53 loadRigProject` 에 캐시가 없어 같은 `projectUrl` 이어도 매 인스턴스가 자기 `HTMLImageElement` 44장을 만들고, `RigAvatar.ts:59` 가 인스턴스마다 별도 `Application`(=WebGL 컨텍스트)을 열어 **컨텍스트 간 텍스처 공유가 원리적으로 불가**하다. 실측 25.9MB × 6 = **155.4MB**(확대 오버레이 열면 7번째). 무대 슬롯은 360px 에서 **88px** 로 그리는데 텍스처는 원본 해상도로 올라간다 — `renderScale`(`RigAvatar.ts:57`)은 `app.stage` 만 줄이지 업로드를 안 줄인다. 정수정 후보 ①슬롯 크기에 맞춘 **다운스케일 업로드**(88px 표시에 2048² 텍스처는 과잉) ②단일 `Application` 에 6 좌석을 한 씬으로 합치기(컨텍스트 1개 → 텍스처 1벌). ②가 근본이지만 `RemoteAvatar` 소유권 모델을 바꾼다. <!-- probe: src/lib/pixi/rig/loader.ts :: rigProjectCache -->
+- [ ] **LOAD-MOBILE-FPS** (High) 저사양 기기에서 **아바타 수에 비례해 프레임이 무너진다** — CPU 6× 에서 6인 36fps(프레임 68%가 20ms 초과), **1인은 60fps·jank 0**(대조군으로 인과 확정). 원인은 인스턴스마다 도는 독립 rAF 티커 6개 × 매 프레임 전체 메쉬 변형(`RigAvatar.ts:97-104` → `renderer.ts:258 drawPixi`, 프레임간 캐시 없음). 정수정 후보: 원격 아바타 티커 **프레임레이트 캡**(self 60 / 원격 30 또는 20) · 저사양 감지 시 비발화자 정지 스프라이트 폴백. ⚠️ **실기 미검증** — CPU 스로틀은 프록시다(GPU·메모리 대역은 안 줄인다). <!-- probe: src/lib/pixi/rig/RigAvatar.ts :: remoteFrameCap -->
+- [ ] **LOAD-CHAT-UNBOUNDED** (Med·**미측정**) 채팅이 **무제한 누적 + 전량 렌더** — `roomStore.ts:108 addMessage` 가 상한 없이 `[...s.messages, message]`, `ChatPanel.tsx:103` 이 `messages.map` 으로 전부 그린다(가상화 없음). 30분 실측에는 채팅 부하가 없어 **이 축은 안 잡혔다**. 정수정 후보: store 상한(최근 N) + 필요 시 윈도잉. <!-- probe: src/stores/roomStore.ts :: MESSAGE_CAP -->
+- [x] **LOAD-E2E-STALE** (Low) 룸 E2E 템플릿의 연결 판정 문구가 **낡음** — `.claude/skills/supabase-slice-verify/templates/room-2tab-e2e.mjs` 가 `'연결됨'` 을 기다리는데 현 UI 에 그 문구가 없다(상단 `라이브` + 품질 `좋음`). 이 템플릿으로 새 하네스를 짜면 **방에 정상 입장하고도 타임아웃**난다 — 이번 감사에서 30분을 여기에 태웠다. **고침(2026-08-11)**: `라이브` + `[data-self-avatar]` 두 신호로 교체 + 함정 주석. <!-- probe: .claude/skills/supabase-slice-verify/templates/room-2tab-e2e.mjs :: LOAD-E2E-STALE -->
+- [ ] **LOAD-DOC-PATH** (Low) `CLAUDE.md:58` 이 가리키는 `tests/e2e/helpers/livekit-local.mjs` 가 **없다** — 실경로는 `tests/integration/helpers/livekit-local.mjs`. ⚠️ **미수정** — `CLAUDE.md` 는 병행 세션이 편집 중(미커밋 28줄)이라 손대면 그 diff 가 딸려온다. 그 세션 정착 후 한 줄 정정.
+- [ ] **LOAD-30MIN** (**미완 — 환경 소실**) 30분 지속 열화·모바일 실조건 2축이 **미측정**이다. 하네스 완주 직전 스크래치 디렉터리가 통째로 비워져(스크립트·로그·결과 전부 소실) 예약 체인(30분 → CPU×4 10분 → 단독 6분)이 한 칸도 못 돌았다. 위 실측치는 **2분 스모크 + 아바타 단독 계측**에서 나온 값이라 판정은 서지만 "30분 동안 안 무너지는가"는 열려 있다. 재실행 시 하네스를 **`tests/integration/` 안에** 둘 것(스크래치는 또 날아간다).
+
+**반증(안전 확인 — 손대면 안 되는 것)**: `React.memo` 0·`useMemo` 0 은 **무해**(커밋 분당 5~6회) · `RemoteAvatar`/`SelfAvatar` 의 ref 기반 프레임 싱크(React state 우회)가 정확히 옳은 설계 · `RigAvatar.destroy()` 가 WebGL 컨텍스트를 정상 반납(30개 생성해도 고갈 없음) · LiveKit 오디오 엘리먼트 생명주기 정상(`useLiveKitRoom.ts:209` detach+remove, `:437` 정리 스윕) · 데스크톱 6인은 프레임 여유 충분.
+
+---
+
 ## §1. 보안 — 확정 (심각도순, 메인이 인용라인 직접 대조)
 
 | ID | 취약점 | 심각도 | Confidence | file:line | 익스플로잇 | 정수정 |

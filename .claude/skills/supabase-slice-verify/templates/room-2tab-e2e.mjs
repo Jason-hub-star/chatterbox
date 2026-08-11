@@ -42,7 +42,10 @@ const roomId = (await call(emails[0], 'create-room', { title: `e2e-${s}` })).roo
 await call(emails[1], 'join-public-room', { room_id: roomId }) // B 서버측 pre-join
 console.log('방:', roomId, '(A slot0·B pre-join)')
 
-// ── 헬퍼: 로그인→입장→'연결됨' 대기 ──
+// ── 헬퍼: 로그인→입장→연결 대기 ──
+// [함정 LOAD-E2E-STALE] 예전 판정 문구 '연결됨' 은 **현 UI 에 없다**(상단은 '라이브' + 연결품질 '좋음').
+//   낡은 문자열로 기다리면 탭이 방에 정상 입장했는데도 타임아웃난다 — 2026-08-11 부하 감사에서 30분 소모.
+//   연결 판정은 텍스트 하나에 걸지 말고 **'라이브' + self 아바타 마운트** 두 신호로 본다.
 async function loginJoin(context, email) {
   const page = await context.newPage()
   page.on('console', (m) => { if (m.type() === 'error' && !/XNNPACK|TensorFlow|favicon/.test(m.text())) console.log(`  [${email.slice(0, 6)} err] ${m.text().slice(0, 140)}`) })
@@ -50,7 +53,10 @@ async function loginJoin(context, email) {
   await page.waitForSelector('input[type=email]', { timeout: 15000 })
   await page.fill('input[type=email]', email); await page.fill('input[type=password]', PW)
   await page.click('button[type=submit]')
-  await page.waitForFunction(() => document.body.innerText.includes('연결됨'), { timeout: 40000 })
+  await page.waitForFunction(
+    () => document.body.innerText.includes('라이브') && !!document.querySelector('[data-self-avatar]'),
+    { timeout: 40000 },
+  )
   return page
 }
 // [함정] 2탭 MediaPipe+아바타로 페이지가 무거워 playwright 액션어빌리티 체크가 타임아웃 → DOM 직접(evaluate) 조작/판독.
