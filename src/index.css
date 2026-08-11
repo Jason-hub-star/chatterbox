@@ -146,7 +146,7 @@ body {
      1.5 ≤ R ≤ 1.8 : cover(현행 프레이밍 보존, 세로 잘림 ≤8.3%/변 — 안전영역 t≥10·b≤90 이 이걸 흡수)
      R > 1.8       : 세로 기준 contain → 좌우 필러박스. 잘림 0
      R < 1.5       : 가로 기준 contain → 상하 레터박스. 잘림 0
-   여백은 부모의 bg-stage-base. */
+   여백은 `.plaza-backdrop` 이 메운다(아래). */
 .plaza-fit {
   position: absolute;
   left: 50%;
@@ -160,6 +160,21 @@ body {
 }
 @media (max-aspect-ratio: 3 / 2) {
   .plaza-fit { width: 100vw; height: calc(100vw / 1.5); }
+}
+/* 여백 메움 — contain 으로 물러난 화면비(R>1.8 필러박스 / R<1.5 레터박스)에서 생기는 검은 띠를
+   같은 원화의 블러 확대본으로 채운다. 주력 화면비(1.5~1.8)에선 `.plaza-fit` 이 화면을 덮어 안 보인다.
+   **장식 전용** — `.plaza-fit` 밖이라 가게 좌표 계약(SHOP_SAFE_AREA)과 무관하고 클릭도 안 받는다.
+   scale 은 블러가 가장자리를 투명하게 빠는 것을 막고, brightness 는 실제 씬이 앞으로 서게 눌러준다. */
+.plaza-backdrop {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transform: scale(1.12);
+  filter: blur(28px) brightness(0.5) saturate(0.85);
+  pointer-events: none;
+  user-select: none;
 }
 /* 가로등 상시 점등 글로우 — 원화 등화구 위 빛 웅덩이(screen). reduced-motion 은 정적 점등(아래 no-preference 참조). */
 .hub-lamp {

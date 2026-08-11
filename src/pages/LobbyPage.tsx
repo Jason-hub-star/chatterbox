@@ -215,6 +215,7 @@ export default function LobbyPage() {
       {/* 광장 전체화면(데스크톱): 3/2 씬 프레임. 프레이밍 분기는 `.plaza-fit`(index.css) —
           주력 화면비는 cover 그대로, 극단 화면비(21:9·4:3)만 contain 으로 물러나 가게가 안 잘린다. */}
       <div className="fixed inset-0 hidden overflow-hidden lg:block">
+        <img aria-hidden src={scene.plaza.blocks[0].hero} alt="" draggable={false} className="plaza-backdrop" />
         <div className="plaza-fit">
           <HubMap blocks={scene.plaza.blocks} roomsCount={roomsCount} onDest={handleDest} fullscreen />
         </div>
