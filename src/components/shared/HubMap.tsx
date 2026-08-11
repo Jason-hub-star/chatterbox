@@ -15,6 +15,14 @@ interface Props {
 }
 
 const OFF_DESTS: ReadonlySet<HubDest> = new Set(['troupe', 'reserved'])
+// 간판을 박스 **아래**로 펼치는 상단 기준선(씬 %). 유도: 가장 빡빡한 지원 조합 1280×720(16:9)에서
+// 위쪽 잘림 7.8% + 간판 높이 95px(씬 853px 기준 11.1%) + 펼침 간격(박스 높이의 3%, 최대 2.4%)
+// = 21.3% → 22. 간판은 px 고정이고 씬은 스케일하므로 **작은 화면일수록 %가 커진다** — 큰 모니터로만
+// 확인하면 통과하고 노트북에서 잘린다(실제로 18 로 잡았다가 1366×768 eastern troupe 5px 잘림).
+// 게이트: scripts/check-plaza-fit.mjs
+const SIGN_BELOW_T = 22
+// 좌측 정렬 기준선(씬 %) — 간판 반폭(≈115px)이 가장 좁은 지원 씬(1024px 폭)에서 차지하는 비율.
+const SIGN_EDGE_L = 12
 // 전환 연출 대상(내부 씬/라우트로 이어지는 목적지)
 const TRANSITION_DESTS: ReadonlySet<HubDest> = new Set(['rooms', 'create', 'social', 'profile', 'practice'])
 
@@ -164,7 +172,9 @@ export default function HubMap({ blocks, roomsCount, onDest, fullscreen = false 
                 className={`hub-shop absolute ${off ? 'hub-off' : ''}`}
                 style={{ left: `${s.box.l}%`, top: `${s.box.t}%`, width: `${s.box.w}%`, height: `${s.box.h}%` }}
               >
-                <span className={`hub-sign ${s.box.l + s.box.w > 88 ? 'hub-sign-right' : ''}`}>
+                <span
+                  className={`hub-sign ${s.box.l + s.box.w > 88 ? 'hub-sign-right' : s.box.l < SIGN_EDGE_L ? 'hub-sign-left' : ''} ${s.box.t < SIGN_BELOW_T ? 'hub-sign-below' : ''}`}
+                >
                   <span className="hub-sign-title">
                     {t(`hub.${s.dest}.title`)}
                     {s.dest === 'rooms' && roomsCount > 0 && <span className="hub-badge">{roomsCount}</span>}

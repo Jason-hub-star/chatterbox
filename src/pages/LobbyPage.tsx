@@ -199,8 +199,10 @@ export default function LobbyPage() {
       className="relative min-h-screen bg-stage-base text-stage-text"
       style={{ '--scene-accent': scene.accent } as React.CSSProperties}
     >
-      {/* 모바일 배경 = 데스크톱과 동일 광장(plaza hero, 현재 월드). */}
-      <div aria-hidden className="fixed inset-0 md:hidden">
+      {/* 모바일 배경 = 데스크톱과 동일 광장(plaza hero, 현재 월드).
+          경계는 lg(1024) — 768~1023 은 3:2 광장이 세로 화면에서 띠로 쪼그라들어 입구를 못 찾는 구간이라
+          하단 네비 경로로 보낸다(감사 2026-08-11: 768×1024 에서 가게 7개 중 3개가 화면 밖이었다). */}
+      <div aria-hidden className="fixed inset-0 lg:hidden">
         <img
           src={scene.plaza.blocks[0].hero}
           alt=""
@@ -210,21 +212,19 @@ export default function LobbyPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-stage-base/80 via-stage-base/60 to-stage-base/45" />
       </div>
 
-      {/* 광장 전체화면(데스크톱): 3/2 씬이 뷰포트를 cover — % 핫스팟은 씬 기준이라 크롭돼도 정합. */}
-      <div className="fixed inset-0 hidden overflow-hidden md:block">
-        <div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-          style={{ width: 'max(100vw, 150vh)', height: 'max(100vh, 66.7vw)' }}
-        >
+      {/* 광장 전체화면(데스크톱): 3/2 씬 프레임. 프레이밍 분기는 `.plaza-fit`(index.css) —
+          주력 화면비는 cover 그대로, 극단 화면비(21:9·4:3)만 contain 으로 물러나 가게가 안 잘린다. */}
+      <div className="fixed inset-0 hidden overflow-hidden lg:block">
+        <div className="plaza-fit">
           <HubMap blocks={scene.plaza.blocks} roomsCount={roomsCount} onDest={handleDest} fullscreen />
         </div>
       </div>
 
-      <div className="relative flex min-h-screen flex-col p-4 pb-24 md:pointer-events-none md:p-6 md:pb-6">
+      <div className="relative flex min-h-screen flex-col p-4 pb-24 lg:pointer-events-none lg:p-6 lg:pb-6">
         {/* 모바일=제목+벨 / 데스크톱=벨 칩만 우측(광장이 화면의 전부). 벨은 단일 인스턴스 —
             반응형 렌더는 컴포넌트 내부(중복 마운트 = Realtime 채널 재구독 크래시). */}
         <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
-          <h1 className="mr-auto text-2xl font-bold md:hidden">{t('lobby.title')}</h1>
+          <h1 className="mr-auto text-2xl font-bold lg:hidden">{t('lobby.title')}</h1>
           {/* 글로벌 [+ 만들기](P2) — 게스트에게도 노출(전환 CTA), 클릭 시 목적지 보존 로그인. */}
           <CreateMenu />
           {named ? (
@@ -295,7 +295,7 @@ export default function LobbyPage() {
       </div>
 
       {/* 모바일 하단 네비 — 내부 4관 라우트 직행. */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-stage-border bg-stage-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-stage-border bg-stage-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         <button onClick={() => navigate('/lobby/theater')} className="touch-target flex-1 px-2 py-3 text-xs text-stage-text-muted hover:text-stage-text">
           {t('hub.navRooms')}
         </button>

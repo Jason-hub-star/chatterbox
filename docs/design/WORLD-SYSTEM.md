@@ -16,6 +16,9 @@
 - **월드 = 최상위 완결 묶음**: `{ loginSplash, plaza, interiors{4관} }` + accent + category. 한 월드는 내부적으로 일관 → "세계관이 이어진다"를 구조가 보장.
 - **좌표는 아트에서 분리** (`Composition` = `plazaShops`% + `interiorAnchors`%): 같은 구도 **리스킨**(밤·업스케일)은 좌표 공유, **새 구도**만 캘리브 1회. 이것이 무한 확장의 핵심 — *코드는 무한, 아트는 월드당 1패스*(정직한 천장).
 - **`resolveWorld(id)`**: 월드 에셋 + 구도 좌표를 컴포넌트 소비형태로 조립. **표면별 폴백** — 월드에 특정 표면 에셋이 없으면 DEFAULT(`western`)로 그 표면만 폴백(구도까지 함께 = 좌표 정합 보존). 미지 id 도 DEFAULT.
+- **가게 안전영역(SAFE AREA) — 캘리브의 계약** (`SHOP_SAFE_AREA = {l:2, t:10, r:98, b:90}`): 광장은 3:2 원화를 뷰포트에 **cover** 하므로 화면비 1.8(16:9)에서 위아래 8.3%씩 잘린다. 모든 `plazaShops` 박스는 이 사각형 안에 있어야 한다. 극단 화면비는 `.plaza-fit`(index.css)이 **contain 으로 물러나** 잘림 0 — `R>1.8` 좌우 필러박스 / `R<1.5` 상하 레터박스 / 그 사이는 cover(주력 프레이밍 보존). 컨테이너는 어떤 분기에서도 **3:2 고정** — 핫스팟 %가 컨테이너 기준이라 비율이 깨지면 전 월드 좌표가 원화와 어긋난다. 장식(`plazaLamps`·`plazaSky`)은 대상 아님(잘려도 정보 손실 0).
+  - 간판(`.hub-sign`)은 **px 고정 높이**라 화면이 작을수록 씬 대비 %가 커진다 → 상단 가게(`box.t < 22`)는 간판을 아래로(`hub-sign-below`), 좌우 끝 가게는 그 변에 정렬(`hub-sign-left/right`). 기준선 유도는 `HubMap.tsx` 주석.
+  - **왜 규칙이 생겼나(2026-08-11 로비 감사)**: 규칙이 없어 `EASTERN` 이 t15~98/l0~100 으로 캘리브됐고, 야외무대가 16:9 에서 77.6%·21:9 에서 37%만 보였다. 원화에 맞춰 끝까지 붙이는 건 캘리브의 자연스러운 손버릇이라 **게이트로만 막힌다**.
 - **앰비언트 연출("원화의 빛을 움직인다") 2층 관리**: **어디** = 구도 데이터(`plazaLamps` 등화구·`plazaSky` 하늘 밴드 — 리스킨 공유), **얼마나·어떤 블렌드** = `index.css` 프리셋 1곳(`.hub-lamp`·`.hub-cloud`, 맵 데이터에 숫자 분산 금지 — 취향 튜닝이 1파일로 끝나야 함). 둘을 잇는 스위치가 `assets.plazaMood`(`SceneMood`, 미선언=`day`) — 무드는 좌표와 달리 **리스킨마다 달라서** 에셋 메타 소속. 블렌드 방향 원칙(픽셀 diff 실측): 밝은 하늘=multiply 그늘 / 어두운 원화=screen 빛. 무대 쪽 대응물은 `stageBackgrounds.fireGlow`(맵 행별 % 앵커, 미선언=글로우 0).
 
 ## 선택·우선순위 (SSOT: `src/stores/worldStore.ts`)
@@ -39,13 +42,13 @@ effectiveWorld = room ?? personal ?? DEFAULT('western')
 | id | label | 상태 |
 |---|---|---|
 | `western` | 서양 판타지(낮) | 완성 — login+광장+내부4관 |
-| `eastern` | 동양 판타지(밤) | **로그인 스플래시만 실존**(한복 여인·빨간 유지우산·범동양 야경·동양 용 · 3072×2048). 광장·내부는 서양 폴백 — 아트 생성 예정 |
+| `eastern` | 동양 판타지(밤) | 완성(2026-07-31) — login(입장 영상 포함)+광장+내부4관 **자체 에셋, 폴백 없음**. `plazaMood: 'night'` |
 
 **동양 아트 원칙(주인님 확정):** 의상은 **한복(韓服)** — 중국 한푸(漢服) 아님. 도시는 중국 특정색(용문양 일변도·한자 간판) 배제한 **한·일·중 블렌드**(특정 국가 무표기). 상세 프롬프트는 `scene-prompts.md`.
 
 ## 로드맵
 
-- **Step 3 잔여**: 동양 광장 + 내부 4관 생성(자체 구도 → `EASTERN` Composition 캘리브, 영문 간판 금지) → eastern 완성. 의상실 갤러리 진입.
+- **Step 3 완료**(2026-07-31 아트 + 2026-08-11 안전영역 재캘리브): 동양 광장·내부 4관 자체 구도. 잔여는 의상실 갤러리 진입뿐.
 - **P2 방=방장**: `users.world_id`·`rooms.world_id` 마이그 + create-room 이 방장 personal 복사 + **RoomPage 테마 배경 레이어 신설**(현재 방은 `bg-stage-*` 솔리드, 테마 배경 없음) → `resolveWorld(room.world_id)`. ⚠️ 월드당 방 배경 = 추가 아트 1장.
 - **P3+**: 새 월드 무한. 리스킨=좌표 공유 / 새 구도=캘리브 1회.
 
@@ -53,5 +56,8 @@ effectiveWorld = room ?? personal ?? DEFAULT('western')
 
 1. 아트 생성(`scene-prompts.md` 화풍고정 + `hub-map-pipeline` 스킬) → `public/scenes/**/<world>.webp` + 썸네일.
 2. `WORLDS` 에 1줄 등재(assets 경로 + composition + accent + category). 리스킨이면 기존 Composition 참조, 새 구도면 캘리브 후 신규 Composition(가로등 `plazaLamps`·하늘 `plazaSky` 앵커 포함).
-2-1. 밤/어두운 광장이면 `assets.plazaMood: 'night'` 1줄 + `index.css`에 `.hub-cloud--night` 프리셋을 **그 원화 픽셀 diff 캘리브로** 추가(현재 미존재 — 첫 밤 원화 때 작성).
+2-1. 밤/어두운 광장이면 `assets.plazaMood: 'night'` 1줄 + `index.css` `.hub-cloud--night` 프리셋(eastern-plaza-1 픽셀 diff 로 캘리브 완료 — 다른 밤 원화는 세기만 재확인).
 3. i18n `world.<id>` 라벨 ko/en/ja. → 갤러리 자동 노출.
+4. **게이트 2종 통과**(새 월드는 자동으로 게이트 대상 — 수동 등재 없음):
+   - `npm test -- plazaSafeArea` — 좌표 계약(안전영역·박스 겹침 0·dest 7종·코어 범위)
+   - `npm run dev` 후 `npm run check:plaza` — 실렌더(뷰포트 7종 × 가시율 ≥99.5% · 간판 4변 · 가로 오버플로 0)

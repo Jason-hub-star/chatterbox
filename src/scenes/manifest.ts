@@ -15,6 +15,14 @@ export interface HubShop {
   cores: { x: number; y: number }[] // 창/입구 점등 코어(box 내부 %)
 }
 
+// **가게 안전영역(SAFE AREA) — 새 구도 캘리브의 계약.** 광장은 3:2 원화를 뷰포트에 cover 하므로
+// 화면비 1.8(16:9 상한)에서 위아래 8.3% 씩 잘려 나간다. 그 밖(21:9·4:3)은 `.plaza-fit` 이 contain 으로
+// 물러나 잘림이 0이지만, **주력 구간 1.5~1.8 은 cover 를 유지**하는 게 프레이밍 결정이라 잘림이 남는다.
+// → 모든 가게 박스는 이 사각형 안에 있어야 한다(여유 1.7%p 포함). 게이트: tests/unit/plazaSafeArea.test.ts
+// 감사 2026-08-11: 이 규칙이 없어 EASTERN 이 t15~98/l0~100 으로 캘리브됐고 야외무대가 16:9 에서
+// 77.6%, 21:9 에서 37% 만 보였다. 장식(plazaLamps·plazaSky)은 대상 아님 — 잘려도 정보 손실이 없다.
+export const SHOP_SAFE_AREA = { l: 2, t: 10, r: 98, b: 90 } as const
+
 // 블록 스트리트(확장 규격): 신기능 구역은 새 블록 append — 기존 블록 픽셀·좌표 불변.
 export interface HubBlock {
   hero: string
@@ -97,10 +105,13 @@ const WESTERN: Composition = {
     { dest: 'rooms', box: { l: 3.5, t: 24, w: 25, h: 48 }, cores: [{ x: 48, y: 72 }, { x: 20, y: 40 }] }, // 대극장
     { dest: 'profile', box: { l: 29, t: 37, w: 13, h: 29 }, cores: [{ x: 50, y: 52 }] }, // 의상실
     { dest: 'reserved', box: { l: 43, t: 47, w: 10, h: 17 }, cores: [{ x: 50, y: 55 }] }, // 예비 점포
-    { dest: 'troupe', box: { l: 53.5, t: 21, w: 18.5, h: 40 }, cores: [{ x: 50, y: 68 }] }, // 극단 회관
+    // 회관: 공방과 x 0.5%p 겹쳐 호버 우선권이 모호하던 구간 분리(w 18.5→18, 코어 절대위치 보존).
+    { dest: 'troupe', box: { l: 53.5, t: 21, w: 18, h: 40 }, cores: [{ x: 51, y: 68 }] }, // 극단 회관
     { dest: 'create', box: { l: 71.5, t: 41, w: 11, h: 24 }, cores: [{ x: 45, y: 66 }] }, // 공방
     { dest: 'social', box: { l: 83.5, t: 28, w: 14.5, h: 35 }, cores: [{ x: 45, y: 58 }] }, // 찻집
-    { dest: 'practice', box: { l: 78, t: 64, w: 21, h: 31 }, cores: [{ x: 55, y: 45 }] }, // 야외 연습 무대
+    // 야외 무대: 안전영역(b≤90·r≤98)으로 축소 + 공방과 1%p 겹치던 상단을 t 64→65 로 분리.
+    // 코어는 원화 절대위치 보존(구 t64 h31 y45 = 절대 77.95% → 신 t65 h25 y52).
+    { dest: 'practice', box: { l: 78, t: 65, w: 20, h: 25 }, cores: [{ x: 58, y: 52 }] }, // 야외 연습 무대
   ],
   // 가로등 상시 점등(주인님 지시 2026-07-13) — 실렌더 캘리브 2회(lamp-calib 하네스)로 등화구 정착 확인.
   plazaLamps: [
@@ -127,13 +138,15 @@ const WESTERN: Composition = {
 // 서양과 박스 상호 배타(겹침 금지 — 호버 우선권 모호 방지) 규칙 동일.
 const EASTERN: Composition = {
   plazaShops: [
-    { dest: 'rooms', box: { l: 15, t: 15, w: 21.5, h: 56 }, cores: [{ x: 42, y: 85 }, { x: 39, y: 39 }] }, // 대극장(쌍가면 현판)
-    { dest: 'profile', box: { l: 0, t: 42, w: 14, h: 33 }, cores: [{ x: 49, y: 65 }] }, // 의상실(드레스폼 창)
+    // 안전영역 재캘리브(2026-08-11): profile·social·practice 가 캔버스 끝(l0·r100·b98)에 붙어 있어
+    // cover 에서 잘렸다. 박스만 안으로 줄이고 **코어는 원화 절대위치를 보존**해 점등 정합을 유지한다.
+    { dest: 'rooms', box: { l: 15, t: 15, w: 21.5, h: 56 }, cores: [{ x: 42, y: 85 }, { x: 39, y: 39 }] }, // 대극장(쌍가면 현판, t<18 → 간판 아래로)
+    { dest: 'profile', box: { l: 2, t: 42, w: 12, h: 33 }, cores: [{ x: 40.5, y: 65 }] }, // 의상실(드레스폼 창, 구 l0 w14 x49)
     { dest: 'reserved', box: { l: 36.5, t: 46, w: 13.5, h: 24 }, cores: [{ x: 48, y: 52 }] }, // 셔터 예비 점포
     { dest: 'troupe', box: { l: 51.5, t: 19, w: 20.5, h: 48 }, cores: [{ x: 50, y: 64 }] }, // 회관(대계단·현수막)
     { dest: 'create', box: { l: 72, t: 38, w: 14.5, h: 34 }, cores: [{ x: 47, y: 75 }] }, // 공방(망치모루·화덕)
-    { dest: 'social', box: { l: 88.5, t: 42, w: 11.5, h: 29 }, cores: [{ x: 71, y: 52 }] }, // 다관(찻잔 현판)
-    { dest: 'practice', box: { l: 81, t: 72, w: 19, h: 26 }, cores: [{ x: 50, y: 46 }] }, // 야외 목조 무대
+    { dest: 'social', box: { l: 88.5, t: 42, w: 9.5, h: 29 }, cores: [{ x: 86, y: 52 }] }, // 다관(찻잔 현판, 구 w11.5 x71)
+    { dest: 'practice', box: { l: 81, t: 72, w: 17, h: 18 }, cores: [{ x: 56, y: 66 }] }, // 야외 목조 무대(구 w19 h26 x50 y46)
   ],
   // 홍등 등화구(원화 랜턴 위치 오버레이 캘리브) — 밤 원화라 글로우가 주광원.
   plazaLamps: [
