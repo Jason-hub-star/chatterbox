@@ -732,6 +732,38 @@ CREATE TABLE recordings (
 -- Realtime: not used (post-session artifact)
 ```
 
+### 1.11.2 recording_tracks (ROOM-28 P2a)
+
+```sql
+CREATE TABLE recording_tracks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recording_id UUID NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+  participant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  storage_object_key TEXT,             -- 서버 생성. 클라 제공 키는 신뢰하지 않음(제출 시 프리픽스 검증)
+  start_offset_ms INT NOT NULL DEFAULT 0,  -- recording_started 수신 대비 recorder 시작 지연
+  duration_ms INT,
+  file_size_bytes BIGINT,
+  take_no INT NOT NULL DEFAULT 1,      -- 리테이크(P2b) 시 증가 — 행은 덮어쓴다
+  status TEXT NOT NULL DEFAULT 'recording',  -- recording | submitted
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE (recording_id, participant_id)
+);
+
+-- 마이그: 20260812120000_recording_tracks.sql
+-- 역할 분담: recordings = 호스트 믹스(듣기용) / recording_tracks = 참가자별 로컬 원본(편집용).
+--   서로를 대체하지 않는다 — 둘 다 남는다.
+-- 소스는 각자의 getUserMedia **로컬 원본**이다. LiveKit 다운링크(압축본)를 쓰면 P2 의 존재 이유가 사라진다.
+-- UNIQUE(recording_id, participant_id): 참가자당 1행. 테이크마다 행을 쌓으면 저장이 선형 증가하고
+--   "어느 게 최종"이 흐려진다 → 리테이크는 같은 행을 덮어쓰고 옛 R2 오브젝트를 지운다.
+-- start_offset_ms ceiling: 브로드캐스트 수신 지연만큼 계통 오차가 남고 기기 간 클럭 드리프트는
+--   보정하지 않는다. 업그레이드 경로 = 공통 톤 마커 + 상관분석 정렬(P2b).
+-- RLS Policy: SELECT = 그 recording 이 속한 방의 참가자만(is_room_member SECURITY DEFINER 로 재귀 회피).
+--   INSERT/UPDATE/DELETE 는 service_role(Edge) 전용 — 동의 게이트·키 생성·프리픽스 검증이 서버에 있어야 성립.
+-- 쿼터: 호스트(recordings.user_id) 의 user_storage_quota 에 합산. 6인이면 시간당 약 174MB.
+-- Realtime: not used (post-session artifact)
+```
+
 ### 1.11.1 user_storage_quota (G-83)
 
 ```sql

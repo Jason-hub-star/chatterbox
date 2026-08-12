@@ -395,6 +395,8 @@ export const ja: Record<string, string> = {
   'poll.syncing': '反映中…',
   'host.recordTitle': 'ルーム録画・録音',
   'host.recordingsTitle': '録画の再生',
+  'host.recordingsTracks': 'トラック',
+  'host.recordingsTracksEmpty': 'まだアップロードされたトラックはありません。',
   'host.recordingsDownload': 'ダウンロード',
   'host.recordingsPlay': '再生',
   'host.recordingsPlayFailed': '再生URLの取得に失敗しました。',

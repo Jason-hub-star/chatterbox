@@ -395,6 +395,8 @@ export const en: Record<string, string> = {
   'poll.syncing': 'Syncing…',
   'host.recordTitle': 'Room recording',
   'host.recordingsTitle': 'Recordings',
+  'host.recordingsTracks': 'Tracks',
+  'host.recordingsTracksEmpty': 'No tracks uploaded yet.',
   'host.recordingsDownload': 'Download',
   'host.recordingsPlay': 'Play',
   'host.recordingsPlayFailed': 'Failed to get playback URL.',

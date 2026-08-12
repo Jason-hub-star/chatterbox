@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useUserStore } from '@/stores/userStore'
 import { useStageStore } from '@/stores/stageStore'
+import { useAudioStore } from '@/stores/audioStore'
 import { supabase } from '@/lib/supabase'
 import { startStageRecorder, type StageRecorder } from '@/features/stage/stageRecorder'
 import { startVoiceRecorder } from './voiceRecorder'
+import { startTrackRecorder, type TrackRecorder } from './trackRecorder'
 import {
   startRoomRecording,
   recordRecordingConsent,
   createRecordingUpload,
   completeRoomRecording,
+  createRecordingTrackUpload,
+  submitRecordingTrack,
   type RecordingKind,
 } from '@/lib/rooms'
 import { toast } from '@/hooks/useToast'
@@ -50,11 +54,58 @@ export function useRoomRecording(opts: {
   const recorderRef = useRef<StageRecorder | null>(null)
   // 캡처 시작 시점에 읽히므로 ref — activeKind state 는 렌더(문구·배지)용이고 이쪽이 실행용이다.
   const kindRef = useRef<RecordingKind>('stage')
+  // ROOM-28 P2a: 내 로컬 원본 트랙. **내가 동의했을 때만** 돌린다(계약 MUST NOT — 동의 전 getUserMedia 금지).
+  //   늦입장자는 consent_json 에 없어 이 값이 false 로 남고, 서버도 412 로 막는다(이중 방어).
+  const myTrackRef = useRef<TrackRecorder | null>(null)
+  const iConsentedRef = useRef(false)
+  const trackStartRef = useRef<number | null>(null)
   const uploadUrlRef = useRef<string | null>(null)
   const startedAtRef = useRef<number | null>(null)
   const failedRef = useRef<{ blob: Blob; durationMs: number } | null>(null) // 업로드 실패분(재시도용)
 
   const token = () => useUserStore.getState().session?.access_token
+
+  // ROOM-28 P2a — 내 로컬 원본 트랙 시작. 실패해도 본 녹음(P1 믹스)은 계속된다: 트랙은 부가 산출물이고
+  //   마이크 권한 거부 한 명이 방 전체 녹음을 못 막게 해야 한다.
+  const beginMyTrack = useCallback(async () => {
+    if (kindRef.current !== 'voice' || !iConsentedRef.current || myTrackRef.current) return
+    try {
+      const deviceId = useAudioStore.getState().micDeviceId || undefined
+      myTrackRef.current = await startTrackRecorder(deviceId)
+      trackStartRef.current = Date.now()
+    } catch {
+      myTrackRef.current = null // 권한 거부·미지원 — 조용히 트랙만 포기
+    }
+  }, [])
+
+  // 내 트랙 마감: 정지 → presign → PUT → 제출. 여기서도 실패는 삼킨다(믹스 경로와 독립).
+  const finishMyTrack = useCallback(async (recordingId: string, startedAt: number | null) => {
+    const rec = myTrackRef.current
+    myTrackRef.current = null
+    if (!rec) return
+    const tk = token()
+    let blob: Blob
+    try {
+      blob = await rec.stop()
+    } catch {
+      return
+    }
+    if (!tk || blob.size === 0) return
+    try {
+      const up = await createRecordingTrackUpload(tk, recordingId)
+      await fetch(up.upload_url, { method: 'PUT', headers: { 'Content-Type': 'audio/webm' }, body: blob })
+      await submitRecordingTrack(tk, recordingId, {
+        duration_ms: Date.now() - (trackStartRef.current ?? Date.now()),
+        // 믹스 시작 대비 내 recorder 시작 지연 — 음수는 없다(브로드캐스트가 항상 먼저 온다).
+        start_offset_ms: Math.max(0, (trackStartRef.current ?? 0) - (startedAt ?? trackStartRef.current ?? 0)),
+        file_size_bytes: blob.size,
+      })
+    } catch {
+      /* 트랙 유실은 믹스에 영향 없음 — P2b 에서 재시도 UI */
+    } finally {
+      trackStartRef.current = null
+    }
+  }, [])
 
   // 전원 동의 후: recording 전이 + presign 발급 + 무대 캡처 시작.
   const startCapture = useCallback(async (recordingId: string) => {
@@ -83,6 +134,8 @@ export function useRoomRecording(opts: {
       }
       uploadUrlRef.current = up.upload_url
       startedAtRef.current = Date.now()
+      iConsentedRef.current = true // 호스트는 시작 행위가 곧 동의(start-room-recording 이 서버에 기록)
+      void beginMyTrack()
       setPhase('recording')
     } catch {
       // 캡처 기동 실패 — DB 는 이미 recording 전이됨 → 취소로 정리(고아 행 방지)
@@ -91,7 +144,7 @@ export function useRoomRecording(opts: {
       setPhase('idle')
       toast.error(i18n.t('room.recStartFailed'))
     }
-  }, [getAudioTracks])
+  }, [getAudioTracks, beginMyTrack])
 
   const uploadAndComplete = useCallback(async (blob: Blob, durationMs: number) => {
     const tk = token()
@@ -179,12 +232,14 @@ export function useRoomRecording(opts: {
       recorderRef.current = null
       const durationMs = Date.now() - (startedAtRef.current ?? Date.now())
       const blob = await rec.stop()
+      const myRecId = recordingIdRef.current
+      if (myRecId) void finishMyTrack(myRecId, startedAtRef.current) // 믹스 업로드와 병렬(서로 독립)
       await uploadAndComplete(blob, durationMs)
     } else if (cur === 'uploadFailed') {
       const f = failedRef.current
       if (f) await uploadAndComplete(f.blob, f.durationMs)
     }
-  }, [roomId, startCapture, uploadAndComplete])
+  }, [roomId, startCapture, uploadAndComplete, finishMyTrack])
 
   // room-authority recording_* 수신(RoomPage 위임). 서버발만 도달(SEC-RA-1 — 수신측이 이미 필터).
   const onAuthorityMessage = useCallback((msg: { type: string; recording_id?: string; all_consented?: boolean; consented_count?: number; required_count?: number; declined?: boolean; declined_name?: string | null; kind?: string }) => {
@@ -216,11 +271,21 @@ export function useRoomRecording(opts: {
       }
     } else if (msg.type === 'recording_started') {
       setRemoteActive(true)
+      // P2a: 동의한 비호스트만 자기 원본을 남긴다(호스트는 startCapture 에서 이미 시작).
+      if (!isHostRef.current) {
+        if (typeof msg.recording_id === 'string') recordingIdRef.current = msg.recording_id
+        startedAtRef.current = Date.now() // 믹스 시작 기준시각(브로드캐스트 수신 시점)
+        void beginMyTrack()
+      }
     } else if (msg.type === 'recording_done') {
       setRemoteActive(false)
+      if (!isHostRef.current) {
+        const id = recordingIdRef.current
+        if (id) void finishMyTrack(id, startedAtRef.current)
+      }
       setRecordingsNonce((n) => n + 1)
     }
-  }, [startCapture])
+  }, [startCapture, beginMyTrack, finishMyTrack])
 
   // 참가자 동의 응답. 취소된 녹화(409) 등 실패는 조용히 닫음 — 서버 진실이 이미 다른 상태.
   const respondConsent = useCallback(async (consented: boolean) => {
@@ -230,6 +295,7 @@ export function useRoomRecording(opts: {
     if (!tk || !req) return
     try {
       await recordRecordingConsent(tk, req.recordingId, consented)
+      iConsentedRef.current = consented // P2a 게이트 — 동의 전엔 getUserMedia 를 부르지 않는다
     } catch { /* 409(취소·완료 후) — 무시 */ }
   }, [consentRequest])
 
@@ -272,7 +338,10 @@ export function useRoomRecording(opts: {
   }, [joined, roomId])
 
   // 방 이탈/언마운트 — 진행 중 캡처 폐기(업로드 없이). DB 잔재는 재입장 정지 경로가 정리.
-  useEffect(() => () => { recorderRef.current?.cancel(); recorderRef.current = null }, [])
+  useEffect(() => () => {
+    recorderRef.current?.cancel(); recorderRef.current = null
+    myTrackRef.current?.cancel(); myTrackRef.current = null // 마이크 표시등이 남으면 안 된다
+  }, [])
 
   // LEAVE-GUARD: 녹화본은 MediaRecorder 로 이 탭 메모리에 쌓인다(Egress 미사용) — 닫으면 회수 불가.
   //   업로드 중 이탈도 같다: 아티팩트가 절반만 올라가고 방엔 아무것도 남지 않는다.

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useLiveKitRoom } from '@/hooks/useLiveKitRoom'
 import { useRoomStore } from '@/stores/roomStore'
 import { useUserStore } from '@/stores/userStore'
-import { leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, transferHost, updateRoomSettings, leaveRoomKeepalive, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, revokeRoomInvites, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus } from '@/lib/rooms'
+import { leaveRoom, kickParticipant, setParticipantMute, setRoomPassword, setRoomBackground, setRoomMode, transferHost, updateRoomSettings, leaveRoomKeepalive, raiseHand, inviteToStage, acceptStageInvite, createRoomInvite, revokeRoomInvites, listRecentPeople, fetchRoomMessages, fetchChatPolicy, setChatPolicy, moderateChat, fetchMyBlockedAuthIds, createReport, createBlock, deleteBlock, fetchRoomRecordings, getRecordingUrl, createPoll, setPollStatus , getRecordingTrackUrl } from '@/lib/rooms'
 import { useRoomRecording } from '@/features/room/useRoomRecording'
 import { useRoomMembers } from '@/features/room/useRoomMembers'
 import { useRoomJoin } from '@/features/room/useRoomJoin'
@@ -311,6 +311,12 @@ export default function RoomPage() {
     if (!session) throw new Error('no session')
     return (await getRecordingUrl(session.access_token, id)).url
   }, [session])
+  // ROOM-28 P2a — 트랙 presign(신규 Edge). 믹스와 별도 함수: get-recording-url 은 무변경 대상이다.
+  const trackUrl = useCallback(async (trackId: string): Promise<{ url: string }> => {
+    const session = useUserStore.getState().session
+    if (!session) throw new Error('no session')
+    return { url: (await getRecordingTrackUrl(session.access_token, trackId)).url }
+  }, [])
 
   // G-261 호스트 관찰자: VGEN 생성 시작/종료를 방 모드로 승격(set-room-mode → 서버 broadcast → 전원 반영).
   // RoomPage 에만 배선 — VgenStatusTab/VgenPromptPanel 은 스튜디오(공방)에서도 재사용되므로 방 의미론은 여기서만.
@@ -617,6 +623,7 @@ export default function RoomPage() {
           initialMuted={mutedIdentities}
           loadRecordings={loadRecordings}
           onPlayRecording={playRecording}
+          onTrackUrl={trackUrl}
           recordingsNonce={recording.recordingsNonce}
           connected={connected}
           recordPhase={recording.phase}

@@ -393,6 +393,45 @@ export const completeRoomRecording = (
   extra: { cancel?: boolean; duration_ms?: number; file_size_bytes?: number },
 ) => callFn<{ ok: boolean; status: string }>('complete-room-recording', accessToken, { recording_id: recordingId, ...extra })
 
+// ROOM-28 P2a — 참가자별 로컬 원본 트랙(편집용). P1 믹스(듣기용)와 병존한다.
+export const createRecordingTrackUpload = (accessToken: string, recordingId: string) =>
+  callFn<{ ok: boolean; upload_url: string; storage_key: string; track_id: string }>(
+    'create-recording-track-upload', accessToken, { recording_id: recordingId },
+  )
+
+export const submitRecordingTrack = (
+  accessToken: string,
+  recordingId: string,
+  meta: { duration_ms: number; start_offset_ms: number; file_size_bytes: number },
+) => callFn<{ ok: boolean; status: string; submitted_count: number }>(
+  'submit-recording-track', accessToken, { recording_id: recordingId, ...meta },
+)
+
+export interface RecordingTrackItem {
+  id: string
+  participant_id: string
+  duration_ms: number | null
+  file_size_bytes: number | null
+  start_offset_ms: number
+  users: { display_name: string | null } | null
+}
+// 트랙 목록 — RLS(방 참가자 SELECT) 직접 조회. submitted 만 보여준다(업로드 중인 건 아직 못 받는다).
+export async function fetchRecordingTracks(recordingId: string): Promise<RecordingTrackItem[]> {
+  const { data, error } = await supabase
+    .from('recording_tracks')
+    .select('id, participant_id, duration_ms, file_size_bytes, start_offset_ms, users(display_name)')
+    .eq('recording_id', recordingId)
+    .eq('status', 'submitted')
+    .order('start_offset_ms', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as unknown as RecordingTrackItem[]
+}
+
+export const getRecordingTrackUrl = (accessToken: string, trackId: string) =>
+  callFn<{ ok: boolean; url: string; duration_ms: number | null; file_size_bytes: number | null }>(
+    'get-recording-track-url', accessToken, { track_id: trackId },
+  )
+
 export const getRecordingUrl = (accessToken: string, recordingId: string) =>
   callFn<{ ok: boolean; url: string; duration_ms: number | null }>('get-recording-url', accessToken, { recording_id: recordingId })
 

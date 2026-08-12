@@ -395,6 +395,8 @@ export const ko: Record<string, string> = {
   "poll.syncing": "반영 중…",
   "host.recordTitle": "방 녹화·녹음",
   "host.recordingsTitle": "녹화 다시보기",
+  "host.recordingsTracks": "트랙",
+  "host.recordingsTracksEmpty": "아직 올라온 트랙이 없어요.",
   "host.recordingsDownload": "다운로드",
   "host.recordingsPlay": "재생",
   "host.recordingsPlayFailed": "재생 URL 발급에 실패했어요.",

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
-import { ROOM_GENRES, type RecentPerson, type RoomRecordingItem, type RecordingKind } from '@/lib/rooms'
+import { ROOM_GENRES, fetchRecordingTracks, type RecentPerson, type RoomRecordingItem, type RecordingKind, type RecordingTrackItem } from '@/lib/rooms'
 import type { RecordingPhase } from './useRoomRecording'
 import { REC_LABEL, recLabelText, recIcon } from './recordingLabels'
 import Modal from '@/components/shared/Modal'
@@ -41,6 +41,7 @@ export default function HostConsole({
   initialMuted,
   loadRecordings,
   onPlayRecording,
+  onTrackUrl,
   recordingsNonce,
   onCreatePoll,
   onSetPollStatus,
@@ -74,6 +75,7 @@ export default function HostConsole({
   initialMuted?: Set<string>
   loadRecordings: () => Promise<RoomRecordingItem[]> // V-3 다시보기 목록(ready, RLS 멤버)
   onPlayRecording: (id: string) => Promise<string> // presigned GET(서버 visibility 게이트)
+  onTrackUrl: (trackId: string) => Promise<{ url: string }> // ROOM-28 P2a 트랙 presign(신규 Edge)
   recordingsNonce: number // 녹화 완료 시 ++ → 목록 갱신
   onCreatePoll: (question: string, options: string[]) => Promise<void> // ROOM-22 — 서버가 host 재검증·활성 1개 강제
   onSetPollStatus: (pollId: string, status: 'revealed' | 'closed') => Promise<void> // reveal 시에만 percent 공개
@@ -185,6 +187,30 @@ export default function HostConsole({
   // kind 를 함께 들고 있어야 <audio>/<video> 를 고른다(U4) — 목록 행에서 넘겨받는다.
   const [playing, setPlaying] = useState<{ id: string; url: string; kind: RecordingKind } | null>(null)
   const [recBusy, setRecBusy] = useState<string | null>(null)
+  // ROOM-28 P2a: 펼친 녹음의 참가자별 트랙(편집용 원본). 믹스 재생과 독립 — 목록을 어지럽히지 않게 접어둔다.
+  const [openTracks, setOpenTracks] = useState<{ recId: string; items: RecordingTrackItem[] } | null>(null)
+  const downloadTrack = async (trackId: string) => {
+    try {
+      const { url } = await onTrackUrl(trackId)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = ''
+      a.rel = 'noopener'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    } catch {
+      toast.error(t('host.recordingsPlayFailed'))
+    }
+  }
+  const toggleTracks = async (recId: string) => {
+    if (openTracks?.recId === recId) { setOpenTracks(null); return }
+    try {
+      setOpenTracks({ recId, items: await fetchRecordingTracks(recId) })
+    } catch {
+      toast.error(t('host.recordingsPlayFailed'))
+    }
+  }
   useEffect(() => {
     let cancelled = false
     loadRecordings()
@@ -801,9 +827,43 @@ export default function HostConsole({
                 >
                   {t('host.recordingsPlay')}
                 </button>
+                {/* P2a: 참가자별 원본은 편집용이라 기본 접힘 — 듣기는 위의 믹스가 담당한다. */}
+                {r.kind === 'voice' && (
+                  <button
+                    data-tracks-toggle={r.id}
+                    onClick={() => void toggleTracks(r.id)}
+                    aria-expanded={openTracks?.recId === r.id}
+                    className="touch-target shrink-0 rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text"
+                  >
+                    {t('host.recordingsTracks')}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
+          {openTracks && (
+            <ul data-track-list className="mt-2 space-y-1 rounded-lg border border-stage-border p-2">
+              {openTracks.items.length === 0 && (
+                <li className="text-xs text-stage-text-muted">{t('host.recordingsTracksEmpty')}</li>
+              )}
+              {openTracks.items.map((tr) => (
+                <li key={tr.id} className="flex items-center gap-2 text-xs">
+                  <span aria-hidden className="shrink-0">🎤</span>
+                  <span className="min-w-0 flex-1 truncate text-stage-text-muted">
+                    {tr.users?.display_name || t('room.someone')} · {fmtDuration(tr.duration_ms)}
+                    {tr.file_size_bytes ? ` · ${fmtBytes(tr.file_size_bytes)}` : ''}
+                  </span>
+                  <button
+                    data-track-dl={tr.id}
+                    onClick={() => void downloadTrack(tr.id)}
+                    className="touch-target shrink-0 rounded border border-stage-border px-2 py-1 text-stage-text-muted hover:text-stage-text"
+                  >
+                    {t('host.recordingsDownload')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {playing && (
             <div className="mt-2 space-y-2">
               {/* audio-only webm 을 <video> 에 물리면 재생은 되지만 검은 박스가 남는다(계약 U4). */}

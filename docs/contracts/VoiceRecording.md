@@ -27,6 +27,45 @@ tags: [contract]
 
 P1 을 먼저 내는 이유: 믹스는 `stageRecorder` 에서 캔버스만 빼면 되는 최소 변경이고, **리테이크 수요가 실제로 있는지 P1 사용 로그로 확인한 뒤** P2 를 판단하는 편이 싸다. P2 를 예상해 스키마를 미리 열지 않는다(YAGNI).
 
+### P2 설계 (착수: 2026-08-12 · 주인님 지시)
+
+**P2a 만 만든다 — 트랙이 남는 데까지.** 인앱 리테이크(그 사람만 다시 녹음)는 **P2b 로 미룬다**: 재녹음 UI 는 원본 참고 재생·테이크 관리가 붙어 `DubRecorder` 급이 되는데, **트랙이 남는 것이 리테이크의 전제조건**이라 순서가 이쪽이 먼저다. 트랙만 남아도 외부 편집(DAW)은 즉시 가능하다.
+
+**역할 분담이 P2 를 작게 유지한다** — P1 믹스는 **듣기용**(즉시 재생·공유), P2 트랙은 **편집용**(원본 N개). 그래서 P2 는 믹스다운을 만들지 않는다.
+
+| 결정 | 내용 | 근거 |
+|---|---|---|
+| 소스 | 각자 `getUserMedia` **로컬 원본 마이크** | LiveKit 다운링크는 압축을 거친 소리다. `DubRecorder.tsx:188` 이 이미 같은 패턴 |
+| 테이블 | `recording_tracks` — `unique(recording_id, participant_id)` | 참가자당 1행. 리테이크는 행을 덮어쓰고 옛 오브젝트를 지운다(저장 증가 0) |
+| 동기 | 각 클라가 `recording_started` 수신 시각 대비 자기 recorder 시작 지연을 `start_offset_ms` 로 보고 | 서버가 절대시각을 못 준다(클럭이 제각각) |
+| 믹스다운 | **없음** | P1 믹스가 듣기용을 담당(위 분담) |
+| 쿼터 | 호스트(`recordings.user_id`) 쿼터에 합산 | 6인이면 시간당 174MB — 무료 10GiB ≈ 57시간 |
+
+**ceiling(ponytail):** `start_offset_ms` 는 브로드캐스트 수신 지연(수십 ms)만큼 계통 오차가 남고 **기기 간 클럭 드리프트를 보정하지 않는다.** 수 분짜리에서 트랙이 서서히 어긋날 수 있다 — 업그레이드 경로는 공통 톤 마커 삽입 후 상관분석 정렬(P2b).
+
+```sql
+create table public.recording_tracks (
+  id uuid primary key default gen_random_uuid(),
+  recording_id uuid not null references public.recordings(id) on delete cascade,
+  participant_id uuid not null references public.users(id) on delete cascade,
+  storage_object_key text,            -- 서버 생성. 클라가 준 키는 신뢰하지 않는다
+  start_offset_ms int not null default 0,
+  duration_ms int,
+  file_size_bytes bigint,
+  take_no int not null default 1,     -- 리테이크(P2b) 시 증가 — 행은 그대로 덮어쓴다
+  status text not null default 'recording' check (status in ('recording','submitted')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (recording_id, participant_id)
+);
+```
+
+**P2 전용 MUST NOT**
+- ❌ **동의하지 않은 참가자의 트랙 수집** — 각자 자기 마이크를 로컬 녹음하므로 P1 보다 동의가 더 결정적이다. 동의 전에는 `getUserMedia` 자체를 부르지 않는다
+- ❌ **LiveKit 수신 트랙을 개별 트랙 소스로 사용** — 그러면 P1 믹스와 같은 압축본이라 P2 의 존재 이유가 사라진다
+- ❌ **클라가 보낸 `storage_object_key` 신뢰** — 서버가 만들고 제출 시 프리픽스를 검증한다
+- ❌ **서버 믹싱·Egress** — P1 과 동일 승계
+
 ## Props Interface
 
 ```typescript
