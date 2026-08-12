@@ -79,6 +79,13 @@
 - 2026-08-12 Claude(Opus 5) — **Q3 코드 완료(라이브 미검증)**: `get-recording-track-url` 신규(**경계 수정** — `get-recording-url` 이 무변경 대상이라 확장 대신 신규) + `fetchRecordingTracks`/`getRecordingTrackUrl` + HostConsole 음성 행에 `[트랙]` 접이식 목록(이름·길이·용량 + 개별 다운로드) + i18n 2키 ko/en/ja. `check:all` exit 0(229).
   - **⚠️ Q2·Q3 는 정적 게이트만 통과했다.** 앱의 `VITE_SUPABASE_URL` 이 프로덕션이라 **Edge 3종을 배포하기 전에는 2탭 라이브(트랙 2행 submitted·sha256 왕복)를 돌릴 수 없다.** Q4 배포 후 한 번에 판정한다 — 그전까지 Q2·Q3 를 PASS 로 적지 않는다.
 
+- 2026-08-12 Claude(Opus 5) — **Q4 배포 완료 · Q2·Q3 라이브 판정**. ②백엔드: `migration list` 로 원격 미적용 1건 확인 후 `db push` → **프로드 psql**(11컬럼·UNIQUE·CHECK·RLS+정책1) · Edge 3종 `deploy` → `functions list` **전부 ACTIVE v1(02:56)**, 기존 녹화 5종은 갱신 없음(범위 격리). ③프론트: build·**번들 비밀키 7종 히트 0**·CF Pages·curl 3종 200·배포 번들에 트랙 배선/문구 4종 실존. ④라이브:
+  - **프로드 통합 12/12**(로컬과 동일 — 미동의 412·행 미생성 포함).
+  - **Q2 캡처 라이브 10/10**(1인 방 — 동의 브로드캐스트 왕복을 배제해 캡처 경로만 격리): REC 배지 출현 → 정지 → **내 트랙 1행 `submitted` · 53,717B 실제 오디오 · `start_offset_ms=607` 기록** → presign GET **왕복 바이트 일치** → **webm EBML 매직 `1a45dfa3`**(온전한 컨테이너) · **P1 믹스도 `ready`**(무회귀).
+  - **Q3 UX 실렌더 10/10**: `[트랙]` 버튼이 **음성 행에만**·기본 접힘(`aria-expanded=false`)·360 터치 44px/1440 26px·오버플로 0.
+- **⚠️ 미검증 1건(정직 표기)**: **비호스트가 `recording_started` 를 받아 자기 트랙을 시작하는 경로**. 2탭 하네스가 동의/시작 브로드캐스트 도달에서 반복 실패했다(같은 세션에서 배지 검증 때도 런마다 갈렸다 — 클라우드 LiveKit 브로드캐스트 도달 타이밍). 근거는 서 있다 — 서버측 전파(통합 12/12)·수신 분기 코드(tsc·lint clean)·호스트 경로 동일 코드가 라이브 통과. **남은 것은 2인 이상 실사용 1회**이며, A1·A2 확인 때 같이 보면 된다.
+- **§7 승인 게이트 A1(음질)·A2(기기 간 싱크) 미판정** — 계약대로 에이전트가 통과 처리하지 않는다.
+
 ## 참조 문서
 
 - `docs/contracts/VoiceRecording.md` §범위 · §P2 설계 — 이 골의 계약
