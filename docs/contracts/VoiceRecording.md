@@ -112,7 +112,7 @@ alter table public.recordings
 |---|---|---|---|
 | `room.ctrlRecordVoice` | 음성 녹음 | Record audio | 音声を録音 |
 | `room.ctrlRecordVoiceStop` | 녹음 중지 | Stop recording | 録音を停止 |
-| `room.recConsentVoice` | 이 방의 **대화(음성)** 를 녹음합니다. 화면은 저장되지 않아요. | This room's **conversation (audio)** will be recorded. No video is saved. | この部屋の**会話（音声）**を録音します。映像は保存されません。 |
+| `room.recConsentVoice` | 호스트가 이 방의 **대화(음성)**를 녹음하려 해요. **화면은 저장되지 않아요.** (기존 녹화 문구 어조 승계) | The host wants to record this room's **conversation (audio only)**. **No video is saved.** | ホストがこの部屋の**会話（音声）**を録音しようとしています。**映像は保存されません。** |
 | `room.recBadgeVoice` | 녹음 중 | Recording audio | 録音中 |
 
 **신규 키는 이 4개로 제한한다.** 진행 상태(동의 대기 `n/N` · 업로드 `%` · 재시도)는 종류와 무관하므로 기존 키를 공용한다 — phase 별로 2벌을 만들면 10키 × 3언어 = 30줄이 되고, 그중 6줄만 실제로 다르다.
