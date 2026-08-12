@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RoomParticipant } from '@/stores/roomStore'
-import { ROOM_GENRES, type RecentPerson, type RoomRecordingItem } from '@/lib/rooms'
+import { ROOM_GENRES, type RecentPerson, type RoomRecordingItem, type RecordingKind } from '@/lib/rooms'
 import type { RecordingPhase } from './useRoomRecording'
-import { REC_LABEL } from './recordingLabels'
+import { REC_LABEL, recLabelText, recIcon } from './recordingLabels'
 import Modal from '@/components/shared/Modal'
 import { toast } from '@/hooks/useToast'
 import { STAGE_BACKGROUNDS } from '@/lib/stageBackgrounds'
@@ -47,6 +47,8 @@ export default function HostConsole({
   connected,
   recordPhase,
   onToggleRecord,
+  activeKind = 'stage',
+  consentTally,
 }: {
   participants: RoomParticipant[]
   myIdentity: string
@@ -77,9 +79,12 @@ export default function HostConsole({
   onSetPollStatus: (pollId: string, status: 'revealed' | 'closed') => Promise<void> // reveal 시에만 percent 공개
   connected: boolean
   recordPhase?: RecordingPhase // V-3 녹화 phase — 하단바에서 이관(idle 시작 진입은 콘솔, 하단바는 진행 상태만)
-  onToggleRecord?: () => void
+  onToggleRecord?: (kind: RecordingKind) => void // ROOM-28 U1 — idle 에서만 종류를 고른다
+  activeKind?: RecordingKind // 진행 중인 산출물 종류(idle 이면 무시)
+  consentTally?: { consented: number; required: number } | null // REC-CONSENT-N: 동의 n/N(호스트 판단 근거)
 }) {
   const { t } = useTranslation()
+  const phaseNow = recordPhase ?? 'idle'
   // 강퇴 확인: 2단 토글(계약 위반·오클릭 위험) → Modal 프리미티브(P-4, 포커스트랩·Esc·복귀).
   const [confirming, setConfirming] = useState<{ identity: string; name: string } | null>(null)
   const [kickReasonInput, setKickReasonInput] = useState('') // 강퇴 사유(선택) — 확정 시 서버로 전달
@@ -177,7 +182,8 @@ export default function HostConsole({
 
   // 녹화 다시보기(V-3) — ready 목록 + 인라인 재생(presign 15분).
   const [recs, setRecs] = useState<RoomRecordingItem[]>([])
-  const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null)
+  // kind 를 함께 들고 있어야 <audio>/<video> 를 고른다(U4) — 목록 행에서 넘겨받는다.
+  const [playing, setPlaying] = useState<{ id: string; url: string; kind: RecordingKind } | null>(null)
   const [recBusy, setRecBusy] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
@@ -186,10 +192,10 @@ export default function HostConsole({
       .catch(() => { /* 목록 실패 — 섹션 비표시로 강등 */ })
     return () => { cancelled = true }
   }, [loadRecordings, recordingsNonce])
-  const playRec = async (id: string) => {
+  const playRec = async (id: string, kind: RecordingKind) => {
     setRecBusy(id)
     try {
-      setPlaying({ id, url: await onPlayRecording(id) })
+      setPlaying({ id, kind, url: await onPlayRecording(id) })
     } catch {
       toast.error(t('host.recordingsPlayFailed'))
     } finally {
@@ -200,6 +206,9 @@ export default function HostConsole({
     const s = Math.round((ms ?? 0) / 1000)
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
   }
+  // 음성은 MB 미만이 흔하다 — KB 까지 내려가야 목록에서 크기 비교가 된다.
+  const fmtBytes = (b: number): string =>
+    b >= 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(b / 1024))}KB`
 
   // 관객 투표(ROOM-22) — 활성 폴 상태는 pollStore(릴레이+fetch 미러), 생성/전이는 서버 재검증.
   const activePoll = usePollStore((s) => s.poll)
@@ -742,20 +751,33 @@ export default function HostConsole({
         {pollErr && <p className="mt-1 text-xs text-fire-hot" role="alert">{pollErr}</p>}
       </section>
 
-      {/* 무대 녹화 시작/중지(V-3) — 하단바에서 이관. idle 진입은 콘솔, 하단바는 진행 상태만. */}
+      {/* 방 녹화 시작/중지(V-3 + ROOM-28) — 하단바에서 이관. idle 진입은 콘솔, 하단바는 진행 상태만.
+          U1: idle 에선 종류 2개를 버튼으로 편다(토글 아님 — 상태가 안 늘고 클릭 1회에 결과가 자명).
+          진행 중엔 그 종류 하나로 접혀 기존 단일 버튼 동작(취소·정지·재시도) 그대로. */}
       {onToggleRecord && (
         <section>
           <h3 className="mb-2 text-xs font-semibold text-stage-text-muted">{t('host.recordTitle')}</h3>
-          <button
-            data-record-button={recordPhase}
-            onClick={onToggleRecord}
-            disabled={!connected || recordPhase === 'uploading'}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 ${REC_LABEL[recordPhase ?? 'idle'].cls}`}
-            title={t(REC_LABEL[recordPhase ?? 'idle'].key)}
-          >
-            <span className={recordPhase === 'recording' ? 'animate-pulse' : undefined}>{REC_LABEL[recordPhase ?? 'idle'].icon}</span>
-            <span>{t(REC_LABEL[recordPhase ?? 'idle'].key)}</span>
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {(phaseNow === 'idle' ? (['stage', 'voice'] as const) : [activeKind]).map((k) => {
+              const label = recLabelText(phaseNow, t, { consent: consentTally, kind: k })
+              return (
+                <button
+                  key={k}
+                  data-record-button={phaseNow}
+                  data-record-kind={k}
+                  onClick={() => onToggleRecord(k)}
+                  disabled={!connected || phaseNow === 'uploading'}
+                  aria-label={label}
+                  className={`touch-target flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 ${REC_LABEL[phaseNow].cls}`}
+                  title={label}
+                >
+                  <span className={phaseNow === 'recording' ? 'animate-pulse' : undefined}>{recIcon(phaseNow, k)}</span>
+                  {/* REC-CONSENT-N: 호스트가 실제로 판단하는 자리 — "동의 대기중 1/3" 로 남은 인원이 보인다. */}
+                  <span>{label}</span>
+                </button>
+              )
+            })}
+          </div>
         </section>
       )}
 
@@ -766,13 +788,16 @@ export default function HostConsole({
           <ul className="space-y-1.5">
             {recs.map((r) => (
               <li key={r.id} className="flex items-center gap-2 rounded-lg border border-stage-border px-3 py-2 text-sm">
+                {/* U4: 음성은 파일이 작아 빠르게 쌓인다 — 종류·길이·용량이 없으면 목록이 못 쓰게 된다. */}
+                <span aria-hidden className="shrink-0">{r.kind === 'voice' ? '🎙' : '🎬'}</span>
                 <span className="min-w-0 flex-1 truncate text-xs text-stage-text-muted">
                   {new Date(r.created_at).toLocaleString()} · {fmtDuration(r.duration_ms)}
+                  {r.file_size_bytes ? ` · ${fmtBytes(r.file_size_bytes)}` : ''}
                 </span>
                 <button
-                  onClick={() => void playRec(r.id)}
+                  onClick={() => void playRec(r.id, r.kind)}
                   disabled={recBusy === r.id}
-                  className="shrink-0 rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
+                  className="touch-target shrink-0 rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text disabled:opacity-40"
                 >
                   {t('host.recordingsPlay')}
                 </button>
@@ -780,9 +805,24 @@ export default function HostConsole({
             ))}
           </ul>
           {playing && (
-            <video key={playing.id} src={playing.url} controls autoPlay className="mt-2 w-full rounded-lg border border-stage-border">
-              <track kind="captions" />
-            </video>
+            <div className="mt-2 space-y-2">
+              {/* audio-only webm 을 <video> 에 물리면 재생은 되지만 검은 박스가 남는다(계약 U4). */}
+              {playing.kind === 'voice' ? (
+                <audio key={playing.id} src={playing.url} controls autoPlay className="w-full" />
+              ) : (
+                <video key={playing.id} src={playing.url} controls autoPlay className="w-full rounded-lg border border-stage-border">
+                  <track kind="captions" />
+                </video>
+              )}
+              {/* 다운로드 — R2 는 내려받기 전송료가 0원이라 횟수·용량 제한을 두지 않는다(계약 U4). */}
+              <a
+                href={playing.url}
+                download
+                className="touch-target inline-flex items-center rounded border border-stage-border px-2 py-1 text-xs text-stage-text-muted hover:text-stage-text"
+              >
+                {t('host.recordingsDownload')}
+              </a>
+            </div>
           )}
         </section>
       )}

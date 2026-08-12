@@ -372,8 +372,13 @@ export async function fetchPublicRoomsGuest(): Promise<LobbyRoom[]> {
 
 // ---- V-3 인앱 녹화(ROOM-13, GOAL-g3) — 동의 게이트·presign·마감·재생. 서버가 host/참가자 재검증. ----
 
-export const startRoomRecording = (accessToken: string, roomId: string) =>
-  callFn<{ ok: boolean; recording_id: string; all_consented: boolean }>('start-room-recording', accessToken, { room_id: roomId })
+// ROOM-28: kind 는 산출물 종류(stage=무대 합성 영상 / voice=음성 전용). 미지정 = stage(기존 호출부 무회귀).
+export type RecordingKind = 'stage' | 'voice'
+
+export const startRoomRecording = (accessToken: string, roomId: string, kind: RecordingKind = 'stage') =>
+  callFn<{ ok: boolean; recording_id: string; all_consented: boolean; kind: RecordingKind }>(
+    'start-room-recording', accessToken, { room_id: roomId, kind },
+  )
 
 export const recordRecordingConsent = (accessToken: string, recordingId: string, consented: boolean) =>
   callFn<{ ok: boolean; all_consented: boolean }>('record-recording-consent', accessToken, { recording_id: recordingId, consented })
@@ -392,11 +397,18 @@ export const getRecordingUrl = (accessToken: string, recordingId: string) =>
   callFn<{ ok: boolean; url: string; duration_ms: number | null }>('get-recording-url', accessToken, { recording_id: recordingId })
 
 // 방 녹화 목록(HostConsole 다시보기) — RLS(멤버 SELECT) 직접 조회.
-export interface RoomRecordingItem { id: string; created_at: string; duration_ms: number | null }
+// kind·file_size_bytes 는 U4 목록 표기(종류 아이콘·용량)와 <audio>/<video> 분기에 쓴다.
+export interface RoomRecordingItem {
+  id: string
+  created_at: string
+  duration_ms: number | null
+  kind: RecordingKind
+  file_size_bytes: number | null
+}
 export async function fetchRoomRecordings(roomId: string): Promise<RoomRecordingItem[]> {
   const { data, error } = await supabase
     .from('recordings')
-    .select('id, created_at, duration_ms')
+    .select('id, created_at, duration_ms, kind, file_size_bytes')
     .eq('room_id', roomId)
     .eq('status', 'ready')
     .order('created_at', { ascending: false })

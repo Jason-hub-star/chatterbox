@@ -1,6 +1,8 @@
 // start-room-recording(G3·ROOM-13): 호스트가 녹화 동의 수집을 시작한다.
 // SSOT: specs/security/consent-credits-quota.md §11.1.1 — all_consented 전까지 녹화 시작 불가.
-// 입력: { room_id }  출력: { ok, recording_id, all_consented }
+// 입력: { room_id, kind? }  출력: { ok, recording_id, all_consented, kind }
+// kind(ROOM-28): 'stage'(무대 합성 영상) | 'voice'(음성 전용). 미지정=stage 라 기존 호출부 무회귀.
+//   산출물 종류는 행 생성 시점에 확정한다 — 확장자·MIME 추정 금지(계약 contracts/VoiceRecording.md).
 // 호스트 동의는 시작 행위로 즉시 기록(ip_hash 포함). 나머지 참가자에겐 room-authority
 // 서버발 broadcast 로 동의 요청(수신측은 participant===undefined 만 신뢰 — SEC-RA-1 패턴).
 
@@ -16,7 +18,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.res;
   const { userId, service } = auth.user;
 
-  let body: { room_id?: unknown };
+  let body: { room_id?: unknown; kind?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -24,6 +26,9 @@ Deno.serve(async (req) => {
   }
   if (!isUuid(body.room_id)) return json({ error: "Invalid room_id" }, 400);
   const roomId = body.room_id;
+  // 화이트리스트 검증 — DB CHECK 에 기대지 않는다(500 대신 400 으로 되돌려줘야 호출부가 고칠 수 있다).
+  const kind = body.kind === undefined ? "stage" : body.kind;
+  if (kind !== "stage" && kind !== "voice") return json({ error: "Invalid kind" }, 400);
 
   const gate = await requireHostRoom(service, roomId, userId);
   if (!gate.ok) return gate.res;
@@ -52,7 +57,7 @@ Deno.serve(async (req) => {
 
   const { data: rec, error: iErr } = await service
     .from("recordings")
-    .insert({ room_id: roomId, user_id: userId, status: "consent_pending", consent_json: consent })
+    .insert({ room_id: roomId, user_id: userId, kind, status: "consent_pending", consent_json: consent })
     .select("id")
     .single();
   if (iErr || !rec) return json({ error: "녹화 생성 실패", detail: iErr?.message }, 500);
@@ -64,11 +69,13 @@ Deno.serve(async (req) => {
         type: "recording_consent",
         recording_id: rec.id,
         all_consented: consent.all_consented,
+        // U3 빠른 길 — 동의 모달 문구(녹화/녹음)가 이 값으로 갈린다. 유실 시 늦입장 동기가 DB 에서 복구한다.
+        kind,
         rid: crypto.randomUUID(),
       })),
       "room-authority",
     );
   } catch { /* broadcast 실패는 치명 아님 — 참가자는 재요청으로 복구 */ }
 
-  return json({ ok: true, recording_id: rec.id, all_consented: consent.all_consented }, 201);
+  return json({ ok: true, recording_id: rec.id, all_consented: consent.all_consented, kind }, 201);
 });

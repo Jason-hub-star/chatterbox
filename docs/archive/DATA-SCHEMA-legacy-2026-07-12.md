@@ -681,6 +681,7 @@ CREATE TABLE recordings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'stage',  -- stage(무대 합성 영상 V-3) | voice(음성 전용 ROOM-28). 산출물 종류의 유일한 진실 — 확장자/MIME 추정 금지
   storage_object_key TEXT NOT NULL,  -- durable R2/Supabase object key. signed URL은 RPC/Edge Function이 단기 발급
   signed_url_cache TEXT,  -- optional short-lived cache; 만료 가능하며 source of truth 아님
   duration_ms INT,
@@ -710,6 +711,10 @@ CREATE TABLE recordings (
 --   "all_consented": boolean  -- 모든 활성 참가자 동의 완료 여부 (녹화 시작 게이트)
 -- }
 --
+-- kind (ROOM-28, 마이그 20260811120000): CHECK (kind in ('stage','voice')). 기존 행은 default 로 'stage' 백필.
+--   'voice' = 무대 합성 없이 오디오만(webm/opus, 시간당 약 29MB). 키·업로드·complete·presign 경로는 stage 와 동일 —
+--   같은 .webm 컨테이너라 Edge 는 start-room-recording 만 kind 를 받는다. 다시보기가 <video>/<audio> 를 이 값으로 고른다.
+--   동의 게이트(§11.1.1)는 종류 무관 동일 적용 — 음성이라고 생략하지 않는다.
 -- 녹화 시작 게이트: all_consented = true 여야만 status='recording' → 'processing' 전이 가능
 -- 취소/폐기 (G-169):
 --   cancelled: 시작 카운트다운 또는 업로드 전 취소. R2 object 없음.

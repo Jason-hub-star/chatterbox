@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RecordingPhase } from './useRoomRecording'
-import { REC_LABEL, recLabelText } from './recordingLabels'
+import type { RecordingKind } from '@/lib/rooms'
+import { REC_LABEL, recLabelText, recIcon } from './recordingLabels'
 
 interface Props {
   isViewer: boolean
@@ -20,6 +21,7 @@ interface Props {
   // V-3 녹화(호스트만 노출 — 서버가 host 재검증). phase 별 라벨/동작은 useRoomRecording 상태기계.
   recordPhase?: RecordingPhase
   onToggleRecord?: () => void
+  activeKind?: RecordingKind // ROOM-28 — 진행 중 산출물 종류(아이콘·라벨이 녹화/녹음으로 갈린다)
   uploadPct?: number | null // UX-UPLOAD-PROGRESS: 업로드 중 진행률(%) — 라벨에 병기
   consentTally?: { consented: number; required: number } | null // REC-CONSENT-N: 동의 n/N
 }
@@ -38,13 +40,14 @@ export default function RoomBottomBar({
   onLeave,
   recordPhase = 'idle',
   onToggleRecord,
+  activeKind = 'stage',
   uploadPct,
   consentTally,
 }: Props) {
   const { t } = useTranslation()
   const rec = REC_LABEL[recordPhase]
-  // 라벨 조립은 recordingLabels 단일 지점(업로드 % · 동의 n/N) — HostConsole 과 문구가 갈리지 않게.
-  const recLabel = recLabelText(recordPhase, t, { uploadPct, consent: consentTally })
+  // 라벨 조립은 recordingLabels 단일 지점(업로드 % · 동의 n/N · 종류) — HostConsole 과 문구가 갈리지 않게.
+  const recLabel = recLabelText(recordPhase, t, { uploadPct, consent: consentTally, kind: activeKind })
 
   return (
     <div className="flex items-center justify-center gap-2 px-4 py-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] sm:gap-3">
@@ -105,13 +108,14 @@ export default function RoomBottomBar({
       {onToggleRecord && recordPhase !== 'idle' && (
         <button
           data-record-button={recordPhase}
+          data-record-kind={activeKind}
           onClick={onToggleRecord}
           disabled={!connected || recordPhase === 'uploading'}
           aria-label={recLabel}
           className={`flex min-h-11 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm ${rec.cls}`}
           title={recLabel}
         >
-          <span className={recordPhase === 'recording' ? 'animate-pulse' : undefined}>{rec.icon}</span>
+          <span className={recordPhase === 'recording' ? 'animate-pulse' : undefined}>{recIcon(recordPhase, activeKind)}</span>
           <span className="hidden sm:inline">{recLabel}</span>
         </button>
       )}

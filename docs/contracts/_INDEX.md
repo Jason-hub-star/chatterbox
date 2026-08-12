@@ -42,6 +42,7 @@ snack-web의 Vite+React SPA에서 PixiJS(WebGL) + LiveKit(RTC) + Supabase(DB) + 
 | [ChatOverlay.md](ChatOverlay.md) | 무대 위 채팅 오버레이 | `messageDuration`, `maxMessages` |
 | [MainViewComponent.md](MainViewComponent.md) | 무대 중앙 배경영상 | `roomId`, `initialBackgroundUrl` |
 | [AudioMixer.md](AudioMixer.md) | 채널별 음성 볼륨 제어 | `isVisible` |
+| [VoiceRecording.md](VoiceRecording.md) | 음성 전용 방 녹음 (ROOM-28) — 무대 합성 녹화의 산출물 변형, 동의·업로드·보존은 기존 경로 승계 | `kind: 'stage'\|'voice'` (`useRoomRecording` 옵션) |
 | [TimedTurnsProgressBar.md](TimedTurnsProgressBar.md) | 큐 예상 소요시간 진행바 | `cueStartTime`, `duration` |
 | [PresenceAvatarStack.md](PresenceAvatarStack.md) | 우상단 participant 썸네일 | `maxVisible`, `overflowStyle` |
 | [ModelSelector.md](ModelSelector.md) | 아바타 선택 화면 | `onSelected`, `onClose` |

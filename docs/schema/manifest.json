@@ -1,6 +1,6 @@
 {
   "legacySnapshot": "docs/archive/DATA-SCHEMA-legacy-2026-07-12.md",
-  "sourceSha256": "d2f43f7f5816c14d54e93a3cdba11c8e317451053c29aca8a59ad296af3e30bd",
+  "sourceSha256": "812dac9b16b1022b2fdd3c10cb6d4edc359dde0a8d841f5b63f2293f15784281",
   "modules": [
     "00-introduction.md",
     "01-core-tables.md",

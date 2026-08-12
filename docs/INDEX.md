@@ -11,8 +11,22 @@ tags: [hub]
 
 # docs/ INDEX — 문서 지도
 
-> **루트 = 게이트가 무는 SSOT 14개만.** 나머지는 전부 용도별 폴더. 문서를 찾을 땐 이 지도 → 폴더 → (contracts/state-machines 는 각자의 `_INDEX.md`).
-> Updated: 2026-07-12 (G1 리팩토링)
+> **`docs/` 루트에는 `INDEX.md` · `SESSION-START.md` · `README.md` 셋만 둔다.** 나머지는 전부 용도별 폴더. 문서를 찾을 땐 이 지도 → 폴더 → (contracts/state-machines 는 각자의 `_INDEX.md`).
+> Updated: 2026-08-05 (루트 SSOT 12건을 폴더로 흡수 — `scripts/check/docs.sh` 가 루트 쌓임을 강제한다)
+
+## 루트 SSOT의 새 위치 (2026-08-05 이동)
+
+| 문서 | 새 위치 | 라벨 |
+|---|---|---|
+| `../CLAUDE.md` | 저장소 루트 (진입 문서) | SSOT |
+| `PLATFORM-ARCHITECTURE.md` · `FEATURE-SPEC.md` · `DATA-SCHEMA.md` · `API-SURFACE.md` · `FEATURE-CONTRACT-MAP.md` · `STORE-DEPENDENCY-MATRIX.md` | `specs/` | SSOT |
+| `CODING-CONVENTIONS.md` | `guides/` | SSOT |
+| `MILESTONES.md` | `plan/` | SSOT |
+| `GAP-MATRIX.md` · `CONTRACT-HEALTH.md` · `ROOM-BACKLOG.md` · `DOGFOOD-AUDIT-2026-07.md` | `status/` | SSOT |
+
+**`contracts/` 는 컴포넌트별 계약 전용이다** — `scripts/check-contract-docs.mjs` 가 그 폴더의 모든 md 에 Props/Store/MUST NOT 절을 요구한다. 횡단 문서를 여기 두면 게이트가 즉시 레드가 된다.
+
+새 세션은 먼저 `SESSION-START.md`를 읽고, 이 지도에서 필요한 SSOT만 선택한다. 완료·보존 문서는 `archive/ARCHIVE-INDEX.md`에서 검색한다.
 
 ## 분류 라벨
 
@@ -28,8 +42,8 @@ tags: [hub]
 
 | 폴더 | 용도 | 파일 |
 |---|---|---|
-| (루트) | 게이트·스크립트가 무는 핵심 SSOT | 14 |
-| `contracts/` | 컴포넌트 계약 (Props/Store/DataChannel/금지) → `contracts/_INDEX.md` | 38 |
+| (루트) | 게이트·스크립트가 무는 핵심 SSOT 14 + 세션 캡슐 | 15 |
+| `contracts/` | 컴포넌트 계약 (Props/Store/DataChannel/금지) → `contracts/_INDEX.md` | 39 |
 | `state-machines/` | 상태머신 전환표·엣지케이스 → `state-machines/_INDEX.md` | 13 |
 | `schema/` | DATA-SCHEMA 모듈 (기존 § 참조는 루트 허브에서 라우팅) → `schema/_INDEX.md` | 7 |
 | `specs/` | 구현 입력 스펙 (LiveKit·rig·auth·미디어·테스트·온보딩·빌드설정) | 22 |
@@ -44,16 +58,17 @@ tags: [hub]
 | `goals/` | 골 사다리(`GOAL-LADDER.md` 영구 인덱스)·활성 브리프 · 완료 브리프는 `goals/archive/` | 1+ |
 | `research/` | 조사 원본 (보존 — DUB-TRIM UX 레퍼런스 포함) | 5 |
 | `reference/` | golden-path 코드 패턴·마케팅 자동화 이식본 | patterns/ 등 |
-| `archive/` | 결정 반영 완료된 조사·리뷰·상태 스냅샷 (STACK-COMPARE 4종·BUILD-QUEUE·REVIEW-LOG·룸 인계·flecto-reference/ 등) | 10 |
+| `archive/` | 결정 반영 완료된 조사·리뷰·상태 스냅샷 (STACK-COMPARE 4종·BUILD-QUEUE·REVIEW-LOG·룸 인계·flecto-reference/ 등) | 13 |
 | `archive/landing/` | 구 snack-web 랜딩 문서 (사이트는 운영 중, 스택 레거시 — 새 플랫폼의 마케팅 입구로 흡수 예정) | 6 |
 | `assets/` `meeting/` `overview/` | 도구·뷰(HTML)·에셋 — 에이전트 온보딩 대상 아님 | — |
 
-## 루트 14 — 핵심 SSOT
+## 루트 15 — 핵심 SSOT + 세션 캡슐
 
 | 파일 | 역할 | 상태 |
 |---|---|---|
 | `README.md` | 프로젝트 개요·빠른 시작 | SSOT |
 | `INDEX.md` | 이 문서 지도 | SSOT |
+| `SESSION-START.md` | Claude/Codex 공통 경량 세션 라우터 | **진입 캡슐** |
 | `FEATURE-SPEC.md` | 기능 SSOT (Feature ID·우선순위·의존) | **SSOT (기능)** |
 | `FEATURE-CONTRACT-MAP.md` | Feature ID → 계약서·상태머신·스키마 역색인 | **SSOT (구현 라우팅)** |
 | `STORE-DEPENDENCY-MATRIX.md` | 계약서별 store read/write·canonical 필드명 | **SSOT (store 경계)** |
@@ -65,7 +80,7 @@ tags: [hub]
 | `MILESTONES.md` | Phase 0~4 Acceptance Criteria (배포 게이트) | **설계 (진행 기준)** |
 | `DOGFOOD-AUDIT-2026-07.md` | 도그푸딩 감사 백로그 (`/backlog` 소스·drift 대상) | **설계 (백로그)** |
 | `ROOM-BACKLOG.md` | 룸 미구현 인덱스 (트랙 V/U·probe 회귀감시·drift 대상) | **설계 (룸 백로그)** |
-| `CONTRACT-HEALTH.md` | 계약 문서망 건강 리포트 (`docs:health` 산출) | **SSOT (계약 건강)** |
+| `CONTRACT-HEALTH.md` | 과거 계약 건강 스냅샷. 현재값은 `npm run docs:health` 출력 | **보존 스냅샷** |
 
 > 루트 고정 사유: `scripts/check-contract-docs.mjs` 가 FEATURE-SPEC·FEATURE-CONTRACT-MAP·STORE-DEPENDENCY-MATRIX·DATA-SCHEMA·GAP-MATRIX(+contracts/·state-machines/ `_INDEX`)를, `scripts/check-backlog-drift.mjs` 가 ROOM-BACKLOG·DOGFOOD-AUDIT 를 경로 하드코딩으로 참조한다. 옮기려면 스크립트 동반 수정.
 
@@ -97,7 +112,7 @@ tags: [hub]
 
 ### status/ — 상태·인계·에이전트 운영
 
-`AGENT-OPS.md`(에이전트 진입 SSOT·루틴) · `PROJECT-STATUS.md` · HANDOFF 시리즈(트랙 인계 진입점) · `SCOUT.md`(배턴, gitignore) · doc-health 스냅샷.
+`AGENT-OPS.md`(자동 루틴 SSOT) · `PROJECT-STATUS.md`(snack-web 전용) · HANDOFF 시리즈(트랙 인계) · `SCOUT.md`(로컬 배턴, gitignore·자동 로드 금지) · doc-health 스냅샷.
 
 ### goals/ — 골 사다리
 

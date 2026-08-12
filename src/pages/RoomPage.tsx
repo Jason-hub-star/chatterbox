@@ -620,7 +620,8 @@ export default function RoomPage() {
           recordingsNonce={recording.recordingsNonce}
           connected={connected}
           recordPhase={recording.phase}
-          onToggleRecord={() => void recording.toggleRecording()}
+          onToggleRecord={(kind) => void recording.toggleRecording(kind)}
+          activeKind={recording.activeKind}
           consentTally={recording.consentTally}
           onCreatePoll={createPollCb}
           onSetPollStatus={setPollStatusCb}
@@ -753,9 +754,12 @@ export default function RoomPage() {
             <span
               role="status"
               data-rec-badge
+              data-rec-kind={recording.activeKind}
+              aria-label={recording.activeKind === 'voice' ? t('room.recBadgeVoice') : undefined}
               className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-fire-hot backdrop-blur-sm"
             >
               <span aria-hidden className="h-2 w-2 animate-pulse rounded-full bg-fire-hot" /> REC
+              {recording.activeKind === 'voice' && <span aria-hidden>🎙</span>}
             </span>
           )}
           {/* U-0 온보딩 데드엔드: 혼자 입장 시 빈 무대 안내 + 초대 CTA(F-3 공유 재사용).
@@ -835,7 +839,8 @@ export default function RoomPage() {
       mixerSlot={<AudioMixerPanel open={mixerOpen} onClose={() => setMixerOpen(false)} />}
       onLeave={onLeave}
       recordPhase={isHost ? recording.phase : undefined}
-      onToggleRecord={isHost ? () => void recording.toggleRecording() : undefined}
+      onToggleRecord={isHost ? () => void recording.toggleRecording(recording.activeKind) : undefined}
+      activeKind={recording.activeKind}
       uploadPct={isHost ? recording.uploadPct : undefined}
       consentTally={isHost ? recording.consentTally : undefined}
     />
@@ -887,7 +892,9 @@ export default function RoomPage() {
       {/* 녹화 동의 모달(V-3·§11.1.1) — 닫기(Esc)도 거절로 기록(무응답 방치 방지, 호스트는 취소 가능). */}
       {recording.consentRequest && (
         <Modal title={t('room.recConsentTitle')} onClose={() => void recording.respondConsent(false)}>
-          <p className="mt-2 text-sm text-stage-text-muted">{t('room.recConsentBody')}</p>
+          <p className="mt-2 text-sm text-stage-text-muted">
+            {t(recording.activeKind === 'voice' ? 'room.recConsentVoice' : 'room.recConsentBody')}
+          </p>
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => void recording.respondConsent(true)}

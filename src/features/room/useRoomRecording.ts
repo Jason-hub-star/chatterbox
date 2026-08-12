@@ -3,11 +3,13 @@ import { useUserStore } from '@/stores/userStore'
 import { useStageStore } from '@/stores/stageStore'
 import { supabase } from '@/lib/supabase'
 import { startStageRecorder, type StageRecorder } from '@/features/stage/stageRecorder'
+import { startVoiceRecorder } from './voiceRecorder'
 import {
   startRoomRecording,
   recordRecordingConsent,
   createRecordingUpload,
   completeRoomRecording,
+  type RecordingKind,
 } from '@/lib/rooms'
 import { toast } from '@/hooks/useToast'
 import { useLeaveGuard } from '@/hooks/useLeaveGuard'
@@ -34,6 +36,9 @@ export function useRoomRecording(opts: {
   const [uploadPct, setUploadPct] = useState<number | null>(null) // UX-UPLOAD-PROGRESS: 업로드 진행률(0~100)
   // REC-CONSENT-N: 동의 집계(서버 계산 — 분모 규칙 SEC-KICK-3 이 서버에만 있다). 호스트 라벨 "n/N".
   const [consentTally, setConsentTally] = useState<{ consented: number; required: number } | null>(null)
+  // ROOM-28 U3: 진행 중인 녹화의 산출물 종류. 비호스트는 broadcast(빠른 길) 또는 DB 동기(복구 길)로 받는다
+  //   — 브로드캐스트 단독이면 입장 직후 첫 메시지 유실 시 배지·동의 문구 종류가 빈다.
+  const [activeKind, setActiveKind] = useState<RecordingKind>('stage')
 
   const phaseRef = useRef(phase)
   useEffect(() => { phaseRef.current = phase }, [phase])
@@ -41,7 +46,10 @@ export function useRoomRecording(opts: {
   useEffect(() => { isHostRef.current = isHost }, [isHost])
 
   const recordingIdRef = useRef<string | null>(null)
+  // StageRecorder·VoiceRecorder 는 같은 shape(mimeType·addAudioTrack·stop·cancel) — 정지/업로드 경로 공용.
   const recorderRef = useRef<StageRecorder | null>(null)
+  // 캡처 시작 시점에 읽히므로 ref — activeKind state 는 렌더(문구·배지)용이고 이쪽이 실행용이다.
+  const kindRef = useRef<RecordingKind>('stage')
   const uploadUrlRef = useRef<string | null>(null)
   const startedAtRef = useRef<number | null>(null)
   const failedRef = useRef<{ blob: Blob; durationMs: number } | null>(null) // 업로드 실패분(재시도용)
@@ -61,13 +69,18 @@ export function useRoomRecording(opts: {
       return
     }
     try {
-      const stageEl = document.querySelector<HTMLElement>('[data-stage-area]')
-      if (!stageEl) throw new Error('stage_not_visible')
-      recorderRef.current = startStageRecorder({
-        stageEl,
-        backgroundUrl: useStageStore.getState().backgroundUrl,
-        audioTracks: getAudioTracks(),
-      })
+      if (kindRef.current === 'voice') {
+        // 음성 모드는 무대를 그리지 않는다 — stageEl 부재가 실패 사유가 아니다(계약 MUST NOT).
+        recorderRef.current = startVoiceRecorder({ audioTracks: getAudioTracks() })
+      } else {
+        const stageEl = document.querySelector<HTMLElement>('[data-stage-area]')
+        if (!stageEl) throw new Error('stage_not_visible')
+        recorderRef.current = startStageRecorder({
+          stageEl,
+          backgroundUrl: useStageStore.getState().backgroundUrl,
+          audioTracks: getAudioTracks(),
+        })
+      }
       uploadUrlRef.current = up.upload_url
       startedAtRef.current = Date.now()
       setPhase('recording')
@@ -130,14 +143,17 @@ export function useRoomRecording(opts: {
   }, [phase, retryUpload])
 
   // ⏺ 단일 버튼(호스트): idle=동의 수집 시작 / consentPending=취소 / recording=정지→업로드 / uploadFailed=재시도.
-  const toggleRecording = useCallback(async () => {
+  // ROOM-28: idle 진입만 종류를 고른다(U1 버튼 2개) — 진행 중 전환은 없다(산출물이 섞인다).
+  const toggleRecording = useCallback(async (kind: RecordingKind = 'stage') => {
     const tk = token()
     if (!tk || !isHostRef.current) return
     const cur = phaseRef.current
     if (cur === 'idle') {
       setConsentTally(null) // REC-CONSENT-N: 새 수집 라운드 — 지난 라운드 집계가 새어나오면 안 된다.
       try {
-        const r = await startRoomRecording(tk, roomId)
+        const r = await startRoomRecording(tk, roomId, kind)
+        kindRef.current = r.kind
+        setActiveKind(r.kind)
         recordingIdRef.current = r.recording_id
         if (r.all_consented) await startCapture(r.recording_id)
         else setPhase('consentPending')
@@ -171,11 +187,15 @@ export function useRoomRecording(opts: {
   }, [roomId, startCapture, uploadAndComplete])
 
   // room-authority recording_* 수신(RoomPage 위임). 서버발만 도달(SEC-RA-1 — 수신측이 이미 필터).
-  const onAuthorityMessage = useCallback((msg: { type: string; recording_id?: string; all_consented?: boolean; consented_count?: number; required_count?: number; declined?: boolean; declined_name?: string | null }) => {
+  const onAuthorityMessage = useCallback((msg: { type: string; recording_id?: string; all_consented?: boolean; consented_count?: number; required_count?: number; declined?: boolean; declined_name?: string | null; kind?: string }) => {
     if (msg.type === 'recording_consent') {
       // 동의 요청: 비호스트 전원 모달(호스트는 시작 시 자동 동의됨).
       if (!isHostRef.current && typeof msg.recording_id === 'string') {
         recordingIdRef.current = msg.recording_id
+        // U3 빠른 길 — 동의 문구가 "녹화/녹음"으로 갈린다. 유실 시 아래 DB 동기가 복구한다.
+        const k: RecordingKind = msg.kind === 'voice' ? 'voice' : 'stage'
+        kindRef.current = k
+        setActiveKind(k)
         setConsentRequest({ recordingId: msg.recording_id })
       }
     } else if (msg.type === 'recording_consent_update') {
@@ -220,12 +240,16 @@ export function useRoomRecording(opts: {
     ;(async () => {
       const { data } = await supabase
         .from('recordings')
-        .select('id, status, consent_json')
+        .select('id, status, consent_json, kind')
         .eq('room_id', roomId)
         .in('status', ['consent_pending', 'recording'])
         .maybeSingle()
       if (cancelled || !data) return
       recordingIdRef.current = data.id
+      // U3 복구 길 — DB 가 durable 진실. 입장 직후 datachannel 첫 메시지를 잃어도 종류가 복원된다.
+      const k: RecordingKind = data.kind === 'voice' ? 'voice' : 'stage'
+      kindRef.current = k
+      setActiveKind(k)
       if (data.status === 'recording') {
         setRemoteActive(true)
         // 호스트인데 로컬 레코더가 없음 = 새로고침 잔재 — phase 만 복원, 정지 클릭이 취소로 정리.
@@ -267,6 +291,8 @@ export function useRoomRecording(opts: {
     consentRequest,
     respondConsent,
     toggleRecording,
+    activeKind, // ROOM-28 U2·U3 — 동의 문구·REC 배지가 이 값으로 갈린다
+
     onAuthorityMessage,
     onAudioTrack,
     recordingsNonce,
