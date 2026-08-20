@@ -1,5 +1,5 @@
 // vgen-webhook: fal.ai 완료 콜백 수신 — 서명검증·R2 이관·3-way DONE 게이트·실패 환불.
-// SSOT: docs/reference/patterns/falai-vgen-pipeline.md §3 · docs/DATA-SCHEMA.md §1.8
+// SSOT: docs/reference/patterns/falai-vgen-pipeline.md §3 · docs/specs/DATA-SCHEMA.md §1.8
 // 입력(query): ?job_id=<uuid>   본문: fal webhook payload   출력: { ok }
 //
 // 설계(Opus 검토):
@@ -86,10 +86,17 @@ Deno.serve(async (req) => {
 
   const service = serviceClient();
   const { data: job } = await service.from("vgen_jobs")
-    .select("id, room_id, status, credit_deducted_at").eq("id", jobId).maybeSingle();
+    .select("id, room_id, status, credit_deducted_at, provider_job_id").eq("id", jobId).maybeSingle();
   if (!job) return new Response(JSON.stringify({ ok: true }), { status: 200 }); // 알 수 없는 job → 무시
   if (job.status === "done" || job.status === "failed") {
     return new Response(JSON.stringify({ ok: true }), { status: 200 }); // 멱등: 이미 종료
+  }
+  // ISS-21(감사 2026-08-20 P1): 크로스잡 하이재킹 차단 — 서명은 fal 플랫폼 전체 키로 검증되므로
+  //   아무 fal 고객이나 진짜 서명한 webhook 을 ?job_id=<피해자> 로 리디렉션할 수 있다. query 의 job_id 는
+  //   서명 대상이 아니다. 제출 시 저장한 provider_job_id(=fal request_id)와 payload.request_id 를
+  //   대조해 "이 webhook 이 정말 이 job 의 것"임을 결속한다(trigger-vgen 이 이미 저장).
+  if (!job.provider_job_id || payload.request_id !== job.provider_job_id) {
+    return new Response(JSON.stringify({ ok: true }), { status: 200 }); // 불일치 → 무시(위조/오배송)
   }
 
   const ok = payload.status === "OK" || payload.status === "COMPLETED";
